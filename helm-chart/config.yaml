@@ -37,9 +37,13 @@ jupyterhub:
         image:
           display_name: Image
           choices:
+            v0-3-26:
+              display_name: Version 0.3.26
+              default: true
+              kubespawner_override:
+                image: "935462133478.dkr.ecr.us-east-2.amazonaws.com/teehr:v0.3.26"
             v0-3-25:
               display_name: Version 0.3.25
-              default: true
               kubespawner_override:
                 image: "935462133478.dkr.ecr.us-east-2.amazonaws.com/teehr:v0.3.25"
             v0-3-23:
