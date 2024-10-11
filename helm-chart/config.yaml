@@ -75,6 +75,25 @@ jupyterhub:
         cpu_guarantee: 12
         node_selector:
           node.kubernetes.io/instance-type: r5.4xlarge
+    - display_name: "HEFS-FEWS Evaluation System (4 vCPU/32GB memory)"
+      default: False
+      description: "A r5.xlarge EC2 instance $0.252/hour"
+      profile_options:
+        image:
+          display_name: Image
+          choices:
+            v0-1-0:
+              display_name: Version 0.1.0
+              default: true
+              kubespawner_override:
+                image: "935462133478.dkr.ecr.us-east-2.amazonaws.com/hefs-fews-hub:v0.1.0"
+      kubespawner_override:
+        mem_limit: 32G
+        mem_guarantee: 19G
+        cpu_limit: 4
+        cpu_guarantee: 3
+        node_selector:
+          node.kubernetes.io/instance-type: r5.xlarge
     storage:
       extraVolumes:
       - name: teehr-hub-data-nfs
