@@ -27,7 +27,7 @@ jupyterhub:
   singleuser:
     image:
       name: 935462133478.dkr.ecr.us-east-2.amazonaws.com/teehr  # Image to use for singleuser environment. Must include dask-gateway.
-      tag: v0.3.22
+      tag: v0.3.28
     defaultUrl: "/lab"  # Use jupyterlab by defualt.
     profileList:
     - display_name: "TEEHR Evaluation System (4 vCPU/32GB memory)"
@@ -37,27 +37,15 @@ jupyterhub:
         image:
           display_name: Image
           choices:
-            v0-3-26:
-              display_name: Version 0.3.26
+            v0-3-28:
+              display_name: Version 0.3.28
               default: true
               kubespawner_override:
-                image: "935462133478.dkr.ecr.us-east-2.amazonaws.com/teehr:v0.3.26"
-            v0-3-25:
-              display_name: Version 0.3.25
+                image: "935462133478.dkr.ecr.us-east-2.amazonaws.com/teehr:v0.3.28"
+            v0-4-4:
+              display_name: Version 0.4.4
               kubespawner_override:
-                image: "935462133478.dkr.ecr.us-east-2.amazonaws.com/teehr:v0.3.25"
-            v0-3-23:
-              display_name: Version 0.3.23
-              kubespawner_override:
-                image: "935462133478.dkr.ecr.us-east-2.amazonaws.com/teehr:v0.3.23"
-            v0-3-22:
-              display_name: Version 0.3.22
-              kubespawner_override:
-                image: "935462133478.dkr.ecr.us-east-2.amazonaws.com/teehr:v0.3.22"
-            v0-4-0:
-              display_name: Version 0.4.0b
-              kubespawner_override:
-                image: "935462133478.dkr.ecr.us-east-2.amazonaws.com/teehr:v0.4.0"
+                image: "935462133478.dkr.ecr.us-east-2.amazonaws.com/teehr:v0.4.4"
       kubespawner_override:
         mem_limit: 32G
         mem_guarantee: 19G
@@ -126,7 +114,7 @@ dask-gateway:
     backend:
       image:
         name: 935462133478.dkr.ecr.us-east-2.amazonaws.com/teehr  # Image to use for singleuser environment. Must include dask-gateway.
-        tag: v0.3.22
+        tag: v0.3.28
       scheduler:
         extraPodConfig:
           # serviceAccountName: user-sa
