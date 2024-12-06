@@ -1,3 +1,4 @@
 .env
 secret-config.yaml
 .terraform
+.DS_Store
