@@ -39,13 +39,17 @@ jupyterhub:
           choices:
             v0-3-26:
               display_name: Version 0.3.26
-              default: true
               kubespawner_override:
                 image: "935462133478.dkr.ecr.us-east-2.amazonaws.com/teehr:v0.3.26"
             v0-4-8:
               display_name: Version 0.4.8
               kubespawner_override:
                 image: "935462133478.dkr.ecr.us-east-2.amazonaws.com/teehr:v0.4.8"
+            v0-4-9:
+              display_name: Version 0.4.9
+              default: true
+              kubespawner_override:
+                image: "935462133478.dkr.ecr.us-east-2.amazonaws.com/teehr:v0.4.9"
       kubespawner_override:
         mem_limit: 32G
         mem_guarantee: 19G
