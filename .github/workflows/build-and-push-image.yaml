@@ -19,6 +19,9 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v2
+        with:
+          repository: RTIInternational/teehr-hub
+          ref: update-deployment
 
       # Install the cosign tool except on PR
       # https://github.com/sigstore/cosign-installer
