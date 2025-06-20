@@ -109,7 +109,7 @@ jobs:
           build-args: IMAGE_TAG=${{ inputs.image-tag }}
 
   # deploy-to-jupyterhub:
-  #   if: inputs.image-tag != 'latest'
+  #   if: inputs.image-tag != 'dev'
   #   runs-on: ubuntu-latest
   #   steps:
   #     - name: Checkout code
