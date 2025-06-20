@@ -57,7 +57,8 @@ jobs:
         with:        
           context: .
           push: true
-          tags: ${{ inputs.image-tag }}
+          tags: |
+            ${{ env.AWS_REGISTRY }}/${{ github.event.repository.name }}:${{ inputs.image-tag }}
           labels: ${{ steps.meta-aws.outputs.labels }}
           build-args: IMAGE_TAG=${{ inputs.image-tag }}      
 
