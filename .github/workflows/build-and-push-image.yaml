@@ -11,6 +11,9 @@ env:
   GH_REGISTRY: ghcr.io
   AWS_REGISTRY: 935462133478.dkr.ecr.us-east-2.amazonaws.com
   IMAGE_NAME: "teehr"      
+  GH_OAUTH_CLIENT_ID: ${{ secrets.GH_OAUTH_CLIENT_ID }}
+  GH_OAUTH_CLIENT_SECRET: ${{ secrets.GH_OAUTH_CLIENT_SECRET }}
+  CURRENT_TAG: ${{ inputs.image-tag }}
 
 jobs:
   reusable_workflow_job:
@@ -58,9 +61,68 @@ jobs:
           labels: ${{ steps.meta-aws.outputs.labels }}
           build-args: IMAGE_TAG=${{ inputs.image-tag }}      
 
-  # deploy-to-jupyterhub:
-  #   if: inputs.image-tag != 'dev'
-  #   runs-on: ubuntu-latest
-  #   steps:
-  #     - name: Checkout code
-  #       uses: actions/checkout@v2
+  deploy-to-jupyterhub:
+    if: inputs.image-tag != 'dev'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+        with:
+          repository: RTIInternational/teehr-hub
+          ref: update-deployment
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-access-key-id: ${{ secrets.AWI_RTI_AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWI_RTI_AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-east-2
+        
+      # Reference: https://aws.amazon.com/blogs/devops/simplify-amazon-eks-deployments-with-github-actions-and-aws-codebuild/
+      - name: "Install Kubectl"
+        uses: alexellis/arkade-get@23907b6f8cec5667c9a4ef724adea073d677e221
+        with:
+          kubectl: latest
+      - name: "Configure Kubectl"
+        run: |
+          aws eks update-kubeconfig --name teehr-hub --region us-east-2
+          kubectl config set-context $(kubectl config current-context) --namespace teehr-hub
+      - name: "Install Helm"
+        uses: azure/setup-helm@v1
+        with:
+          version: v3.12.0
+      - name: "Configure Helm"
+        run: |
+          cd helm-chart
+          helm repo add dask https://helm.dask.org/
+          helm repo add autoscaler https://kubernetes.github.io/autoscaler
+          cd ..
+      - name: Extract and decrement tag number
+        run: |
+          TAG_NAME=${GITHUB_REF#refs/tags/}
+          TAG_NUMBER=$(echo $TAG_NAME | cut -d'.' -f3) # Adjust the `cut` command if your tag format differs
+          PREVIOUS_TAG=$((TAG_NUMBER - 1))
+          echo "Previous tag number: $PREVIOUS_TAG"
+          echo "PREVIOUS_TAG=$PREVIOUS_TAG" >> $GITHUB_ENV
+      - name: "Deploy to JupyterHub"
+        run: |
+          cd helm-chart
+          envsubst < config.yaml > secret-config.yaml
+          helm upgrade \
+            --cleanup-on-fail \
+            --install teehr-hub dask/daskhub \
+            --namespace teehr-hub \
+            --create-namespace \
+            --version 2024.1.0 \
+            --values secret-config.yaml
+          rm secret-config.yaml
+          helm upgrade \
+            --cleanup-on-fail \
+            --install teehr-ca autoscaler/cluster-autoscaler \
+            --namespace teehr-hub \
+            --set autoDiscovery.clusterName=teehr-hub \
+            --set awsRegion=us-east-2
+
+        
+

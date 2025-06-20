@@ -16,12 +16,12 @@ RUN apt-get update \
     && apt-get install -y wget curl bzip2 libxtst6 libgtk-3-0 libx11-xcb-dev libdbus-glib-1-2 libxt6 libpci-dev libasound2 firefox openjdk-17-jdk git vim
 
 # RUN conda install -y -c conda-forge nodejs
-RUN mamba install -n ${CONDA_ENV} -y -c conda-forge nodejs selenium geckodriver pyspark awscli htop
+RUN mamba install -n ${CONDA_ENV} -y -c conda-forge nodejs selenium geckodriver awscli htop
 
 RUN if [ "$IMAGE_TAG" = "dev" ]; then \
         echo "Building TEEHR dev version from main..."; \
         # Install latest from main.
-        pip install git+https://github.com/RTIInternational/teehr.git@475-update-python-dependencies; \
+        pip install git+https://github.com/RTIInternational/teehr.git@main; \
     else \
         echo "Building TEEHR from specific tag..."; \
         # Install specific tag from pypi.
