@@ -17,7 +17,7 @@ RUN apt-get update \
     && apt-get install -y wget curl bzip2 libxtst6 libgtk-3-0 libx11-xcb-dev libdbus-glib-1-2 libxt6 libpci-dev libasound2 firefox openjdk-17-jdk git vim
 
 # RUN conda install -y -c conda-forge nodejs
-RUN mamba install -n ${CONDA_ENV} -y -c conda-forge nodejs selenium geckodriver awscli htop dask
+RUN mamba install -n ${CONDA_ENV} -y -c conda-forge nodejs selenium geckodriver awscli htop
 
 RUN if [ "$IMAGE_TAG" = "dev" ]; then \
         echo "Building TEEHR dev version from main..."; \
@@ -29,6 +29,7 @@ RUN if [ "$IMAGE_TAG" = "dev" ]; then \
         pip install teehr==${IMAGE_TAG}; \
     fi
 # RUN pip install duckdb spatialpandas easydev colormap colorcet hydrotools datashader
+RUN pip install dask[distributed]
 
 
 USER ${NB_USER}
