@@ -1,5 +1,6 @@
-# Runtime stage: Install TEEHR in the Pangeo Image
-FROM pangeo/base-notebook:2025.05.22
+# Install TEEHR in the Pangeo Image
+ # 2025.05.22
+FROM pangeo/base-notebook:2025.01.24  
 
 ARG IMAGE_TAG
 
