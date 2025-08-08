@@ -22,7 +22,7 @@ RUN mamba install -n ${CONDA_ENV} -y -c conda-forge nodejs selenium geckodriver 
 RUN if [ "$IMAGE_TAG" = "dev" ]; then \
         echo "Building TEEHR dev version from main..."; \
         # Install latest from main.
-        pip install git+https://github.com/RTIInternational/teehr.git@main; \
+        pip install git+https://github.com/RTIInternational/teehr.git@475-update-python-dependencies; \
     else \
         echo "Building TEEHR from specific tag..."; \
         # Install specific tag from pypi.
