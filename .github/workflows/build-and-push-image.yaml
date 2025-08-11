@@ -15,7 +15,7 @@ env:
   GH_REGISTRY: ghcr.io
   AWS_REGISTRY: 935462133478.dkr.ecr.us-east-2.amazonaws.com
   IMAGE_NAME: "teehr"      
-  GH_OAUTH_CLIENT_ID: ${{ secrets.GH_OAUTH_CLIENT_ID }}  # TODO: Set these in teehr-hub repo secrets?
+  GH_OAUTH_CLIENT_ID: ${{ secrets.GH_OAUTH_CLIENT_ID }} 
   GH_OAUTH_CLIENT_SECRET: ${{ secrets.GH_OAUTH_CLIENT_SECRET }}
   CURRENT_TAG: ${{ inputs.image-tag }}
   PREVIOUS_TAG: ${{ inputs.previous-image-tag }}
