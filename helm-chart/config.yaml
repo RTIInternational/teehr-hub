@@ -18,6 +18,8 @@ jupyterhub:
           - read:org
       JupyterHub:
         authenticator_class: github
+        allow_named_servers: true
+        namedServerLimitPerUser: 5             
       Authenticator:
         admin_users:
           - mgdenno
