@@ -20,9 +20,7 @@ on:
       previous-image-tag:
         description: "The previous tag to use in the helm chart"
         required: true
-        type: string   
-  push:
-    branches: [update-deployment]             
+        type: string           
 
 env:
   GH_REGISTRY: ghcr.io
