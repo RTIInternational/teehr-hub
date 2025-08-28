@@ -20,8 +20,10 @@ on:
       previous-image-tag:
         description: "The previous tag to use in the helm chart"
         required: true
-        type: string        
-           
+        type: string   
+  push:
+    branches: [update-deployment]             
+
 env:
   GH_REGISTRY: ghcr.io
   AWS_REGISTRY: 935462133478.dkr.ecr.us-east-2.amazonaws.com
