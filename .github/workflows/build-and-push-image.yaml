@@ -33,7 +33,7 @@ env:
   CURRENT_TAG: ${{ inputs.image-tag }}
   PREVIOUS_TAG: ${{ inputs.previous-image-tag }}
 jobs:
-  reusable_workflow_job:
+  build-and-push-job:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
@@ -63,7 +63,7 @@ jobs:
         id: meta-aws
         uses: docker/metadata-action@v5
         with:
-          images: ${{ env.AWS_REGISTRY }}/${{ github.event.repository.name }}
+          images: ${{ env.AWS_REGISTRY }}/${{ env.IMAGE_NAME }}
 
       # Build and push Docker image with Buildx (don't push on PR)
       # https://github.com/docker/build-push-action
@@ -74,13 +74,14 @@ jobs:
           context: .
           push: true
           tags: |
-            ${{ env.AWS_REGISTRY }}/${{ github.event.repository.name }}:${{ inputs.image-tag }}
+            ${{ env.AWS_REGISTRY }}/${{ env.IMAGE_NAME }}:${{ inputs.image-tag }}
           labels: ${{ steps.meta-aws.outputs.labels }}
           build-args: IMAGE_TAG=${{ inputs.image-tag }}      
 
-  deploy-to-jupyterhub:
+  deploy-to-jupyterhub-job:
     if: inputs.image-tag != 'dev'
     runs-on: ubuntu-latest
+    needs: build-and-push-job
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
