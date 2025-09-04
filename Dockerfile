@@ -16,7 +16,6 @@ RUN apt-get update -qq --yes > /dev/null && \
 RUN apt-get update \
     && apt-get install -y wget curl bzip2 libgtk2.0-0t64 libgtk-3-0t64 libgbm-dev libnotify-dev libnss3 libxss1 libasound2t64 libxtst6 firefox openjdk-17-jdk git vim git-lfs
 
-# RUN conda install -y -c conda-forge nodejs
 RUN mamba install -n ${CONDA_ENV} -y -c conda-forge \
  nodejs selenium geckodriver awscli htop
 
@@ -30,7 +29,7 @@ RUN if [ "$IMAGE_TAG" = "dev" ]; then \
         pip install teehr==${IMAGE_TAG}; \
     fi
 # RUN pip install duckdb spatialpandas easydev colormap colorcet hydrotools datashader
-RUN pip install dask[distributed] holoviews geoviews
+RUN pip install dask[distributed] holoviews geoviews datashader
 
 
 USER ${NB_USER}
