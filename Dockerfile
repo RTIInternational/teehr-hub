@@ -29,7 +29,7 @@ RUN if [ "$IMAGE_TAG" = "dev" ]; then \
         pip install teehr==${IMAGE_TAG}; \
     fi
 # RUN pip install duckdb spatialpandas easydev colormap colorcet hydrotools datashader
-RUN pip install dask[distributed] holoviews geoviews datashader
+RUN pip install dask[distributed] holoviews geoviews datashader hvplot
 
 
 USER ${NB_USER}
