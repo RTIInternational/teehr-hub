@@ -31,6 +31,9 @@ jupyterhub:
       name: 935462133478.dkr.ecr.us-east-2.amazonaws.com/teehr  # Image to use for singleuser environment. Must include dask-gateway.
       tag: v0.3.22
     defaultUrl: "/lab"  # Use jupyterlab by defualt.
+    serviceAccountName: default
+    # Enable service account token mounting for Spark
+    automountServiceAccountToken: true
     profileList:
     - display_name: "TEEHR Evaluation System (4 vCPU/32GB memory)"
       default: True
