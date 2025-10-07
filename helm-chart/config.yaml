@@ -19,7 +19,7 @@ jupyterhub:
       JupyterHub:
         authenticator_class: github
         allow_named_servers: true
-        namedServerLimitPerUser: 5             
+        namedServerLimitPerUser: 5        
       Authenticator:
         admin_users:
           - mgdenno
@@ -84,14 +84,14 @@ jupyterhub:
               display_name: Version 0.1.0
               default: true
               kubespawner_override:
-                image: "935462133478.dkr.ecr.us-east-2.amazonaws.com/hefs-fews-hub:v0.1.0"
+                image: "935462133478.dkr.ecr.us-east-2.amazonaws.com/hefs-fews-hub:v0.1.0"              
       kubespawner_override:
         mem_limit: 32G
         mem_guarantee: 19G
         cpu_limit: 4
         cpu_guarantee: 3
         node_selector:
-          node.kubernetes.io/instance-type: r5.xlarge
+          node.kubernetes.io/instance-type: r5.xlarge        
     storage:
       extraVolumes:
       - name: teehr-hub-data-nfs
