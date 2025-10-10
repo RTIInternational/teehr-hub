@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: Pod
+spec:
+  tolerations:
+  - effect: "NoSchedule"
+    key: "k8s.dask.org/dedicated"
+    operator: "Equal"
+    value: "worker"
+  - effect: "NoSchedule"
+    key: "k8s.dask.org_dedicated"
+    operator: "Equal"
+    value: "worker"
+  # nodeSelector:
+  #   k8s.dask.org/node-purpose: "worker"
