@@ -26,14 +26,16 @@ jupyterhub:
           - samlamont
         # allowed_users:
         #   - mgdenno
+    extraConfig:
+      spark-config: |
+        # Allow users to create Spark sessions
+        c.KubeSpawner.service_account = 'default'
+        c.KubeSpawner.automount_service_account_token = True
   singleuser:
     image:
       name: 935462133478.dkr.ecr.us-east-2.amazonaws.com/teehr  # Image to use for singleuser environment. Must include dask-gateway.
       tag: v0.3.22
     defaultUrl: "/lab"  # Use jupyterlab by defualt.
-    serviceAccountName: default
-    # Enable service account token mounting for Spark
-    automountServiceAccountToken: true
     profileList:
     - display_name: "TEEHR Evaluation System (4 vCPU/32GB memory)"
       default: True
@@ -47,14 +49,14 @@ jupyterhub:
               kubespawner_override:
                 image: "935462133478.dkr.ecr.us-east-2.amazonaws.com/teehr:v0.3.26"
             previous-tag:
-              display_name: Version ${PREVIOUS_TAG}
+              display_name: Version v0.4.13
               kubespawner_override:
-                image: "935462133478.dkr.ecr.us-east-2.amazonaws.com/teehr:${PREVIOUS_TAG}"
+                image: "935462133478.dkr.ecr.us-east-2.amazonaws.com/teehr:v0.4.13"
             current-tag:
-              display_name: Version ${CURRENT_TAG}
+              display_name: Version v0.5.0
               default: true
               kubespawner_override:
-                image: "935462133478.dkr.ecr.us-east-2.amazonaws.com/teehr:${CURRENT_TAG}"
+                image: "935462133478.dkr.ecr.us-east-2.amazonaws.com/teehr:v0.5.0"
             dev:
               display_name: Dev Version
               kubespawner_override:
