@@ -58,9 +58,13 @@ jupyterhub:
               kubespawner_override:
                 image: "935462133478.dkr.ecr.us-east-2.amazonaws.com/teehr:v0.5.0"
             dev:
-              display_name: Dev Version
+              display_name: v0.5.1 Dev Version (latest changes, may be unstable)
               kubespawner_override:
                 image: "935462133478.dkr.ecr.us-east-2.amazonaws.com/teehr:dev"
+            v0.6-dev:
+              display_name: v0.6.0 Dev Version (latest changes, may be unstable)
+              kubespawner_override:
+                image: "935462133478.dkr.ecr.us-east-2.amazonaws.com/teehr:v0.6-dev"                
       kubespawner_override:
         mem_limit: 32G
         mem_guarantee: 19G
