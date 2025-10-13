@@ -33,4 +33,8 @@ RUN pip install dask[distributed] holoviews geoviews datashader hvplot kubernete
 
 USER ${NB_USER}
 
+RUN mkdir -p /opt/teehr && chown -R ${NB_USER}:${NB_USER} /opt/teehr
+
+COPY executor-pod-template.yaml /opt/teehr/executor-pod-template.yaml
+
 WORKDIR /home/jovyan
