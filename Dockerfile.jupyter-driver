@@ -31,10 +31,10 @@ RUN if [ "$IMAGE_TAG" = "dev" ]; then \
 # RUN pip install duckdb spatialpandas easydev colormap colorcet hydrotools datashader
 RUN pip install dask[distributed] holoviews geoviews datashader hvplot kubernetes
 
-USER ${NB_USER}
-
 RUN mkdir -p /opt/teehr && chown -R ${NB_USER}:${NB_USER} /opt/teehr
 
 COPY executor-pod-template.yaml /opt/teehr/executor-pod-template.yaml
+
+USER ${NB_USER}
 
 WORKDIR /home/jovyan
