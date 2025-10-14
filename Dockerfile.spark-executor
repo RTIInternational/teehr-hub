@@ -1,6 +1,8 @@
 # Use the official Apache Spark image as the base image
 FROM apache/spark:4.0.1-scala2.13-java21-ubuntu
 
+ARG IMAGE_TAG
+
 USER 0
 
 # Add deadsnakes PPA and install Python 3.12
@@ -33,9 +35,17 @@ RUN apt-get update && apt-get install -y \
 # Set Python 3.12 as default python3
 RUN update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.12 1
 
-# Install TEEHR from source (now that we have GDAL >= 3.5)
-# Note. Was installed from main branch previously.
-RUN python3.12 -m pip install --no-cache-dir git+https://github.com/RTIInternational/teehr.git@v0.6-dev
+# Install TEEHR
+RUN if [ "$IMAGE_TAG" = "dev" ]; then \
+        echo "Installing TEEHR v0.5.x dev version from main..."; \
+        python3.12 -m pip install --no-cache-dir git+https://github.com/RTIInternational/teehr.git@main; \
+    elif [ "$IMAGE_TAG" = "v0.6-dev" ]; then \
+        echo "Installing TEEHR v0.6-dev version from v0.6-dev branch..."; \
+        python3.12 -m pip install --no-cache-dir git+https://github.com/RTIInternational/teehr.git@v0.6-dev; \        
+    else \
+        echo "Installing TEEHR from pypi using the version tag..."; \
+        python3.12 -m pip install --no-cache-dir teehr==${IMAGE_TAG}; \
+    fi
 
 # Switch back to spark user
 USER 185

@@ -17,7 +17,7 @@ on:
 env:
   GH_REGISTRY: ghcr.io
   AWS_REGISTRY: 935462133478.dkr.ecr.us-east-2.amazonaws.com
-  IMAGE_NAME: "teehr"      
+  IMAGE_NAME: "teehr-jupyter-driver"      
 
 jobs:
   build-and-push-job:
