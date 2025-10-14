@@ -67,16 +67,16 @@ jupyterhub:
               kubespawner_override:
                 image: "935462133478.dkr.ecr.us-east-2.amazonaws.com/teehr:v0.3.26"
             previous-tag:
-              display_name: Version v0.4.13
+              display_name: Version ${PREVIOUS_TAG}
               kubespawner_override:
-                image: "935462133478.dkr.ecr.us-east-2.amazonaws.com/teehr:v0.4.13"
+                image: "935462133478.dkr.ecr.us-east-2.amazonaws.com/teehr:${PREVIOUS_TAG}"
             current-tag:
-              display_name: Version v0.5.0
+              display_name: Version ${CURRENT_TAG}
               default: true
               kubespawner_override:
-                image: "935462133478.dkr.ecr.us-east-2.amazonaws.com/teehr:v0.5.0"
+                image: "935462133478.dkr.ecr.us-east-2.amazonaws.com/teehr:${CURRENT_TAG}"
             dev:
-              display_name: v0.5.1 Dev Version (latest changes, may be unstable)
+              display_name: v0.5.x Dev Version (latest changes, may be unstable)
               kubespawner_override:
                 image: "935462133478.dkr.ecr.us-east-2.amazonaws.com/teehr:dev"
             v0.6-dev:

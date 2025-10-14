@@ -1,5 +1,4 @@
 # Install TEEHR in the Pangeo Image
- # 2025.05.22
 FROM pangeo/base-notebook:2025.07.31 
 
 ARG IMAGE_TAG
@@ -20,16 +19,21 @@ RUN mamba install -n ${CONDA_ENV} -y -c conda-forge \
  nodejs selenium geckodriver awscli htop
 
 RUN if [ "$IMAGE_TAG" = "dev" ]; then \
-        echo "Building TEEHR dev version from main..."; \
-        # Install latest from main.
+        echo "Installing TEEHR v0.5.x dev version from main..."; \
         pip install git+https://github.com/RTIInternational/teehr.git@main; \
+    elif [ "$IMAGE_TAG" = "v0.6-dev" ]; then \
+        echo "Installing TEEHR v0.6-dev version from v0.6-dev branch..."; \
+        pip install git+https://github.com/RTIInternational/teehr.git@v0.6-dev; \        
     else \
-        echo "Building TEEHR from specific tag..."; \
-        # Install specific tag from pypi.
+        echo "Installing TEEHR from pypi using the version tag..."; \
         pip install teehr==${IMAGE_TAG}; \
     fi
 # RUN pip install duckdb spatialpandas easydev colormap colorcet hydrotools datashader
 RUN pip install dask[distributed] holoviews geoviews datashader hvplot kubernetes
+
+RUN mkdir -p /opt/teehr && chown -R ${NB_USER}:${NB_USER} /opt/teehr
+
+COPY executor-pod-template.yaml /opt/teehr/executor-pod-template.yaml
 
 USER ${NB_USER}
 

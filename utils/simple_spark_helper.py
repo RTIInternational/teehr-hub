@@ -23,13 +23,14 @@ WAREHOUSE_S3_PATH = "s3://dev-teehr-sys-iceberg-warehouse/warehouse/"
 
 def create_spark_session(
     app_name="spark-k8s-app",
-    executor_instances=4,  # Increased from 2
-    executor_memory="2g",  # Increased from 1g  
-    executor_cores=2,      # Increased from 1
-    driver_memory="2g",    # Increased from 1g
-    driver_max_result_size="1g",
+    executor_instances=200,
+    executor_memory="1g",
+    executor_cores=1,
+    driver_memory="24g",
+    driver_max_result_size="12g",
     container_image="935462133478.dkr.ecr.us-east-2.amazonaws.com/teehr-spark/teehr-spark-executor:latest",
-    spark_namespace="spark"
+    spark_namespace="spark",
+    pod_template_path="/opt/teehr/executor-pod-template.yaml"
 ):
     """
     Create a Spark session configured for Kubernetes execution.
@@ -80,23 +81,33 @@ def create_spark_session(
     conf.set("spark.driver.memory", driver_memory)
     conf.set("spark.driver.maxResultSize", driver_max_result_size)
 
-    # Spark executor pod settings
-    conf.set("spark.kubernetes.executor.node.selector.k8s.dask.org/node-purpose", "worker")
-    conf.set("spark.kubernetes.executor.podTemplateFile", "executor-pod-template.yaml")
+    # Spark executor pod template
+    if os.path.exists(pod_template_path):
+        print(f"📄 Using executor pod template: {pod_template_path}")
+        conf.set("spark.kubernetes.executor.podTemplateFile", pod_template_path)
+    else:
+        print(f"⚠️  Executor pod template not found: {pod_template_path}") 
+        print(f"    You must provide a valid pod template for executors to launch correctly.") 
+        raise FileNotFoundError(f"Executor pod template not found: {pod_template_path}")
+    
     conf.set("spark.kubernetes.executor.deleteOnTermination", "true")
-
-    # UDF-specific optimizations that MUST be set at session creation
-    conf.set("spark.python.worker.memory", "2g")  # Memory per Python worker
-    conf.set("spark.python.worker.reuse", "true")  # Reuse Python workers
-    conf.set("spark.executor.memoryFraction", "0.8")  # More memory for execution
     
-    # Pandas UDF specific settings
-    conf.set("spark.sql.execution.arrow.pyspark.enabled", "true")  # Essential
-    conf.set("spark.sql.execution.arrow.maxRecordsPerBatch", "5000")  # Smaller batches
-    conf.set("spark.sql.execution.arrow.pyspark.fallback.enabled", "false")  # Force Arrow
+    # UDF-specific optimizations
+    conf.set("spark.python.worker.memory", "4g")
+    conf.set("spark.python.worker.reuse", "true") 
+    conf.set("spark.sql.execution.arrow.pyspark.enabled", "true")
+    conf.set("spark.sql.execution.arrow.maxRecordsPerBatch", "10000")
+    # conf.set("spark.executor.memoryFraction", "0.8")  # More memory for execution
     
-    # Optimize shuffle partitions for UDFs (much lower)
-    conf.set("spark.sql.shuffle.partitions", "8")  # Very low for UDF operations
+    # Optimize for group locality
+    conf.set("spark.sql.adaptive.coalescePartitions.enabled", "true")
+    conf.set("spark.sql.adaptive.advisoryPartitionSizeInBytes", "128MB")
+    conf.set("spark.sql.adaptive.skewJoin.enabled", "true")
+    
+    # # Pandas UDF specific settings
+    # conf.set("spark.sql.execution.arrow.pyspark.enabled", "true")  # Essential
+    # conf.set("spark.sql.execution.arrow.maxRecordsPerBatch", "5000")  # Smaller batches
+    # conf.set("spark.sql.execution.arrow.pyspark.fallback.enabled", "false")  # Force Arrow
 
     # Serialization
     conf.set("spark.serializer", "org.apache.spark.serializer.KryoSerializer")
@@ -119,15 +130,11 @@ def create_spark_session(
         print(f"   Checked: {token_file}")
         print(f"   Checked: {ca_file}")
     
-    # Mount shared data volume in executors
-    conf.set("spark.kubernetes.executor.volumes.persistentVolumeClaim.data-nfs.mount.path", "/data")
-    conf.set("spark.kubernetes.executor.volumes.persistentVolumeClaim.data-nfs.options.claimName", "data-nfs")
-    
     # Dynamic allocation
-    conf.set("spark.dynamicAllocation.enabled", "true")
-    conf.set("spark.dynamicAllocation.minExecutors", "1")
-    conf.set("spark.dynamicAllocation.maxExecutors", "100")
-    conf.set("spark.dynamicAllocation.initialExecutors", str(executor_instances))
+    # conf.set("spark.dynamicAllocation.enabled", "true")
+    # conf.set("spark.dynamicAllocation.minExecutors", "1")
+    # conf.set("spark.dynamicAllocation.maxExecutors", "1000")
+    # conf.set("spark.dynamicAllocation.initialExecutors", str(executor_instances))
     
     # Basic timeout configuration
     conf.set("spark.network.timeout", "300s")
@@ -140,27 +147,27 @@ def create_spark_session(
     conf.set("spark.sql.adaptive.skewJoin.enabled", "true")  # Handle skewed joins
     conf.set("spark.sql.adaptive.localShuffleReader.enabled", "true")  # Optimize shuffle reads
     
-    # Optimize parallelism for cluster size
+    # (C)
+    conf.set("spark.sql.adaptive.advisoryPartitionSizeInBytes", "128MB")  # Larger partition target
+    conf.set("spark.sql.adaptive.coalescePartitions.minPartitionSize", "64MB")  # Coalesce small partitions
+    # conf.set("spark.sql.adaptive.coalescePartitions.parallelismFirst", "false")
+    # conf.set("spark.sql.adaptive.maxNumPostShufflePartitions", str(optimal_partitions))
+    
+    # Optimize parallelism for cluster size (A)
     total_cores = executor_instances * executor_cores
-    optimal_partitions = max(total_cores * 2, 8)  # At least 8, usually 2x cores
+    optimal_partitions = total_cores * 2  # At least 8, usually 2x cores
     conf.set("spark.sql.shuffle.partitions", str(optimal_partitions))  # Much lower than 200
     conf.set("spark.default.parallelism", str(total_cores * 2))
     
-    # Memory and storage optimizations
-    conf.set("spark.serializer.objectStreamReset", "100")
-    conf.set("spark.sql.execution.arrow.pyspark.enabled", "true")  # Use Arrow for pandas conversion
-    conf.set("spark.sql.parquet.columnarReaderBatchSize", "4096")  # Optimize parquet reading
+    # # Memory and storage optimizations (B)
+    # conf.set("spark.serializer.objectStreamReset", "100")
+    # conf.set("spark.sql.execution.arrow.pyspark.enabled", "true")  # Use Arrow for pandas conversion
+    # conf.set("spark.sql.parquet.columnarReaderBatchSize", "4096")  # Optimize parquet reading
     
-    # Iceberg-specific optimizations
-    conf.set("spark.sql.iceberg.vectorization.enabled", "true")  # Enable Iceberg vectorization
-    conf.set("spark.sql.adaptive.advisoryPartitionSizeInBytes", "128MB")  # Larger partition target
-    conf.set("spark.sql.adaptive.coalescePartitions.minPartitionSize", "64MB")  # Coalesce small partitions
+    # # Iceberg-specific optimizations
+    # conf.set("spark.sql.iceberg.vectorization.enabled", "true")  # Enable Iceberg vectorization
     
-    # Reduce small file overhead
-    conf.set("spark.sql.adaptive.coalescePartitions.parallelismFirst", "false")
-    conf.set("spark.sql.adaptive.maxNumPostShufflePartitions", str(optimal_partitions))
-    
-    print(f"🎯 Optimized for {total_cores} total cores with {optimal_partitions} shuffle partitions")
+    # print(f"🎯 Optimized for {total_cores} total cores with {optimal_partitions} shuffle partitions")
     
     # Driver binding configuration - use pod IP for Kubernetes
     conf.set("spark.driver.bindAddress", "0.0.0.0")
@@ -188,6 +195,10 @@ def create_spark_session(
     # conf.set(f"spark.sql.catalog.{REMOTE_CATALOG_NAME}.warehouse", WAREHOUSE_S3_PATH)
     # conf.set(f"spark.sql.catalog.{REMOTE_CATALOG_NAME}.io-impl", "org.apache.iceberg.aws.s3.S3FileIO")
 
+    # Spark UI settings
+    # conf.set("spark.ui.proxyBase", "/user/mgdenno/proxy/4040")
+    conf.set("spark.ui.proxyRedirectUri", "/")
+    
     # AWS credentials configuration
     # Try to get AWS credentials from default profile
     try:
@@ -257,141 +268,3 @@ def create_spark_session(
         
     except Exception as e:
         print(f"❌ Failed to create Spark session: {str(e)}")
-        print(f"\n🔧 Debugging steps:")
-        print(f"   1. Verify RBAC: kubectl auth can-i create pods --namespace {spark_namespace}")
-        print(f"   2. Check namespace exists: kubectl get namespace {spark_namespace}")
-        print(f"   3. Check service account files: ls -la /var/run/secrets/kubernetes.io/serviceaccount/")
-        raise
-
-
-def analyze_query_performance(spark, query):
-    """
-    Analyze query performance and provide optimization suggestions
-    """
-    print("🔍 Analyzing query performance...")
-    
-    # Get current configuration
-    conf = spark.sparkContext.getConf()
-    executors = int(conf.get("spark.executor.instances", "2"))
-    executor_memory = conf.get("spark.executor.memory", "1g")
-    executor_cores = int(conf.get("spark.executor.cores", "1"))
-    
-    print(f"📊 Current Spark Configuration:")
-    print(f"   - Executors: {executors}")
-    print(f"   - Executor Memory: {executor_memory}")
-    print(f"   - Executor Cores: {executor_cores}")
-    print(f"   - Total Cores: {executors * executor_cores}")
-    
-    # Run query with timing
-    import time
-    start_time = time.time()
-    result = spark.sql(query)
-    result.show()
-    end_time = time.time()
-    
-    execution_time = end_time - start_time
-    print(f"⏱️  Query execution time: {execution_time:.2f} seconds")
-    
-    # Get query plan
-    print("\n📋 Query Execution Plan:")
-    result.explain(True)
-    
-    return execution_time
-
-
-def diagnose_table_performance(spark, table_name="iceberg.teehr.primary_timeseries"):
-    """
-    Diagnose table structure and performance characteristics
-    """
-    print(f"🔍 Diagnosing table: {table_name}")
-    
-    # Get table statistics
-    try:
-        stats_query = f"DESCRIBE EXTENDED {table_name}"
-        stats_df = spark.sql(stats_query)
-        print("\n📊 Table Statistics:")
-        stats_df.show(100, truncate=False)
-    except Exception as e:
-        print(f"❌ Could not get table stats: {e}")
-    
-    # Check table partitioning
-    try:
-        partitions_query = f"SHOW PARTITIONS {table_name}"
-        partitions_df = spark.sql(partitions_query)
-        partition_count = partitions_df.count()
-        print(f"\n📁 Table has {partition_count} partitions")
-        if partition_count < 20:
-            partitions_df.show()
-    except Exception as e:
-        print(f"⚠️  Could not get partition info: {e}")
-    
-    # Check data distribution by location_id
-    try:
-        print("\n🎯 Checking location_id distribution (sample):")
-        sample_query = f"""
-        SELECT location_id, count(*) as sample_count 
-        FROM {table_name} TABLESAMPLE (1 PERCENT)
-        GROUP BY location_id 
-        ORDER BY sample_count DESC 
-        LIMIT 20
-        """
-        spark.sql(sample_query).show()
-    except Exception as e:
-        print(f"❌ Could not sample data: {e}")
-    
-    # Check file count and sizes
-    try:
-        print("\n📁 File information:")
-        files_query = f"SELECT COUNT(*) as file_count FROM {table_name}.files"
-        spark.sql(files_query).show()
-    except Exception as e:
-        print(f"⚠️  Could not get file info: {e}")
-
-
-def optimize_for_aggregation(spark):
-    """
-    Apply additional optimizations specifically for aggregation queries
-    """
-    print("🚀 Applying aggregation-specific optimizations...")
-    
-    # Increase executor memory fraction for aggregations
-    spark.conf.set("spark.sql.adaptive.enabled", "true")
-    spark.conf.set("spark.sql.adaptive.coalescePartitions.enabled", "true")
-    spark.conf.set("spark.sql.adaptive.advisoryPartitionSizeInBytes", "256MB")  # Larger partitions
-    
-    # Optimize for wide tables (many columns)
-    spark.conf.set("spark.sql.codegen.wholeStage", "true")
-    spark.conf.set("spark.sql.codegen.maxFields", "200")
-    
-    # Memory management for large aggregations
-    spark.conf.set("spark.executor.memory", "3g")  # If possible
-    spark.conf.set("spark.sql.execution.arrow.maxRecordsPerBatch", "20000")
-    
-    print("✅ Aggregation optimizations applied")
-
-
-def optimize_for_pandas_udfs(spark):
-    """
-    Apply optimizations specifically for Pandas UDF aggregations
-    Only sets configurations that can be modified at runtime
-    """
-    print("🐼 Applying Pandas UDF optimizations...")
-    
-    # Critical: Reduce shuffle partitions for UDF operations
-    spark.conf.set("spark.sql.shuffle.partitions", "8")  # Much lower for UDFs
-    
-    # Arrow optimizations for Pandas UDFs
-    spark.conf.set("spark.sql.execution.arrow.maxRecordsPerBatch", "5000")  # Smaller batches
-    # Note: spark.sql.execution.arrow.pyspark.enabled is already set at session creation
-    
-    # Broadcast optimization for large IN clauses  
-    spark.conf.set("spark.sql.adaptive.localShuffleReader.enabled", "true")
-    spark.conf.set("spark.sql.adaptive.skewJoin.enabled", "true")
-    
-    # Adaptive query execution settings
-    spark.conf.set("spark.sql.adaptive.coalescePartitions.enabled", "true")
-    spark.conf.set("spark.sql.adaptive.advisoryPartitionSizeInBytes", "64MB")  # Smaller for UDFs
-    spark.conf.set("spark.sql.adaptive.coalescePartitions.minPartitionSize", "32MB")
-    
-    print("✅ Pandas UDF optimizations applied")
-    print("⚠️  Note: Some optimizations (worker memory, reuse) must be set at session creation")
