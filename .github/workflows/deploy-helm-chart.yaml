@@ -50,7 +50,7 @@ jobs:
         
       # Reference: https://aws.amazon.com/blogs/devops/simplify-amazon-eks-deployments-with-github-actions-and-aws-codebuild/
       - name: "Install Kubectl"
-        uses: alexellis/arkade-get@23907b6f8cec5667c9a4ef724adea073d677e221
+        uses: alexellis/arkade-get@master
         with:
           kubectl: latest
       - name: "Configure Kubectl"
