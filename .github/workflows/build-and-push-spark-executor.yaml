@@ -64,7 +64,7 @@ jobs:
           push: true
           file: ./Dockerfile.spark-executor
           tags: |
-            ${{ env.AWS_REGISTRY }}/${{ env.NAMESPACE }}:${{ env.IMAGE_NAME }}:${{ inputs.image-tag }}
+            ${{ env.AWS_REGISTRY }}/${{ env.NAMESPACE }}/${{ env.IMAGE_NAME }}:${{ inputs.image-tag }}
           labels: ${{ steps.meta-aws.outputs.labels }}
           build-args: IMAGE_TAG=${{ inputs.image-tag }}
 
