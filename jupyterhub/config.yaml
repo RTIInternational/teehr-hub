@@ -128,9 +128,6 @@ jupyterhub:
             }
           }
 
-          # Hide a lot of the Spark noise
-          c.IPKernelApp.capture_fd_output = False
-
 
   scheduling:
     userScheduler:
