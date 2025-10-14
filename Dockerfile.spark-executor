@@ -1,57 +1,7 @@
-# FROM ubuntu:24.04
-
-# # Install system dependencies
-# RUN apt-get update && apt-get install -y \
-#     openjdk-21-jdk \
-#     python3 \
-#     python3-pip \
-#     python3-dev \
-#     git \
-#     build-essential \
-#     curl \
-#     wget \
-#     gdal-bin \
-#     libgdal-dev \
-#     libgeos-dev \
-#     libproj-dev \
-#     && rm -rf /var/lib/apt/lists/*
-
-# # Verify GDAL version (Ubuntu 24.04 should have GDAL >= 3.5)
-# RUN gdal-config --version
-
-# # Set up environment variables
-# ENV JAVA_HOME=/usr/lib/jvm/java-21-openjdk-amd64
-# ENV SPARK_VERSION=4.0.1
-# ENV SPARK_HOME=/opt/spark
-# ENV PATH=${SPARK_HOME}/bin:${PATH}
-# ENV PYTHONPATH=${SPARK_HOME}/python:${SPARK_HOME}/python/lib/py4j-0.10.9.7-src.zip:${PYTHONPATH}
-
-# # Download and install Spark
-# RUN wget -q https://archive.apache.org/dist/spark/spark-${SPARK_VERSION}/spark-${SPARK_VERSION}-bin-hadoop3.tgz && \
-#     tar -xzf spark-${SPARK_VERSION}-bin-hadoop3.tgz -C /opt/ && \
-#     mv /opt/spark-${SPARK_VERSION}-bin-hadoop3 ${SPARK_HOME} && \
-#     rm spark-${SPARK_VERSION}-bin-hadoop3.tgz
-
-# # Create spark user
-# RUN useradd -m -u 185 -s /bin/bash spark && \
-#     chown -R spark:spark ${SPARK_HOME}
-
-# # Install TEEHR from source (now that we have GDAL >= 3.5)
-# RUN pip install --break-system-packages --no-cache-dir git+https://github.com/RTIInternational/teehr.git@main
-
-# # Install additional packages that might be needed
-# RUN pip install --break-system-packages --no-cache-dir pyspark
-
-# # Set working directory
-# WORKDIR ${SPARK_HOME}
-
-# # Switch back to spark user
-# USER 185
-
-# # Set the entrypoint to the Spark executor
-# ENTRYPOINT ["/opt/spark/bin/spark-class", "org.apache.spark.executor.CoarseGrainedExecutorBackend"]
-
+# Use the official Apache Spark image as the base image
 FROM apache/spark:4.0.1-scala2.13-java21-ubuntu
+
+ARG IMAGE_TAG
 
 USER 0
 
@@ -85,8 +35,17 @@ RUN apt-get update && apt-get install -y \
 # Set Python 3.12 as default python3
 RUN update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.12 1
 
-# Install TEEHR from source (now that we have GDAL >= 3.5)
-RUN python3.12 -m pip install --no-cache-dir git+https://github.com/RTIInternational/teehr.git@main
+# Install TEEHR
+RUN if [ "$IMAGE_TAG" = "dev" ]; then \
+        echo "Installing TEEHR v0.5.x dev version from main..."; \
+        python3.12 -m pip install --no-cache-dir git+https://github.com/RTIInternational/teehr.git@main; \
+    elif [ "$IMAGE_TAG" = "v0.6-dev" ]; then \
+        echo "Installing TEEHR v0.6-dev version from v0.6-dev branch..."; \
+        python3.12 -m pip install --no-cache-dir git+https://github.com/RTIInternational/teehr.git@v0.6-dev; \        
+    else \
+        echo "Installing TEEHR from pypi using the version tag..."; \
+        python3.12 -m pip install --no-cache-dir teehr==${IMAGE_TAG}; \
+    fi
 
 # Switch back to spark user
 USER 185

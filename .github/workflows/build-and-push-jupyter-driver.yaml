@@ -1,0 +1,69 @@
+name: Build and Push Jupyter Driver Image
+
+on:
+  workflow_call:
+    inputs:
+      image-tag:
+        description: "The image tag to use for the Docker image"
+        required: true
+        type: string
+  workflow_dispatch:
+    inputs:
+      image-tag:
+        description: "The image tag to use for the Docker image"
+        required: true
+        type: string   
+
+env:
+  GH_REGISTRY: ghcr.io
+  AWS_REGISTRY: 935462133478.dkr.ecr.us-east-2.amazonaws.com
+  IMAGE_NAME: "teehr"      
+
+jobs:
+  build-and-push-job:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          repository: RTIInternational/teehr-hub
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Setup Docker buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v5
+        with:
+          aws-access-key-id: ${{ secrets.AWI_RTI_AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWI_RTI_AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-east-2
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      # Extract metadata (tags, labels) for Docker
+      # https://github.com/docker/metadata-action
+      - name: Extract Docker metadata
+        id: meta-aws
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.AWS_REGISTRY }}/${{ env.IMAGE_NAME }}
+
+      # Build and push Docker image with Buildx (don't push on PR)
+      # https://github.com/docker/build-push-action
+      - name: Build and push Docker image
+        id: build-and-push-aws
+        uses: docker/build-push-action@v6
+        with:        
+          context: .
+          push: true
+          file: ./Dockerfile.jupyter-driver
+          tags: |
+            ${{ env.AWS_REGISTRY }}/${{ env.IMAGE_NAME }}:${{ inputs.image-tag }}
+          labels: ${{ steps.meta-aws.outputs.labels }}
+          build-args: IMAGE_TAG=${{ inputs.image-tag }}
+
+        
+
