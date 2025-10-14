@@ -32,23 +32,6 @@ jupyterhub:
         c.KubeSpawner.service_account = 'default'
         c.KubeSpawner.automount_service_account_token = True
 
-        # Setup Spark proxy
-        c.ServerProxy.servers = {
-          "spark_ui": {
-              "port" : 4040,
-              "absolute_url": False,
-              "launcher_entry": {
-                  "enabled": True,
-                  "icon_path": "/etc/jupyter/spark_ui.svg",
-                  "title": "Spark UI",
-                  "path_info": "spark_ui/jobs/"
-              },
-              "new_browser_tab": False
-          }
-        }
-
-        # Hide a lot of the Spark noise
-        c.IPKernelApp.capture_fd_output = False
   singleuser:
     image:
       name: 935462133478.dkr.ecr.us-east-2.amazonaws.com/teehr  # Image to use for singleuser environment. Must include dask-gateway.
@@ -127,6 +110,26 @@ jupyterhub:
       extraVolumeMounts:
       - name: teehr-hub-data-nfs
         mountPath: /data
+    extraConfig:
+      spark-config: |
+        # Setup Spark proxy
+        c.ServerProxy.servers = {
+          "spark_ui": {
+              "port" : 4040,
+              "absolute_url": False,
+              "launcher_entry": {
+                  "enabled": True,
+                  "icon_path": "/etc/jupyter/spark_ui.svg",
+                  "title": "Spark UI",
+                  "path_info": "spark_ui/jobs/"
+              },
+              "new_browser_tab": False
+          }
+        }
+
+        # Hide a lot of the Spark noise
+        c.IPKernelApp.capture_fd_output = False
+
 
   scheduling:
     userScheduler:
