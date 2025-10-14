@@ -55,6 +55,7 @@ jobs:
           kubectl: latest
       - name: "Configure Kubectl"
         run: |
+          aws sts get-caller-identity
           aws eks update-kubeconfig --name teehr-hub --region us-east-2
           kubectl config set-context $(kubectl config current-context) --namespace teehr-hub
       - name: "Install Helm"
