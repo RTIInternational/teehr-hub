@@ -1,0 +1,17 @@
+apiVersion: projectcontour.io/v1
+kind: HTTPProxy
+metadata:
+  name: jupyterhub-httpproxy
+  namespace: teehr-hub-default
+spec:
+  virtualhost:
+    fqdn: ${var.hostname}
+    tls:
+      secretName: ${var.hostname}-tls
+  routes:
+  - conditions:
+    - prefix: /
+    services:
+    - name: proxy-public
+      port: 80
+    enableWebsockets: true

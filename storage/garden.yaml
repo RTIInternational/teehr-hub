@@ -1,0 +1,18 @@
+kind: Deploy
+type: kubernetes
+name: local-storage
+spec:
+  files:
+    - manifests/local-pv.yaml
+    - manifests/local-pvc.yaml
+disabled: ${environment.name != "local"}
+---
+kind: Deploy
+type: kubernetes
+name: nfs-storage
+spec:
+  files:
+    - manifests/remote-pv.yaml
+    - manifests/remote-pvc.yaml
+    - manifests/nfs-data-creator.yaml
+disabled: ${environment.name == "local"}

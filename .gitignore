@@ -2,3 +2,5 @@
 secret-config.yaml
 .terraform
 .DS_Store
+.garden
+data/

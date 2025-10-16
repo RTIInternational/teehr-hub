@@ -1,0 +1,10 @@
+kind: Build
+type: container
+name: teehr-spark-executor-image
+description: Build TEEHR Spark Executor Image
+spec:
+  dockerfile: Dockerfile.spark-executor
+  publishId: teehr-spark-executor:${var.currentTeehrVersion}
+  buildArgs:
+      TEEHR_VERSION: ${var.currentTeehrVersion}
+disabled: "${environment.name != 'local'}"

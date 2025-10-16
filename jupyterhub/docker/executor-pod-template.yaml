@@ -24,12 +24,12 @@ spec:
       claimName: data-nfs
   tolerations:
   - effect: "NoSchedule"
-    key: "k8s.dask.org/dedicated"
+    key: "teehr-hub/dedicated"
     operator: "Equal"
     value: "worker"
   - effect: "NoSchedule"
-    key: "k8s.dask.org_dedicated"
+    key: "teehr-hub_dedicated"
     operator: "Equal"
     value: "worker"
   nodeSelector:
-    k8s.dask.org/node-purpose: "worker"
+    teehr-hub/nodegroup-name: spark-r5-4xlarge

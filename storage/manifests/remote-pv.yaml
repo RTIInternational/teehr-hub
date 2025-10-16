@@ -1,6 +1,27 @@
 apiVersion: v1
 kind: PersistentVolume
 metadata:
+  name: spark-data-nfs
+spec:
+  capacity:
+    storage: 1Mi
+  accessModes:
+    - ReadWriteMany
+  nfs:
+    server: fs-0cb715f5b7a76e862.efs.us-east-2.amazonaws.com
+    path: /teehr-hub
+  mountOptions:
+    - rsize=1048576
+    - wsize=1048576
+    - timeo=600
+    - soft
+    - retrans=2
+    - noresvport
+  persistentVolumeReclaimPolicy: Retain
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
   name: teehr-hub-data-nfs
 spec:
   capacity:
@@ -17,16 +38,4 @@ spec:
         - soft # We pick soft over hard, so NFS lockups don't lead to hung processes
         - retrans=2
         - noresvport
----
-apiVersion: v1
-kind: PersistentVolumeClaim
-metadata:
-  name: data-nfs
-spec:
-  accessModes:
-    - ReadWriteMany
-  volumeName: teehr-hub-data-nfs
-  storageClassName: ""
-  resources:
-    requests:
-      storage: 1Mi
+

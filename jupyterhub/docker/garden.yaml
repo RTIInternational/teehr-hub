@@ -1,0 +1,10 @@
+kind: Build
+type: container
+name: teehr-jupyter-driver-image
+description: Build TEEHR Jupyter Driver Image
+spec:
+  dockerfile: Dockerfile.jupyter-driver
+  publishId: teehr-jupyter-driver:${var.currentTeehrVersion}
+  buildArgs:
+      TEEHR_VERSION: ${var.currentTeehrVersion}
+disabled: "${environment.name != 'local'}"

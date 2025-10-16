@@ -23,12 +23,12 @@ WAREHOUSE_S3_PATH = "s3://dev-teehr-sys-iceberg-warehouse/warehouse/"
 
 def create_spark_session(
     app_name="spark-k8s-app",
-    executor_instances=200,
+    executor_instances=1,
     executor_memory="1g",
     executor_cores=1,
-    driver_memory="24g",
-    driver_max_result_size="12g",
-    container_image="935462133478.dkr.ecr.us-east-2.amazonaws.com/teehr-spark/teehr-spark-executor:latest",
+    driver_memory="1g",
+    driver_max_result_size="1g",
+    container_image=None,
     spark_namespace="spark",
     pod_template_path="/opt/teehr/executor-pod-template.yaml"
 ):
@@ -41,7 +41,7 @@ def create_spark_session(
     
     # Default container image - use the same image as the current pod
     if container_image is None:
-        container_image = "935462133478.dkr.ecr.us-east-2.amazonaws.com/teehr-spark/teehr-spark-executor:latest"
+        container_image = os.environ["TEEHR_SPARK_IMAGE"]
     
     # Get Kubernetes API server - use HTTPS port specifically
     k8s_host = os.environ.get('KUBERNETES_SERVICE_HOST', 'kubernetes.default.svc.cluster.local')
@@ -136,10 +136,16 @@ def create_spark_session(
     # conf.set("spark.dynamicAllocation.maxExecutors", "1000")
     # conf.set("spark.dynamicAllocation.initialExecutors", str(executor_instances))
     
-    # Basic timeout configuration
+    # Basic timeout configuration - increased for Kubernetes API reliability
     conf.set("spark.network.timeout", "300s")
-    conf.set("spark.kubernetes.submission.connectionTimeout", "30000")
-    conf.set("spark.kubernetes.submission.requestTimeout", "30000")
+    conf.set("spark.kubernetes.submission.connectionTimeout", "60000")  # Increased from 30s
+    conf.set("spark.kubernetes.submission.requestTimeout", "60000")     # Increased from 30s
+    
+    # Additional Kubernetes-specific timeouts
+    conf.set("spark.kubernetes.executor.apiPollingTimeout", "60s")
+    conf.set("spark.kubernetes.executor.startupTimeout", "300s")        # 5 minutes for executor startup
+    conf.set("spark.kubernetes.executor.lostCheck.maxAttempts", "5")
+    conf.set("spark.kubernetes.executor.lostCheck.interval", "10s")
     
     # Performance optimizations
     conf.set("spark.sql.adaptive.enabled", "true")  # Enable adaptive query execution

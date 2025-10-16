@@ -1,0 +1,36 @@
+apiVersion: garden.io/v1
+kind: Project
+name: teehr-hub
+defaultEnvironment: local
+environments:
+  - name: local
+    defaultNamespace: default
+    variables:
+      hostname: ${project.name}.local.app.garden
+      currentTeehrVersion: v0.6-dev
+      # previousTeehrVersion: v0.4.0
+      # minio_volume_size: 10Gi
+  # - name: remote
+  #   variables:
+  #     hostname: teehr-spark.rtiamanzi.org
+  #     minio_volume_size: 100Gi
+providers:
+  # The name of the provider plugin to use.
+  - name: local-kubernetes
+    environments: ["local"]
+    setupIngressController: false
+    deploymentRegistry:
+      hostname: localhost:5001
+      namespace: ${project.name}
+    context: kind-kind
+  # - name: kubernetes
+  #   environments: ["remote"]
+  #   imagePullSecrets:
+  #     - name: ecr-config
+  #       namespace: default
+  #   deploymentRegistry:
+  #     hostname: 935462133478.dkr.ecr.us-east-2.amazonaws.com
+  #     namespace: ${project.name}
+  #   context: mdenno@teehr-spark-cluster.us-east-2.eksctl.io
+  #   buildMode: cluster-buildkit
+  #   defaultHostname: teehr-spark.rtiamanzi.org
