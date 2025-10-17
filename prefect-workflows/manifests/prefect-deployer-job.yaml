@@ -1,0 +1,26 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: deploy-prefect-workflows
+spec:
+  ttlSecondsAfterFinished: 100
+  template:
+    spec:
+      containers:
+      - name: deploy-prefect-workflows
+        image: ${actions.build.prefect-teehr-image.outputs.deploymentImageId}
+        command:
+        # - pwd
+        - prefect
+        - --no-prompt
+        - deploy
+        - --all
+        env:
+        - name: PREFECT_API_URL
+          value: http://prefect-server:4200/api
+        # Pass in envs that can then be passed to the job template/job.
+        - name: PREFECT_TEEHR_IMAGE
+          value: ${actions.build.prefect-teehr-image.outputs.deploymentImageId}
+        - name: TEEHR_SPARK_IMAGE
+          value: ${actions.build.teehr-spark-executor-image.outputs.deploymentImageId}
+      restartPolicy: Never

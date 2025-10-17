@@ -38,8 +38,8 @@ spec:
 
     singleuser:
       image:
-        name: pangeo/base-notebook
-        tag: 2025.07.31 
+        name: ${actions.build.teehr-jupyter-driver-image.outputs.deploymentImageName}
+        tag: ${actions.build.teehr-jupyter-driver-image.version}
       defaultUrl: "/lab"
       networkPolicy:
       # ToDo: Investigate this.  Implications, etc.

@@ -1,0 +1,48 @@
+kind: Deploy
+type: helm
+name: prefect-server
+spec:
+  chart:
+    name: prefect-server
+    repo: https://prefecthq.github.io/prefect-helm
+  values:
+    global:
+      prefect:
+        image:
+          repository: prefecthq/prefect
+          prefectTag: 3.4.24-python3.12
+
+    # Don't create a secret - use the existing one
+    secret:
+      create: false
+      name: prefect-db-secrets  # Reference your existing secret
+    
+    # Disable built-in PostgreSQL
+    postgresql:
+      enabled: false
+
+dependencies: [deploy.secrets, deploy.cnpg-database]
+---
+kind: Deploy
+type: helm
+name: prefect-worker
+spec:
+  chart:
+    name: prefect-worker
+    repo: https://prefecthq.github.io/prefect-helm
+  values:
+    worker:
+      image:
+        repository: prefecthq/prefect
+        prefectTag: 3.4.24-python3.12-kubernetes 
+      autoscaling:
+        enabled: ${environment.name == "remote"}
+        maxReplicas: 1
+      apiConfig: selfHostedServer
+      selfHostedServerApiConfig:
+        # -- prefect API url (PREFECT_API_URL); should be in-cluster URL if the worker is deployed in the same cluster as the API
+        apiUrl: http://prefect-server:4200/api
+      config:
+        workPool: kubernetes-pool
+      replicaCount: 1
+dependencies: [deploy.prefect-server]

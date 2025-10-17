@@ -2,9 +2,12 @@ apiVersion: garden.io/v1
 kind: Project
 name: teehr-hub
 defaultEnvironment: local
+
+variables:
+
 environments:
   - name: local
-    defaultNamespace: default
+    # defaultNamespace: default
     variables:
       hostname: ${project.name}.local.app.garden
       currentTeehrVersion: v0.6-dev

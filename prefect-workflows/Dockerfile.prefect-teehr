@@ -1,0 +1,58 @@
+FROM prefecthq/prefect:3.4.24-python3.12
+
+ARG TEEHR_VERSION
+
+# Install Java 17 and other dependencies (matching Jupyter driver)
+RUN apt-get update && apt-get install -y \
+    default-jdk \
+    curl \
+    wget \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install GDAL libraries for ARM64 (needed for rasterio compilation)
+RUN ARCH=$(uname -m) && \
+    if [ "$ARCH" = "aarch64" ]; then \
+        echo "Installing GDAL libraries for ARM64..." && \
+        apt-get update && apt-get install -y \
+        gdal-bin \
+        libgdal-dev \
+        libgeos-dev \
+        libproj-dev \
+        libspatialindex-dev \
+        && rm -rf /var/lib/apt/lists/* && \
+        echo "GDAL version: $(gdal-config --version)"; \
+    else \
+        echo "Skipping GDAL installation for x86_64 (not needed)"; \
+    fi
+
+# Install TEEHR with GDAL compatibility for ARM64
+RUN ARCH=$(uname -m) && \
+    if [ "$ARCH" = "aarch64" ]; then \
+        echo "Installing TEEHR with constraints for ARM64..." && \
+        export GDAL_CONFIG=/usr/bin/gdal-config && \
+        export GDAL_VERSION=$(gdal-config --version) && \
+        pip install --no-cache-dir "git+https://github.com/RTIInternational/teehr.git@${TEEHR_VERSION}"; \
+    else \
+        echo "Installing TEEHR normally for x86_64..." && \
+        pip install --no-cache-dir "git+https://github.com/RTIInternational/teehr.git@${TEEHR_VERSION}"; \
+    fi
+
+# Use Docker BuildKit's automatic architecture detection
+ARG TARGETARCH
+
+# Set JAVA_HOME statically based on build architecture
+ENV JAVA_HOME=/usr/lib/jvm/java-21-openjdk-${TARGETARCH}
+ENV PATH=$PATH:/usr/lib/jvm/java-21-openjdk-${TARGETARCH}/bin
+
+RUN mkdir -p /teehr && mkdir -p /teehr/workflows
+
+COPY prefect.yaml /teehr/prefect.yaml
+
+COPY workflows/* /teehr/workflows
+
+# Executor template needed for running spark
+RUN mkdir -p /opt/teehr && chown -R ${NB_USER}:${NB_USER} /opt/teehr
+    
+COPY executor-pod-template.yaml /opt/teehr/executor-pod-template.yaml
+
+WORKDIR /teehr
