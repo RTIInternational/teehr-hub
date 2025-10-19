@@ -12,6 +12,11 @@ spec:
           repository: prefecthq/prefect
           prefectTag: 3.4.24-python3.12
 
+    # server:
+    #   basicAuth:
+    #     enabled: true
+    #     existingSecret: prefect-auth
+
     # Don't create a secret - use the existing one
     secret:
       create: false

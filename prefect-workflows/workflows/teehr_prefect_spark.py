@@ -2,13 +2,13 @@ from prefect import flow
 
 from simple_spark_helper import create_spark_session
 
-@flow(log_prints=True)
+@flow(flow_run_name="create", log_prints=True)
 def create() -> None:
     """Create Spark session with 2 executors for testing."""
     print("🚀 Starting Spark session...")
     
     spark = create_spark_session(
-        app_name="TEEHR-Data-Example",
+        app_name="spark",
         executor_instances=1,
         executor_memory="1g",
         executor_cores=1,

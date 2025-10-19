@@ -17,7 +17,7 @@ disabled: "${environment.name != 'local'}"
 spec:
   files:
     - manifests/cnpg.yaml
-  namespace: teehr-hub-default # Add explicit namespace
+  namespace: ${environment.namespace} # Add explicit namespace
 dependencies:
   - deploy.cnpg-operator  # Wait for operator to be ready
   - deploy.secrets

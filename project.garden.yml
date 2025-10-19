@@ -7,7 +7,7 @@ variables:
 
 environments:
   - name: local
-    # defaultNamespace: default
+    defaultNamespace: ${project.name}
     variables:
       hostname: ${project.name}.local.app.garden
       currentTeehrVersion: v0.6-dev
@@ -20,6 +20,7 @@ environments:
 providers:
   # The name of the provider plugin to use.
   - name: local-kubernetes
+    namespace: ${environment.namespace}
     environments: ["local"]
     setupIngressController: false
     deploymentRegistry:

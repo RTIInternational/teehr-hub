@@ -54,6 +54,7 @@ spec:
           mountPath: /data
       extraEnv:
         TEEHR_SPARK_IMAGE: ${actions.build.teehr-spark-executor-image.outputs.deploymentImageId}
+        TEEHR_NAMESPACE: ${environment.namespace}
       extraFiles:
         jupyter_config:
           mountPath: /etc/jupyter/jupyter_notebook_config.py

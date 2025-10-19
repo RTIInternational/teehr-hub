@@ -20,6 +20,7 @@ REMOTE_CATALOG_TYPE = "rest"
 CATALOG_REST_URI = "http://dev-teehr-sys-iceberg-alb-2105268770.us-east-2.elb.amazonaws.com"
 WAREHOUSE_S3_PATH = "s3://dev-teehr-sys-iceberg-warehouse/warehouse/"
 
+
 def create_spark_session(
     app_name="spark-k8s-app",
     executor_instances=1,

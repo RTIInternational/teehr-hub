@@ -1,5 +1,5 @@
-# Use the official Apache Spark image as the base image
-FROM apache/spark:4.0.1-scala2.13-java21-ubuntu
+# Use the official Apache Spark image as the base image (Java 17 to match JupyterHub driver)
+FROM apache/spark:4.0.1-scala2.13-java17-ubuntu
 
 USER 0
 

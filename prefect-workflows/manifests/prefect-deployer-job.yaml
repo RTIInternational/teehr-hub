@@ -3,12 +3,12 @@ kind: Job
 metadata:
   name: deploy-prefect-workflows
 spec:
-  ttlSecondsAfterFinished: 100
+  ttlSecondsAfterFinished: 60
   template:
     spec:
       containers:
       - name: deploy-prefect-workflows
-        image: ${actions.build.prefect-teehr-image.outputs.deploymentImageId}
+        image: ${actions.build.teehr-prefect-image.outputs.deploymentImageId}
         command:
         # - pwd
         - prefect
@@ -20,7 +20,9 @@ spec:
           value: http://prefect-server:4200/api
         # Pass in envs that can then be passed to the job template/job.
         - name: PREFECT_TEEHR_IMAGE
-          value: ${actions.build.prefect-teehr-image.outputs.deploymentImageId}
+          value: ${actions.build.teehr-prefect-image.outputs.deploymentImageId}
         - name: TEEHR_SPARK_IMAGE
           value: ${actions.build.teehr-spark-executor-image.outputs.deploymentImageId}
+        - name: TEEHR_NAMESPACE
+          value: ${environment.namespace}
       restartPolicy: Never

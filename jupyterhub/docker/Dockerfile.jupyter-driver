@@ -37,7 +37,6 @@ RUN ARCH=$(uname -m) && \
         dask[distributed] holoviews geoviews datashader hvplot kubernetes; \
     fi
 
-    
 # Install TEEHR (set GDAL config for ARM64 builds)
 RUN ARCH=$(uname -m) && \
     if [ "$ARCH" = "aarch64" ]; then \

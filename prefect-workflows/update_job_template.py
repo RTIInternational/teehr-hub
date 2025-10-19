@@ -114,7 +114,31 @@ async def update_kubernetes_pool():
                     "memory_limits": {
                         "type": "string",
                         "title": "memory_limits",
-                    }
+                    },
+                    "node_selector": {
+                        "type": "object",
+                        "title": "Node Selector",
+                        "description": "Node selector for scheduling pods.",
+                        "additionalProperties": {
+                            "type": "string"
+                        }
+                    },
+                    "tolerations": {
+                        "type": "array",
+                        "title": "Tolerations",
+                        "description": "Tolerations for scheduling pods.",
+                        "items": {
+                            "type": "object"
+                        }
+                    },
+                    "image_pull_secrets": {
+                        "type": "array",
+                        "title": "Image Pull Secrets",
+                        "description": "Image pull secrets for pulling images.",
+                        "items": {
+                            "type": "object"
+                        }
+                    },
                 },
                 "definitions": {
                     "KubernetesClusterConfig": {
@@ -171,7 +195,13 @@ async def update_kubernetes_pool():
                                                 "cpu": "{{ cpu_request }}",
                                                 "memory": "{{ memory_request }}"
                                             }
-                                        }
+                                        },
+                                        "volumeMounts": [
+                                            {
+                                                "name": "teehr-hub-data-nfs",
+                                                "mountPath": "/data"
+                                            }
+                                        ]
                                     }
                                 ],
                                 "completions": 1,
@@ -180,7 +210,15 @@ async def update_kubernetes_pool():
                                 "serviceAccountName": "{{ service_account_name }}",
                                 "nodeSelector": "{{ node_selector }}",
                                 "tolerations": "{{ tolerations }}",
-                                "imagePullSecrets": "{{ image_pull_secrets }}"
+                                "imagePullSecrets": "{{ image_pull_secrets }}",
+                                "volumes": [
+                                    {
+                                        "name": "teehr-hub-data-nfs",
+                                        "persistentVolumeClaim": {
+                                        "claimName": "data-nfs"
+                                        }
+                                    }
+                                ]
                             }
                         },
                         "backoffLimit": 0,
