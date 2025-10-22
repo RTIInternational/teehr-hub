@@ -40,6 +40,7 @@ definitions:
         CATALOG_REST_URI: "{{ $CATALOG_REST_URI }}"
         REMOTE_CATALOG_TYPE: "{{ $REMOTE_CATALOG_TYPE }}"
         WAREHOUSE_S3_PATH: "{{ $WAREHOUSE_S3_PATH }}"
+        IN_CLUSTER: "{{ $IN_CLUSTER }}"
       node_selector:
         teehr-hub/nodegroup-name: spark-r5-4xlarge
       tolerations:

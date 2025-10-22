@@ -40,4 +40,6 @@ spec:
           value: ${var.iceberg.catalogType}
         - name: WAREHOUSE_S3_PATH
           value: ${var.iceberg.catalogWarehouse}
+        - name: IN_CLUSTER
+          value: "${var.iceberg.inCluster}"
       restartPolicy: Never

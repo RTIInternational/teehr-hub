@@ -71,6 +71,7 @@ spec:
       image:
         name: ${actions.build.teehr-jupyter-driver-image.outputs.deploymentImageName}
         tag: ${actions.build.teehr-jupyter-driver-image.version}
+        pullPolicy: ${environment.name == 'local' ? 'Always' : 'IfNotPresent'}
       defaultUrl: "/lab"
       networkPolicy:
       # ToDo: Investigate this.  Implications, etc.
@@ -94,6 +95,7 @@ spec:
         REMOTE_CATALOG_TYPE: ${var.iceberg.catalogType}
         CATALOG_REST_URI: ${var.iceberg.catalogUri}
         WAREHOUSE_S3_PATH: ${var.iceberg.catalogWarehouse}
+        IN_CLUSTER: ${var.iceberg.inCluster}
       extraFiles:
         jupyter_config:
           mountPath: /etc/jupyter/jupyter_notebook_config.py
