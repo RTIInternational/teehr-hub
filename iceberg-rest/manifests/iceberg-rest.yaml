@@ -1,0 +1,71 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: iceberg-rest
+  name: iceberg-rest
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: iceberg-rest
+  template:
+    metadata:
+      creationTimestamp: null
+      labels:
+        app: iceberg-rest
+    spec:
+      containers:
+      - image: tabulario/iceberg-rest
+        imagePullPolicy: IfNotPresent
+        name: iceberg-rest
+        env:
+        - name: AWS_ACCESS_KEY_ID
+          valueFrom:
+            secretKeyRef:
+              name: minio-secrets
+              key: accesskey
+        - name: AWS_SECRET_ACCESS_KEY
+          valueFrom:
+            secretKeyRef:
+              name: minio-secrets
+              key: secretkey
+        - name: AWS_REGION
+          value: us-east-2
+        - name: CATALOG_WAREHOUSE
+          value: s3://warehouse/
+        - name: CATALOG_IO__IMPL
+          value: org.apache.iceberg.aws.s3.S3FileIO
+        - name: CATALOG_S3_ENDPOINT
+          value: http://minio:9000
+        - name: CATALOG_S3_PATH__STYLE__ACCESS
+          value: "true"
+        ports:
+        - name: http
+          containerPort: 8181
+          protocol: TCP
+        # livenessProbe:
+        #   httpGet:
+        #     path: /healthz
+        #     port: http
+        # readinessProbe:
+        #   httpGet:
+        #     path: /healthz
+        #     port: http
+        resources: {}
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: iceberg-rest
+  name: iceberg-rest
+spec:
+  ports:
+  - protocol: TCP
+    port: 8181
+    targetPort: 8181
+  selector:
+    app: iceberg-rest
+  type: ClusterIP

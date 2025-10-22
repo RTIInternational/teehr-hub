@@ -1,0 +1,31 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: create-minio-bucket
+spec:
+  ttlSecondsAfterFinished: 60
+  template:
+    spec:
+      containers:
+      - name: mc
+        image: minio/mc:latest
+        command: ["/bin/sh", "-c"]
+        args:
+          - |
+            mc alias set minio $MINIO_SERVER $MINIO_ROOT_USER $MINIO_ROOT_PASSWORD
+            mc mb --ignore-existing minio/warehouse
+            mc anonymous set download minio/warehouse
+        env:
+        - name: MINIO_SERVER
+          value: http://minio:9000
+        - name: MINIO_ROOT_USER
+          valueFrom:
+            secretKeyRef:
+              name: minio-secrets
+              key: accesskey
+        - name: MINIO_ROOT_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: minio-secrets
+              key: secretkey
+      restartPolicy: Never

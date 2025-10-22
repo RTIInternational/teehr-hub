@@ -25,4 +25,19 @@ spec:
           value: ${actions.build.teehr-spark-executor-image.outputs.deploymentImageId}
         - name: TEEHR_NAMESPACE
           value: ${environment.namespace}
+        # Need to figure out how to handle secrets here.  This is OK for dev.
+        # Might want to update job template to use secrets from K8s secret.
+        - name: AWS_REGION
+          value: us-east-2
+        - name: AWS_ACCESS_KEY_ID
+          value: minioadmin
+        - name: AWS_SECRET_ACCESS_KEY
+          value: minioadmin123
+        # Use env vars to configure Iceberg catalog for env.
+        - name: CATALOG_REST_URI
+          value: ${var.iceberg.catalogUri}
+        - name: REMOTE_CATALOG_TYPE
+          value: ${var.iceberg.catalogType}
+        - name: WAREHOUSE_S3_PATH
+          value: ${var.iceberg.catalogWarehouse}
       restartPolicy: Never

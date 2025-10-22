@@ -15,10 +15,12 @@ ICEBERG_VERSION = "1.10.0"
 SEDONA_VERSION = "1.8.0"
 
 REMOTE_CATALOG_NAME = "iceberg"
-REMOTE_CATALOG_TYPE = "rest"
+REMOTE_CATALOG_TYPE = os.environ.get("REMOTE_CATALOG_TYPE", "")
+CATALOG_REST_URI = os.environ.get("CATALOG_REST_URI", "")
+WAREHOUSE_S3_PATH = os.environ.get("WAREHOUSE_S3_PATH", "")
 
-CATALOG_REST_URI = "http://dev-teehr-sys-iceberg-alb-2105268770.us-east-2.elb.amazonaws.com"
-WAREHOUSE_S3_PATH = "s3://dev-teehr-sys-iceberg-warehouse/warehouse/"
+# CATALOG_REST_URI = "http://dev-teehr-sys-iceberg-alb-2105268770.us-east-2.elb.amazonaws.com"
+# WAREHOUSE_S3_PATH = "s3://dev-teehr-sys-iceberg-warehouse/warehouse/"
 
 
 def create_spark_session(
@@ -196,44 +198,72 @@ def create_spark_session(
 
     # Remote catalog configuration
     conf.set(f"spark.sql.catalog.{REMOTE_CATALOG_NAME}", "org.apache.iceberg.spark.SparkCatalog")
+    conf.set(f"spark.sql.catalog.{REMOTE_CATALOG_NAME}.io-impl", "org.apache.iceberg.aws.s3.S3FileIO")
     conf.set(f"spark.sql.catalog.{REMOTE_CATALOG_NAME}.type", REMOTE_CATALOG_TYPE)
     conf.set(f"spark.sql.catalog.{REMOTE_CATALOG_NAME}.uri", CATALOG_REST_URI)
     conf.set(f"spark.sql.catalog.{REMOTE_CATALOG_NAME}.warehouse", WAREHOUSE_S3_PATH)
-    conf.set(f"spark.sql.catalog.{REMOTE_CATALOG_NAME}.io-impl", "org.apache.iceberg.aws.s3.S3FileIO")
+
+    conf.set(f"spark.sql.catalog.{REMOTE_CATALOG_NAME}.s3.endpoint", "http://minio:9000")
+    conf.set(f"spark.sql.catalog.{REMOTE_CATALOG_NAME}.s3.path-style-access", "true")
 
     # Spark UI settings
     # conf.set("spark.ui.proxyBase", "/user/mgdenno/proxy/4040")
     conf.set("spark.ui.proxyRedirectUri", "/")
     
-    # AWS credentials configuration
-    # Try to get AWS credentials from default profile
-    try:
-        import boto3
-        session = boto3.Session()
-        credentials = session.get_credentials()
-        
-        if credentials:
-            print("🔑 Found AWS credentials, setting for Spark")
-            # Set explicit credentials for Spark/Hadoop
-            conf.set(f"spark.sql.catalog.{REMOTE_CATALOG_NAME}.s3.access-key-id", credentials.access_key)
-            conf.set(f"spark.sql.catalog.{REMOTE_CATALOG_NAME}.s3.secret-access-key", credentials.secret_key)
+    # AWS credentials configuration is a bit tricky.  It seems that we can either just set env vars
+    # or explicitly set access keys in the Spark config.  We'll try both methods here.
+  
+    # If AWS credentials are set in env vars, propagate them to executors as env vars.
+    access_key = os.environ.get("AWS_ACCESS_KEY_ID")
+    secret_key = os.environ.get("AWS_SECRET_ACCESS_KEY")
+    session_token = os.environ.get("AWS_SESSION_TOKEN")
+    region = os.environ.get("AWS_REGION", "us-east-1")
+    if access_key and secret_key:
+        print("🔑 Found AWS credentials in environment, propagating to Spark executors")
+        conf.set("spark.executorEnv.AWS_ACCESS_KEY_ID", access_key)
+        conf.set("spark.executorEnv.AWS_SECRET_ACCESS_KEY", secret_key)
+        conf.set("spark.executorEnv.AWS_REGION", region)
+        conf.set("spark.hadoop.fs.s3a.aws.credentials.provider", "com.amazonaws.auth.DefaultAWSCredentialsProviderChain")
 
-            # Handle session token if present (for temporary credentials)
-            if credentials.token:
-                conf.set("spark.hadoop.fs.s3a.session.token", credentials.token)
-                print("   - Using temporary credentials with session token")
-            else:
-                print("   - Using long-term credentials")
-        else:
-            print("⚠️  No AWS credentials found, falling back to default provider chain")
-            conf.set("spark.hadoop.fs.s3a.aws.credentials.provider", "com.amazonaws.auth.DefaultAWSCredentialsProviderChain")
-    except ImportError:
-        print("⚠️  boto3 not available, using default AWS credentials provider")
+    elif session_token:
+        print("🔑 Found AWS session token in environment, propagating to Spark executors")
+        conf.set("spark.executorEnv.AWS_SESSION_TOKEN", session_token)
+        conf.set("spark.executorEnv.AWS_REGION", region)
         conf.set("spark.hadoop.fs.s3a.aws.credentials.provider", "com.amazonaws.auth.DefaultAWSCredentialsProviderChain")
-    except Exception as e:
-        print(f"⚠️  Error getting AWS credentials: {e}")
-        print("   Falling back to default provider chain")
-        conf.set("spark.hadoop.fs.s3a.aws.credentials.provider", "com.amazonaws.auth.DefaultAWSCredentialsProviderChain")
+
+    else:
+        print("⚠️  No AWS credentials found in environment, setting to anonymous access")
+        conf.set("spark.executorEnv.AWS_REGION", region)
+        conf.set("spark.hadoop.fs.s3a.aws.credentials.provider", "com.amazonaws.auth.AnonymousAWSCredentialsProvider")
+
+
+    # Alternatively, if the ".s3.access-key-id" and ".s3.secret-access-key" settings are used
+    # must also set the region via extraJavaOptions
+    # conf.set("spark.executor.extraJavaOptions", "-Daws.region=us-east-1")
+    # conf.set("spark.driver.extraJavaOptions", "-Daws.region=us-east-1")
+
+    # # Try to get AWS credentials from default profile
+    # try:
+    #     import boto3
+    #     session = boto3.Session()
+    #     credentials = session.get_credentials()
+        
+    #     if credentials:
+    #         print("🔑 Found AWS credentials, setting for Spark")
+    #         # Set explicit credentials for Spark/Hadoop
+    #         conf.set(f"spark.sql.catalog.{REMOTE_CATALOG_NAME}.s3.access-key-id", credentials.access_key)
+    #         conf.set(f"spark.sql.catalog.{REMOTE_CATALOG_NAME}.s3.secret-access-key", credentials.secret_key)
+
+    #         # Handle session token if present (for temporary credentials)
+    #         if credentials.token:
+    #             conf.set("spark.hadoop.fs.s3a.session.token", credentials.token)
+    #             print("   - Using temporary credentials with session token")
+    #         else:
+    #             print("   - Using long-term credentials")
+    #     else:
+    #         print("⚠️  No AWS credentials found, falling back to default provider chain")
+    # except ImportError:
+    #     print("⚠️  boto3 not installed, cannot retrieve AWS credentials programmatically")
 
     # Get pod IP and set as driver host so executors can connect back
     pod_ip = os.environ.get('POD_IP')

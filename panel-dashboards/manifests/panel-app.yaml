@@ -1,0 +1,31 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: panel-app
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: panel-app
+  template:
+    metadata:
+      labels:
+        app: panel-app
+    spec:
+      containers:
+      - name: panel-app
+        image: ${actions.build.panel-dashboards-image.outputs.deploymentImageId}
+        ports:
+        - containerPort: 5006
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: panel-app
+spec:
+  type: ClusterIP
+  selector:
+    app: panel-app
+  ports:
+    - port: 5006
+      targetPort: 5006

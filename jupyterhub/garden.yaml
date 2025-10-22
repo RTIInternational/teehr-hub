@@ -17,6 +17,7 @@ spec:
         type: ClusterIP
     
     hub:
+      # baseUrl: /jupyter
 
       config:
         DummyAuthenticator:
@@ -30,11 +31,41 @@ spec:
             - admin
           allowed_users:
             - user
+
       extraConfig:
         spark-config: |
           # Allow users to create Spark sessions
           c.KubeSpawner.service_account = 'default'
           c.KubeSpawner.automount_service_account_token = True
+        # secret-to-env: |
+        #   from kubernetes import client
+        #   def modify_pod_hook(spawner, pod):
+        #       pod.spec.containers[0].env.append(
+        #           client.V1EnvVar(
+        #               name='AWS_ACCESS_KEY_ID', 
+        #               value_from=client.V1EnvVarSource(
+        #                   secret_key_ref=client.V1SecretKeySelector(
+        #                       name='minio-secrets',
+        #                       key='accesskey'
+        #                   )
+        #               )
+        #           )
+        #       )
+        #       pod.spec.containers[0].env.append(
+        #           client.V1EnvVar(
+        #               name='AWS_SECRET_ACCESS_KEY', 
+        #               value_from=client.V1EnvVarSource(
+        #                   secret_key_ref=client.V1SecretKeySelector(
+        #                       name='minio-secrets',
+        #                       key='secretkey'
+        #                   )
+        #               )
+        #           )
+        #       )
+        #       return pod
+        #   c.KubeSpawner.modify_pod_hook = modify_pod_hook
+        # baseurl: |
+        #   c.JupyterHub.base_url = '/jupyter'
 
     singleuser:
       image:
@@ -55,6 +86,14 @@ spec:
       extraEnv:
         TEEHR_SPARK_IMAGE: ${actions.build.teehr-spark-executor-image.outputs.deploymentImageId}
         TEEHR_NAMESPACE: ${environment.namespace}
+        # Need to figure out how to handle secrets here.  This is OK for dev.
+        AWS_REGION: us-east-2
+        # AWS_ACCESS_KEY_ID: minioadmin
+        # AWS_SECRET_ACCESS_KEY: minioadmin123
+        # Use env vars to configure Iceberg catalog for env.
+        REMOTE_CATALOG_TYPE: ${var.iceberg.catalogType}
+        CATALOG_REST_URI: ${var.iceberg.catalogUri}
+        WAREHOUSE_S3_PATH: ${var.iceberg.catalogWarehouse}
       extraFiles:
         jupyter_config:
           mountPath: /etc/jupyter/jupyter_notebook_config.py

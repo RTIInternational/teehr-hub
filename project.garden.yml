@@ -11,12 +11,17 @@ environments:
     variables:
       hostname: ${project.name}.local.app.garden
       currentTeehrVersion: v0.6-dev
-      # previousTeehrVersion: v0.4.0
-      # minio_volume_size: 10Gi
+      iceberg:
+        catalogType: rest
+        catalogUri: http://iceberg-rest:8181
+        catalogWarehouse: s3://warehouse/
   # - name: remote
   #   variables:
-  #     hostname: teehr-spark.rtiamanzi.org
-  #     minio_volume_size: 100Gi
+  #     hostname: teehr-hub.rtiamanzi.org
+  #     iceberg:
+  #       catalogUri: "http://dev-teehr-sys-iceberg-alb-2105268770.us-east-2.elb.amazonaws.com"
+  #       catalogType: rest
+  #       catalogWarehouse: "s3://dev-teehr-sys-iceberg-warehouse/warehouse/"
 providers:
   # The name of the provider plugin to use.
   - name: local-kubernetes

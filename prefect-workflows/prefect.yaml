@@ -32,6 +32,14 @@ definitions:
         PREFECT_LOGGING_LEVEL: *log_level
         TEEHR_SPARK_IMAGE: "{{ $TEEHR_SPARK_IMAGE }}"
         TEEHR_NAMESPACE: "{{ $TEEHR_NAMESPACE }}"
+        # Temporary AWS creds for Spark access to S3/MinIO in dev
+        # Ultimately, we should use K8s secrets or IRSA for this.
+        AWS_REGION: "{{ $AWS_REGION }}"
+        AWS_ACCESS_KEY_ID: "{{ $AWS_ACCESS_KEY_ID }}"
+        AWS_SECRET_ACCESS_KEY: "{{ $AWS_SECRET_ACCESS_KEY }}"
+        CATALOG_REST_URI: "{{ $CATALOG_REST_URI }}"
+        REMOTE_CATALOG_TYPE: "{{ $REMOTE_CATALOG_TYPE }}"
+        WAREHOUSE_S3_PATH: "{{ $WAREHOUSE_S3_PATH }}"
       node_selector:
         teehr-hub/nodegroup-name: spark-r5-4xlarge
       tolerations:
@@ -68,6 +76,14 @@ deployments:
     tags: []
     description: Create TEEHR spark session
     entrypoint: workflows/check_data_drive.py:list
+    parameters: {}
+    work_pool: *kind_work_pool
+    schedule:
+  - name: kind-test-iceberg
+    version:
+    tags: []
+    description: Create TEEHR spark session
+    entrypoint: workflows/teehr_iceberg_spark.py:check
     parameters: {}
     work_pool: *kind_work_pool
     schedule:

@@ -15,9 +15,9 @@ spec:
     volumeMounts:
     - name: data-nfs
       mountPath: /data
-    env:
-    - name: SPARK_USER
-      value: "spark"
+    # env:
+    # - name: SPARK_USER
+    #   value: "spark"
   volumes:
   - name: data-nfs
     persistentVolumeClaim:

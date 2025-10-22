@@ -14,7 +14,7 @@ name: prefect-workflow-deploy
 description: K8s Deploy Prefect Workflows
 spec:
   files: ["./manifests/prefect-deployer-job.yaml"]
-dependencies: [deploy.prefect-server, build.teehr-prefect-image, build.teehr-spark-executor-image]
+dependencies: [deploy.prefect-server, deploy.prefect-worker, build.teehr-prefect-image, build.teehr-spark-executor-image]
 ---
 kind: Deploy
 type: kubernetes

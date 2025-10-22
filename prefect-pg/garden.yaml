@@ -1,0 +1,7 @@
+kind: Deploy
+type: kubernetes
+name: prefect-database
+description: K8s Deploy Prefect Database
+spec:
+  files: ["./manifests/prefect-pg.yaml"]
+dependencies: [deploy.secrets]

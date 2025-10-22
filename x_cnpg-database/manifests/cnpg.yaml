@@ -1,7 +1,7 @@
 apiVersion: postgresql.cnpg.io/v1
 kind: Cluster
 metadata:
-  name: cluster-example
+  name: prefect-database-cluster
 spec:
   instances: 1
   
@@ -18,6 +18,6 @@ spec:
       owner: prefect
       secret:
         name: prefect-db-secrets
-  
+
   storage:
     size: 1Gi

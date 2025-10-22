@@ -1,0 +1,7 @@
+kind: Deploy
+type: kubernetes
+name: iceberg-rest-deploy
+description: K8s Deploy Iceberg REST
+spec:
+  files: ["./manifests/iceberg-rest.yaml"]
+dependencies: [deploy.secrets]
