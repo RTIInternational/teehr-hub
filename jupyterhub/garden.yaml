@@ -71,7 +71,7 @@ spec:
       image:
         name: ${actions.build.teehr-jupyter-driver-image.outputs.deploymentImageName}
         tag: ${actions.build.teehr-jupyter-driver-image.version}
-        pullPolicy: ${environment.name == 'local' ? 'Always' : 'IfNotPresent'}
+        pullPolicy: ${environment.name == 'local' ? 'Always':'IfNotPresent'}
       defaultUrl: "/lab"
       networkPolicy:
       # ToDo: Investigate this.  Implications, etc.
