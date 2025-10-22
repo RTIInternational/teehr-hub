@@ -10,9 +10,10 @@ environments:
     defaultNamespace: ${project.name}
     variables:
       hostname: ${project.name}.local.app.garden
-      currentTeehrVersion: v0.6-dev
+      # currentTeehrVersion: v0.6-dev
+      currentTeehrVersion: 553-update-spark-session-configuration
       iceberg:
-        inCluster: true
+        inCluster: "true"
         catalogType: rest
         catalogUri: http://iceberg-rest:8181
         catalogWarehouse: s3://warehouse/
