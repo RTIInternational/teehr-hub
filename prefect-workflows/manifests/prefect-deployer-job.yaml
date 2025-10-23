@@ -34,11 +34,11 @@ spec:
         - name: AWS_SECRET_ACCESS_KEY
           value: minioadmin123
         # Use env vars to configure Iceberg catalog for env.
-        - name: CATALOG_REST_URI
+        - name: REMOTE_CATALOG_REST_URI
           value: ${var.iceberg.catalogUri}
         - name: REMOTE_CATALOG_TYPE
           value: ${var.iceberg.catalogType}
-        - name: WAREHOUSE_S3_PATH
+        - name: REMOTE_WAREHOUSE_S3_PATH
           value: ${var.iceberg.catalogWarehouse}
         - name: IN_CLUSTER
           value: "${var.iceberg.inCluster}"

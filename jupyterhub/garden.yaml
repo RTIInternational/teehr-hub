@@ -93,8 +93,8 @@ spec:
         # AWS_SECRET_ACCESS_KEY: minioadmin123
         # Use env vars to configure Iceberg catalog for env.
         REMOTE_CATALOG_TYPE: ${var.iceberg.catalogType}
-        CATALOG_REST_URI: ${var.iceberg.catalogUri}
-        WAREHOUSE_S3_PATH: ${var.iceberg.catalogWarehouse}
+        REMOTE_CATALOG_REST_URI: ${var.iceberg.catalogUri}
+        REMOTE_WAREHOUSE_S3_PATH: ${var.iceberg.catalogWarehouse}
         IN_CLUSTER: ${var.iceberg.inCluster}
       extraFiles:
         jupyter_config:

@@ -16,11 +16,11 @@ SEDONA_VERSION = "1.8.0"
 
 REMOTE_CATALOG_NAME = "iceberg"
 REMOTE_CATALOG_TYPE = os.environ.get("REMOTE_CATALOG_TYPE", "")
-CATALOG_REST_URI = os.environ.get("CATALOG_REST_URI", "")
-WAREHOUSE_S3_PATH = os.environ.get("WAREHOUSE_S3_PATH", "")
+REMOTE_CATALOG_REST_URI = os.environ.get("REMOTE_CATALOG_REST_URI", "")
+REMOTE_WAREHOUSE_S3_PATH = os.environ.get("REMOTE_WAREHOUSE_S3_PATH", "")
 
-# CATALOG_REST_URI = "http://dev-teehr-sys-iceberg-alb-2105268770.us-east-2.elb.amazonaws.com"
-# WAREHOUSE_S3_PATH = "s3://dev-teehr-sys-iceberg-warehouse/warehouse/"
+# REMOTE_CATALOG_REST_URI = "http://dev-teehr-sys-iceberg-alb-2105268770.us-east-2.elb.amazonaws.com"
+# REMOTE_WAREHOUSE_S3_PATH = "s3://dev-teehr-sys-iceberg-warehouse/warehouse/"
 
 
 def create_spark_session(
@@ -200,8 +200,8 @@ def create_spark_session(
     conf.set(f"spark.sql.catalog.{REMOTE_CATALOG_NAME}", "org.apache.iceberg.spark.SparkCatalog")
     conf.set(f"spark.sql.catalog.{REMOTE_CATALOG_NAME}.io-impl", "org.apache.iceberg.aws.s3.S3FileIO")
     conf.set(f"spark.sql.catalog.{REMOTE_CATALOG_NAME}.type", REMOTE_CATALOG_TYPE)
-    conf.set(f"spark.sql.catalog.{REMOTE_CATALOG_NAME}.uri", CATALOG_REST_URI)
-    conf.set(f"spark.sql.catalog.{REMOTE_CATALOG_NAME}.warehouse", WAREHOUSE_S3_PATH)
+    conf.set(f"spark.sql.catalog.{REMOTE_CATALOG_NAME}.uri", REMOTE_CATALOG_REST_URI)
+    conf.set(f"spark.sql.catalog.{REMOTE_CATALOG_NAME}.warehouse", REMOTE_WAREHOUSE_S3_PATH)
 
     conf.set(f"spark.sql.catalog.{REMOTE_CATALOG_NAME}.s3.endpoint", "http://minio:9000")
     conf.set(f"spark.sql.catalog.{REMOTE_CATALOG_NAME}.s3.path-style-access", "true")
