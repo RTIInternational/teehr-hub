@@ -10,8 +10,7 @@ environments:
     defaultNamespace: ${project.name}
     variables:
       hostname: ${project.name}.local.app.garden
-      # currentTeehrVersion: v0.6-dev
-      currentTeehrVersion: 553-update-spark-session-configuration
+      currentTeehrVersion: v0.6-dev
       iceberg:
         inCluster: "true"
         catalogType: rest
