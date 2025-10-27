@@ -17,7 +17,7 @@ LOOKBACK_DAYS = 1
 
 # Q. Can we keep a spark session running across flows?
 
-@flow(flow_run_name="ingest_usgs_streamflow_obs-{name}", log_prints=True)
+@flow(flow_run_name="ingest-usgs-streamflow-obs-{name}", log_prints=True)
 def ingest_usgs_streamflow_obs(
     local_dir_path: Union[str, Path] = LOCAL_EV_DIR,
     start_dt: Union[str, datetime, pd.Timestamp] = None,

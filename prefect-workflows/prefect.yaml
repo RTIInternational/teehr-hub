@@ -88,7 +88,7 @@ deployments:
     parameters: {}
     work_pool: *kind_work_pool
     schedule:
-  - name: kind-ingest-usgs-streamflow
+  - name: kind-ingest-usgs-streamflow-obs
     version:
     tags: []
     description: Ingest USGS streamflow data from NWIS
@@ -96,7 +96,7 @@ deployments:
     parameters: {}
     work_pool: *kind_work_pool
     schedule:    
-  - name: kind-ingest-usgs-streamflow
+  - name: kind-ingest-nwm-streamflow-forecasts
     version:
     tags: []
     description: Ingest NWM streamflow forecasts from GCS

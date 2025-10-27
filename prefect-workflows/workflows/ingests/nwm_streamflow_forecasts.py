@@ -21,7 +21,7 @@ CURRENT_DT = datetime.now()
 LOOKBACK_DAYS = 1
 
 
-@flow(flow_run_name="ingest_nwm_streamflow_forecasts-{name}", log_prints=True)
+@flow(flow_run_name="ingest-nwm-streamflow-forecasts-{name}", log_prints=True)
 def ingest_nwm_streamflow_forecasts(
     local_dir_path: Union[str, Path] = LOCAL_EV_DIR,
     start_dt: Union[str, datetime, pd.Timestamp] = None,
