@@ -1,0 +1,8 @@
+kind: Deploy
+type: kubernetes
+name: spark-roles
+spec:
+  files:
+    # - manifests/spark-namespace.yaml
+    - manifests/spark-roles.yaml
+    - manifests/jupyter-spark-rbac.yaml

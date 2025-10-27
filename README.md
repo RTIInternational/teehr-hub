@@ -10,16 +10,24 @@ We used Admin for testing but need to determine the minimum set of permissions n
 aws configure
 ```
 
-Apply Terraform (can take ~15 mins)
+Plan Terraform (can take ~15 mins)
 ```bash
 cd terraform
 terraform init
+terraform plan -var-file=teehr-hub.tfvars
+cd ..
+```
+
+Plan Terraform (can take ~15 mins)
+```bash
+cd terraform
 terraform apply -var-file=teehr-hub.tfvars
 cd ..
 ```
 
 Connect to cluster
 ```bash
+export AWS_PROFILE=ciroh_mdenno
 aws eks update-kubeconfig --name teehr-hub --region us-east-2
 kubectl config set-context $(kubectl config current-context) --namespace teehr-hub
 k9s
@@ -123,3 +131,5 @@ helm repo update dask
 helm repo update autoscaler
 cd ..
 ```
+
+garden version: 0.13.54

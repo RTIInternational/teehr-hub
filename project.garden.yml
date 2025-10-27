@@ -1,0 +1,46 @@
+apiVersion: garden.io/v1
+kind: Project
+name: teehr-hub
+defaultEnvironment: local
+
+variables:
+
+environments:
+  - name: local
+    defaultNamespace: ${project.name}
+    variables:
+      hostname: ${project.name}.local.app.garden
+      currentTeehrVersion: b437b5f99deba6c5d1775bfac6ea4fe0985338e7
+      iceberg:
+        inCluster: "true"
+        catalogType: rest
+        catalogUri: http://iceberg-rest:8181
+        catalogWarehouse: s3://warehouse/
+  # - name: remote
+  #   variables:
+  #     hostname: teehr-hub.rtiamanzi.org
+  #     iceberg:
+  #       catalogUri: "http://dev-teehr-sys-iceberg-alb-2105268770.us-east-2.elb.amazonaws.com"
+  #       catalogType: rest
+  #       catalogWarehouse: "s3://dev-teehr-sys-iceberg-warehouse/warehouse/"
+providers:
+  # The name of the provider plugin to use.
+  - name: local-kubernetes
+    namespace: ${environment.namespace}
+    environments: ["local"]
+    setupIngressController: false
+    deploymentRegistry:
+      hostname: localhost:5001
+      namespace: ${project.name}
+    context: kind-kind
+  # - name: kubernetes
+  #   environments: ["remote"]
+  #   imagePullSecrets:
+  #     - name: ecr-config
+  #       namespace: default
+  #   deploymentRegistry:
+  #     hostname: 935462133478.dkr.ecr.us-east-2.amazonaws.com
+  #     namespace: ${project.name}
+  #   context: mdenno@teehr-spark-cluster.us-east-2.eksctl.io
+  #   buildMode: cluster-buildkit
+  #   defaultHostname: teehr-spark.rtiamanzi.org

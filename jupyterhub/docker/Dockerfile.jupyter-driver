@@ -1,0 +1,57 @@
+
+FROM pangeo/base-notebook:2025.07.31 
+
+ARG TEEHR_VERSION
+
+USER root
+ENV DEBIAN_FRONTEND=noninteractive
+ENV PATH=${NB_PYTHON_PREFIX}/bin:$PATH
+
+# Needed for apt-key to work -- Is this part needed?
+RUN apt-get update -qq --yes > /dev/null && \
+    apt-get install --yes -qq gnupg2 > /dev/null && \
+    rm -rf /var/lib/apt/lists/*
+
+RUN apt-get update \
+    && apt-get install -y wget curl bzip2 libgtk2.0-0t64 \
+    libgtk-3-0t64 libgbm-dev libnotify-dev libnss3 libxss1 \
+    libasound2t64 libxtst6 firefox openjdk-17-jdk git vim \
+    git-lfs build-essential
+
+# Platform-specific installations
+RUN ARCH=$(uname -m) && \
+    if [ "$ARCH" = "aarch64" ]; then \
+        echo "Installing ARM64-specific packages..." && \
+        apt-get install -y gdal-bin libgdal-dev proj-bin libproj-dev libspatialindex-dev && \
+        mamba install -y nodejs awscli htop && \
+        pip install selenium dask[distributed] holoviews geoviews datashader hvplot kubernetes && \
+        echo "Installing geckodriver for ARM64..." && \
+        wget -q https://github.com/mozilla/geckodriver/releases/download/v0.35.0/geckodriver-v0.35.0-linux-aarch64.tar.gz && \
+        tar -xzf geckodriver-v0.35.0-linux-aarch64.tar.gz && \
+        chmod +x geckodriver && \
+        mv geckodriver /usr/local/bin/ && \
+        rm geckodriver-v0.35.0-linux-aarch64.tar.gz; \
+    else \
+        echo "Installing x86_64 packages..." && \
+        mamba install -y nodejs awscli htop geckodriver selenium \
+        dask[distributed] holoviews geoviews datashader hvplot kubernetes; \
+    fi
+
+# Install TEEHR (set GDAL config for ARM64 builds)
+RUN ARCH=$(uname -m) && \
+    if [ "$ARCH" = "aarch64" ]; then \
+    export GDAL_CONFIG=/usr/bin/gdal-config; \
+    fi && \
+    pip install "git+https://github.com/RTIInternational/teehr.git@${TEEHR_VERSION}"
+    
+RUN mkdir -p /opt/teehr && chown -R ${NB_USER}:${NB_USER} /opt/teehr
+    
+COPY executor-pod-template.yaml /opt/teehr/executor-pod-template.yaml
+
+# Configure IPython system-wide
+COPY ipython_kernel_config.py /etc/ipython/ipython_kernel_config.py
+# RUN fix-permissions /etc/ipython/
+
+USER ${NB_USER}
+
+WORKDIR /home/jovyan

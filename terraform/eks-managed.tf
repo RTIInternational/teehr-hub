@@ -108,7 +108,7 @@ module "eks" {
 
       labels = {
         # "cluster-name"                     = "${local.cluster_name}"
-        # "nodegroup-name"                   = "core-a"
+        "teehr-hub/nodegroup-name"         = "core-a"
         "hub.jupyter.org/node-purpose"     = "core"
         "k8s.dask.org/node-purpose"        = "core"
         "node.kubernetes.io/instance-type" = "r5.xlarge"
@@ -122,6 +122,7 @@ module "eks" {
         "k8s.io/cluster-autoscaler/node-template/label/hub.jupyter.org/node-purpose"     = "core"
         "k8s.io/cluster-autoscaler/node-template/label/k8s.dask.org/node-purpose"        = "core"
         "k8s.io/cluster-autoscaler/node-template/label/node.kubernetes.io/instance-type" = "r5.xlarge"
+        "teehr-hub/nodegroup-name"                                                       = "core-a"
       }
     }
 
@@ -137,7 +138,7 @@ module "eks" {
 
       labels = {
         # "cluster-name"                     = "${local.cluster_name}"
-        # "nodegroup-name"                   = "nb-r5-xlarge"
+        "teehr-hub/nodegroup-name"         = "nb-r5-xlarge"
         "hub.jupyter.org/node-purpose"     = "user"
         "k8s.dask.org/node-purpose"        = "scheduler"
         "node.kubernetes.io/instance-type" = "r5.xlarge"
@@ -164,6 +165,7 @@ module "eks" {
         "k8s.io/cluster-autoscaler/node-template/label/node.kubernetes.io/instance-type" = "r5.xlarge"
         "k8s.io/cluster-autoscaler/node-template/taint/hub.jupyter.org/dedicated"        = "user:NoSchedule"
         "k8s.io/cluster-autoscaler/node-template/taint/hub.jupyter.org_dedicated"        = "user:NoSchedule"
+        "teehr-hub/nodegroup-name"                                                       = "nb-r5-xlarge"
       }
     }
 
@@ -180,7 +182,7 @@ module "eks" {
 
       labels = {
         # "cluster-name"                     = "${local.cluster_name}"
-        # "nodegroup-name"                   = "nb-r5-4xlarge"
+        "teehr-hub/nodegroup-name"         = "nb-r5-4xlarge"
         "hub.jupyter.org/node-purpose"     = "user"
         "k8s.dask.org/node-purpose"        = "scheduler"
         "node.kubernetes.io/instance-type" = "r5.4xlarge"
@@ -207,6 +209,7 @@ module "eks" {
         "k8s.io/cluster-autoscaler/node-template/label/node.kubernetes.io/instance-type" = "r5.4xlarge"
         "k8s.io/cluster-autoscaler/node-template/taint/hub.jupyter.org/dedicated"        = "user:NoSchedule"
         "k8s.io/cluster-autoscaler/node-template/taint/hub.jupyter.org_dedicated"        = "user:NoSchedule"
+        "teehr-hub/nodegroup-name"                                                       = "nb-r5-4xlarge"
       }
     }
 
@@ -222,7 +225,7 @@ module "eks" {
 
       labels = {
         # "cluster-name"                     = "${local.cluster_name}"
-        # "nodegroup-name"                   = "nb-r5-16xlarge"
+        "teehr-hub/nodegroup-name"         = "nb-r5-16xlarge"
         "hub.jupyter.org/node-purpose"     = "user"
         "k8s.dask.org/node-purpose"        = "scheduler"
         "node.kubernetes.io/instance-type" = "r5.16xlarge"
@@ -249,6 +252,7 @@ module "eks" {
         "k8s.io/cluster-autoscaler/node-template/label/node.kubernetes.io/instance-type" = "r5.16xlarge"
         "k8s.io/cluster-autoscaler/node-template/taint/hub.jupyter.org/dedicated"        = "user:NoSchedule"
         "k8s.io/cluster-autoscaler/node-template/taint/hub.jupyter.org_dedicated"        = "user:NoSchedule"
+        "teehr-hub/nodegroup-name"                                                       = "nb-r5-16xlarge"
       }
     }
 
@@ -265,7 +269,7 @@ module "eks" {
 
       labels = {
         # "cluster-name"                     = "${local.cluster_name}"
-        # "nodegroup-name"                   = "dask-r5-4xlarge"
+        "teehr-hub/nodegroup-name"         = "dask-r5-4xlarge"
         "k8s.dask.org/node-purpose"        = "worker"
         "node.kubernetes.io/instance-type" = "r5.4xlarge"
       }
@@ -290,9 +294,49 @@ module "eks" {
         "k8s.io/cluster-autoscaler/node-template/label/node.kubernetes.io/instance-type" = "r5.4xlarge"
         "k8s.io/cluster-autoscaler/node-template/taint/k8s.dask.org/dedicated"        = "worker:NoSchedule"
         "k8s.io/cluster-autoscaler/node-template/taint/k8s.dask.org_dedicated"        = "worker:NoSchedule"
+        "teehr-hub/nodegroup-name"                                                       = "dask-r5-4xlarge"
       }
     }
 
+    spark-r5-4xlarge = {
+      name            = "spark-r5-4xlarge"
+      iam_role_name   = "${local.cluster_name}-spark-r5-4xlarge"
+
+      min_size     = 0
+      max_size     = 400
+      desired_size = 0
+
+      instance_types       = ["r5.4xlarge"]
+
+      labels = {
+        # "cluster-name"                     = "${local.cluster_name}"
+        "teehr-hub/nodegroup-name"         = "spark-r5-4xlarge"
+        "node.kubernetes.io/instance-type" = "r5.4xlarge"
+      }
+
+      taints = [
+        {
+          key    = "teehr-hub/dedicated"
+          value  = "worker"
+          effect = "NO_SCHEDULE"
+        },
+        {
+          key    = "teehr-hub_dedicated"
+          value  = "worker"
+          effect = "NO_SCHEDULE"
+        }
+      ]
+
+      tags = {
+        "k8s.io/cluster-autoscaler/enabled"                                                 = "true"
+        "k8s.io/cluster-autoscaler/${local.cluster_name}"                                   = "owned"
+        "k8s.io/cluster-autoscaler/node-template/label/teehr-hub/node-purpose/node-purpose" = "worker"
+        "k8s.io/cluster-autoscaler/node-template/label/node.kubernetes.io/instance-type"    = "r5.4xlarge"
+        "k8s.io/cluster-autoscaler/node-template/taint/teehr-hub/dedicated"                 = "worker:NoSchedule"
+        "k8s.io/cluster-autoscaler/node-template/taint/teehr-hub_dedicated"                 = "worker:NoSchedule"
+        "teehr-hub/nodegroup-name"                                                          = "spark-r5-4xlarge"
+      }
+    }
   }
 
   tags = local.tags

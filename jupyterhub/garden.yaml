@@ -1,0 +1,314 @@
+# Local environment deployment
+kind: Deploy
+type: helm
+name: teehr-jupyterhub
+disabled: "${environment.name != 'local'}"
+dependencies: [deploy.secrets, build.teehr-jupyter-driver-image, build.teehr-spark-executor-image]
+
+spec:
+  chart:
+    name: jupyterhub
+    repo: https://hub.jupyter.org/helm-chart
+    version: 4.3.0
+  
+  values:
+    proxy:
+      service:
+        type: ClusterIP
+    
+    hub:
+      # baseUrl: /jupyter
+
+      config:
+        DummyAuthenticator:
+          password: password
+        JupyterHub:
+          authenticator_class: dummy
+          allow_named_servers: true
+          named_server_limit_per_user: 5
+        Authenticator:
+          admin_users:
+            - admin
+          allowed_users:
+            - user
+
+      extraConfig:
+        spark-config: |
+          # Allow users to create Spark sessions
+          c.KubeSpawner.service_account = 'default'
+          c.KubeSpawner.automount_service_account_token = True
+        # secret-to-env: |
+        #   from kubernetes import client
+        #   def modify_pod_hook(spawner, pod):
+        #       pod.spec.containers[0].env.append(
+        #           client.V1EnvVar(
+        #               name='AWS_ACCESS_KEY_ID', 
+        #               value_from=client.V1EnvVarSource(
+        #                   secret_key_ref=client.V1SecretKeySelector(
+        #                       name='minio-secrets',
+        #                       key='accesskey'
+        #                   )
+        #               )
+        #           )
+        #       )
+        #       pod.spec.containers[0].env.append(
+        #           client.V1EnvVar(
+        #               name='AWS_SECRET_ACCESS_KEY', 
+        #               value_from=client.V1EnvVarSource(
+        #                   secret_key_ref=client.V1SecretKeySelector(
+        #                       name='minio-secrets',
+        #                       key='secretkey'
+        #                   )
+        #               )
+        #           )
+        #       )
+        #       return pod
+        #   c.KubeSpawner.modify_pod_hook = modify_pod_hook
+        # baseurl: |
+        #   c.JupyterHub.base_url = '/jupyter'
+
+    singleuser:
+      image:
+        name: ${actions.build.teehr-jupyter-driver-image.outputs.deploymentImageName}
+        tag: ${actions.build.teehr-jupyter-driver-image.version}
+        pullPolicy: ${environment.name == 'local' ? 'Always':'IfNotPresent'}
+      defaultUrl: "/lab"
+      networkPolicy:
+      # ToDo: Investigate this.  Implications, etc.
+        enabled: false
+      storage:
+        extraVolumes:
+        - name: teehr-hub-data-nfs
+          persistentVolumeClaim:
+              claimName: data-nfs
+        extraVolumeMounts:
+        - name: teehr-hub-data-nfs
+          mountPath: /data
+      extraEnv:
+        TEEHR_SPARK_IMAGE: ${actions.build.teehr-spark-executor-image.outputs.deploymentImageId}
+        TEEHR_NAMESPACE: ${environment.namespace}
+        # Need to figure out how to handle secrets here.  This is OK for dev.
+        AWS_REGION: us-east-2
+        # AWS_ACCESS_KEY_ID: minioadmin
+        # AWS_SECRET_ACCESS_KEY: minioadmin123
+        # Use env vars to configure Iceberg catalog for env.
+        REMOTE_CATALOG_TYPE: ${var.iceberg.catalogType}
+        REMOTE_CATALOG_REST_URI: ${var.iceberg.catalogUri}
+        REMOTE_WAREHOUSE_S3_PATH: ${var.iceberg.catalogWarehouse}
+        IN_CLUSTER: ${var.iceberg.inCluster}
+      extraFiles:
+        jupyter_config:
+          mountPath: /etc/jupyter/jupyter_notebook_config.py
+          stringData: |
+            c.ServerProxy.servers = {
+              "spark_ui": {
+                  "port" : 4040,
+                  "absolute_url": False,
+                  "launcher_entry": {
+                      "enabled": True,
+                      "icon_path": "/etc/jupyter/spark_ui.svg",
+                      "title": "Spark UI",
+                      "path_info": "spark_ui/jobs/"
+                  },
+                  "new_browser_tab": False
+              }
+            }
+      profileList:
+      - display_name: "Local Development Environment (2 vCPU/8GB memory)"
+        default: True
+        description: "Lightweight local development profile"
+        profile_options:
+          image:
+            display_name: Image
+            choices:
+              current-tag:
+                display_name: Current Local Version
+                default: true
+                kubespawner_override:
+                  image: ${actions.build.teehr-jupyter-driver-image.outputs.deploymentImageId}
+        kubespawner_override:
+          node_selector:
+            teehr-hub/nodegroup-name: nb-r5-xlarge
+    
+    scheduling:
+      userScheduler:
+        enabled: true
+      userPods:
+        nodeAffinity:
+          matchNodePurpose: require
+    
+    cull:
+      enabled: true
+      timeout: 3600
+      every: 300
+      adminUsers: false
+---
+
+# Production environment deployment
+kind: Deploy
+type: helm
+name: teehr-jupyterhub
+disabled: "${environment.name == 'local'}"
+dependencies: [deploy.secrets, build.teehr-jupyter-driver-image, build.teehr-spark-executor-image]
+
+spec:
+  chart:
+    name: jupyterhub
+    repo: https://hub.jupyter.org/helm-chart
+    version: 4.3.0
+  
+  values:
+    proxy:
+      service:
+        type: ClusterIP
+    
+    hub:
+      config:
+        GitHubOAuthenticator:
+          oauth_callback_url: https://teehr-hub.rtiamanzi.org/hub/oauth_callback
+          allowed_organizations:
+            - rtiinternational:teehr-hub-users
+          scope:
+            - read:org
+        JupyterHub:
+          authenticator_class: github
+          allow_named_servers: true
+          named_server_limit_per_user: 5
+        Authenticator:
+          admin_users:
+            - mgdenno
+            - slamont
+      extraEnv:
+        OAUTH_CLIENT_ID:
+          valueFrom:
+            secretKeyRef:
+              name: jupyterhub
+              key: OAUTH_CLIENT_ID
+        OAUTH_CLIENT_SECRET:
+          valueFrom:
+            secretKeyRef:
+              name: jupyterhub
+              key: OAUTH_CLIENT_SECRET
+      extraConfig:
+        spark-config: |
+          # Allow users to create Spark sessions
+          c.KubeSpawner.service_account = 'default'
+          c.KubeSpawner.automount_service_account_token = True
+      
+    singleuser:
+      image:
+        name: 935462133478.dkr.ecr.us-east-2.amazonaws.com/teehr
+        tag: ${var.currentTeehrVersion}
+      defaultUrl: "/lab"
+      networkPolicy:
+        enabled: false
+      uid: 1000
+      fsGid: 1000
+      storage:
+        extraVolumes:
+        - name: teehr-hub-data-nfs
+          persistentVolumeClaim:
+              claimName: data-nfs
+        extraVolumeMounts:
+        - name: teehr-hub-data-nfs
+          mountPath: /data
+      extraEnv:
+        TEEHR_SPARK_IMAGE: ${actions.build.teehr-jupyter-executor-image.outputs.deploymentImageId}
+      extraFiles:
+        jupyter_config:
+          mountPath: /etc/jupyter/jupyter_notebook_config.py
+          stringData: |
+            c.ServerProxy.servers = {
+              "spark_ui": {
+                  "port" : 4040,
+                  "absolute_url": False,
+                  "launcher_entry": {
+                      "enabled": True,
+                      "icon_path": "/etc/jupyter/spark_ui.svg",
+                      "title": "Spark UI",
+                      "path_info": "spark_ui/jobs/"
+                  },
+                  "new_browser_tab": False
+              }
+            }
+      profileList:
+      - display_name: "TEEHR Evaluation System (4 vCPU/32GB memory)"
+        default: True
+        description: "A r5.xlarge EC2 instance $0.252/hour"
+        profile_options: &profile_options
+          image:
+            display_name: Image
+            choices:
+              previous-tag:
+                display_name: Version ${var.previousTeehrVersion}
+                kubespawner_override:
+                  image: "935462133478.dkr.ecr.us-east-2.amazonaws.com/teehr:${var.previousTeehrVersion}"
+              current-tag:
+                display_name: Version ${var.currentTeehrVersion}
+                default: true
+                kubespawner_override:
+                  image: "935462133478.dkr.ecr.us-east-2.amazonaws.com/teehr:${var.currentTeehrVersion}"
+              dev:
+                display_name: v0.5.x Dev Version (latest changes, may be unstable)
+                kubespawner_override:
+                  image: "935462133478.dkr.ecr.us-east-2.amazonaws.com/teehr:dev"
+              v0-6-dev:
+                display_name: v0.6.0 Dev Version (latest changes, may be unstable)
+                kubespawner_override:
+                  image: "935462133478.dkr.ecr.us-east-2.amazonaws.com/teehr:v0.6-dev"
+        kubespawner_override:
+          mem_limit: 32G
+          mem_guarantee: 19G
+          cpu_limit: 4
+          cpu_guarantee: 3
+          node_selector:
+            teehr-hub/nodegroup-name: nb-r5-xlarge
+      
+      - display_name: "TEEHR Evaluation System (16 vCPU/128GB memory)"
+        description: "A r5.4xlarge EC2 instance @ $1.008/hour"
+        profile_options: *profile_options
+        kubespawner_override:
+          mem_limit: 128G
+          mem_guarantee: 76G
+          cpu_limit: 16
+          cpu_guarantee: 12
+          node_selector:
+            teehr-hub/nodegroup-name: nb-r5-4xlarge
+      
+      - display_name: "HEFS-FEWS Evaluation System (4 vCPU/32GB memory)"
+        default: False
+        description: "A r5.xlarge EC2 instance $0.252/hour"
+        profile_options:
+          image:
+            display_name: Image
+            choices:
+              v0-1-0:
+                display_name: Version 0.1.0
+                default: true
+                kubespawner_override:
+                  image: "935462133478.dkr.ecr.us-east-2.amazonaws.com/hefs-fews-hub:v0.1.0"
+        kubespawner_override:
+          mem_limit: 32G
+          mem_guarantee: 19G
+          cpu_limit: 4
+          cpu_guarantee: 3
+          node_selector:
+            teehr-hub/nodegroup-name: nb-r5-xlarge
+    
+    scheduling:
+      userScheduler:
+        enabled: true
+      userPods:
+        nodeAffinity:
+          matchNodePurpose: require
+      # podPriority:
+      #   enabled: true
+      # userPlaceholder:
+      #   enabled: true
+      #   replicas: 4
+    
+    cull:
+      enabled: true
+      timeout: 3600
+      every: 300
+      adminUsers: false

@@ -1,0 +1,45 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: deploy-prefect-workflows
+spec:
+  ttlSecondsAfterFinished: 60
+  template:
+    spec:
+      containers:
+      - name: deploy-prefect-workflows
+        image: ${actions.build.teehr-prefect-image.outputs.deploymentImageId}
+        command:
+        # - pwd
+        - prefect
+        - --no-prompt
+        - deploy
+        - --all
+        env:
+        - name: PREFECT_API_URL
+          value: http://prefect-server:4200/api
+        # Pass in envs that can then be passed to the job template/job.
+        - name: PREFECT_TEEHR_IMAGE
+          value: ${actions.build.teehr-prefect-image.outputs.deploymentImageId}
+        - name: TEEHR_SPARK_IMAGE
+          value: ${actions.build.teehr-spark-executor-image.outputs.deploymentImageId}
+        - name: TEEHR_NAMESPACE
+          value: ${environment.namespace}
+        # Need to figure out how to handle secrets here.  This is OK for dev.
+        # Might want to update job template to use secrets from K8s secret.
+        - name: AWS_REGION
+          value: us-east-2
+        - name: AWS_ACCESS_KEY_ID
+          value: minioadmin
+        - name: AWS_SECRET_ACCESS_KEY
+          value: minioadmin123
+        # Use env vars to configure Iceberg catalog for env.
+        - name: REMOTE_CATALOG_REST_URI
+          value: ${var.iceberg.catalogUri}
+        - name: REMOTE_CATALOG_TYPE
+          value: ${var.iceberg.catalogType}
+        - name: REMOTE_WAREHOUSE_S3_PATH
+          value: ${var.iceberg.catalogWarehouse}
+        - name: IN_CLUSTER
+          value: "${var.iceberg.inCluster}"
+      restartPolicy: Never

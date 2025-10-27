@@ -1,0 +1,51 @@
+# Local environment deployment
+kind: Deploy
+type: helm
+name: trino
+disabled: "${environment.name != 'local'}"
+dependencies: [deploy.secrets]
+
+spec:
+  chart:
+    name: trino
+    repo: https://trinodb.github.io/charts
+    version: 1.41.0
+  
+  values:
+    catalogs:
+      iceberg: |-
+        connector.name=iceberg
+        iceberg.catalog.type=${var.iceberg.catalogType}
+        iceberg.rest-catalog.uri=${var.iceberg.catalogUri}
+        iceberg.rest-catalog.warehouse=${var.iceberg.catalogWarehouse}
+        # S3 Configuration
+        fs.native-s3.enabled=true
+        s3.path-style-access=true
+        s3.endpoint=http://minio:9000
+        s3.region=us-east-2
+    accessControl:
+      type: configmap
+      refreshPeriod: 60s
+      # Rules file is mounted to /etc/trino/access-control
+      configFile: "rules.json"
+      rules:
+        rules.json: |-
+          {
+            "catalogs": [
+              {
+                "catalog": "iceberg",
+                "allow": "read-only"
+              }
+            ]
+          }
+    env:
+      - name: AWS_ACCESS_KEY_ID
+        valueFrom:
+          secretKeyRef:
+            name: minio-secrets
+            key: accesskey
+      - name: AWS_SECRET_ACCESS_KEY
+        valueFrom:
+          secretKeyRef:
+            name: minio-secrets
+            key: secretkey

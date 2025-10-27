@@ -1,0 +1,54 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: prefect-pg
+spec:
+  type: ClusterIP
+  ports:
+    - port: 5432
+      targetPort: 5432
+  selector:
+    app: prefect-pg
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: prefect-pg
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: prefect-pg
+  template:
+    metadata:
+      labels:
+        app: prefect-pg
+    spec:
+      containers:
+        - name: postgres
+          image: postgres:15
+          env:
+            - name: POSTGRES_DB
+              valueFrom:
+                secretKeyRef:
+                  name: prefect-db-secrets
+                  key: database
+            - name: POSTGRES_USER
+              valueFrom:
+                secretKeyRef:
+                  name: prefect-db-secrets
+                  key: username
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: prefect-db-secrets
+                  key: password
+          ports:
+            - containerPort: 5432
+          volumeMounts:
+            - name: pgdata
+              mountPath: /var/lib/postgresql/data
+      volumes:
+        - name: pgdata
+          emptyDir: {}

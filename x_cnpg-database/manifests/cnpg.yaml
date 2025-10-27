@@ -1,0 +1,23 @@
+apiVersion: postgresql.cnpg.io/v1
+kind: Cluster
+metadata:
+  name: prefect-database-cluster
+spec:
+  instances: 1
+  
+  # PostgreSQL configuration
+  postgresql:
+    parameters:
+      max_connections: "200"
+      shared_buffers: "256MB"
+  
+  # Bootstrap configuration
+  bootstrap:
+    initdb:
+      database: prefect
+      owner: prefect
+      secret:
+        name: prefect-db-secrets
+
+  storage:
+    size: 1Gi

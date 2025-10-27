@@ -1,0 +1,35 @@
+apiVersion: v1
+kind: Pod
+spec:
+  securityContext:
+    runAsUser: 185
+    runAsGroup: 185
+    fsGroup: 1000
+    supplementalGroups: [1000]
+  containers:
+  - name: spark-kubernetes-executor
+    securityContext:
+      runAsUser: 185
+      runAsGroup: 185
+      allowPrivilegeEscalation: false
+    volumeMounts:
+    - name: data-nfs
+      mountPath: /data
+    # env:
+    # - name: SPARK_USER
+    #   value: "spark"
+  volumes:
+  - name: data-nfs
+    persistentVolumeClaim:
+      claimName: data-nfs
+  tolerations:
+  - effect: "NoSchedule"
+    key: "teehr-hub/dedicated"
+    operator: "Equal"
+    value: "worker"
+  - effect: "NoSchedule"
+    key: "teehr-hub_dedicated"
+    operator: "Equal"
+    value: "worker"
+  nodeSelector:
+    teehr-hub/nodegroup-name: spark-r5-4xlarge

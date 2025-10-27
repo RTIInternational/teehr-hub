@@ -1,0 +1,12 @@
+teehr
+folium
+panel
+geopandas
+geoviews
+bokeh
+holoviews
+trino
+hvplot
+jupyter_bokeh
+nbconvert
+watchfiles
