@@ -14,7 +14,7 @@ RUN python3 -m pip list
 
 WORKDIR /app
 
-COPY apps/app.py app.py
+COPY apps/simulation_dashboard.ipynb simulation_dashboard.ipynb
 
 COPY apps/app2.py app2.py
 
@@ -22,4 +22,4 @@ COPY apps/app2.py app2.py
 
 EXPOSE 5006
 
-CMD ["panel", "serve", "app.py", "app2.py", "--address", "0.0.0.0", "--port", "5006", "--allow-websocket-origin=localhost:5006"]
+CMD ["panel", "serve", "simulation_dashboard.ipynb", "app2.py", "--address", "0.0.0.0", "--port", "5006", "--allow-websocket-origin=localhost:5006"]
