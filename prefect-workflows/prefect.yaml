@@ -74,11 +74,19 @@ deployments:
     parameters: {"dir_path": *dir_path}
     work_pool: *kind_work_pool
     schedule:    
-  - name: kind-ingest-nwm-streamflow-forecasts
+  - name: kind-ingest-nwm-short-range-streamflow-forecasts
     version:
     tags: []
-    description: Ingest NWM streamflow forecasts from GCS
+    description: Ingest NWM short range streamflow forecasts from GCS
     entrypoint: workflows/03_nwm_streamflow_forecasts.py:ingest_nwm_streamflow_forecasts
-    parameters: {"dir_path": *dir_path}
+    parameters: {"dir_path": *dir_path, "nwm_configuration": "short_range"}
+    work_pool: *kind_work_pool
+    schedule:     
+  - name: kind-ingest-nwm-medium-range-streamflow-forecasts
+    version:
+    tags: []
+    description: Ingest NWM medium range member 1 streamflow forecasts from GCS
+    entrypoint: workflows/03_nwm_streamflow_forecasts.py:ingest_nwm_streamflow_forecasts
+    parameters: {"dir_path": *dir_path, "nwm_configuration": "medium_range_mem1"}
     work_pool: *kind_work_pool
     schedule:     

@@ -26,7 +26,7 @@ USGS_GAGES = [
 logging.getLogger("teehr").setLevel(logging.INFO)
 
 
-@flow(flow_run_name="initialize-dev-warehouse", log_prints=True)
+@flow(flow_run_name="initialize-dev-warehouse")
 def initialize_dev_warehouse(
     dir_path: Union[Path, str] = DEFAULT_DEV_WAREHOUSE_DIR
 ):
