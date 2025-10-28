@@ -133,3 +133,5 @@ def initialize_dev_warehouse(
     ev.write.to_warehouse(table_name="secondary_timeseries", source_data=sdf)
     
     logger.info(f"Development data warehouse initialized at: {dir_path}")
+    
+    ev.spark.stop()
