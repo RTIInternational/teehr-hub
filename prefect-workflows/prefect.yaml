@@ -17,6 +17,7 @@ pull: null
 
 # the definitions section allows you to define reusable components for your deployments
 definitions:
+  dir_path: &dir_path "/data/dev_warehouse"
   log_level: &log_level INFO
   tags: &common_tags
     - k8s
@@ -62,7 +63,7 @@ deployments:
     tags: []
     description: Initialize the development data warehouse
     entrypoint: workflows/01_initialize_dev_warehouse.py:initialize_dev_warehouse
-    parameters: {}
+    parameters: {"dir_path": *dir_path}
     work_pool: *kind_work_pool
     schedule:      
   - name: kind-ingest-usgs-streamflow-obs
@@ -70,7 +71,7 @@ deployments:
     tags: []
     description: Ingest USGS streamflow data from NWIS
     entrypoint: workflows/02_usgs_streamflow_obs.py:ingest_usgs_streamflow_obs
-    parameters: {}
+    parameters: {"dir_path": *dir_path}
     work_pool: *kind_work_pool
     schedule:    
   - name: kind-ingest-nwm-streamflow-forecasts
@@ -78,6 +79,6 @@ deployments:
     tags: []
     description: Ingest NWM streamflow forecasts from GCS
     entrypoint: workflows/03_nwm_streamflow_forecasts.py:ingest_nwm_streamflow_forecasts
-    parameters: {}
+    parameters: {"dir_path": *dir_path}
     work_pool: *kind_work_pool
     schedule:     

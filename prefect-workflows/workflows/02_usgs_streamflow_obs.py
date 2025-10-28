@@ -3,11 +3,15 @@ from pathlib import Path
 import shutil
 from datetime import datetime, timedelta
 from typing import Union
+import logging
 
-from prefect import flow
+from prefect import flow, get_run_logger
 import pandas as pd
 
 import teehr
+
+logging.getLogger("teehr").setLevel(logging.INFO)
+
 from teehr.evaluation.spark_session_utils import create_spark_session
 
 
@@ -20,18 +24,20 @@ DEFAULT_START_DT = CURRENT_DT - timedelta(days=1)
 
 @flow(flow_run_name="ingest-usgs-streamflow-obs", log_prints=True)
 def ingest_usgs_streamflow_obs(
-    local_dir_path: Union[str, Path] = LOCAL_EV_DIR,
+    dir_path: Union[str, Path] = LOCAL_EV_DIR,
     start_dt: Union[str, datetime, pd.Timestamp] = DEFAULT_START_DT,
     end_dt: Union[str, datetime, pd.Timestamp] = CURRENT_DT
 ) -> None:
     """USGS Streamflow Ingestion from NWIS."""
+    logger = get_run_logger()
+    
     spark = create_spark_session(
         aws_access_key_id="minioadmin",
         aws_secret_access_key="minioadmin123"
     )
     ev = teehr.Evaluation(
         spark=spark,
-        dir_path=local_dir_path,
+        dir_path=dir_path,
         check_evaluation_version=False
     )
     ev.set_active_catalog("remote")    
