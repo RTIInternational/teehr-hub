@@ -29,9 +29,10 @@ definitions:
       finished_job_ttl: 300
       pod_watch_timeout_seconds: 300
       env:
-        PREFECT_LOGGING_LEVEL: *log_level
+        PREFECT_LOGGING_LEVEL: *log_level        
         TEEHR_SPARK_IMAGE: "{{ $TEEHR_SPARK_IMAGE }}"
         TEEHR_NAMESPACE: "{{ $TEEHR_NAMESPACE }}"
+        PREFECT_LOGGING_EXTRA_LOGGERS: teehr
         # Temporary AWS creds for Spark access to S3/MinIO in dev
         # Ultimately, we should use K8s secrets or IRSA for this.
         AWS_REGION: "{{ $AWS_REGION }}"
@@ -56,43 +57,19 @@ definitions:
 # the deployments section allows you to provide configuration for deploying flows
 deployments:
   # Workflows that are configured for local KIND cluster
-  - name: kind-echo-text
+  - name: kind-initialize-dev-warehouse
     version:
     tags: []
-    description: Simple test flow.
-    entrypoint: workflows/example_workflow.py:hello
+    description: Initialize the development data warehouse
+    entrypoint: workflows/01_initialize_dev_warehouse.py:initialize_dev_warehouse
     parameters: {}
     work_pool: *kind_work_pool
-    schedule:
-  - name: kind-create-spark-session
-    version:
-    tags: []
-    description: Create TEEHR spark session
-    entrypoint: workflows/teehr_prefect_spark.py:create
-    parameters: {}
-    work_pool: *kind_work_pool
-    schedule:
-  - name: kind-list-data-drive
-    version:
-    tags: []
-    description: Create TEEHR spark session
-    entrypoint: workflows/check_data_drive.py:list
-    parameters: {}
-    work_pool: *kind_work_pool
-    schedule:
-  - name: kind-test-iceberg
-    version:
-    tags: []
-    description: Create TEEHR spark session
-    entrypoint: workflows/teehr_iceberg_spark.py:check
-    parameters: {}
-    work_pool: *kind_work_pool
-    schedule:
+    schedule:      
   - name: kind-ingest-usgs-streamflow-obs
     version:
     tags: []
     description: Ingest USGS streamflow data from NWIS
-    entrypoint: workflows/ingests/usgs_streamflow_obs.py:ingest_usgs_streamflow_obs
+    entrypoint: workflows/02_usgs_streamflow_obs.py:ingest_usgs_streamflow_obs
     parameters: {}
     work_pool: *kind_work_pool
     schedule:    
@@ -100,7 +77,7 @@ deployments:
     version:
     tags: []
     description: Ingest NWM streamflow forecasts from GCS
-    entrypoint: workflows/ingests/nwm_streamflow_forecasts.py:ingest_nwm_streamflow_forecasts
+    entrypoint: workflows/03_nwm_streamflow_forecasts.py:ingest_nwm_streamflow_forecasts
     parameters: {}
     work_pool: *kind_work_pool
     schedule:     

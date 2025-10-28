@@ -19,12 +19,13 @@ client = Client()
 LOCAL_EV_DIR = "/data/temp_warehouse"
 CURRENT_DT = datetime.now()
 LOOKBACK_DAYS = 1
+DEFAULT_START_DT = CURRENT_DT - timedelta(days=1)
 
 
-@flow(flow_run_name="ingest-nwm-streamflow-forecasts-{name}", log_prints=True)
+@flow(flow_run_name="ingest-nwm-streamflow-forecasts", log_prints=True)
 def ingest_nwm_streamflow_forecasts(
     local_dir_path: Union[str, Path] = LOCAL_EV_DIR,
-    start_dt: Union[str, datetime, pd.Timestamp] = None,
+    start_dt: Union[str, datetime, pd.Timestamp] = DEFAULT_START_DT,
     end_dt: Union[str, datetime, pd.Timestamp] = CURRENT_DT,
     nwm_configuration: str = "short_range",
     nwm_version: str = "nwm30",

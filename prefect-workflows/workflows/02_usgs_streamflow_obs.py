@@ -14,13 +14,14 @@ from teehr.evaluation.spark_session_utils import create_spark_session
 LOCAL_EV_DIR = "/data/temp_warehouse"
 CURRENT_DT = datetime.now()
 LOOKBACK_DAYS = 1
+DEFAULT_START_DT = CURRENT_DT - timedelta(days=1)
 
 # Q. Can we keep a spark session running across flows?
 
-@flow(flow_run_name="ingest-usgs-streamflow-obs-{name}", log_prints=True)
+@flow(flow_run_name="ingest-usgs-streamflow-obs", log_prints=True)
 def ingest_usgs_streamflow_obs(
     local_dir_path: Union[str, Path] = LOCAL_EV_DIR,
-    start_dt: Union[str, datetime, pd.Timestamp] = None,
+    start_dt: Union[str, datetime, pd.Timestamp] = DEFAULT_START_DT,
     end_dt: Union[str, datetime, pd.Timestamp] = CURRENT_DT
 ) -> None:
     """USGS Streamflow Ingestion from NWIS."""
