@@ -17,6 +17,22 @@ spec:
         image: ${actions.build.panel-dashboards-image.outputs.deploymentImageId}
         ports:
         - containerPort: 5006
+        env:
+          - name: TRINO_HOST
+            value: "${var.trino.host}"
+          - name: TRINO_PORT
+            value: "${var.trino.port}"
+          - name: TRINO_USER
+            value: "${var.trino.user}"
+          - name: TRINO_CATALOG
+            value: "${var.trino.catalog}"
+          - name: TRINO_SCHEMA
+            value: "${var.trino.schema}"
+    # Alternatively, use the following to set env vars from Kubernetes secrets
+    # envFrom:
+    # - secretRef:
+    #     name: panel-app-secrets
+    # where the secret 'panel-app-secrets' contains keys:
 ---
 apiVersion: v1
 kind: Service

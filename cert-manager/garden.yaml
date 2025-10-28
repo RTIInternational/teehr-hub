@@ -9,7 +9,6 @@ spec:
   namespace: cert-manager
   values:
     installCRDs: true
-# disabled: ${environment.name == "local"}
 ---
 kind: Deploy
 type: kubernetes
@@ -36,4 +35,3 @@ description: K8s Cert
 spec:
   files: ["./manifests/cert.yaml"]
 dependencies: [deploy.letsencrypt]
-# disabled: ${environment.name == "local"}
