@@ -21,7 +21,30 @@ locals {
     }
   }
 }
+
 module "eks" {
+  access_entries = {
+    admin = {
+      kubernetes_groups = ["system:masters"]
+      principal_arn     = aws_iam_role.teehr_hub_admin.arn
+      type              = "STANDARD"
+      user_name         = "teehr-hub-admin"
+      tags = {
+        "purpose" = "cluster-admin"
+        "team"    = "teehr-hub"
+      }
+      policy_associations = {
+        admin_policy = {
+          policy_arn = "arn:aws:iam::aws:policy/AdministratorAccess"
+          access_scope = {
+            namespaces = ["*"]
+            type       = "cluster"
+          }
+        }
+      }
+    }
+  }
+
   source  = "terraform-aws-modules/eks/aws"
   version = "~> 21.0"
 
@@ -234,7 +257,7 @@ module "eks" {
         "teehr-hub/nodegroup-name"                                                          = "spark-r5-4xlarge"
       }
     })
-    
+
   }
 
   tags = local.tags
