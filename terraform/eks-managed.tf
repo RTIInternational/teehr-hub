@@ -1,3 +1,26 @@
+locals {
+  eks_node_group_defaults = {
+    ami_type       = "AL2_x86_64"
+    use_name_prefix = true
+    block_device_mappings = {
+      xvda = {
+        device_name = "/dev/xvda"
+        ebs = {
+          volume_size           = 80
+          volume_type           = "gp3"
+          iops                  = 3000
+          throughput            = 150
+          delete_on_termination = true
+        }
+      }
+    }
+    vpc_security_group_ids = [ aws_security_group.efs-sg.id ]
+    subnet_ids = module.vpc.private_subnets
+    iam_role_additional_policies = {
+      ecr_power_user          = "arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryPowerUser"
+    }
+  }
+}
 module "eks" {
   source  = "terraform-aws-modules/eks/aws"
   version = "~> 21.0"
@@ -72,55 +95,22 @@ module "eks" {
   }
 
   eks_managed_node_groups = {
-    core-a = {
+    core-a = merge(local.eks_node_group_defaults, {
       name            = "core-a"
       iam_role_name   = "${local.cluster_name}-core"
 
-      ami_type       = "AL2_x86_64"
-      
-      min_size     = 1
-      max_size     = 6
-      desired_size = 1
+      min_size        = 1
+      max_size        = 6
+      desired_size    = 1
 
-      subnet_ids = module.vpc.private_subnets
-
-      block_device_mappings = {
-          xvda = {
-            device_name = "/dev/xvda"
-            ebs = {
-              volume_size           = 80
-              volume_type           = "gp3"
-              iops                  = 3000
-              throughput            = 150
-              delete_on_termination = true
-            }
-          }
-        }
-
-      use_name_prefix = true
-
-      instance_types       = ["r5.xlarge"]
-
-      iam_role_additional_policies = {
-        ecr_power_user          = "arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryPowerUser"
-      }
-      metadata_options = {
-        http_endpoint               = "enabled"
-        http_tokens                 = "required" # Enforces IMDSv2
-        http_put_response_hop_limit = 1
-      }
-
-      vpc_security_group_ids = [ aws_security_group.efs-sg.id ]
-
+      instance_types  = ["r5.xlarge"]
       labels = {
         "teehr-hub/nodegroup-name"         = "core-a"
         "hub.jupyter.org/node-purpose"     = "core"
         "k8s.dask.org/node-purpose"        = "core"
         "node.kubernetes.io/instance-type" = "r5.xlarge"
       }
-
       taints = {}
-
       tags = {
         "k8s.io/cluster-autoscaler/enabled"                                              = "true"
         "k8s.io/cluster-autoscaler/${local.cluster_name}"                                = "owned"
@@ -129,55 +119,23 @@ module "eks" {
         "k8s.io/cluster-autoscaler/node-template/label/node.kubernetes.io/instance-type" = "r5.xlarge"
         "teehr-hub/nodegroup-name"                                                       = "core-a"
       }
-    }
+    })
 
-    nb-r5-xlarge = {
+    nb-r5-xlarge = merge(local.eks_node_group_defaults, {
       name            = "nb-r5-xlarge"
       iam_role_name   = "${local.cluster_name}-nb-r5-xlarge"
 
-      ami_type       = "AL2_x86_64"
-      
-      min_size     = 0
-      max_size     = 400
-      desired_size = 0
+      min_size        = 0
+      max_size        = 400
+      desired_size    = 0
 
-      subnet_ids = module.vpc.private_subnets
-
-      block_device_mappings = {
-          xvda = {
-            device_name = "/dev/xvda"
-            ebs = {
-              volume_size           = 80
-              volume_type           = "gp3"
-              iops                  = 3000
-              throughput            = 150
-              delete_on_termination = true
-            }
-          }
-        }
-
-      use_name_prefix = true
-
-      instance_types       = ["r5.xlarge"]
-
-      iam_role_additional_policies = {
-        ecr_power_user          = "arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryPowerUser"
-      }
-      metadata_options = {
-        http_endpoint               = "enabled"
-        http_tokens                 = "required" # Enforces IMDSv2
-        http_put_response_hop_limit = 1
-      }
-
-      vpc_security_group_ids = [ aws_security_group.efs-sg.id ]
-
+      instance_types  = ["r5.xlarge"]
       labels = {
         "teehr-hub/nodegroup-name"         = "nb-r5-xlarge"
         "hub.jupyter.org/node-purpose"     = "user"
         "k8s.dask.org/node-purpose"        = "scheduler"
         "node.kubernetes.io/instance-type" = "r5.xlarge"
       }
-
       taints = {
         dedicated = {
           key    = "hub.jupyter.org/dedicated"
@@ -190,7 +148,6 @@ module "eks" {
           effect = "NO_SCHEDULE"
         }
       }
-
       tags = {
         "k8s.io/cluster-autoscaler/enabled"                                              = "true"
         "k8s.io/cluster-autoscaler/${local.cluster_name}"                                = "owned"
@@ -201,55 +158,23 @@ module "eks" {
         "k8s.io/cluster-autoscaler/node-template/taint/hub.jupyter.org_dedicated"        = "user:NoSchedule"
         "teehr-hub/nodegroup-name"                                                       = "nb-r5-xlarge"
       }
-    }
+    })
 
-    nb-r5-4xlarge = {
+    nb-r5-4xlarge = merge(local.eks_node_group_defaults, {
       name            = "nb-r5-4xlarge"
       iam_role_name   = "${local.cluster_name}-nb-r5-4xlarge"
 
-      ami_type       = "AL2_x86_64"
-      
-      min_size     = 0
-      max_size     = 400
-      desired_size = 0
+      min_size        = 0
+      max_size        = 400
+      desired_size    = 0
 
-      subnet_ids = module.vpc.private_subnets
-
-      block_device_mappings = {
-          xvda = {
-            device_name = "/dev/xvda"
-            ebs = {
-              volume_size           = 80
-              volume_type           = "gp3"
-              iops                  = 3000
-              throughput            = 150
-              delete_on_termination = true
-            }
-          }
-        }
-
-      use_name_prefix = true
-
-      instance_types       = ["r5.4xlarge"]
-
-      iam_role_additional_policies = {
-        ecr_power_user          = "arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryPowerUser"
-      }
-      metadata_options = {
-        http_endpoint               = "enabled"
-        http_tokens                 = "required" # Enforces IMDSv2
-        http_put_response_hop_limit = 1
-      }
-
-      vpc_security_group_ids = [ aws_security_group.efs-sg.id ]
-
+      instance_types  = ["r5.4xlarge"]
       labels = {
         "teehr-hub/nodegroup-name"         = "nb-r5-4xlarge"
         "hub.jupyter.org/node-purpose"     = "user"
         "k8s.dask.org/node-purpose"        = "scheduler"
         "node.kubernetes.io/instance-type" = "r5.4xlarge"
       }
-
       taints = {
         dedicated = {
           key    = "hub.jupyter.org/dedicated"
@@ -262,7 +187,6 @@ module "eks" {
           effect = "NO_SCHEDULE"
         }
       }
-
       tags = {
         "k8s.io/cluster-autoscaler/enabled"                                              = "true"
         "k8s.io/cluster-autoscaler/${local.cluster_name}"                                = "owned"
@@ -273,53 +197,21 @@ module "eks" {
         "k8s.io/cluster-autoscaler/node-template/taint/hub.jupyter.org_dedicated"        = "user:NoSchedule"
         "teehr-hub/nodegroup-name"                                                       = "nb-r5-4xlarge"
       }
-    }
+    })
 
-    spark-r5-4xlarge = {
+    spark-r5-4xlarge = merge(local.eks_node_group_defaults, {
       name            = "spark-r5-4xlarge"
       iam_role_name   = "${local.cluster_name}-spark-r5-4xlarge"
 
-      ami_type       = "AL2_x86_64"
+      min_size        = 0
+      max_size        = 400
+      desired_size    = 0
 
-      min_size     = 0
-      max_size     = 400
-      desired_size = 0
-
-      subnet_ids = module.vpc.private_subnets
-
-      block_device_mappings = {
-          xvda = {
-            device_name = "/dev/xvda"
-            ebs = {
-              volume_size           = 80
-              volume_type           = "gp3"
-              iops                  = 3000
-              throughput            = 150
-              delete_on_termination = true
-            }
-          }
-        }
-
-      use_name_prefix = true
-
-      instance_types       = ["r5.4xlarge"]
-
-      iam_role_additional_policies = {
-        ecr_power_user          = "arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryPowerUser"
-      }
-      metadata_options = {
-        http_endpoint               = "enabled"
-        http_tokens                 = "required" # Enforces IMDSv2
-        http_put_response_hop_limit = 1
-      }
-
-      vpc_security_group_ids = [ aws_security_group.efs-sg.id ]
-
+      instance_types  = ["r5.4xlarge"]
       labels = {
         "teehr-hub/nodegroup-name"         = "spark-r5-4xlarge"
         "node.kubernetes.io/instance-type" = "r5.4xlarge"
       }
-
       taints = {
         dedicated = {
           key    = "teehr-hub/dedicated"
@@ -332,7 +224,6 @@ module "eks" {
           effect = "NO_SCHEDULE"
         }
       }
-
       tags = {
         "k8s.io/cluster-autoscaler/enabled"                                                 = "true"
         "k8s.io/cluster-autoscaler/${local.cluster_name}"                                   = "owned"
@@ -342,50 +233,9 @@ module "eks" {
         "k8s.io/cluster-autoscaler/node-template/taint/teehr-hub_dedicated"                 = "worker:NoSchedule"
         "teehr-hub/nodegroup-name"                                                          = "spark-r5-4xlarge"
       }
-    }
+    })
+    
   }
 
   tags = local.tags
 }
-
-# # Cluster autoscaler role
-# data "aws_iam_policy_document" "cluster_autoscaler" {
-#   statement {
-#     sid       = "clusterAutoscalerAll"
-#     effect    = "Allow"
-
-#     actions   = [
-#       "autoscaling:DescribeAutoScalingGroups",
-#       "autoscaling:DescribeAutoScalingInstances",
-#       "autoscaling:DescribeLaunchConfigurations",
-#       "autoscaling:DescribeScalingActivities",
-#       "autoscaling:DescribeTags",
-#       "ec2:DescribeInstanceTypes",
-#       "ec2:DescribeLaunchTemplateVersions"
-#     ]
-
-#     resources = ["*"]
-#   }
-
-#   statement {
-#     sid        = "clusterAutoscalerOwn"
-#     effect     = "Allow"
-
-#     actions    = [
-#       "autoscaling:SetDesiredCapacity",
-#       "autoscaling:TerminateInstanceInAutoScalingGroup",
-#       "ec2:DescribeImages",
-#       "ec2:GetInstanceTypesFromInstanceRequirements",
-#       "eks:DescribeNodegroup"
-#     ]
-
-#     resources  = ["*"]
-
-#   }
-# }
-
-# resource "aws_iam_policy" "cluster_autoscaler_policy" {
-#   name_prefix = "ClusterAutoscalerPolicy"
-#   description = "EKS cluster-autoscaler policy for cluster ${local.cluster_name}"
-#   policy      = data.aws_iam_policy_document.cluster_autoscaler.json
-# }
