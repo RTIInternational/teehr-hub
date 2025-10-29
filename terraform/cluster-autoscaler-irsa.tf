@@ -20,48 +20,6 @@ data "aws_iam_policy_document" "cluster_autoscaler_trust_policy" {
   }
 }
 
-# # Cluster autoscaler role
-# data "aws_iam_policy_document" "cluster_autoscaler" {
-#   statement {
-#     sid       = "clusterAutoscalerAll"
-#     effect    = "Allow"
-
-#     actions   = [
-#       "autoscaling:DescribeAutoScalingGroups",
-#       "autoscaling:DescribeAutoScalingInstances",
-#       "autoscaling:DescribeLaunchConfigurations",
-#       "autoscaling:DescribeScalingActivities",
-#       "autoscaling:DescribeTags",
-#       "ec2:DescribeInstanceTypes",
-#       "ec2:DescribeLaunchTemplateVersions"
-#     ]
-
-#     resources = ["*"]
-#   }
-
-#   statement {
-#     sid        = "clusterAutoscalerOwn"
-#     effect     = "Allow"
-
-#     actions    = [
-#       "autoscaling:SetDesiredCapacity",
-#       "autoscaling:TerminateInstanceInAutoScalingGroup",
-#       "ec2:DescribeImages",
-#       "ec2:GetInstanceTypesFromInstanceRequirements",
-#       "eks:DescribeNodegroup"
-#     ]
-
-#     resources  = ["*"]
-
-#   }
-# }
-
-# resource "aws_iam_policy" "cluster_autoscaler_policy" {
-#   name_prefix = "ClusterAutoscalerPolicy"
-#   description = "EKS cluster-autoscaler policy for cluster ${local.cluster_name}"
-#   policy      = data.aws_iam_policy_document.cluster_autoscaler.json
-# }
-
 # 2. IAM role for Cluster Autoscaler
 resource "aws_iam_role" "cluster_autoscaler_irsa" {
   name               = "ClusterAutoscalerIRSA"
