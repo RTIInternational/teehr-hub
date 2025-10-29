@@ -25,20 +25,13 @@ locals {
 module "eks" {
   access_entries = {
     admin = {
-      kubernetes_groups = ["system:masters"]
       principal_arn     = aws_iam_role.teehr_hub_admin.arn
       type              = "STANDARD"
-      user_name         = "teehr-hub-admin"
-      tags = {
-        "purpose" = "cluster-admin"
-        "team"    = "teehr-hub"
-      }
       policy_associations = {
         admin_policy = {
-          policy_arn = "arn:aws:iam::aws:policy/AdministratorAccess"
+          policy_arn = "arn:aws:eks::aws:cluster-access-policy/AmazonEKSClusterAdminPolicy"
           access_scope = {
-            namespaces = ["*"]
-            type       = "cluster"
+            type = "cluster"
           }
         }
       }
