@@ -40,5 +40,5 @@ spec:
         # objects to be created.
         - name: teehr-hub-data-nfs
           nfs:
-            server: "${NFS_SERVER_DNS}"
+            server: ${var.nfsServerDns}
             path: "/"

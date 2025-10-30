@@ -5,21 +5,33 @@ description: Build TEEHR Prefect workflow deployer image
 spec:
   dockerfile: Dockerfile.prefect-teehr
   buildArgs:
-      TEEHR_VERSION: ${var.currentTeehrVersion}
-disabled: ${environment.name != 'local'}
+      TEEHR_VERSION: ${var.devTeehrVersion}
+environments:
+  - local
 ---
 kind: Deploy
 type: kubernetes
 name: prefect-workflow-deploy
 description: K8s Deploy Prefect Workflows
+dependencies:
+  - deploy.prefect-server
+  - deploy.prefect-worker
+  - build.teehr-prefect-image
+  - build.teehr-spark-executor-image
+environments:
+  - local
 spec:
   files: ["./manifests/prefect-deployer-job.yaml"]
-dependencies: [deploy.prefect-server, deploy.prefect-worker, build.teehr-prefect-image, build.teehr-spark-executor-image]
 ---
 kind: Deploy
 type: kubernetes
 name: update-job-template
 description: Update job template
+dependencies:
+  - deploy.prefect-server
+  - deploy.prefect-worker
+  - build.teehr-prefect-image
+environments:
+  - local
 spec:
   files: ["./manifests/update-job-template.yaml"]
-dependencies: [deploy.prefect-server, deploy.prefect-worker, build.teehr-prefect-image]

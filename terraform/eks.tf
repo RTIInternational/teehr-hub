@@ -15,10 +15,15 @@ locals {
       }
     }
     vpc_security_group_ids = [ aws_security_group.efs-sg.id ]
-    subnet_ids = module.vpc.private_subnets
+    subnet_ids = [module.vpc.private_subnets[0]]
     iam_role_additional_policies = {
       ecr_power_user          = "arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryPowerUser"
     }
+    metadata_options = {
+        http_endpoint               = "enabled"
+        http_tokens                 = "optional"
+        http_put_response_hop_limit = 1
+      }
   }
 }
 

@@ -2,8 +2,10 @@
 kind: Deploy
 type: helm
 name: trino
-disabled: "${environment.name != 'local'}"
-dependencies: [deploy.secrets]
+environments:
+  - local
+dependencies:
+  - deploy.secrets
 
 spec:
   chart:

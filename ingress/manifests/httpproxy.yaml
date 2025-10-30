@@ -5,9 +5,9 @@ metadata:
   namespace: ${environment.namespace}
 spec:
   virtualhost:
-    fqdn: ${var.hostname}
+    fqdn: hub.${var.hostname}
     tls:
-      secretName: ${var.hostname}-tls
+      secretName: hub.${var.hostname}-tls
   routes:
   - conditions:
     - prefix: /

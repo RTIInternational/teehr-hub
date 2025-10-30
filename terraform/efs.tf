@@ -15,10 +15,6 @@ resource "aws_efs_mount_target" "datadir" {
   security_groups = [ aws_security_group.efs-sg.id ]
 }
 
-output "nfs_server_dns" {
-  value = aws_efs_file_system.datadir.dns_name
-}
-
 resource "aws_security_group" "efs-sg" {
   name_prefix = "${local.cluster_name}-efs-sg"
   description = "Allow EFS access"

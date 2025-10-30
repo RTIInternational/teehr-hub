@@ -1,15 +1,15 @@
 apiVersion: cert-manager.io/v1
 kind: Certificate
 metadata:
-  name: ${var.hostname}-cert
+  name: ${var.hostname}-hub-cert
 spec:
-  commonName: ${var.hostname}
+  commonName: hub.${var.hostname}
   dnsNames:
-  - ${var.hostname}
+  - hub.${var.hostname}
   issuerRef:
     name: letsencrypt-prod
     kind: ClusterIssuer
-  secretName: ${var.hostname}-tls
+  secretName: hub.${var.hostname}-tls
 ---
 apiVersion: cert-manager.io/v1
 kind: Certificate

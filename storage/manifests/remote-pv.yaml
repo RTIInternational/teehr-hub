@@ -30,7 +30,7 @@ spec:
   accessModes:
     - ReadWriteMany
   nfs:
-    server: $NFS_SERVER_DNS
+    server: ${var.nfsServerDns}
     path: "/teehr-hub"
   mountOptions:
         - rsize=1048576

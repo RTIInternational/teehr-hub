@@ -2,8 +2,12 @@
 kind: Deploy
 type: helm
 name: teehr-jupyterhub
-disabled: "${environment.name != 'local'}"
-dependencies: [deploy.secrets, build.teehr-jupyter-driver-image, build.teehr-spark-executor-image]
+environments:
+  - local
+dependencies:
+  - deploy.secrets
+  - build.teehr-jupyter-driver-image
+  - build.teehr-spark-executor-image
 
 spec:
   chart:
@@ -71,7 +75,7 @@ spec:
       image:
         name: ${actions.build.teehr-jupyter-driver-image.outputs.deploymentImageName}
         tag: ${actions.build.teehr-jupyter-driver-image.version}
-        pullPolicy: ${environment.name == 'local' ? 'Always':'IfNotPresent'}
+        pullPolicy: Always
       defaultUrl: "/lab"
       networkPolicy:
       # ToDo: Investigate this.  Implications, etc.
@@ -114,15 +118,15 @@ spec:
               }
             }
       profileList:
-      - display_name: "Local Development Environment (2 vCPU/8GB memory)"
+      - display_name: "TEEHR Evaluation System (local)"
         default: True
-        description: "Lightweight local development profile"
+        description: "A node on the local KIND cluster"
         profile_options:
           image:
             display_name: Image
             choices:
               current-tag:
-                display_name: Current Local Version
+                display_name: Bleeding Edge ${slice(var.devTeehrVersion, 0, 6)}
                 default: true
                 kubespawner_override:
                   image: ${actions.build.teehr-jupyter-driver-image.outputs.deploymentImageId}
@@ -148,8 +152,12 @@ spec:
 kind: Deploy
 type: helm
 name: teehr-jupyterhub
-disabled: "${environment.name == 'local'}"
-dependencies: [deploy.secrets, build.teehr-jupyter-driver-image, build.teehr-spark-executor-image]
+environments:
+  - remote
+dependencies:
+  - deploy.secrets
+  - build.teehr-jupyter-driver-image
+  - build.teehr-spark-executor-image
 
 spec:
   chart:
@@ -165,7 +173,7 @@ spec:
     hub:
       config:
         GitHubOAuthenticator:
-          oauth_callback_url: https://teehr-hub.rtiamanzi.org/hub/oauth_callback
+          oauth_callback_url: https://hub.teehr.rtiamanzi.org/hub/oauth_callback
           allowed_organizations:
             - rtiinternational:teehr-hub-users
           scope:
@@ -197,8 +205,9 @@ spec:
       
     singleuser:
       image:
-        name: 935462133478.dkr.ecr.us-east-2.amazonaws.com/teehr
-        tag: ${var.currentTeehrVersion}
+        name: ${actions.build.teehr-jupyter-driver-image.outputs.deploymentImageName}
+        tag: ${actions.build.teehr-jupyter-driver-image.version}
+        pullPolicy: ${environment.name == 'local' ? 'Always':'IfNotPresent'}
       defaultUrl: "/lab"
       networkPolicy:
         enabled: false
@@ -213,7 +222,17 @@ spec:
         - name: teehr-hub-data-nfs
           mountPath: /data
       extraEnv:
-        TEEHR_SPARK_IMAGE: ${actions.build.teehr-jupyter-executor-image.outputs.deploymentImageId}
+        TEEHR_SPARK_IMAGE: ${actions.build.teehr-spark-executor-image.outputs.deploymentImageId}
+        TEEHR_NAMESPACE: ${environment.namespace}
+        # Need to figure out how to handle secrets here.  This is OK for dev.
+        AWS_REGION: us-east-2
+        # AWS_ACCESS_KEY_ID: minioadmin
+        # AWS_SECRET_ACCESS_KEY: minioadmin123
+        # Use env vars to configure Iceberg catalog for env.
+        REMOTE_CATALOG_TYPE: ${var.iceberg.catalogType}
+        REMOTE_CATALOG_REST_URI: ${var.iceberg.catalogUri}
+        REMOTE_WAREHOUSE_S3_PATH: ${var.iceberg.catalogWarehouse}
+        IN_CLUSTER: ${var.iceberg.inCluster}
       extraFiles:
         jupyter_config:
           mountPath: /etc/jupyter/jupyter_notebook_config.py
@@ -244,18 +263,14 @@ spec:
                 kubespawner_override:
                   image: "935462133478.dkr.ecr.us-east-2.amazonaws.com/teehr:${var.previousTeehrVersion}"
               current-tag:
-                display_name: Version ${var.currentTeehrVersion}
+                display_name: Version ${var.stableTeehrVersion}
                 default: true
                 kubespawner_override:
-                  image: "935462133478.dkr.ecr.us-east-2.amazonaws.com/teehr:${var.currentTeehrVersion}"
+                  image: "935462133478.dkr.ecr.us-east-2.amazonaws.com/teehr:${var.stableTeehrVersion}"
               dev:
-                display_name: v0.5.x Dev Version (latest changes, may be unstable)
+                display_name: Bleeding Edge ${slice(var.devTeehrVersion, 0, 6)}
                 kubespawner_override:
-                  image: "935462133478.dkr.ecr.us-east-2.amazonaws.com/teehr:dev"
-              v0-6-dev:
-                display_name: v0.6.0 Dev Version (latest changes, may be unstable)
-                kubespawner_override:
-                  image: "935462133478.dkr.ecr.us-east-2.amazonaws.com/teehr:v0.6-dev"
+                  image: ${actions.build.teehr-jupyter-driver-image.outputs.deploymentImageId}
         kubespawner_override:
           mem_limit: 32G
           mem_guarantee: 19G
@@ -283,7 +298,7 @@ spec:
             display_name: Image
             choices:
               v0-1-0:
-                display_name: Version 0.1.0
+                display_name: Version 0.1.x
                 default: true
                 kubespawner_override:
                   image: "935462133478.dkr.ecr.us-east-2.amazonaws.com/hefs-fews-hub:v0.1.0"

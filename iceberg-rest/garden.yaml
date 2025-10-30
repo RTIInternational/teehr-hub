@@ -4,4 +4,7 @@ name: iceberg-rest-deploy
 description: K8s Deploy Iceberg REST
 spec:
   files: ["./manifests/iceberg-rest.yaml"]
-dependencies: [deploy.secrets]
+dependencies:
+  - deploy.secrets
+environments:
+  - local
