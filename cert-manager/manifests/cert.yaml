@@ -23,3 +23,16 @@ spec:
     name: letsencrypt-prod
     kind: ClusterIssuer
   secretName: minio.${var.hostname}-tls
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: ${var.hostname}-dashboards-cert
+spec:
+  commonName: dashboards.${var.hostname}
+  dnsNames:
+  - dashboards.${var.hostname}
+  issuerRef:
+    name: letsencrypt-prod
+    kind: ClusterIssuer
+  secretName: dashboards.${var.hostname}-tls

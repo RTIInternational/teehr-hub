@@ -16,6 +16,12 @@ environments:
         catalogType: rest
         catalogUri: http://iceberg-rest:8181
         catalogWarehouse: s3://warehouse/
+      trino:
+        host: trino
+        port: 8080
+        user: teehr
+        catalog: iceberg
+        schema: teehr
   - name: remote
     defaultNamespace: ${project.name}
     variables:
@@ -29,6 +35,12 @@ environments:
         catalogType: rest
         catalogWarehouse: "s3://dev-teehr-sys-iceberg-warehouse/warehouse/"
       nfsServerDns: "fs-0cb715f5b7a76e862.efs.us-east-2.amazonaws.com"
+      trino:
+        host: trino
+        port: 8080
+        user: teehr
+        catalog: iceberg
+        schema: teehr
 providers:
   # The name of the provider plugin to use.
   - name: local-kubernetes

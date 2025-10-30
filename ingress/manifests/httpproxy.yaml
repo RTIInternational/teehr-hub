@@ -48,3 +48,21 @@ spec:
       replacePrefix:
       - prefix: /ui
         replacement: /
+---
+apiVersion: projectcontour.io/v1
+kind: HTTPProxy
+metadata:
+  name: dashboards-httpproxy
+  namespace: ${environment.namespace}
+spec:
+  virtualhost:
+    fqdn: dashboards.${var.hostname}
+    tls:
+      secretName: dashboards.${var.hostname}-tls
+  routes:
+  - conditions:
+    - prefix: /
+    services:
+    - name: panel-app
+      port: 5006
+    enableWebsockets: true
