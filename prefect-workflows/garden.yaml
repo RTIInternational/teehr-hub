@@ -42,3 +42,13 @@ environments:
 spec:
   files:
   - ./manifests/update-job-template.yaml
+---
+kind: Deploy
+type: kubernetes
+name: prefect-job-sa
+description: Create Prefect job service account
+environments:
+  - remote
+spec:
+  files:
+  - ./manifests/prefect-job-sa.yaml

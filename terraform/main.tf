@@ -1,5 +1,13 @@
 provider "aws" {
   region = var.region
+
+  default_tags {
+    tags = {
+      Project      = "TEEHR"
+      Environment  = var.environment
+      Cluster_Name = var.cluster_name
+    }
+  }
 }
 
 provider "kubernetes" {
