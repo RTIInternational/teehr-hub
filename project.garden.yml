@@ -16,6 +16,12 @@ environments:
         catalogType: rest
         catalogUri: http://iceberg-rest:8181
         catalogWarehouse: s3://warehouse/
+      trino:
+        host: trino
+        port: 8080
+        user: teehr
+        catalog: iceberg
+        schema: teehr
   # - name: remote
   #   variables:
   #     hostname: teehr-hub.rtiamanzi.org
