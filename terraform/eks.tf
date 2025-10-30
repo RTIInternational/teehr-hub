@@ -28,21 +28,6 @@ locals {
 }
 
 module "eks" {
-  access_entries = {
-    admin = {
-      principal_arn     = aws_iam_role.teehr_hub_admin.arn
-      type              = "STANDARD"
-      policy_associations = {
-        admin_policy = {
-          policy_arn = "arn:aws:eks::aws:cluster-access-policy/AmazonEKSClusterAdminPolicy"
-          access_scope = {
-            type = "cluster"
-          }
-        }
-      }
-    }
-  }
-
   source  = "terraform-aws-modules/eks/aws"
   version = "~> 21.0"
 
@@ -61,6 +46,21 @@ module "eks" {
   iam_role_name   = "${local.cluster_name}-cluster-role"
   node_security_group_name = "${local.cluster_name}-node-security-group"
   security_group_name = "${local.cluster_name}-cluster-security-group"
+
+  access_entries = {
+    admin = {
+      principal_arn     = aws_iam_role.teehr_hub_admin.arn
+      type              = "STANDARD"
+      policy_associations = {
+        admin_policy = {
+          policy_arn = "arn:aws:eks::aws:cluster-access-policy/AmazonEKSClusterAdminPolicy"
+          access_scope = {
+            type = "cluster"
+          }
+        }
+      }
+    }
+  }
 
   addons = {
     coredns = {

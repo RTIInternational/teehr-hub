@@ -3,6 +3,7 @@ type: helm
 name: prefect-server
 environments:
   - local
+  - remote
 dependencies:
   - deploy.secrets
   - deploy.prefect-database
@@ -33,6 +34,7 @@ dependencies:
   - deploy.prefect-server
 environments:
   - local
+  - remote
 spec:
   chart:
     name: prefect-worker

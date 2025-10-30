@@ -35,6 +35,10 @@ locals {
     {
       name            = "teehr-hub/spark-executor"
       max_image_count = 10
+    },
+    {
+      name            = "teehr-hub/teehr-prefect"
+      max_image_count = 10
     }
   ]
 }
