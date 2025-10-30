@@ -24,7 +24,7 @@ RUN ARCH=$(uname -m) && \
         echo "Installing ARM64-specific packages..." && \
         apt-get install -y gdal-bin libgdal-dev proj-bin libproj-dev libspatialindex-dev && \
         mamba install -y nodejs awscli htop && \
-        pip install selenium dask[distributed] holoviews geoviews datashader hvplot kubernetes && \
+        pip install selenium dask[distributed] holoviews geoviews datashader hvplot kubernetes nbconvert && \
         echo "Installing geckodriver for ARM64..." && \
         wget -q https://github.com/mozilla/geckodriver/releases/download/v0.35.0/geckodriver-v0.35.0-linux-aarch64.tar.gz && \
         tar -xzf geckodriver-v0.35.0-linux-aarch64.tar.gz && \
@@ -34,7 +34,7 @@ RUN ARCH=$(uname -m) && \
     else \
         echo "Installing x86_64 packages..." && \
         mamba install -y nodejs awscli htop geckodriver selenium \
-        dask[distributed] holoviews geoviews datashader hvplot kubernetes; \
+        dask[distributed] holoviews geoviews datashader hvplot kubernetes nbconvert; \
     fi
 
 # Install TEEHR (set GDAL config for ARM64 builds)

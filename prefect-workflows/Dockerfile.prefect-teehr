@@ -41,6 +41,9 @@ RUN ARCH=$(uname -m) && \
         pip install --no-cache-dir "git+https://github.com/RTIInternational/teehr.git@${TEEHR_VERSION}"; \
     fi
 
+# Install Dask distributed for NWM fetching
+RUN pip install dask[distributed]
+
 # Set JAVA_HOME statically based on build architecture
 ENV JAVA_HOME=/usr/lib/jvm/java-21-openjdk-${TARGETARCH}
 ENV PATH=$PATH:/usr/lib/jvm/java-21-openjdk-${TARGETARCH}/bin

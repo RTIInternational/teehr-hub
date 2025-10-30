@@ -17,6 +17,7 @@ pull: null
 
 # the definitions section allows you to define reusable components for your deployments
 definitions:
+  dir_path: &dir_path "/data/dev_warehouse"
   log_level: &log_level INFO
   tags: &common_tags
     - k8s
@@ -29,9 +30,10 @@ definitions:
       finished_job_ttl: 300
       pod_watch_timeout_seconds: 300
       env:
-        PREFECT_LOGGING_LEVEL: *log_level
+        PREFECT_LOGGING_LEVEL: *log_level        
         TEEHR_SPARK_IMAGE: "{{ $TEEHR_SPARK_IMAGE }}"
         TEEHR_NAMESPACE: "{{ $TEEHR_NAMESPACE }}"
+        PREFECT_LOGGING_EXTRA_LOGGERS: teehr
         # Temporary AWS creds for Spark access to S3/MinIO in dev
         # Ultimately, we should use K8s secrets or IRSA for this.
         AWS_REGION: "{{ $AWS_REGION }}"
@@ -56,35 +58,42 @@ definitions:
 # the deployments section allows you to provide configuration for deploying flows
 deployments:
   # Workflows that are configured for local KIND cluster
-  - name: kind-echo-text
+  - name: kind-initialize-dev-warehouse
     version:
     tags: []
-    description: Simple test flow.
-    entrypoint: workflows/example_workflow.py:hello
-    parameters: {}
+    description: Initialize the development data warehouse
+    entrypoint: workflows/01_initialize_dev_warehouse.py:initialize_dev_warehouse
+    parameters: {"dir_path": *dir_path}
     work_pool: *kind_work_pool
-    schedule:
-  - name: kind-create-spark-session
+    schedule:      
+  - name: kind-ingest-usgs-streamflow-obs
     version:
     tags: []
-    description: Create TEEHR spark session
-    entrypoint: workflows/teehr_prefect_spark.py:create
-    parameters: {}
+    description: Ingest USGS streamflow data from NWIS
+    entrypoint: workflows/02_usgs_streamflow_obs.py:ingest_usgs_streamflow_obs
+    parameters: {"dir_path": *dir_path}
     work_pool: *kind_work_pool
-    schedule:
-  - name: kind-list-data-drive
+    schedule:    
+  - name: kind-ingest-nwm-short-range-streamflow-forecasts
     version:
     tags: []
-    description: Create TEEHR spark session
-    entrypoint: workflows/check_data_drive.py:list
-    parameters: {}
+    description: Ingest NWM short range streamflow forecasts from GCS
+    entrypoint: workflows/03_nwm_streamflow_forecasts.py:ingest_nwm_streamflow_forecasts
+    parameters: {
+      "dir_path": *dir_path,
+      "nwm_configuration": "short_range"
+    }
     work_pool: *kind_work_pool
-    schedule:
-  - name: kind-test-iceberg
+    schedule:     
+  - name: kind-ingest-nwm-medium-range-streamflow-forecasts
     version:
     tags: []
-    description: Create TEEHR spark session
-    entrypoint: workflows/teehr_iceberg_spark.py:check
-    parameters: {}
+    description: Ingest NWM medium range member 1 streamflow forecasts from GCS
+    entrypoint: workflows/03_nwm_streamflow_forecasts.py:ingest_nwm_streamflow_forecasts
+    parameters: {
+      "dir_path": *dir_path,
+      "nwm_configuration": "medium_range_mem1",
+      "output_type": "channel_rt_1"
+    }
     work_pool: *kind_work_pool
-    schedule:
+    schedule:     
