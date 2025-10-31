@@ -22,8 +22,8 @@ spec:
         iceberg.rest-catalog.warehouse=${var.iceberg.catalogWarehouse}
         # S3 Configuration
         fs.native-s3.enabled=true
-        s3.path-style-access=true
-        s3.endpoint=http://minio:9000
+        s3.path-style-access=${var.iceberg.catalogS3PathStyleAccess}
+        s3.endpoint=${var.iceberg.catalogS3Endpoint}
         s3.region=us-east-2
     accessControl:
       type: configmap
@@ -40,14 +40,62 @@ spec:
               }
             ]
           }
+
     env:
-      - name: AWS_ACCESS_KEY_ID
-        valueFrom:
-          secretKeyRef:
-            name: minio-secrets
-            key: accesskey
-      - name: AWS_SECRET_ACCESS_KEY
-        valueFrom:
-          secretKeyRef:
-            name: minio-secrets
-            key: secretkey
+    - name: AWS_ACCESS_KEY_ID
+      valueFrom:
+        secretKeyRef:
+          name: minio-secrets
+          key: accesskey
+    - name: AWS_SECRET_ACCESS_KEY
+      valueFrom:
+        secretKeyRef:
+          name: minio-secrets
+          key: secretkey
+---
+# Remote environment deployment
+kind: Deploy
+type: helm
+name: trino
+environments:
+  - remote
+dependencies:
+  - deploy.secrets
+
+spec:
+  chart:
+    name: trino
+    repo: https://trinodb.github.io/charts
+    version: 1.41.0
+  
+  values:
+    catalogs:
+      iceberg: |-
+        connector.name=iceberg
+        iceberg.catalog.type=${var.iceberg.catalogType}
+        iceberg.rest-catalog.uri=${var.iceberg.catalogUri}
+        iceberg.rest-catalog.warehouse=${var.iceberg.catalogWarehouse}
+        # S3 Configuration
+        fs.native-s3.enabled=true
+        s3.region=us-east-2
+    accessControl:
+      type: configmap
+      refreshPeriod: 60s
+      # Rules file is mounted to /etc/trino/access-control
+      configFile: "rules.json"
+      rules:
+        rules.json: |-
+          {
+            "catalogs": [
+              {
+                "catalog": "iceberg",
+                "allow": "read-only"
+              }
+            ]
+          }
+
+    serviceAccount:
+      create: true
+      name: trino
+      annotations:
+        eks.amazonaws.com/role-arn: arn:aws:iam::935462133478:role/teehr-hub-iceberg-s3-warehouse-irsa

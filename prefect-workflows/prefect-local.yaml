@@ -21,7 +21,7 @@ definitions:
   log_level: &log_level INFO
   tags: &common_tags
     - k8s
-  kind_work_pool: &kind_work_pool
+  work_pool: &work_pool
     name: kubernetes-pool
     job_variables:
       image: "{{ $PREFECT_TEEHR_IMAGE }}"
@@ -34,11 +34,13 @@ definitions:
         TEEHR_SPARK_IMAGE: "{{ $TEEHR_SPARK_IMAGE }}"
         TEEHR_NAMESPACE: "{{ $TEEHR_NAMESPACE }}"
         PREFECT_LOGGING_EXTRA_LOGGERS: teehr
-        # Temporary AWS creds for Spark access to S3/MinIO in dev
-        # Ultimately, we should use K8s secrets or IRSA for this.
-        AWS_REGION: "{{ $AWS_REGION }}"
+        # Start Local Only
         AWS_ACCESS_KEY_ID: "{{ $AWS_ACCESS_KEY_ID }}"
         AWS_SECRET_ACCESS_KEY: "{{ $AWS_SECRET_ACCESS_KEY }}"
+        REMOTE_CATALOG_S3_ENDPOINT: "{{ $REMOTE_CATALOG_S3_ENDPOINT }}"
+        REMOTE_CATALOG_S3_PATH_STYLE_ACCESS: "{{ $REMOTE_CATALOG_S3_PATH_STYLE_ACCESS }}"
+        # End Local Only
+        AWS_REGION: "{{ $AWS_REGION }}"
         REMOTE_CATALOG_REST_URI: "{{ $REMOTE_CATALOG_REST_URI }}"
         REMOTE_CATALOG_TYPE: "{{ $REMOTE_CATALOG_TYPE }}"
         REMOTE_WAREHOUSE_S3_PATH: "{{ $REMOTE_WAREHOUSE_S3_PATH }}"
@@ -58,23 +60,23 @@ definitions:
 # the deployments section allows you to provide configuration for deploying flows
 deployments:
   # Workflows that are configured for local KIND cluster
-  - name: kind-initialize-dev-warehouse
+  - name: initialize-dev-warehouse
     version:
     tags: []
     description: Initialize the development data warehouse
     entrypoint: workflows/01_initialize_dev_warehouse.py:initialize_dev_warehouse
     parameters: {"dir_path": *dir_path}
-    work_pool: *kind_work_pool
+    work_pool: *work_pool
     schedule:      
-  - name: kind-ingest-usgs-streamflow-obs
+  - name: ingest-usgs-streamflow-obs
     version:
     tags: []
     description: Ingest USGS streamflow data from NWIS
     entrypoint: workflows/02_usgs_streamflow_obs.py:ingest_usgs_streamflow_obs
     parameters: {"dir_path": *dir_path}
-    work_pool: *kind_work_pool
+    work_pool: *work_pool
     schedule:    
-  - name: kind-ingest-nwm-short-range-streamflow-forecasts
+  - name: ingest-nwm-short-range-streamflow-forecasts
     version:
     tags: []
     description: Ingest NWM short range streamflow forecasts from GCS
@@ -83,9 +85,9 @@ deployments:
       "dir_path": *dir_path,
       "nwm_configuration": "short_range"
     }
-    work_pool: *kind_work_pool
+    work_pool: *work_pool
     schedule:     
-  - name: kind-ingest-nwm-medium-range-streamflow-forecasts
+  - name: ingest-nwm-medium-range-streamflow-forecasts
     version:
     tags: []
     description: Ingest NWM medium range member 1 streamflow forecasts from GCS
@@ -95,5 +97,5 @@ deployments:
       "nwm_configuration": "medium_range_mem1",
       "output_type": "channel_rt_1"
     }
-    work_pool: *kind_work_pool
+    work_pool: *work_pool
     schedule:     

@@ -4,10 +4,13 @@ name: panel-dashboards-image
 description: Build TEEHR Panel Dashboards image
 spec:
   dockerfile: Dockerfile
+  publishId: panel-dashboards:${var.devTeehrVersion}
+  localId: panel-dashboards
   buildArgs:
       BASE_IMAGE: ${actions.build.teehr-jupyter-driver-image.outputs.deploymentImageId}
 environments:
   - local
+  - remote
 dependencies:
   - build.teehr-jupyter-driver-image
 ---
@@ -21,3 +24,4 @@ dependencies:
   - build.panel-dashboards-image
 environments:
   - local
+  - remote

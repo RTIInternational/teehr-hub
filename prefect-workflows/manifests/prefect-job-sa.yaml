@@ -4,4 +4,4 @@ metadata:
   name: prefect-job
   namespace: teehr-hub
   annotations:
-    eks.amazonaws.com/role-arn: arn:aws:iam::<YOUR_AWS_ACCOUNT_ID>:role/teehr-hub-prefect-job-irsa
+    eks.amazonaws.com/role-arn: arn:aws:iam::935462133478:role/teehr-hub-iceberg-s3-warehouse-irsa

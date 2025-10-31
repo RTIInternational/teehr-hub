@@ -91,14 +91,12 @@ spec:
       extraEnv:
         TEEHR_SPARK_IMAGE: ${actions.build.teehr-spark-executor-image.outputs.deploymentImageId}
         TEEHR_NAMESPACE: ${environment.namespace}
-        # Need to figure out how to handle secrets here.  This is OK for dev.
         AWS_REGION: us-east-2
-        # AWS_ACCESS_KEY_ID: minioadmin
-        # AWS_SECRET_ACCESS_KEY: minioadmin123
-        # Use env vars to configure Iceberg catalog for env.
         REMOTE_CATALOG_TYPE: ${var.iceberg.catalogType}
         REMOTE_CATALOG_REST_URI: ${var.iceberg.catalogUri}
         REMOTE_WAREHOUSE_S3_PATH: ${var.iceberg.catalogWarehouse}
+        REMOTE_CATALOG_S3_ENDPOINT: ${var.iceberg.catalogS3Endpoint}
+        REMOTE_CATALOG_S3_PATH_STYLE_ACCESS: ${var.iceberg.catalogS3PathStyleAccess}
         IN_CLUSTER: ${var.iceberg.inCluster}
       extraFiles:
         jupyter_config:
@@ -224,14 +222,12 @@ spec:
       extraEnv:
         TEEHR_SPARK_IMAGE: ${actions.build.teehr-spark-executor-image.outputs.deploymentImageId}
         TEEHR_NAMESPACE: ${environment.namespace}
-        # Need to figure out how to handle secrets here.  This is OK for dev.
         AWS_REGION: us-east-2
-        # AWS_ACCESS_KEY_ID: minioadmin
-        # AWS_SECRET_ACCESS_KEY: minioadmin123
-        # Use env vars to configure Iceberg catalog for env.
         REMOTE_CATALOG_TYPE: ${var.iceberg.catalogType}
         REMOTE_CATALOG_REST_URI: ${var.iceberg.catalogUri}
         REMOTE_WAREHOUSE_S3_PATH: ${var.iceberg.catalogWarehouse}
+        REMOTE_CATALOG_S3_ENDPOINT: ${var.iceberg.catalogS3Endpoint}
+        REMOTE_CATALOG_S3_PATH_STYLE_ACCESS: ${var.iceberg.catalogS3PathStyleAccess}
         IN_CLUSTER: ${var.iceberg.inCluster}
       extraFiles:
         jupyter_config:

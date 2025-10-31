@@ -39,6 +39,10 @@ locals {
     {
       name            = "teehr-hub/teehr-prefect"
       max_image_count = 10
+    },
+    {
+      name            = "teehr-hub/panel-dashboards"
+      max_image_count = 10
     }
   ]
 }
