@@ -29,6 +29,7 @@ spec:
           value: ${environment.namespace}
         # Need to figure out how to handle secrets here.  This is OK for dev.
         # Might want to update job template to use secrets from K8s secret.
+
         ${if environment.name == "local"}
         - name: AWS_ACCESS_KEY_ID
           valueFrom:
@@ -43,8 +44,9 @@ spec:
         - name: REMOTE_CATALOG_S3_ENDPOINT
           value: ${var.iceberg.catalogS3Endpoint}
         - name: REMOTE_CATALOG_S3_PATH_STYLE_ACCESS
-          value: ${var.iceberg.catalogS3PathStyleAccess}
+          value: "${var.iceberg.catalogS3PathStyleAccess}"
         ${endif}
+
         # Use env vars to configure Iceberg catalog for env.
         - name: AWS_REGION
           value: us-east-2
