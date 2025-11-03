@@ -66,3 +66,6 @@ spec:
     - name: panel-app
       port: 5006
     enableWebsockets: true
+    timeoutPolicy:
+      response: 300s
+      idle: 300s

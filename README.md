@@ -28,7 +28,7 @@ cd ..
 Connect to cluster
 ```bash
 export AWS_PROFILE=ciroh_mdenno
-aws eks update-kubeconfig --name teehr-hub --region us-east-2
+aws eks update-kubeconfig --name teehr-hub --region us-east-2 --role-arn arn:aws:iam::935462133478:role/teehr-hub-teehr-hub-admin
 kubectl config set-context $(kubectl config current-context) --namespace teehr-hub
 k9s
 ```

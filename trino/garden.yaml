@@ -69,6 +69,27 @@ spec:
     version: 1.41.0
   
   values:
+    server:
+      workers: 2
+
+    coordinator:
+      resources:
+        requests:
+          cpu: 1
+          memory: 4Gi
+        limits:
+          cpu: 2
+          memory: 8Gi
+
+    worker:
+      resources:
+        requests:
+          cpu: 1
+          memory: 4Gi
+        limits:
+          cpu: 2
+          memory: 8Gi
+
     catalogs:
       iceberg: |-
         connector.name=iceberg

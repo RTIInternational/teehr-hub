@@ -24,4 +24,14 @@ COPY apps/data_summary_dashboard.ipynb data_summary_dashboard.ipynb
 
 EXPOSE 5006
 
-CMD ["panel", "serve", "simulation_dashboard.ipynb", "forecast_dashboard.ipynb", "data_summary_dashboard.ipynb", "--address", "0.0.0.0", "--port", "5006", "--allow-websocket-origin=*"]
+CMD [ \
+    "panel", \
+    "serve", \
+    "simulation_dashboard.ipynb", \
+    "forecast_dashboard.ipynb", \
+    "data_summary_dashboard.ipynb", \
+    "--address", "0.0.0.0", \
+    "--port", "5006", \
+    "--allow-websocket-origin=*", \
+    "--log-level", "debug" \
+]
