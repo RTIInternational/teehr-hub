@@ -4,13 +4,13 @@ FROM $BASE_IMAGE
 
 # FROM python:3.10-slim
 
-USER root
+# USER root
 
-RUN pip install folium>=0.14.0 plotly>=5.0.0 tabulator>=1.2.0 trino
+# RUN pip install folium>=0.14.0 plotly>=5.0.0 tabulator>=1.2.0 trino
 
-USER ${NB_USER}
+# USER ${NB_USER}
 
-RUN python3 -m pip list
+# RUN python3 -m pip list
 
 WORKDIR /app
 
