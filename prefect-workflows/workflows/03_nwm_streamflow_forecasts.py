@@ -37,18 +37,16 @@ def ingest_nwm_streamflow_forecasts(
 ) -> None:
     """NWM Streamflow Forecasts Ingestion."""
     logger = get_run_logger()
-    
-    spark = create_spark_session(
-        aws_access_key_id="minioadmin",
-        aws_secret_access_key="minioadmin123"
-    )
+
+    spark = create_spark_session()
+
     ev = teehr.Evaluation(
         spark=spark,
         dir_path=dir_path,
         check_evaluation_version=False
     )
-    ev.set_active_catalog("remote")    
-    
+    ev.set_active_catalog("remote")
+
     # Format the NWM configuration name for TEEHR
     teehr_nwm_config = format_nwm_configuration_metadata(
         nwm_config_name=nwm_configuration,
@@ -66,7 +64,7 @@ def ingest_nwm_streamflow_forecasts(
         start_dt = latest_nwm_reference_time + timedelta(minutes=1)
     else:
         start_dt = end_dt - timedelta(days=LOOKBACK_DAYS)
-        
+
     ev.fetch.nwm_operational_points(
         start_date=start_dt,
         end_date=end_dt,
