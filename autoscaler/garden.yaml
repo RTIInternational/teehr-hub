@@ -1,0 +1,28 @@
+# Garden module to deploy Cluster Autoscaler Helm chart to kube-system with IRSA
+kind: Deploy
+type: helm
+name: cluster-autoscaler
+description: Deploy Cluster Autoscaler to kube-system with IRSA
+environments:
+  - remote
+spec:
+  chart:
+    repo: https://kubernetes.github.io/autoscaler
+    name: cluster-autoscaler
+    version: 9.29.0 # Use latest compatible version
+  namespace: kube-system
+  values:
+    autoDiscovery:
+      clusterName: teehr-hub
+    awsRegion: us-east-2
+    rbac:
+      create: true
+      serviceAccount:
+        name: cluster-autoscaler
+        create: true
+        annotations:
+          eks.amazonaws.com/role-arn: arn:aws:iam::935462133478:role/ClusterAutoscalerIRSA
+      # extraArgs:
+      # 	skip-nodes-with-local-storage: false
+      # 	balance-similar-node-groups: true
+      # 	expander: least-waste

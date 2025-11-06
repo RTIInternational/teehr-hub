@@ -50,7 +50,9 @@ ENV PATH=$PATH:/usr/lib/jvm/java-21-openjdk-${TARGETARCH}/bin
 
 RUN mkdir -p /teehr && mkdir -p /teehr/workflows
 
-COPY prefect.yaml /teehr/prefect.yaml
+COPY prefect-local.yaml /teehr/prefect-local.yaml
+
+COPY prefect-remote.yaml /teehr/prefect-remote.yaml
 
 COPY workflows/* /teehr/workflows
 
