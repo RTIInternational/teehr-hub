@@ -1,3 +1,11 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: iceberg-rest
+  namespace: teehr-hub
+  annotations:
+    eks.amazonaws.com/role-arn: arn:aws:iam::935462133478:role/teehr-hub-iceberg-s3-warehouse-irsa
+---    
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -15,11 +23,13 @@ spec:
       labels:
         app: iceberg-rest
     spec:
+      serviceAccountName: iceberg-rest
       containers:
       - image: tabulario/iceberg-rest
         imagePullPolicy: IfNotPresent
         name: iceberg-rest
         env:
+        ${if environment.name == "local"}
         - name: AWS_ACCESS_KEY_ID
           valueFrom:
             secretKeyRef:
@@ -30,16 +40,17 @@ spec:
             secretKeyRef:
               name: minio-secrets
               key: secretkey
+        - name: CATALOG_S3_ENDPOINT
+          value: ${var.iceberg.catalogS3Endpoint}
+        - name: CATALOG_S3_PATH__STYLE__ACCESS
+          value: ${var.iceberg.catalogS3PathStyleAccess}
+        ${endif}
         - name: AWS_REGION
           value: us-east-2
         - name: CATALOG_WAREHOUSE
-          value: s3://warehouse/
+          value: ${var.iceberg.catalogWarehouse}
         - name: CATALOG_IO__IMPL
           value: org.apache.iceberg.aws.s3.S3FileIO
-        - name: CATALOG_S3_ENDPOINT
-          value: http://minio:9000
-        - name: CATALOG_S3_PATH__STYLE__ACCESS
-          value: "true"
         ports:
         - name: http
           containerPort: 8181

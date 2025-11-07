@@ -4,7 +4,10 @@ name: minio-deploy
 description: K8s Deploy MinIO
 spec:
   files: ["./manifests/minio.yaml"]
-dependencies: [deploy.secrets]
+dependencies:
+  - deploy.secrets
+environments:
+  - local
 ---
 kind: Deploy
 type: kubernetes
@@ -12,4 +15,8 @@ name: create-minio-bucket
 description: K8s Job Create MinIO Bucket
 spec:
   files: ["./manifests/create-bucket.yaml"]
-dependencies: [deploy.secrets, deploy.minio-deploy]
+dependencies:
+  - deploy.secrets
+  - deploy.minio-deploy
+environments:
+  - local

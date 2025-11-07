@@ -1,6 +1,12 @@
 kind: Deploy
 type: helm
 name: prefect-server
+environments:
+  - local
+  - remote
+dependencies:
+  - deploy.secrets
+  - deploy.prefect-database
 spec:
   chart:
     name: prefect-server
@@ -20,12 +26,15 @@ spec:
     # Disable built-in PostgreSQL
     postgresql:
       enabled: false
-
-dependencies: [deploy.secrets, deploy.prefect-database]
 ---
 kind: Deploy
 type: helm
 name: prefect-worker
+dependencies:
+  - deploy.prefect-server
+environments:
+  - local
+  - remote
 spec:
   chart:
     name: prefect-worker
@@ -45,4 +54,3 @@ spec:
       config:
         workPool: kubernetes-pool
       replicaCount: 1
-dependencies: [deploy.prefect-server]

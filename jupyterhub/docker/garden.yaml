@@ -4,7 +4,10 @@ name: teehr-jupyter-driver-image
 description: Build TEEHR Jupyter Driver Image
 spec:
   dockerfile: Dockerfile.jupyter-driver
-  publishId: teehr-jupyter-driver:${var.currentTeehrVersion}
+  localId: jupyter-driver
+  publishId: jupyter-driver:${var.devTeehrVersion}
   buildArgs:
-      TEEHR_VERSION: ${var.currentTeehrVersion}
-disabled: "${environment.name != 'local'}"
+      TEEHR_VERSION: ${var.devTeehrVersion}
+environments:
+  - local
+  - remote

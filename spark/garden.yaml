@@ -1,6 +1,9 @@
 kind: Deploy
 type: kubernetes
 name: spark-roles
+environments:
+  - local
+  - remote
 spec:
   files:
     # - manifests/spark-namespace.yaml

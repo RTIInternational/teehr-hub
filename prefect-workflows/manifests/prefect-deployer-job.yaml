@@ -15,6 +15,8 @@ spec:
         - --no-prompt
         - deploy
         - --all
+        - --prefect-file
+        - ${environment.name == "local" ? "/teehr/prefect-local.yaml" : "/teehr/prefect-remote.yaml"}
         env:
         - name: PREFECT_API_URL
           value: http://prefect-server:4200/api
@@ -27,13 +29,27 @@ spec:
           value: ${environment.namespace}
         # Need to figure out how to handle secrets here.  This is OK for dev.
         # Might want to update job template to use secrets from K8s secret.
+
+        ${if environment.name == "local"}
+        - name: AWS_ACCESS_KEY_ID
+          valueFrom:
+            secretKeyRef:
+              name: minio-secrets
+              key: accesskey
+        - name: AWS_SECRET_ACCESS_KEY
+          valueFrom:
+            secretKeyRef:
+              name: minio-secrets
+              key: secretkey
+        - name: REMOTE_CATALOG_S3_ENDPOINT
+          value: ${var.iceberg.catalogS3Endpoint}
+        - name: REMOTE_CATALOG_S3_PATH_STYLE_ACCESS
+          value: "${var.iceberg.catalogS3PathStyleAccess}"
+        ${endif}
+
+        # Use env vars to configure Iceberg catalog for env.
         - name: AWS_REGION
           value: us-east-2
-        - name: AWS_ACCESS_KEY_ID
-          value: minioadmin
-        - name: AWS_SECRET_ACCESS_KEY
-          value: minioadmin123
-        # Use env vars to configure Iceberg catalog for env.
         - name: REMOTE_CATALOG_REST_URI
           value: ${var.iceberg.catalogUri}
         - name: REMOTE_CATALOG_TYPE
