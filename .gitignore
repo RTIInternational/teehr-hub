@@ -5,3 +5,4 @@ secret-config.yaml
 .garden
 .venv/
 data/
+.ipynb_checkpoints
