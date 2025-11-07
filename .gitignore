@@ -6,3 +6,5 @@ secret-config.yaml
 .venv/
 data/
 .ipynb_checkpoints
+secrets.remote.yaml
+secrets.remote.yaml:Zone.Identifier
