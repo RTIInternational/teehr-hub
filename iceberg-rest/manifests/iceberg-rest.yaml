@@ -43,7 +43,7 @@ spec:
         - name: CATALOG_S3_ENDPOINT
           value: ${var.iceberg.catalogS3Endpoint}
         - name: CATALOG_S3_PATH__STYLE__ACCESS
-          value: ${var.iceberg.catalogS3PathStyleAccess}
+          value: "${var.iceberg.catalogS3PathStyleAccess}"
         ${endif}
         - name: AWS_REGION
           value: us-east-2
