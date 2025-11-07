@@ -4,4 +4,12 @@ name: jupyterhub-ingress
 spec:
   files:
     - manifests/httpproxy.yaml
-dependencies: [deploy.teehr-jupyterhub, deploy.cert-manager, deploy.letsencrypt, deploy.cert]
+dependencies:
+  - deploy.teehr-jupyterhub
+  - deploy.cert-manager
+  - deploy.letsencrypt
+  - deploy.cert
+  - deploy.contour
+environments:
+  - local
+  - remote

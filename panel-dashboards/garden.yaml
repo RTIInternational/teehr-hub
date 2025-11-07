@@ -4,10 +4,15 @@ name: panel-dashboards-image
 description: Build TEEHR Panel Dashboards image
 spec:
   dockerfile: Dockerfile
+  publishId: panel-dashboards:${var.devTeehrVersion}
+  localId: panel-dashboards
   buildArgs:
       BASE_IMAGE: ${actions.build.teehr-jupyter-driver-image.outputs.deploymentImageId}
-disabled: ${environment.name != 'local'}
-dependencies: [build.teehr-jupyter-driver-image]
+environments:
+  - local
+  - remote
+dependencies:
+  - build.teehr-jupyter-driver-image
 ---
 kind: Deploy
 type: kubernetes
@@ -15,4 +20,8 @@ name: panel-app
 spec:
   files:
     - manifests/panel-app.yaml
-dependencies: [build.panel-dashboards-image]
+dependencies:
+  - build.panel-dashboards-image
+environments:
+  - local
+  - remote

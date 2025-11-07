@@ -17,7 +17,8 @@ description: K8s Lets Encrypt
 spec:
   files: ["./manifests/letsencrypt.yaml"]
 dependencies: [deploy.cert-manager]
-disabled: ${environment.name == "local"}
+environments:
+  - remote
 ---
 kind: Deploy
 type: kubernetes
@@ -25,8 +26,10 @@ name: letsencrypt
 description: K8s Lets Encrypt
 spec:
   files: ["./manifests/letsencrypt-self-signed.yaml"]
-dependencies: [deploy.cert-manager]
-disabled: ${environment.name != "local"}
+dependencies:
+  - deploy.cert-manager
+environments:
+  - local
 ---
 kind: Deploy
 type: kubernetes
@@ -34,4 +37,8 @@ name: cert
 description: K8s Cert
 spec:
   files: ["./manifests/cert.yaml"]
-dependencies: [deploy.letsencrypt]
+dependencies:
+  - deploy.letsencrypt
+environments:
+  - local
+  - remote

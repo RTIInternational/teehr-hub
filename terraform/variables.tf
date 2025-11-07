@@ -25,3 +25,17 @@ variable "cluster_nodes_location" {
   Location of the nodes of the kubernetes cluster.
   EOT
 }
+
+variable "environment" {
+  type        = string
+  description = <<-EOT
+  Deployment environment (e.g., dev, staging, prod).
+  EOT
+}
+
+variable "project_name" {
+  type        = string
+  description = <<-EOT
+  Name of the project.
+  EOT
+}

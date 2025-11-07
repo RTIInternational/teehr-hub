@@ -5,7 +5,7 @@ terraform {
     aws = {
       # ref: https://registry.terraform.io/providers/hashicorp/aws/latest
       source  = "hashicorp/aws"
-      version = "~> 4.52"
+      version = "~> 6.0"
     }
     kubernetes = {
       source  = "hashicorp/kubernetes"

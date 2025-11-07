@@ -5,9 +5,9 @@ metadata:
   namespace: ${environment.namespace}
 spec:
   virtualhost:
-    fqdn: ${var.hostname}
+    fqdn: hub.${var.hostname}
     tls:
-      secretName: ${var.hostname}-tls
+      secretName: hub.${var.hostname}-tls
   routes:
   - conditions:
     - prefix: /
@@ -66,3 +66,6 @@ spec:
     - name: panel-app
       port: 5006
     enableWebsockets: true
+    timeoutPolicy:
+      response: 300s
+      idle: 300s

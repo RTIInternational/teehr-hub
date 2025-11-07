@@ -9,10 +9,12 @@ environments:
   - name: local
     defaultNamespace: ${project.name}
     variables:
-      hostname: ${project.name}.local.app.garden
-      currentTeehrVersion: b437b5f99deba6c5d1775bfac6ea4fe0985338e7
+      hostname: teehr.local.app.garden
+      devTeehrVersion: b437b5f99deba6c5d1775bfac6ea4fe0985338e7
       iceberg:
         inCluster: "true"
+        catalogS3PathStyleAccess: "true"
+        catalogS3Endpoint: "http://minio:9000"
         catalogType: rest
         catalogUri: http://iceberg-rest:8181
         catalogWarehouse: s3://warehouse/
@@ -22,13 +24,27 @@ environments:
         user: teehr
         catalog: iceberg
         schema: teehr
-  # - name: remote
-  #   variables:
-  #     hostname: teehr-hub.rtiamanzi.org
-  #     iceberg:
-  #       catalogUri: "http://dev-teehr-sys-iceberg-alb-2105268770.us-east-2.elb.amazonaws.com"
-  #       catalogType: rest
-  #       catalogWarehouse: "s3://dev-teehr-sys-iceberg-warehouse/warehouse/"
+  - name: remote
+    defaultNamespace: ${project.name}
+    variables:
+      hostname: teehr.rtiamanzi.org
+      devTeehrVersion: b437b5f99deba6c5d1775bfac6ea4fe0985338e7
+      stableTeehrVersion: v0.6-dev
+      previousTeehrVersion: v0.5.0
+      iceberg:
+        inCluster: "false"
+        catalogS3PathStyleAccess: "false"
+        catalogS3Endpoint: ""
+        catalogUri: http://iceberg-rest:8181
+        catalogType: rest
+        catalogWarehouse: s3://dev-teehr-iceberg-warehouse/
+      nfsServerDns: "fs-0cb715f5b7a76e862.efs.us-east-2.amazonaws.com"
+      trino:
+        host: trino
+        port: 8080
+        user: teehr
+        catalog: iceberg
+        schema: teehr
 providers:
   # The name of the provider plugin to use.
   - name: local-kubernetes
@@ -39,14 +55,15 @@ providers:
       hostname: localhost:5001
       namespace: ${project.name}
     context: kind-kind
-  # - name: kubernetes
-  #   environments: ["remote"]
-  #   imagePullSecrets:
-  #     - name: ecr-config
-  #       namespace: default
-  #   deploymentRegistry:
-  #     hostname: 935462133478.dkr.ecr.us-east-2.amazonaws.com
-  #     namespace: ${project.name}
-  #   context: mdenno@teehr-spark-cluster.us-east-2.eksctl.io
-  #   buildMode: cluster-buildkit
-  #   defaultHostname: teehr-spark.rtiamanzi.org
+  - name: kubernetes
+    namespace: ${environment.namespace}
+    environments: ["remote"]
+    imagePullSecrets:
+      - name: ecr-config
+        namespace: default
+    deploymentRegistry:
+      hostname: 935462133478.dkr.ecr.us-east-2.amazonaws.com
+      namespace: ${project.name}
+    context: arn:aws:eks:us-east-2:935462133478:cluster/teehr-hub
+    buildMode: cluster-buildkit
+    defaultHostname: teehr.rtiamanzi.org
