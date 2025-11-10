@@ -1,6 +1,20 @@
 kind: Build
 type: container
-name: teehr-jupyter-driver-image
+name: teehr-jupyter-driver-image-edge
+description: Build TEEHR Jupyter Driver Image
+spec:
+  dockerfile: Dockerfile.jupyter-driver
+  localId: jupyter-driver
+  publishId: jupyter-driver:${var.devTeehrVersion}
+  buildArgs:
+      TEEHR_VERSION: ${var.devTeehrVersion}
+environments:
+  - local
+  - remote
+---
+kind: Build
+type: container
+name: teehr-jupyter-driver-image-
 description: Build TEEHR Jupyter Driver Image
 spec:
   dockerfile: Dockerfile.jupyter-driver

@@ -6,7 +6,7 @@ environments:
   - local
 dependencies:
   - deploy.secrets
-  - build.teehr-jupyter-driver-image
+  - build.teehr-jupyter-driver-image-edge
   - build.teehr-spark-executor-image
 
 spec:
@@ -73,8 +73,8 @@ spec:
 
     singleuser:
       image:
-        name: ${actions.build.teehr-jupyter-driver-image.outputs.deploymentImageName}
-        tag: ${actions.build.teehr-jupyter-driver-image.version}
+        name: ${actions.build.teehr-jupyter-driver-image-edge.outputs.deploymentImageName}
+        tag: ${actions.build.teehr-jupyter-driver-image-edge.version}
         pullPolicy: Always
       defaultUrl: "/lab"
       networkPolicy:
@@ -127,7 +127,7 @@ spec:
                 display_name: Bleeding Edge ${slice(var.devTeehrVersion, 0, 6)}
                 default: true
                 kubespawner_override:
-                  image: ${actions.build.teehr-jupyter-driver-image.outputs.deploymentImageId}
+                  image: ${actions.build.teehr-jupyter-driver-image-edge.outputs.deploymentImageId}
         kubespawner_override:
           node_selector:
             teehr-hub/nodegroup-name: nb-r5-xlarge
@@ -154,7 +154,7 @@ environments:
   - remote
 dependencies:
   - deploy.secrets
-  - build.teehr-jupyter-driver-image
+  - build.teehr-jupyter-driver-image-edge
   - build.teehr-spark-executor-image
 
 spec:
@@ -203,8 +203,8 @@ spec:
       
     singleuser:
       image:
-        name: ${actions.build.teehr-jupyter-driver-image.outputs.deploymentImageName}
-        tag: ${actions.build.teehr-jupyter-driver-image.version}
+        name: ${actions.build.teehr-jupyter-driver-image-edge.outputs.deploymentImageName}
+        tag: ${actions.build.teehr-jupyter-driver-image-edge.version}
         pullPolicy: ${environment.name == 'local' ? 'Always':'IfNotPresent'}
       defaultUrl: "/lab"
       networkPolicy:
@@ -266,7 +266,7 @@ spec:
               dev:
                 display_name: Bleeding Edge ${slice(var.devTeehrVersion, 0, 6)}
                 kubespawner_override:
-                  image: ${actions.build.teehr-jupyter-driver-image.outputs.deploymentImageId}
+                  image: ${actions.build.teehr-jupyter-driver-image-edge.outputs.deploymentImageId}
         kubespawner_override:
           mem_limit: 32G
           mem_guarantee: 19G
