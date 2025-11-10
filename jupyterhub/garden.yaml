@@ -262,7 +262,7 @@ spec:
                 display_name: Version ${var.stableTeehrVersion}
                 default: true
                 kubespawner_override:
-                  image: "935462133478.dkr.ecr.us-east-2.amazonaws.com/teehr:${var.stableTeehrVersion}"
+                  image: ${actions.build.teehr-jupyter-driver-image-stable.outputs.deploymentImageId}
               dev:
                 display_name: Bleeding Edge ${slice(var.devTeehrVersion, 0, 6)}
                 kubespawner_override:
