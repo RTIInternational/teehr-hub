@@ -19,7 +19,6 @@ client = Client()
 logging.getLogger("teehr").setLevel(logging.INFO)
 
 
-LOCAL_EV_DIR = "/data/temp_warehouse"
 CURRENT_DT = datetime.now()
 LOOKBACK_DAYS = 1
 DEFAULT_START_DT = CURRENT_DT - timedelta(days=1)
@@ -27,15 +26,24 @@ DEFAULT_START_DT = CURRENT_DT - timedelta(days=1)
 
 @flow(flow_run_name="ingest-nwm-streamflow-forecasts")
 def ingest_nwm_streamflow_forecasts(
-    dir_path: Union[str, Path] = LOCAL_EV_DIR,
-    start_dt: Union[str, datetime, pd.Timestamp] = DEFAULT_START_DT,
+    dir_path: Union[str, Path],
+    start_dt: Union[str, datetime, pd.Timestamp],
     end_dt: Union[str, datetime, pd.Timestamp] = CURRENT_DT,
+    num_lookback_days: int = None,
     nwm_configuration: str = "short_range",
     nwm_version: str = "nwm30",
     output_type: str = "channel_rt",
     variable_name: str = "streamflow"
 ) -> None:
-    """NWM Streamflow Forecasts Ingestion."""
+    """NWM Streamflow Forecasts Ingestion.
+
+    - If no lookback days are provided, the flow will determine the latest reference_time
+      across all locations in the existing NWM forecasts data, and set the start date to one
+      minute after that time.
+    - If lookback days are provided, the flow will set the start date to end date
+      minus the number of lookback days.
+    - End date defaults to current date and time.
+    """
     logger = get_run_logger()
 
     spark = create_spark_session()
@@ -52,18 +60,19 @@ def ingest_nwm_streamflow_forecasts(
         nwm_config_name=nwm_configuration,
         nwm_version=nwm_version
     )
-    latest_nwm_reference_time = ev.spark.sql(f"""
-        SELECT reference_time, location_id
-        FROM iceberg.teehr.secondary_timeseries
-        WHERE 
-            configuration_name = '{teehr_nwm_config["name"]}'
-        LIMIT 1
-    ;""").collect()
-    if len(latest_nwm_reference_time) > 0:
-        latest_nwm_reference_time = latest_nwm_reference_time[0].asDict()["reference_time"]
-        start_dt = latest_nwm_reference_time + timedelta(minutes=1)
+    if num_lookback_days is None:
+        latest_nwm_reference_time = ev.spark.sql(f"""
+            SELECT MAX(reference_time) as latest_reference_time
+            FROM iceberg.teehr.secondary_timeseries
+            WHERE configuration_name = '{teehr_nwm_config["name"]}'
+        """).collect()
+        if len(latest_nwm_reference_time) > 0:
+            latest_nwm_reference_time = latest_nwm_reference_time[0].asDict()["latest_reference_time"]
+            start_dt = latest_nwm_reference_time + timedelta(minutes=1)
+        else:
+            start_dt = end_dt - timedelta(days=LOOKBACK_DAYS)
     else:
-        start_dt = end_dt - timedelta(days=LOOKBACK_DAYS)
+        start_dt = end_dt - timedelta(days=num_lookback_days)
 
     ev.fetch.nwm_operational_points(
         start_date=start_dt,
