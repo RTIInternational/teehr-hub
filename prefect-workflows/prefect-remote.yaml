@@ -17,7 +17,7 @@ pull: null
 
 # the definitions section allows you to define reusable components for your deployments
 definitions:
-  dir_path: &dir_path "/data/dev_warehouse"
+  dir_path: &dir_path "/data/temp_warehouse"
   log_level: &log_level INFO
   tags: &common_tags
     - k8s
@@ -60,15 +60,7 @@ definitions:
  
 # the deployments section allows you to provide configuration for deploying flows
 deployments:
-  # Workflows that are configured for local KIND cluster
-  - name: initialize-dev-warehouse
-    version:
-    tags: []
-    description: Initialize the development data warehouse
-    entrypoint: workflows/01_initialize_dev_warehouse.py:initialize_dev_warehouse
-    parameters: {"dir_path": *dir_path}
-    work_pool: *work_pool
-    schedule:      
+  # Workflows that are configured for the remote cluster
   - name: ingest-usgs-streamflow-obs
     version:
     tags: []
@@ -76,7 +68,10 @@ deployments:
     entrypoint: workflows/02_usgs_streamflow_obs.py:ingest_usgs_streamflow_obs
     parameters: {"dir_path": *dir_path}
     work_pool: *work_pool
-    schedule:    
+    schedule:
+      cron: "0 0 * * *"
+      active: true
+
   - name: ingest-nwm-short-range-streamflow-forecasts
     version:
     tags: []
@@ -87,7 +82,10 @@ deployments:
       "nwm_configuration": "short_range"
     }
     work_pool: *work_pool
-    schedule:     
+    schedule:
+      cron: "0 1 * * *"
+      active: true
+
   - name: ingest-nwm-medium-range-streamflow-forecasts
     version:
     tags: []
@@ -99,4 +97,6 @@ deployments:
       "output_type": "channel_rt_1"
     }
     work_pool: *work_pool
-    schedule:     
+    schedule:
+      cron: "0 2 * * *"
+      active: true
