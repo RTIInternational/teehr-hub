@@ -23,9 +23,8 @@ DEFAULT_START_DT = CURRENT_DT - timedelta(days=1)
 @flow(flow_run_name="ingest-usgs-streamflow-obs")
 def ingest_usgs_streamflow_obs(
     dir_path: Union[str, Path],
-    start_dt: Union[str, datetime, pd.Timestamp] = None,
     end_dt: Union[str, datetime, pd.Timestamp] = CURRENT_DT,
-    num_lookback_days: int = None
+    num_lookback_days: Union[int, None] = None
 ) -> None:
     """USGS Streamflow Ingestion from NWIS.
 

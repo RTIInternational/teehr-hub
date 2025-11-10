@@ -21,15 +21,13 @@ logging.getLogger("teehr").setLevel(logging.INFO)
 
 CURRENT_DT = datetime.now()
 LOOKBACK_DAYS = 1
-DEFAULT_START_DT = CURRENT_DT - timedelta(days=1)
 
 
 @flow(flow_run_name="ingest-nwm-streamflow-forecasts")
 def ingest_nwm_streamflow_forecasts(
     dir_path: Union[str, Path],
-    start_dt: Union[str, datetime, pd.Timestamp],
     end_dt: Union[str, datetime, pd.Timestamp] = CURRENT_DT,
-    num_lookback_days: int = None,
+    num_lookback_days: Union[int, None] = None,
     nwm_configuration: str = "short_range",
     nwm_version: str = "nwm30",
     output_type: str = "channel_rt",
