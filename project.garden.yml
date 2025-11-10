@@ -10,7 +10,7 @@ environments:
     defaultNamespace: ${project.name}
     variables:
       hostname: teehr.local.app.garden
-      devTeehrVersion: b437b5f99deba6c5d1775bfac6ea4fe0985338e7
+      devTeehrVersion: a284701a18c1d4e65f97f65ba6bf95ea05cf54de
       iceberg:
         inCluster: "true"
         catalogS3PathStyleAccess: "true"
