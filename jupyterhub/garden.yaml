@@ -156,6 +156,7 @@ dependencies:
   - deploy.secrets
   - build.teehr-jupyter-driver-image-edge
   - build.teehr-spark-executor-image
+  - build.teehr-jupyter-driver-image-stable
 
 spec:
   chart:
