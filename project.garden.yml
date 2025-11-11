@@ -29,7 +29,7 @@ environments:
     variables:
       hostname: teehr.rtiamanzi.org
       devTeehrVersion: a15af68ebf8affc71239beba661dbb6ce8247b76
-      stableTeehrVersion: v0.5.1
+      stableTeehrVersion: v0.5.2
       previousTeehrVersion: v0.5.0
       iceberg:
         inCluster: "false"
