@@ -58,16 +58,16 @@ def ingest_usgs_streamflow_obs(
 
     ev = initialize_evaluation(dir_path=dir_path)
 
-    # if (
-    #     not ev.fetch._configuration_name_exists(USGS_CONFIGURATION_NAME)
-    # ):
-    #     ev.configurations.add(
-    #         Configuration(
-    #             name=USGS_CONFIGURATION_NAME,
-    #             type="primary",
-    #             description="USGS streamflow gauge observations"
-    #         )
-    #     )
+    if (
+        not ev.fetch._configuration_name_exists(USGS_CONFIGURATION_NAME)
+    ):
+        ev.configurations.add(
+            Configuration(
+                name=USGS_CONFIGURATION_NAME,
+                type="primary",
+                description="USGS streamflow gauge observations"
+            )
+        )
     usgs_sites = usgs_tasks.get_usgs_location_ids(ev=ev)
 
     usgs_variable_name = USGS_VARIABLE_MAPPER[VARIABLE_NAME][service]

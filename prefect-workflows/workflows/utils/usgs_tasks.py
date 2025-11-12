@@ -12,7 +12,7 @@ from teehr.models.fetching.utils import (
 from prefect import task, get_run_logger
 
 
-@task()
+# @task()
 def get_usgs_location_ids(
     ev: teehr.Evaluation
 ) -> List:
