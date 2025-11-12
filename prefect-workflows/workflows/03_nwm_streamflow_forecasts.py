@@ -9,8 +9,10 @@ from prefect import flow, get_run_logger
 import pandas as pd
 
 import teehr
-from teehr.evaluation.spark_session_utils import create_spark_session
+# from teehr.evaluation.spark_session_utils import create_spark_session
 from teehr.fetching.utils import format_nwm_configuration_metadata
+
+from spark_session_utils import create_spark_session
 
 # Start up a local Dask cluster
 from dask.distributed import Client
@@ -27,7 +29,7 @@ LOOKBACK_DAYS = 1
 def ingest_nwm_streamflow_forecasts(
     dir_path: Union[str, Path],
     end_dt: Union[str, datetime, pd.Timestamp] = CURRENT_DT,
-    num_lookback_days: Union[int, None] = None,
+    num_lookback_days: Union[int, None] = LOOKBACK_DAYS,
     nwm_configuration: str = "short_range",
     nwm_version: str = "nwm30",
     output_type: str = "channel_rt",
@@ -43,6 +45,9 @@ def ingest_nwm_streamflow_forecasts(
     - End date defaults to current date and time.
     """
     logger = get_run_logger()
+
+    if isinstance(end_dt, str):
+        end_dt = datetime.fromisoformat(end_dt)    
 
     spark = create_spark_session()
 

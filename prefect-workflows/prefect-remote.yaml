@@ -100,3 +100,10 @@ deployments:
     schedule:
       cron: "0 2 * * *"
       active: true
+
+  - name: temp-env-tester
+    version:
+    tags: []
+    description: A simple flow that sleeps for testing.
+    entrypoint: workflows/temp_env_tester.py:sleep_for_testing
+    work_pool: *work_pool      

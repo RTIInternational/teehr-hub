@@ -54,7 +54,7 @@ COPY prefect-local.yaml /teehr/prefect-local.yaml
 
 COPY prefect-remote.yaml /teehr/prefect-remote.yaml
 
-COPY workflows/* /teehr/workflows
+COPY workflows/ /teehr/workflows/
 
 # Executor template needed for running spark
 RUN mkdir -p /opt/teehr && chown -R ${NB_USER}:${NB_USER} /opt/teehr

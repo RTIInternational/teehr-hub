@@ -1,92 +1,113 @@
-import os
 from pathlib import Path
-import shutil
 from datetime import datetime, timedelta
-from typing import Union
+from typing import Union, Optional
 import logging
 
 from prefect import flow, get_run_logger
+from prefect.futures import wait
 import pandas as pd
 
-import teehr
+from teehr import Configuration
+from teehr.models.fetching.utils import (
+    USGSChunkByEnum,
+    USGSServiceEnum,
+)
+from teehr.models.table_enums import TableWriteEnum
+from teehr.fetching.const import (
+    USGS_CONFIGURATION_NAME,
+    USGS_VARIABLE_MAPPER,
+    VARIABLE_NAME,
+)
+from teehr.utils.utils import remove_dir_if_exists
+from utils import usgs_tasks
+from utils.workflow_utils import initialize_evaluation
 
 logging.getLogger("teehr").setLevel(logging.INFO)
-
-from teehr.evaluation.spark_session_utils import create_spark_session
 
 
 CURRENT_DT = datetime.now()
 LOOKBACK_DAYS = 1
 DEFAULT_START_DT = CURRENT_DT - timedelta(days=1)
+CHUNK_SIZE = 100  # Number of sites to fetch at once
 
 
 @flow(flow_run_name="ingest-usgs-streamflow-obs")
 def ingest_usgs_streamflow_obs(
     dir_path: Union[str, Path],
     end_dt: Union[str, datetime, pd.Timestamp] = CURRENT_DT,
-    num_lookback_days: Union[int, None] = None
+    num_lookback_days: Union[int, None] = LOOKBACK_DAYS,
+    service: USGSServiceEnum = "iv",
+    chunk_by: Union[USGSChunkByEnum, None] = None,
+    filter_to_hourly: bool = True,
+    filter_no_data: bool = True,
+    convert_to_si: bool = True,
+    overwrite_output: Optional[bool] = True,
+    write_mode: TableWriteEnum = "append",
+    drop_duplicates: bool = True,
 ) -> None:
     """USGS Streamflow Ingestion from NWIS.
 
-    - If no lookback days are provided, the flow will determine the earliest of the most recent
-      value_times across all locations in the existing USGS observations data, and set the start
-      date to one minute after that time.
-    - If lookback days are provided, the flow will set the start date to end date
+    - The flow will set the start date as end date
       minus the number of lookback days.
     - End date defaults to current date and time.
     """
     logger = get_run_logger()
 
-    spark = create_spark_session()
-    ev = teehr.Evaluation(
-        spark=spark,
-        dir_path=dir_path,
-        check_evaluation_version=False
-    )
-    ev.set_active_catalog("remote")
+    if isinstance(end_dt, str):
+        end_dt = datetime.fromisoformat(end_dt)
 
-    if num_lookback_days is None:
-        # Get the earliest of the most recent value_times across all locations
-        logger.info("🔍 Finding the earliest of the most recent value_times per location")
-        latest_usgs_value_times = ev.spark.sql("""
-            WITH latest_per_location AS (
-                SELECT
-                    location_id,
-                    MAX(value_time) as latest_value_time
-                FROM iceberg.teehr.primary_timeseries
-                WHERE configuration_name = 'usgs_observations'
-                GROUP BY location_id
+    ev = initialize_evaluation(dir_path=dir_path)
+
+    if (
+        not ev.fetch._configuration_name_exists(USGS_CONFIGURATION_NAME)
+    ):
+        ev.configurations.add(
+            Configuration(
+                name=USGS_CONFIGURATION_NAME,
+                type="primary",
+                description="USGS streamflow gauge observations"
             )
-            SELECT
-                MIN(latest_value_time) as earliest_latest_value_time,
-                COUNT(*) as location_count
-            FROM latest_per_location
-        """).collect()
-
-        if len(latest_usgs_value_times) > 0 and latest_usgs_value_times[0]["earliest_latest_value_time"] is not None:
-            result = latest_usgs_value_times[0].asDict()
-            earliest_latest_value_time = result["earliest_latest_value_time"]
-            location_count = result["location_count"]
-
-            start_dt = earliest_latest_value_time + timedelta(minutes=1)
-
-            logger.info(f"📊 Found data for {location_count} locations")
-            logger.info(f"📅 Earliest recent value_time: {earliest_latest_value_time}")
-            logger.info(f"🚀 Starting ingestion from: {start_dt}")
-        else:
-            logger.info("📋 No existing USGS observations found, using default lookback")
-            start_dt = end_dt - timedelta(days=LOOKBACK_DAYS)
-            logger.info(f"🚀 Starting ingestion from: {start_dt}")
-    else:
-        start_dt = end_dt - timedelta(days=num_lookback_days)
-        logger.info(
-            f"📅 Using provided {num_lookback_days} lookback days to set start date: {start_dt}"
         )
-
-    logger.info(f"⏰ Fetching USGS data from {start_dt} to {end_dt}")
-
-    ev.fetch.usgs_streamflow(
-        start_date=start_dt,
-        end_date=end_dt
+    usgs_sites = usgs_tasks.get_usgs_location_ids(ev=ev)
+    usgs_variable_name = USGS_VARIABLE_MAPPER[VARIABLE_NAME][service]
+    output_parquet_dir = Path(
+        ev.fetch.usgs_cache_dir,
+        USGS_CONFIGURATION_NAME,
+        usgs_variable_name
     )
+
+    start_dt = end_dt - timedelta(days=num_lookback_days)
+
+    # Split into chunks of 100
+    usgs_site_chunks = [
+        usgs_sites[i:i + CHUNK_SIZE]
+        for i in range(0, len(usgs_sites), CHUNK_SIZE)
+    ]
+    logger.info(f"📊 Split {len(usgs_sites)} USGS sites into {len(usgs_site_chunks)} chunks")
+
+    remove_dir_if_exists(ev.fetch.usgs_cache_dir)
+
+    for i, chunk in enumerate(usgs_site_chunks):
+        usgs_tasks.fetch_usgs_data_to_cache.submit(
+            usgs_sites=chunk,
+            output_parquet_dir=output_parquet_dir,
+            start_date=start_dt,
+            end_date=end_dt,
+            service=service,
+            chunk_by=chunk_by,
+            filter_to_hourly=filter_to_hourly,
+            filter_no_data=filter_no_data,
+            convert_to_si=convert_to_si,
+            overwrite_output=overwrite_output,
+        )
+        logger.info(f"✅ Completed fetching USGS data to cache for chunk {i + 1}/{len(usgs_site_chunks)}")
+
+        logger.info(f"⏰ Loading USGS data chunk {i + 1} from the cache")
+        ev.load.from_cache(
+            in_path=Path(ev.fetch.usgs_cache_dir),
+            write_mode=write_mode,
+            drop_duplicates=drop_duplicates,
+            table_name="primary_timeseries",
+        )
+    logger.info("✅ Completed loading USGS data into the warehouse")
     ev.spark.stop()
