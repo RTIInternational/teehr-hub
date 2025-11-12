@@ -2,7 +2,7 @@ from typing import Union
 from pathlib import Path
 
 import teehr
-from spark_session_utils import create_spark_session
+from teehr.evaluation.spark_session_utils import create_spark_session
 
 from prefect import task, get_run_logger
 

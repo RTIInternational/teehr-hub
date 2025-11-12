@@ -13,6 +13,8 @@ from prefect import task, get_run_logger
 
 
 # @task()
+# Note. Evaluation object is not serializable, gives an error
+# if treated as a task but still succeeds
 def get_usgs_location_ids(
     ev: teehr.Evaluation
 ) -> List:

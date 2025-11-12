@@ -1,6 +1,4 @@
-import os
 from pathlib import Path
-import shutil
 from datetime import datetime, timedelta
 from typing import Union
 import logging
@@ -8,11 +6,8 @@ import logging
 from prefect import flow, get_run_logger
 import pandas as pd
 
-import teehr
-# from teehr.evaluation.spark_session_utils import create_spark_session
 from teehr.fetching.utils import format_nwm_configuration_metadata
-
-from spark_session_utils import create_spark_session
+from utils.common_utils import initialize_evaluation
 
 # Start up a local Dask cluster
 from dask.distributed import Client
@@ -37,6 +32,9 @@ def ingest_nwm_streamflow_forecasts(
 ) -> None:
     """NWM Streamflow Forecasts Ingestion.
 
+    Notes
+    -----
+    - By default, the flow will look back one day from the current datetime.
     - If no lookback days are provided, the flow will determine the latest reference_time
       across all locations in the existing NWM forecasts data, and set the start date to one
       minute after that time.
@@ -47,16 +45,9 @@ def ingest_nwm_streamflow_forecasts(
     logger = get_run_logger()
 
     if isinstance(end_dt, str):
-        end_dt = datetime.fromisoformat(end_dt)    
+        end_dt = datetime.fromisoformat(end_dt)
 
-    spark = create_spark_session()
-
-    ev = teehr.Evaluation(
-        spark=spark,
-        dir_path=dir_path,
-        check_evaluation_version=False
-    )
-    ev.set_active_catalog("remote")
+    ev = initialize_evaluation(dir_path=dir_path)
 
     # Format the NWM configuration name for TEEHR
     teehr_nwm_config = format_nwm_configuration_metadata(
@@ -64,6 +55,10 @@ def ingest_nwm_streamflow_forecasts(
         nwm_version=nwm_version
     )
     if num_lookback_days is None:
+        logger.info(
+            "No lookback days provided, determining start date from latest"
+            " NWM reference time"
+        )
         latest_nwm_reference_time = ev.spark.sql(f"""
             SELECT MAX(reference_time) as latest_reference_time
             FROM iceberg.teehr.secondary_timeseries
@@ -75,6 +70,9 @@ def ingest_nwm_streamflow_forecasts(
         else:
             start_dt = end_dt - timedelta(days=LOOKBACK_DAYS)
     else:
+        logger.info(
+            f"Setting start date to {num_lookback_days} days before end date"
+        )
         start_dt = end_dt - timedelta(days=num_lookback_days)
 
     ev.fetch.nwm_operational_points(

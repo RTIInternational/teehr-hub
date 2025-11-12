@@ -19,16 +19,14 @@ from teehr.fetching.const import (
     VARIABLE_NAME,
 )
 from teehr.utils.utils import remove_dir_if_exists
-from utils import usgs_tasks
-from utils.workflow_utils import initialize_evaluation
+from utils import usgs_utils
+from utils.common_utils import initialize_evaluation
 
 logging.getLogger("teehr").setLevel(logging.INFO)
 
 
 CURRENT_DT = datetime.now()
 LOOKBACK_DAYS = 1
-DEFAULT_START_DT = CURRENT_DT - timedelta(days=1)
-# CHUNK_SIZE = 100  # Number of sites to fetch at once
 
 
 @flow(flow_run_name="ingest-usgs-streamflow-obs")
@@ -47,9 +45,13 @@ def ingest_usgs_streamflow_obs(
 ) -> None:
     """USGS Streamflow Ingestion from NWIS.
 
+    Notes
+    -----
     - Sets the start date as end date
       minus the number of lookback days.
     - End date defaults to current date and time.
+    - Setting chunk_by to "location_id" means that usgs data
+      will be saved to the cache per location ID, eliminating overwrites.
     """
     logger = get_run_logger()
 
@@ -68,7 +70,7 @@ def ingest_usgs_streamflow_obs(
                 description="USGS streamflow gauge observations"
             )
         )
-    usgs_sites = usgs_tasks.get_usgs_location_ids(ev=ev)
+    usgs_sites = usgs_utils.get_usgs_location_ids(ev=ev)
 
     usgs_variable_name = USGS_VARIABLE_MAPPER[VARIABLE_NAME][service]
     output_parquet_dir = Path(
@@ -83,7 +85,7 @@ def ingest_usgs_streamflow_obs(
 
     site_futures = []
     for site in usgs_sites:
-        future = usgs_tasks.fetch_usgs_data_to_cache.submit(
+        future = usgs_utils.fetch_usgs_data_to_cache.submit(
             usgs_sites=[f"{site}"],
             output_parquet_dir=output_parquet_dir,
             start_date=start_dt,
@@ -100,7 +102,7 @@ def ingest_usgs_streamflow_obs(
     wait(site_futures)
     logger.info("✅ Completed fetching USGS data to cache")
 
-    # Todo: Coalesce cache files?
+    # Todo: Coalesce cache files for better write performance?
 
     logger.info("⏰ Loading USGS data from the cache")
     ev.load.from_cache(
