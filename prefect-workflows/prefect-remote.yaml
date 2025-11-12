@@ -65,7 +65,7 @@ deployments:
     version:
     tags: []
     description: Ingest USGS streamflow data from NWIS
-    entrypoint: workflows/02_usgs_streamflow_obs.py:ingest_usgs_streamflow_obs
+    entrypoint: workflows/01_usgs_streamflow_obs.py:ingest_usgs_streamflow_obs
     parameters: {"dir_path": *dir_path}
     work_pool: *work_pool
     schedule:
@@ -76,7 +76,7 @@ deployments:
     version:
     tags: []
     description: Ingest NWM short range streamflow forecasts from GCS
-    entrypoint: workflows/03_nwm_streamflow_forecasts.py:ingest_nwm_streamflow_forecasts
+    entrypoint: workflows/02_nwm_streamflow_forecasts.py:ingest_nwm_streamflow_forecasts
     parameters: {
       "dir_path": *dir_path,
       "nwm_configuration": "short_range"
@@ -90,7 +90,7 @@ deployments:
     version:
     tags: []
     description: Ingest NWM medium range member 1 streamflow forecasts from GCS
-    entrypoint: workflows/03_nwm_streamflow_forecasts.py:ingest_nwm_streamflow_forecasts
+    entrypoint: workflows/02_nwm_streamflow_forecasts.py:ingest_nwm_streamflow_forecasts
     parameters: {
       "dir_path": *dir_path,
       "nwm_configuration": "medium_range_mem1",
