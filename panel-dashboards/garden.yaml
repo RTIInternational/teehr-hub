@@ -7,12 +7,12 @@ spec:
   publishId: panel-dashboards:${var.devTeehrVersion}
   localId: panel-dashboards
   buildArgs:
-      BASE_IMAGE: ${actions.build.teehr-jupyter-driver-image.outputs.deploymentImageId}
+      BASE_IMAGE: ${actions.build.teehr-jupyter-driver-image-edge.outputs.deploymentImageId}
 environments:
   - local
   - remote
 dependencies:
-  - build.teehr-jupyter-driver-image
+  - build.teehr-jupyter-driver-image-edge
 ---
 kind: Deploy
 type: kubernetes
