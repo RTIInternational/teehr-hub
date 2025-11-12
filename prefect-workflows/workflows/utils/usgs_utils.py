@@ -33,7 +33,10 @@ def get_usgs_location_ids(
     return sites
 
 
-@task()
+@task(
+    timeout_seconds=60 * 5,
+    retries=2
+)
 def fetch_usgs_data_to_cache(
     usgs_sites: List,
     output_parquet_dir: Union[str, Path],

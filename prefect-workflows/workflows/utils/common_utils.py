@@ -7,7 +7,10 @@ from teehr.evaluation.spark_session_utils import create_spark_session
 from prefect import task, get_run_logger
 
 
-@task()
+@task(
+    timeout_seconds=60 * 5,
+    retries=2
+)
 def initialize_evaluation(dir_path: Union[str, Path]) -> teehr.Evaluation:
     """Initialize a Teehr Evaluation object."""
     logger = get_run_logger()
