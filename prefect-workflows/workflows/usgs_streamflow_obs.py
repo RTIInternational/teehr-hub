@@ -94,8 +94,9 @@ def ingest_usgs_streamflow_obs(
 
     remove_dir_if_exists(ev.fetch.usgs_cache_dir)
 
+    site_futures = []
     for i, chunk in enumerate(usgs_site_chunks):
-        usgs_utils.fetch_usgs_data_to_cache(
+        future = usgs_utils.fetch_usgs_data_to_cache.submit(
             usgs_sites=chunk,
             output_parquet_dir=Path(output_parquet_dir, f"part_{i}"),
             start_date=start_dt,
@@ -108,9 +109,9 @@ def ingest_usgs_streamflow_obs(
             overwrite_output=overwrite_output,
         )
         logger.info(f"✅ Completed fetching chunk {i+1}/{len(usgs_site_chunks)} to cache")
-        # site_futures.append(future)
+        site_futures.append(future)
 
-    # wait(site_futures)
+    wait(site_futures)
     logger.info("✅ Completed fetching USGS data to cache")
 
     # Todo: Coalesce cache files for better write performance?
