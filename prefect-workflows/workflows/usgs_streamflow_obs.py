@@ -76,6 +76,13 @@ def ingest_usgs_streamflow_obs(
         )
     usgs_sites = usgs_utils.get_usgs_location_ids(ev=ev)
 
+    # Break usgs_sites into chunks of 100 (which is the max allowed?)
+    chunk_size = 100
+    usgs_site_chunks = [
+        usgs_sites[i:i + chunk_size]
+        for i in range(0, len(usgs_sites), chunk_size)
+    ]
+
     usgs_variable_name = USGS_VARIABLE_MAPPER[VARIABLE_NAME][service]
     output_parquet_dir = Path(
         ev.fetch.usgs_cache_dir,
@@ -87,11 +94,10 @@ def ingest_usgs_streamflow_obs(
 
     remove_dir_if_exists(ev.fetch.usgs_cache_dir)
 
-    site_futures = []
-    for site in usgs_sites:
-        future = usgs_utils.fetch_usgs_data_to_cache.submit(
-            usgs_sites=[f"{site}"],
-            output_parquet_dir=output_parquet_dir,
+    for i, chunk in enumerate(usgs_site_chunks):
+        usgs_utils.fetch_usgs_data_to_cache(
+            usgs_sites=chunk,
+            output_parquet_dir=Path(output_parquet_dir, f"part_{i}"),
             start_date=start_dt,
             end_date=end_dt,
             service=service,
@@ -101,9 +107,10 @@ def ingest_usgs_streamflow_obs(
             convert_to_si=convert_to_si,
             overwrite_output=overwrite_output,
         )
-        site_futures.append(future)
+        logger.info(f"✅ Completed fetching chunk {i+1}/{len(usgs_site_chunks)} to cache")
+        # site_futures.append(future)
 
-    wait(site_futures)
+    # wait(site_futures)
     logger.info("✅ Completed fetching USGS data to cache")
 
     # Todo: Coalesce cache files for better write performance?
