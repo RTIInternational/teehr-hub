@@ -36,6 +36,16 @@ def update_forecast_metrics_table(
 
     logger.info("Creating forecast metrics table...")
 
+    pcorr = dm.PearsonCorrelation()
+    rbias = dm.RelativeBias()
+    nse = dm.NashSutcliffeEfficiency()
+    kge = dm.KlingGuptaEfficiency()
+
+    pcorr.add_epsilon = True
+    rbias.add_epsilon = True
+    nse.add_epsilon = True
+    kge.add_epsilon = True
+
     sdf = (
         ev
         .metrics(table_name=JOINED_FORECAST_TABLE_NAME).
@@ -44,10 +54,10 @@ def update_forecast_metrics_table(
         ])
         .query(
             include_metrics=[
-                dm.PearsonCorrelation(),
-                dm.RelativeBias(),
-                dm.NashSutcliffeEfficiency(),
-                dm.KlingGuptaEfficiency()
+                pcorr,
+                rbias,
+                nse,
+                kge
             ],
             group_by=[
                 "primary_location_id",
@@ -56,11 +66,11 @@ def update_forecast_metrics_table(
             ],
         ).to_sdf()
     )
-    sdf.createTempView("metrics")
+    sdf.createTempView("forecast_metrics")
 
     sdf = ev.spark.sql("""
         SELECT m.*, l.*
-        FROM metrics m
+        FROM forecast_metrics m
         JOIN iceberg.teehr.locations l
         ON l.id = m.primary_location_id
     """)
