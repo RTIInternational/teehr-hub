@@ -27,6 +27,7 @@ logging.getLogger("teehr").setLevel(logging.INFO)
 
 CURRENT_DT = datetime.now()
 LOOKBACK_DAYS = 1
+CHUNK_SIZE = 100  # Number of sites to fetch per api call
 
 
 @flow(
@@ -76,11 +77,10 @@ def ingest_usgs_streamflow_obs(
         )
     usgs_sites = usgs_utils.get_usgs_location_ids(ev=ev)
 
-    # Break usgs_sites into chunks of 100 (which is the max allowed?)
-    chunk_size = 100
+    # Break usgs_sites into chunks
     usgs_site_chunks = [
-        usgs_sites[i:i + chunk_size]
-        for i in range(0, len(usgs_sites), chunk_size)
+        usgs_sites[i:i + CHUNK_SIZE]
+        for i in range(0, len(usgs_sites), CHUNK_SIZE)
     ]
 
     usgs_variable_name = USGS_VARIABLE_MAPPER[VARIABLE_NAME][service]
