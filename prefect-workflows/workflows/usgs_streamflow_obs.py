@@ -27,6 +27,7 @@ logging.getLogger("teehr").setLevel(logging.INFO)
 
 CURRENT_DT = datetime.now()
 LOOKBACK_DAYS = 1
+CHUNK_SIZE = 100  # Number of sites to fetch per api call
 
 
 @flow(
@@ -76,6 +77,12 @@ def ingest_usgs_streamflow_obs(
         )
     usgs_sites = usgs_utils.get_usgs_location_ids(ev=ev)
 
+    # Break usgs_sites into chunks
+    usgs_site_chunks = [
+        usgs_sites[i:i + CHUNK_SIZE]
+        for i in range(0, len(usgs_sites), CHUNK_SIZE)
+    ]
+
     usgs_variable_name = USGS_VARIABLE_MAPPER[VARIABLE_NAME][service]
     output_parquet_dir = Path(
         ev.fetch.usgs_cache_dir,
@@ -88,10 +95,10 @@ def ingest_usgs_streamflow_obs(
     remove_dir_if_exists(ev.fetch.usgs_cache_dir)
 
     site_futures = []
-    for site in usgs_sites:
+    for i, chunk in enumerate(usgs_site_chunks):
         future = usgs_utils.fetch_usgs_data_to_cache.submit(
-            usgs_sites=[f"{site}"],
-            output_parquet_dir=output_parquet_dir,
+            usgs_sites=chunk,
+            output_parquet_dir=Path(output_parquet_dir, f"part_{i}"),
             start_date=start_dt,
             end_date=end_dt,
             service=service,
@@ -101,6 +108,7 @@ def ingest_usgs_streamflow_obs(
             convert_to_si=convert_to_si,
             overwrite_output=overwrite_output,
         )
+        logger.info(f"✅ Completed fetching chunk {i+1}/{len(usgs_site_chunks)} to cache")
         site_futures.append(future)
 
     wait(site_futures)
