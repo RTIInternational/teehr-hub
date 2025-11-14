@@ -31,7 +31,7 @@ definitions:
       pod_watch_timeout_seconds: 300
       service_account_name: prefect-job
       env:
-        PREFECT_LOGGING_LEVEL: *log_level        
+        PREFECT_LOGGING_LEVEL: *log_level
         TEEHR_SPARK_IMAGE: "{{ $TEEHR_SPARK_IMAGE }}"
         TEEHR_NAMESPACE: "{{ $TEEHR_NAMESPACE }}"
         PREFECT_LOGGING_EXTRA_LOGGERS: teehr
@@ -57,7 +57,7 @@ definitions:
           operator: Equal
           value: worker
           effect: NoSchedule
- 
+
 # the deployments section allows you to provide configuration for deploying flows
 deployments:
   # Workflows that are configured for the remote cluster
@@ -99,4 +99,26 @@ deployments:
     work_pool: *work_pool
     schedule:
       cron: "0 6,18 * * *"
+      active: true
+
+  - name: update-joined-forecast-table
+    version:
+    tags: []
+    description: Create the joined forecast timeseries table
+    entrypoint: workflows/update_joined_forecasts.py:update_joined_forecast_table
+    parameters: {"dir_path": *dir_path}
+    work_pool: *work_pool
+    schedule:
+      cron: "0 9,21 * * *"
+      active: true
+
+  - name: update-forecast-metrics-table
+    version:
+    tags: []
+    description: Create the forecast metrics table
+    entrypoint: workflows/update_forecast_metrics.py:update_forecast_metrics_table
+    parameters: {"dir_path": *dir_path}
+    work_pool: *work_pool
+    schedule:
+      cron: "0 10,22 * * *"
       active: true
