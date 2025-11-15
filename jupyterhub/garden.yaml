@@ -14,12 +14,12 @@ spec:
     name: jupyterhub
     repo: https://hub.jupyter.org/helm-chart
     version: 4.3.0
-  
+
   values:
     proxy:
       service:
         type: ClusterIP
-    
+
     hub:
       # baseUrl: /jupyter
 
@@ -46,7 +46,7 @@ spec:
         #   def modify_pod_hook(spawner, pod):
         #       pod.spec.containers[0].env.append(
         #           client.V1EnvVar(
-        #               name='AWS_ACCESS_KEY_ID', 
+        #               name='AWS_ACCESS_KEY_ID',
         #               value_from=client.V1EnvVarSource(
         #                   secret_key_ref=client.V1SecretKeySelector(
         #                       name='minio-secrets',
@@ -57,7 +57,7 @@ spec:
         #       )
         #       pod.spec.containers[0].env.append(
         #           client.V1EnvVar(
-        #               name='AWS_SECRET_ACCESS_KEY', 
+        #               name='AWS_SECRET_ACCESS_KEY',
         #               value_from=client.V1EnvVarSource(
         #                   secret_key_ref=client.V1SecretKeySelector(
         #                       name='minio-secrets',
@@ -131,14 +131,14 @@ spec:
         kubespawner_override:
           node_selector:
             teehr-hub/nodegroup-name: nb-r5-xlarge
-    
+
     scheduling:
       userScheduler:
         enabled: true
       userPods:
         nodeAffinity:
           matchNodePurpose: require
-    
+
     cull:
       enabled: true
       timeout: 3600
@@ -163,12 +163,12 @@ spec:
     name: jupyterhub
     repo: https://hub.jupyter.org/helm-chart
     version: 4.3.0
-  
+
   values:
     proxy:
       service:
         type: ClusterIP
-    
+
     hub:
       config:
         GitHubOAuthenticator:
@@ -201,7 +201,7 @@ spec:
           # Allow users to create Spark sessions
           c.KubeSpawner.service_account = 'default'
           c.KubeSpawner.automount_service_account_token = True
-      
+
     singleuser:
       image:
         name: ${actions.build.teehr-jupyter-driver-image-edge.outputs.deploymentImageName}
@@ -230,6 +230,11 @@ spec:
         REMOTE_CATALOG_S3_ENDPOINT: ${var.iceberg.catalogS3Endpoint}
         REMOTE_CATALOG_S3_PATH_STYLE_ACCESS: ${var.iceberg.catalogS3PathStyleAccess}
         IN_CLUSTER: ${var.iceberg.inCluster}
+        # TRINO_HOST: ${var.trino.host}
+        # TRINO_PORT: ${var.trino.port}
+        # TRINO_CATALOG: ${var.trino.catalog}
+        # TRINO_SCHEMA: ${var.trino.schema}
+        # TRINO_USER: ${var.trino.user}
       extraFiles:
         jupyter_config:
           mountPath: /etc/jupyter/jupyter_notebook_config.py
@@ -275,7 +280,7 @@ spec:
           cpu_guarantee: 3
           node_selector:
             teehr-hub/nodegroup-name: nb-r5-xlarge
-      
+
       - display_name: "TEEHR Evaluation System (16 vCPU/128GB memory)"
         description: "A r5.4xlarge EC2 instance @ $1.008/hour"
         profile_options: *profile_options
@@ -286,7 +291,7 @@ spec:
           cpu_guarantee: 12
           node_selector:
             teehr-hub/nodegroup-name: nb-r5-4xlarge
-      
+
       - display_name: "HEFS-FEWS Evaluation System (4 vCPU/32GB memory)"
         default: False
         description: "A r5.xlarge EC2 instance $0.252/hour"
@@ -306,7 +311,7 @@ spec:
           cpu_guarantee: 3
           node_selector:
             teehr-hub/nodegroup-name: nb-r5-xlarge
-    
+
     scheduling:
       userScheduler:
         enabled: true
@@ -318,7 +323,7 @@ spec:
       # userPlaceholder:
       #   enabled: true
       #   replicas: 4
-    
+
     cull:
       enabled: true
       timeout: 3600
