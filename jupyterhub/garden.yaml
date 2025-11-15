@@ -230,11 +230,11 @@ spec:
         REMOTE_CATALOG_S3_ENDPOINT: ${var.iceberg.catalogS3Endpoint}
         REMOTE_CATALOG_S3_PATH_STYLE_ACCESS: ${var.iceberg.catalogS3PathStyleAccess}
         IN_CLUSTER: ${var.iceberg.inCluster}
-        # TRINO_HOST: ${var.trino.host}
-        # TRINO_PORT: ${var.trino.port}
-        # TRINO_CATALOG: ${var.trino.catalog}
-        # TRINO_SCHEMA: ${var.trino.schema}
-        # TRINO_USER: ${var.trino.user}
+        TRINO_HOST: ${var.trino.host}
+        TRINO_PORT: ${var.trino.port}
+        TRINO_CATALOG: ${var.trino.catalog}
+        TRINO_SCHEMA: ${var.trino.schema}
+        TRINO_USER: ${var.trino.user}
       extraFiles:
         jupyter_config:
           mountPath: /etc/jupyter/jupyter_notebook_config.py
