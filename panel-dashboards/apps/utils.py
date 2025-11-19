@@ -5,16 +5,17 @@ import os
 from typing import Union
 import datetime
 
+ # Trino connection configuration
+TRINO_HOST = os.environ.get("TRINO_HOST", "localhost")
+TRINO_PORT = os.environ.get("TRINO_PORT", 8080)
+TRINO_USER = os.environ.get("TRINO_USER", "teehr")
+TRINO_CATALOG = os.environ.get("TRINO_CATALOG", "iceberg")
+TRINO_SCHEMA = os.environ.get("TRINO_SCHEMA", "teehr")
+
 
 def get_trino_connection():
     """Establishes and returns a Trino database connection."""
-    # Trino connection configuration
-    TRINO_HOST = os.environ.get("TRINO_HOST", "localhost")
-    TRINO_PORT = os.environ.get("TRINO_PORT", 8080)
-    TRINO_USER = os.environ.get("TRINO_USER", "teehr")
-    TRINO_CATALOG = os.environ.get("TRINO_CATALOG", "iceberg")
-    TRINO_SCHEMA = os.environ.get("TRINO_SCHEMA", "teehr")
-
+   
     conn = connect(
         host=TRINO_HOST,
         user=TRINO_USER,
