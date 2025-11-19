@@ -20,7 +20,7 @@ environments:
         catalogWarehouse: s3://warehouse/
       trino:
         host: trino
-        port: 8080
+        port: "8080"
         user: teehr
         catalog: iceberg
         schema: teehr
@@ -41,7 +41,7 @@ environments:
       nfsServerDns: "fs-0cb715f5b7a76e862.efs.us-east-2.amazonaws.com"
       trino:
         host: trino
-        port: 8080
+        port: "8080"
         user: teehr
         catalog: iceberg
         schema: teehr
