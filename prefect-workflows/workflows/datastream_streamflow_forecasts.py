@@ -32,7 +32,7 @@ LOCATION_ID_PREFIX = "nrds22"
 CONFIGURATION_NAME = "nrds_v22_cfenom_short_range"
 FORECAST_CONFIGURATION = "short_range"
 HYDROFABRIC_VERSION = "v2.2"
-FIELD_MAPPING={
+FIELD_MAPPING = {
     "time": "value_time",
     "feature_id": "location_id",
     "flow": "value"
@@ -40,7 +40,6 @@ FIELD_MAPPING={
 
 # Set up access for public S3 bucket
 s3 = boto3.client('s3', config=Config(signature_version=UNSIGNED))
-# session = botocore.session.Session()
 
 
 @flow(
@@ -72,10 +71,13 @@ def ingest_datastream_forecasts(
     if isinstance(end_dt, str):
         end_dt = datetime.fromisoformat(end_dt)
 
-    start_dt = end_dt - timedelta(days=LOOKBACK_DAYS)
+    start_dt = end_dt - timedelta(days=num_lookback_days)
     yrmoday = start_dt.strftime("%Y%m%d")
 
     ev = initialize_evaluation(dir_path=dir_path)
+
+    # Get existing location IDs from warehouse
+    locations_df = ev.locations.to_pandas()
 
     # Note. Assumes crosswalk is already loaded
     for ref_time in SHORT_RANGE_REF_TIMES:
@@ -92,9 +94,9 @@ def ingest_datastream_forecasts(
         vpu_prefixes = response.get('CommonPrefixes', [])
         for vpu_prefix in vpu_prefixes:
 
-            # TEMP!
-            if "VPU16" not in vpu_prefix['Prefix']:
-                continue
+            # # TEMP!
+            # if "VPU16" not in vpu_prefix['Prefix']:
+            #     continue
 
             filename = f"troute_output_{yrmoday}{ref_time}00.nc"
             filepath = f"{hydrofabric_version}/ngen.{yrmoday}/{forecast_configuration}/{ref_time}/{vpu_prefix['Prefix']}ngen-run/outputs/troute/{filename}"
@@ -126,22 +128,21 @@ def ingest_datastream_forecasts(
             for key in constant_field_values.keys():
                 df[key] = constant_field_values[key]
 
+            # Limit to locations that exist in the warehouse
+            df_clip = df[df.primary_location_id.isin(locations_df["id"])]
+
             # Load to warehouse. Write to a separate namespace?
             ev.load.dataframe(
-                df=df,
+                df=df_clip,
                 table_name="secondary_timeseries",
-                secondary_location_id_prefix="nrds_v10"
+                secondary_location_id_prefix=LOCATION_ID_PREFIX
             )
             logger.info(
                 f"Successfully loaded data from file: s3://{BUCKET_NAME}/{filepath}"
             )
 
-            break
-
-        break
-
     pass
 
 
-if __name__ == "__main__":
-    ingest_datastream_forecasts(dir_path="/mnt/c/data/ciroh/teehr/datastream/")
+# if __name__ == "__main__":
+#     ingest_datastream_forecasts(dir_path="/mnt/c/data/ciroh/teehr/datastream/")
