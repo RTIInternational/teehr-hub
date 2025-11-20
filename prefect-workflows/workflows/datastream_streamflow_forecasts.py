@@ -23,7 +23,7 @@ LOOKBACK_DAYS = 1
 
 BUCKET_NAME = 'ciroh-community-ngen-datastream'
 # VERSION = "v2.2"
-YRMODAY = "20251116"
+# YRMODAY = "20251116"
 # FORECAST_CONFIG = "short_range"
 SHORT_RANGE_REF_TIMES = [f"{ref_time:02d}" for ref_time in range(0, 24)]
 FORMAT_PATTERN = "%Y-%m-%d_%H:%M:%S"
@@ -72,13 +72,15 @@ def ingest_datastream_forecasts(
     if isinstance(end_dt, str):
         end_dt = datetime.fromisoformat(end_dt)
 
+    start_dt = end_dt - timedelta(days=LOOKBACK_DAYS)
+    yrmoday = start_dt.strftime("%Y%m%d")
+
     ev = initialize_evaluation(dir_path=dir_path)
 
     # Note. Assumes crosswalk is already loaded
-
     for ref_time in SHORT_RANGE_REF_TIMES:
 
-        prefix = f"{hydrofabric_version}/ngen.{YRMODAY}/{forecast_configuration}/{ref_time}/"
+        prefix = f"{hydrofabric_version}/ngen.{yrmoday}/{forecast_configuration}/{ref_time}/"
         response = s3.list_objects_v2(
             Bucket=BUCKET_NAME,
             Prefix=prefix,
@@ -94,8 +96,8 @@ def ingest_datastream_forecasts(
             if "VPU16" not in vpu_prefix['Prefix']:
                 continue
 
-            filename = f"troute_output_{YRMODAY}{ref_time}00.nc"
-            filepath = f"{hydrofabric_version}/ngen.{YRMODAY}/{forecast_configuration}/{ref_time}/{vpu_prefix['Prefix']}{filename}"
+            filename = f"troute_output_{yrmoday}{ref_time}00.nc"
+            filepath = f"{hydrofabric_version}/ngen.{yrmoday}/{forecast_configuration}/{ref_time}/{vpu_prefix['Prefix']}ngen-run/outputs/troute/{filename}"
 
             logger.info(f"Processing file: s3://{BUCKET_NAME}/{filepath}")
             try:
