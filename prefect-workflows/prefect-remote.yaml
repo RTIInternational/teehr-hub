@@ -101,6 +101,19 @@ deployments:
       cron: "0 6,18 * * *"
       active: true
 
+  - name: ingest-datastream-forecasts
+    version:
+    tags: []
+    description: Ingest DataStream streamflow forecasts from S3
+    entrypoint: workflows/datastream_streamflow_forecasts.py:ingest_datastream_forecasts
+    parameters: {
+      "dir_path": *dir_path,
+    }
+    work_pool: *work_pool
+    schedule:
+      cron: "0 10 * * *"
+      active: true
+
   - name: update-joined-forecast-table
     version:
     tags: []
