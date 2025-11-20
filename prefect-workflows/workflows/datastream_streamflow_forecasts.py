@@ -9,7 +9,9 @@ import boto3
 import botocore
 from botocore import UNSIGNED
 from botocore.config import Config
+import xarray as xr
 
+import teehr
 from utils.common_utils import initialize_evaluation
 
 
@@ -24,10 +26,22 @@ BUCKET_NAME = 'ciroh-community-ngen-datastream'
 YRMODAY = "20251116"
 # FORECAST_CONFIG = "short_range"
 SHORT_RANGE_REF_TIMES = [f"{ref_time:02d}" for ref_time in range(0, 24)]
+FORMAT_PATTERN = "%Y-%m-%d_%H:%M:%S"
+UNITS_MAPPING = {"m3 s-1": "m^3/s"}
+LOCATION_ID_PREFIX = "nrds22"
+CONFIGURATION_NAME = "nrds_v22_cfenom_short_range"
+FORECAST_CONFIGURATION = "short_range"
+HYDROFABRIC_VERSION = "v2.2"
+FIELD_MAPPING={
+    "time": "value_time",
+    "feature_id": "location_id",
+    "flow": "value"
+}
 
 # Set up access for public S3 bucket
 s3 = boto3.client('s3', config=Config(signature_version=UNSIGNED))
 # session = botocore.session.Session()
+
 
 @flow(
     flow_run_name="ingest-datastream-forecasts",
@@ -38,8 +52,8 @@ def ingest_datastream_forecasts(
     dir_path: Union[str, Path],
     end_dt: Union[str, datetime, pd.Timestamp] = CURRENT_DT,
     num_lookback_days: Union[int, None] = LOOKBACK_DAYS,
-    datastream_configuration: str = "short_range",
-    datastream_version: str = "v2.2"
+    forecast_configuration: str = FORECAST_CONFIGURATION,
+    hydrofabric_version: str = HYDROFABRIC_VERSION
 ) -> None:
     """DataStream Forecasts Ingestion.
 
@@ -60,44 +74,65 @@ def ingest_datastream_forecasts(
 
     ev = initialize_evaluation(dir_path=dir_path)
 
-    # Construct directory path
-    # ex. "ngen.20250812/short_range/{01 - 23}/{VPU}/{troute_file}"
+    # Note. Assumes crosswalk is already loaded
 
     for ref_time in SHORT_RANGE_REF_TIMES:
 
-        prefix = f"{datastream_version}/ngen.{YRMODAY}/{datastream_configuration}/{ref_time}/"
+        prefix = f"{hydrofabric_version}/ngen.{YRMODAY}/{forecast_configuration}/{ref_time}/"
         response = s3.list_objects_v2(
             Bucket=BUCKET_NAME,
             Prefix=prefix,
             Delimiter='/',
             MaxKeys=100
         )
+
         # Get list of VPU prefixes
         vpu_prefixes = response.get('CommonPrefixes', [])
         for vpu_prefix in vpu_prefixes:
 
-            # Assemble filepath
-            filepath = f"{datastream_version}/ngen.{YRMODAY}/{datastream_configuration}/{ref_time}/{vpu_prefix["Prefix"]}{filename}"
+            # TEMP!
+            if "VPU16" not in vpu_prefix['Prefix']:
+                continue
+
+            filename = f"troute_output_{YRMODAY}{ref_time}00.nc"
+            filepath = f"{hydrofabric_version}/ngen.{YRMODAY}/{forecast_configuration}/{ref_time}/{vpu_prefix['Prefix']}{filename}"
 
             logger.info(f"Processing file: s3://{BUCKET_NAME}/{filepath}")
-
             try:
-                # Read dataframe from s3 with pyspark
-                sdf = ev.spark.read.parquet(filepath)
+                # Open the dataset with xarray, specifying the engine
+                ds = xr.open_dataset(f"s3://{BUCKET_NAME}/{filepath}", engine='h5netcdf')
+                field_list = [field for field in FIELD_MAPPING if field in ds]
+                df = ds[field_list].to_dataframe()
+                df.reset_index(inplace=True)
+                df.rename(columns=FIELD_MAPPING, inplace=True)
+                ref_time = datetime.strptime(ds.attrs["file_reference_time"], FORMAT_PATTERN)
+                unit_name = UNITS_MAPPING[ds.flow.units]
             except Exception as e:
                 logger.error(f"Error reading file {filepath}: {e}")
                 continue
 
-            if sdf.isEmpty():
+            if df.empty:
                 logger.warning(f"No data found in file: s3://{BUCKET_NAME}/{filepath}")
                 continue
 
+            constant_field_values = {
+                "unit_name": unit_name,
+                "variable_name": "streamflow_hourly_inst",
+                "configuration_name": CONFIGURATION_NAME,
+                "reference_time": ref_time
+            }
+            for key in constant_field_values.keys():
+                df[key] = constant_field_values[key]
+
             # Load to warehouse. Write to a separate namespace?
             ev.load.dataframe(
-                df=sdf,
-                table_name="secondary_timeseries"
+                df=df,
+                table_name="secondary_timeseries",
+                secondary_location_id_prefix="nrds_v10"
             )
-            logger.info(f"Successfully loaded data from file: s3://{BUCKET_NAME}/{filepath}")
+            logger.info(
+                f"Successfully loaded data from file: s3://{BUCKET_NAME}/{filepath}"
+            )
 
             break
 
