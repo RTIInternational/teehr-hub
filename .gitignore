@@ -8,3 +8,4 @@ data/
 .ipynb_checkpoints
 secrets.remote.yaml
 secrets.remote.yaml:Zone.Identifier
+__pycache__/

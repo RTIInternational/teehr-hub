@@ -10,7 +10,7 @@ environments:
     defaultNamespace: ${project.name}
     variables:
       hostname: teehr.local.app.garden
-      devTeehrVersion: aae71b825fed21d25c64b871b1ecf914ace2573a
+      devTeehrVersion: 9025a9c333a6b07df2f5f4a0f13f6b522bff4f4e
       iceberg:
         inCluster: "true"
         catalogS3PathStyleAccess: "true"
@@ -28,7 +28,7 @@ environments:
     defaultNamespace: ${project.name}
     variables:
       hostname: teehr.rtiamanzi.org
-      devTeehrVersion: aae71b825fed21d25c64b871b1ecf914ace2573a
+      devTeehrVersion: 9025a9c333a6b07df2f5f4a0f13f6b522bff4f4e
       stableTeehrVersion: v0.5.2
       previousTeehrVersion: v0.5.0
       iceberg:
