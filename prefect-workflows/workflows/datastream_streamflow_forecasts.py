@@ -111,7 +111,7 @@ def ingest_datastream_forecasts(
             df = fetch_troute_output_as_dataframe(
                 s3_filepath=f"s3://{BUCKET_NAME}/{filepath}",
                 storage_options=storage_options,
-                stripped_ids=stripped_ids,
+                warehouse_ngen_ids=stripped_ids,
                 field_mapping=FIELD_MAPPING,
                 units_mapping=UNITS_MAPPING,
                 location_id_prefix=LOCATION_ID_PREFIX,
