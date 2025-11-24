@@ -5,14 +5,12 @@ import logging
 
 from prefect import flow, get_run_logger
 import pandas as pd
-import boto3
-import botocore
+import botocore.session
 from botocore import UNSIGNED
 from botocore.config import Config
-import xarray as xr
 
-import teehr
 from utils.common_utils import initialize_evaluation
+from utils.datastream_utils import fetch_troute_output_as_dataframe
 
 
 logging.getLogger("teehr").setLevel(logging.INFO)
@@ -22,9 +20,6 @@ CURRENT_DT = datetime.now()
 LOOKBACK_DAYS = 1
 
 BUCKET_NAME = 'ciroh-community-ngen-datastream'
-# VERSION = "v2.2"
-# YRMODAY = "20251116"
-# FORECAST_CONFIG = "short_range"
 SHORT_RANGE_TZ_HOURS = [f"{ref_time:02d}" for ref_time in range(0, 24)]
 FORMAT_PATTERN = "%Y-%m-%d_%H:%M:%S"
 UNITS_MAPPING = {"m3 s-1": "m^3/s"}
@@ -39,7 +34,11 @@ FIELD_MAPPING = {
 }
 
 # Set up access for public S3 bucket
-s3 = boto3.client('s3', config=Config(signature_version=UNSIGNED))
+session = botocore.session.get_session()
+s3 = session.create_client(
+    's3',
+    config=Config(signature_version=UNSIGNED)
+)
 
 
 @flow(
@@ -59,6 +58,8 @@ def ingest_datastream_forecasts(
     Notes
     -----
     - By default, the flow will look back one day from the current datetime.
+    - We assume the crosswalk table and configuration name has already been
+      loaded to the warehouse.
     """
     logger = get_run_logger()
 
@@ -72,10 +73,17 @@ def ingest_datastream_forecasts(
     ev = initialize_evaluation(dir_path=dir_path)
 
     # Get existing location IDs from warehouse
-    # Todo: Use pyspark here instead?
-    locations_df = ev.locations.to_pandas()
+    secondary_id_list = [
+        row[0] for row in ev.location_crosswalks.to_sdf().select("secondary_location_id").collect()
+    ]
+    stripped_ids = []
+    for sec_id in secondary_id_list:
+        prefix = sec_id.split("-")[0]
+        id_val = sec_id.split("-")[1]
+        if prefix == "nrds22":
+            stripped_ids.append(id_val)
 
-    # Note. Assumes crosswalk is already loaded
+    storage_options = {'anon': True}  # For xarray s3 access
     for ref_tz_hour in SHORT_RANGE_TZ_HOURS:
 
         prefix = f"{hydrofabric_version}/ngen.{yrmoday}/{forecast_configuration}/{ref_tz_hour}/"
@@ -95,55 +103,35 @@ def ingest_datastream_forecasts(
         vpu_prefixes = response.get('CommonPrefixes', [])
         for vpu_prefix in vpu_prefixes:
 
-            # # TEMP!
-            # if "VPU16" not in vpu_prefix['Prefix']:
-            #     continue
-
             filename = f"troute_output_{yrmoday}{file_valid_time}00.nc"
             # Note. The vpu_prefix['Prefix'] includes the trailing slash
-            filepath = f"{hydrofabric_version}/ngen.{yrmoday}/{forecast_configuration}/{ref_tz_hour}/{vpu_prefix['Prefix']}ngen-run/outputs/troute/{filename}"
+            filepath = f"{vpu_prefix['Prefix']}ngen-run/outputs/troute/{filename}"
 
             logger.info(f"Processing file: s3://{BUCKET_NAME}/{filepath}")
-            try:
-                # Open the dataset with xarray, specifying the engine
-                ds = xr.open_dataset(
-                    f"s3://{BUCKET_NAME}/{filepath}", engine="h5netcdf"
-                )
-                field_list = [field for field in FIELD_MAPPING if field in ds]
-                df = ds[field_list].to_dataframe()
-                df.reset_index(inplace=True)
-                df.rename(columns=FIELD_MAPPING, inplace=True)
-                unit_name = UNITS_MAPPING[ds.flow.units]
-            except Exception as e:
-                logger.error(f"Error reading file {filepath}: {e}")
-                continue
-
-            if df.empty:
+            df = fetch_troute_output_as_dataframe(
+                s3_filepath=f"s3://{BUCKET_NAME}/{filepath}",
+                storage_options=storage_options,
+                stripped_ids=stripped_ids,
+                field_mapping=FIELD_MAPPING,
+                units_mapping=UNITS_MAPPING,
+                location_id_prefix=LOCATION_ID_PREFIX,
+                configuration_name=CONFIGURATION_NAME,
+                ref_time=ref_time,
+            )
+            if df is None:
                 logger.warning(
-                    f"No data found in file: s3://{BUCKET_NAME}/{filepath}"
+                    f"Skipping file due to read error or no data: "
+                    f"s3://{BUCKET_NAME}/{filepath}"
                 )
                 continue
-
-            constant_field_values = {
-                "unit_name": unit_name,
-                "variable_name": "streamflow_hourly_inst",
-                "configuration_name": CONFIGURATION_NAME,
-                "reference_time": ref_time
-            }
-            for key in constant_field_values.keys():
-                df[key] = constant_field_values[key]
-
-            logger.info("Limiting to existing location IDs in warehouse")
-            # Limit to locations that exist in the warehouse
-            df_clip = df[df.primary_location_id.isin(locations_df["id"])]
 
             logger.info(
-                f"Loading {len(df_clip)} records to warehouse from file: "
+                f"Loading {len(df)} records to warehouse from file: "
                 f"s3://{BUCKET_NAME}/{filepath}"
             )
             # Load to warehouse. Write to a separate namespace?
             ev.load.dataframe(
-                df=df_clip,
+                df=df,
                 table_name="secondary_timeseries",
                 secondary_location_id_prefix=LOCATION_ID_PREFIX
             )
@@ -151,9 +139,3 @@ def ingest_datastream_forecasts(
                 "Successfully loaded data from file: "
                 f"s3://{BUCKET_NAME}/{filepath}"
             )
-
-    pass
-
-
-# if __name__ == "__main__":
-#     ingest_datastream_forecasts(dir_path="/mnt/c/data/ciroh/teehr/datastream/")
