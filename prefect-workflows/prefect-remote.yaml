@@ -110,9 +110,9 @@ deployments:
       "dir_path": *dir_path,
     }
     work_pool: *work_pool
-    schedule:
-      cron: "0 10 * * *"
-      active: true
+    # schedule:
+    #   cron: "0 10 * * *"
+    #   active: true
 
   - name: update-joined-forecast-table
     version:

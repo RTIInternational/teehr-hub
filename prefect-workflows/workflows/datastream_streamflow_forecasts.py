@@ -114,7 +114,6 @@ def ingest_datastream_forecasts(
                 warehouse_ngen_ids=stripped_ids,
                 field_mapping=FIELD_MAPPING,
                 units_mapping=UNITS_MAPPING,
-                location_id_prefix=LOCATION_ID_PREFIX,
                 configuration_name=CONFIGURATION_NAME,
                 ref_time=ref_time,
             )
