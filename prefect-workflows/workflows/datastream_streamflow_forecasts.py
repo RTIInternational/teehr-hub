@@ -24,6 +24,7 @@ SHORT_RANGE_TZ_HOURS = [f"{ref_time:02d}" for ref_time in range(0, 24)]
 FORMAT_PATTERN = "%Y-%m-%d_%H:%M:%S"
 UNITS_MAPPING = {"m3 s-1": "m^3/s"}
 LOCATION_ID_PREFIX = "nrds22"
+VARIABLE_NAME = "streamflow_hourly_inst"
 CONFIGURATION_NAME = "nrds_v22_cfenom_short_range"
 FORECAST_CONFIGURATION = "short_range"
 HYDROFABRIC_VERSION = "v2.2"
@@ -60,6 +61,8 @@ def ingest_datastream_forecasts(
     - By default, the flow will look back one day from the current datetime.
     - We assume the crosswalk table and configuration name has already been
       loaded to the warehouse.
+    - Ultimately, this fetching and loading of DataStream forecasts could be
+      part of TEEHR.
     """
     logger = get_run_logger()
 
@@ -114,6 +117,7 @@ def ingest_datastream_forecasts(
                 warehouse_ngen_ids=stripped_ids,
                 field_mapping=FIELD_MAPPING,
                 units_mapping=UNITS_MAPPING,
+                variable_name=VARIABLE_NAME,
                 configuration_name=CONFIGURATION_NAME,
                 ref_time=ref_time,
             )
@@ -128,11 +132,10 @@ def ingest_datastream_forecasts(
                 f"Loading {len(df)} records to warehouse from file: "
                 f"s3://{BUCKET_NAME}/{filepath}"
             )
-            # Load to warehouse. Write to a separate namespace?
+            # Load to warehouse
             ev.load.dataframe(
                 df=df,
-                table_name="secondary_timeseries",
-                secondary_location_id_prefix=LOCATION_ID_PREFIX
+                table_name="secondary_timeseries"
             )
             logger.info(
                 "Successfully loaded data from file: "

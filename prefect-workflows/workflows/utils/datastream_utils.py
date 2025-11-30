@@ -13,8 +13,10 @@ def fetch_troute_output_as_dataframe(
     warehouse_ngen_ids: List[str],
     field_mapping: dict,
     units_mapping: dict,
+    variable_name: str,
     configuration_name: str,
     ref_time: datetime,
+    location_id_prefix: str
 ):
     """Fetch troute output from S3 and return as a pandas DataFrame."""
     try:
@@ -40,20 +42,21 @@ def fetch_troute_output_as_dataframe(
     df.reset_index(inplace=True)
     df.rename(columns=field_mapping, inplace=True)
     unit_name = units_mapping[ds.flow.units]
-    # # Add prefix to location ID (nrds22-)
-    # df["location_id"] = location_id_prefix + df.location_id.astype(str)
+    # Add prefix to location ID (nrds22)
+    df["location_id"] = location_id_prefix + "-" + df.location_id.astype(str)
 
     if df.empty:
         logger.warning(
-            f"No data found in file: s3://{s3_filepath}"
+            f"No data found in file: {s3_filepath}"
         )
         return None
 
     constant_field_values = {
         "unit_name": unit_name,
-        "variable_name": "streamflow_hourly_inst",
+        "variable_name": variable_name,
         "configuration_name": configuration_name,
-        "reference_time": ref_time
+        "reference_time": ref_time,
+        "member": None
     }
     for key in constant_field_values.keys():
         df[key] = constant_field_values[key]
