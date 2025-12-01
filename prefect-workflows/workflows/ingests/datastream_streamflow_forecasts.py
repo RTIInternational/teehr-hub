@@ -27,7 +27,8 @@ LOCATION_ID_PREFIX = "nrds22"
 VARIABLE_NAME = "streamflow_hourly_inst"
 CONFIGURATION_NAME = "nrds_v22_cfenom_short_range"
 FORECAST_CONFIGURATION = "short_range"
-HYDROFABRIC_VERSION = "v2.2"
+HYDROFABRIC_VERSION = "v2.2_hydrofabric"
+DATASTREAM_NAME = "cfe_nom"
 FIELD_MAPPING = {
     "time": "value_time",
     "feature_id": "location_id",
@@ -52,7 +53,8 @@ def ingest_datastream_forecasts(
     end_dt: Union[str, datetime, pd.Timestamp] = CURRENT_DT,
     num_lookback_days: int = LOOKBACK_DAYS,
     forecast_configuration: str = FORECAST_CONFIGURATION,
-    hydrofabric_version: str = HYDROFABRIC_VERSION
+    hydrofabric_version: str = HYDROFABRIC_VERSION,
+    datastream_name: str = DATASTREAM_NAME,
 ) -> None:
     """DataStream Forecasts Ingestion.
 
@@ -88,8 +90,10 @@ def ingest_datastream_forecasts(
 
     storage_options = {'anon': True}  # For xarray s3 access
     for ref_tz_hour in SHORT_RANGE_TZ_HOURS:
-
-        prefix = f"{hydrofabric_version}/ngen.{yrmoday}/{forecast_configuration}/{ref_tz_hour}/"
+        prefix = (
+            f"outputs/{datastream_name}/{hydrofabric_version}/ngen.{yrmoday}"
+            f"/{forecast_configuration}/{ref_tz_hour}/"
+        )
         response = s3.list_objects_v2(
             Bucket=BUCKET_NAME,
             Prefix=prefix,
@@ -120,6 +124,7 @@ def ingest_datastream_forecasts(
                 variable_name=VARIABLE_NAME,
                 configuration_name=CONFIGURATION_NAME,
                 ref_time=ref_time,
+                location_id_prefix=LOCATION_ID_PREFIX
             )
             if df is None:
                 logger.warning(
