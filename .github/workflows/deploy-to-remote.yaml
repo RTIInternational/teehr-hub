@@ -1,0 +1,24 @@
+name: Deploy to Remote
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install and Deploy with Garden
+        uses: garden-io/garden-action@v2.0.0 # Use the specific Garden action
+        with:
+          # Optional: Specify a Garden command to run (e.g., 'deploy' or 'run workflow')
+          command: deploy --env remote
+          # Optional: Pass a Garden auth token if using Garden Cloud features like remote builders
+          # garden-auth-token: ${{ secrets.GARDEN_AUTH_TOKEN }}
+
+      # Additional steps can follow, such as running tests or cleanup
