@@ -65,7 +65,7 @@ deployments:
     version:
     tags: []
     description: Ingest USGS streamflow data from NWIS
-    entrypoint: workflows/usgs_streamflow_obs.py:ingest_usgs_streamflow_obs
+    entrypoint: workflows/ingests/usgs_streamflow_obs.py:ingest_usgs_streamflow_obs
     parameters: {"dir_path": *dir_path}
     work_pool: *work_pool
     schedule:
@@ -76,7 +76,7 @@ deployments:
     version:
     tags: []
     description: Ingest NWM short range streamflow forecasts from GCS
-    entrypoint: workflows/nwm_streamflow_forecasts.py:ingest_nwm_streamflow_forecasts
+    entrypoint: workflows/ingests/nwm_streamflow_forecasts.py:ingest_nwm_streamflow_forecasts
     parameters: {
       "dir_path": *dir_path,
       "nwm_configuration": "short_range"
@@ -90,7 +90,7 @@ deployments:
     version:
     tags: []
     description: Ingest NWM medium range member 1 streamflow forecasts from GCS
-    entrypoint: workflows/nwm_streamflow_forecasts.py:ingest_nwm_streamflow_forecasts
+    entrypoint: workflows/ingests/nwm_streamflow_forecasts.py:ingest_nwm_streamflow_forecasts
     parameters: {
       "dir_path": *dir_path,
       "nwm_configuration": "medium_range_mem1",
@@ -101,11 +101,11 @@ deployments:
       cron: "0 6,18 * * *"
       active: true
 
-  - name: ingest-datastream-forecasts
+  - name: ingest-datastream-short-range-forecasts
     version:
     tags: []
     description: Ingest DataStream streamflow forecasts from S3
-    entrypoint: workflows/datastream_streamflow_forecasts.py:ingest_datastream_forecasts
+    entrypoint: workflows/ingests/datastream_streamflow_forecasts.py:ingest_datastream_forecasts
     parameters: {
       "dir_path": *dir_path,
     }
@@ -118,7 +118,7 @@ deployments:
     version:
     tags: []
     description: Create the joined forecast timeseries table
-    entrypoint: workflows/update_joined_forecasts.py:update_joined_forecast_table
+    entrypoint: workflows/metrics/update_joined_forecasts.py:update_joined_forecast_table
     parameters: {"dir_path": *dir_path}
     work_pool: *work_pool
     schedule:
@@ -129,7 +129,7 @@ deployments:
     version:
     tags: []
     description: Create the forecast metrics table
-    entrypoint: workflows/update_forecast_metrics.py:update_forecast_metrics_table
+    entrypoint: workflows/metrics/update_forecast_metrics.py:update_forecast_metrics_table
     parameters: {"dir_path": *dir_path}
     work_pool: *work_pool
     schedule:

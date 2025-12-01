@@ -9,7 +9,7 @@ import botocore.session
 from botocore import UNSIGNED
 from botocore.config import Config
 
-from utils.common_utils import initialize_evaluation
+from workflows.utils.common_utils import initialize_evaluation
 from utils.datastream_utils import fetch_troute_output_as_dataframe
 
 

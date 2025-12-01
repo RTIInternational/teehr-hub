@@ -5,7 +5,7 @@ import logging
 from prefect import flow, get_run_logger
 
 from utils.forecast_utils import join_forecast_timeseries
-from utils.common_utils import initialize_evaluation
+from workflows.utils.common_utils import initialize_evaluation
 
 logging.getLogger("teehr").setLevel(logging.INFO)
 
