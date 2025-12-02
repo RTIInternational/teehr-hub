@@ -101,18 +101,65 @@ deployments:
       cron: "0 6,18 * * *"
       active: true
 
-  - name: ingest-datastream-short-range-forecasts
+  - name: ingest-datastream-short-range-cfe-forecasts
     version:
     tags: []
     description: Ingest DataStream streamflow forecasts from S3
     entrypoint: workflows/ingests/datastream_streamflow_forecasts.py:ingest_datastream_forecasts
     parameters: {
       "dir_path": *dir_path,
+      "forecast_configuration": "short_range",
+      "datastream_name": "cfe_nom"
     }
     work_pool: *work_pool
-    # schedule:
-    #   cron: "0 10 * * *"
-    #   active: true
+    schedule:
+      cron: "0 10 * * *"
+      active: true
+
+  - name: ingest-datastream-medium-range-cfe-forecasts
+    version:
+    tags: []
+    description: Ingest DataStream streamflow forecasts from S3
+    entrypoint: workflows/ingests/datastream_streamflow_forecasts.py:ingest_datastream_forecasts
+    parameters: {
+      "dir_path": *dir_path,
+      "forecast_configuration": "medium_range",
+      "datastream_name": "cfe_nom"
+    }
+    work_pool: *work_pool
+    schedule:
+      cron: "0 10 * * *"
+      active: true
+
+  - name: ingest-datastream-short-range-lstm-forecasts
+    version:
+    tags: []
+    description: Ingest DataStream streamflow forecasts from S3
+    entrypoint: workflows/ingests/datastream_streamflow_forecasts.py:ingest_datastream_forecasts
+    parameters: {
+      "dir_path": *dir_path,
+      "forecast_configuration": "short_range",
+      "datastream_name": "lstm"
+    }
+    work_pool: *work_pool
+    schedule:
+      cron: "0 10 * * *"
+      active: true
+
+  - name: ingest-datastream-medium-range-lstm-forecasts
+    version:
+    tags: []
+    description: Ingest DataStream streamflow forecasts from S3
+    entrypoint: workflows/ingests/datastream_streamflow_forecasts.py:ingest_datastream_forecasts
+    parameters: {
+      "dir_path": *dir_path,
+      "forecast_configuration": "medium_range",
+      "datastream_name": "lstm"
+    }
+    work_pool: *work_pool
+    schedule:
+      cron: "0 10 * * *"
+      active: true
 
   - name: update-joined-forecast-table
     version:
