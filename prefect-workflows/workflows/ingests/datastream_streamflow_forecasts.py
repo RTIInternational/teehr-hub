@@ -8,9 +8,11 @@ import pandas as pd
 import botocore.session
 from botocore import UNSIGNED
 from botocore.config import Config
+from botocore.exceptions import ClientError
 
 from workflows.utils.common_utils import initialize_evaluation
-from utils.datastream_utils import fetch_troute_output_as_dataframe
+from utils.datastream_utils import fetch_troute_output_to_cache
+from teehr.utils.utils import remove_dir_if_exists
 
 
 logging.getLogger("teehr").setLevel(logging.INFO)
@@ -20,12 +22,18 @@ CURRENT_DT = datetime.now()
 LOOKBACK_DAYS = 1
 
 BUCKET_NAME = 'ciroh-community-ngen-datastream'
+
 SHORT_RANGE_TZ_HOURS = [f"{ref_time:02d}" for ref_time in range(0, 24)]
+SHORT_RANGE_MEMBERS = [None]
+
+MEDIUM_RANGE_TZ_HOURS = ["00", "06", "12", "18"]
+MEDIUM_RANGE_MEMBERS = ["1"]
+
 FORMAT_PATTERN = "%Y-%m-%d_%H:%M:%S"
 UNITS_MAPPING = {"m3 s-1": "m^3/s"}
 LOCATION_ID_PREFIX = "nrds22"
 VARIABLE_NAME = "streamflow_hourly_inst"
-CONFIGURATION_NAME = "nrds_v22_cfenom_short_range"
+
 FORECAST_CONFIGURATION = "short_range"
 HYDROFABRIC_VERSION = "v2.2_hydrofabric"
 DATASTREAM_NAME = "cfe_nom"
@@ -88,61 +96,111 @@ def ingest_datastream_forecasts(
         if prefix == "nrds22":
             stripped_ids.append(id_val)
 
-    storage_options = {'anon': True}  # For xarray s3 access
-    for ref_tz_hour in SHORT_RANGE_TZ_HOURS:
-        prefix = (
-            f"outputs/{datastream_name}/{hydrofabric_version}/ngen.{yrmoday}"
-            f"/{forecast_configuration}/{ref_tz_hour}/"
+    # Get tz hours and members based on forecast configuration
+    if forecast_configuration == "short_range":
+        ref_tz_hours = SHORT_RANGE_TZ_HOURS
+        members = SHORT_RANGE_MEMBERS
+    elif forecast_configuration == "medium_range":
+        ref_tz_hours = MEDIUM_RANGE_TZ_HOURS
+        members = MEDIUM_RANGE_MEMBERS
+    else:
+        logger.error(
+            f"Invalid forecast configuration: {forecast_configuration}. "
+            "Must be 'short_range' or 'medium_range'."
         )
-        response = s3.list_objects_v2(
-            Bucket=BUCKET_NAME,
-            Prefix=prefix,
-            Delimiter='/',
-            MaxKeys=100
-        )
+        return
 
-        # The troute filename currently uses the first valid time
-        file_valid_time = f"{int(ref_tz_hour) + 1:02d}"
-        # Construct reference time from s3 path
-        ref_time = datetime.strptime(f"{yrmoday}{ref_tz_hour}", "%Y%m%d%H")
+    configuration_name = f"nrds_v22_{datastream_name.replace("_", "")}_{forecast_configuration}"
 
-        # Get list of VPU prefixes
-        vpu_prefixes = response.get('CommonPrefixes', [])
-        for vpu_prefix in vpu_prefixes:
+    # Set up cache directory
+    output_cache_dir = Path(
+        ev.cache_dir,
+        "fetching",
+        "nrds",
+        configuration_name,
+        VARIABLE_NAME
+    )
+    remove_dir_if_exists(output_cache_dir)
+    output_cache_dir.mkdir(parents=True, exist_ok=True)
 
-            filename = f"troute_output_{yrmoday}{file_valid_time}00.nc"
-            # Note. The vpu_prefix['Prefix'] includes the trailing slash
-            filepath = f"{vpu_prefix['Prefix']}ngen-run/outputs/troute/{filename}"
-
-            logger.info(f"Processing file: s3://{BUCKET_NAME}/{filepath}")
-            df = fetch_troute_output_as_dataframe(
-                s3_filepath=f"s3://{BUCKET_NAME}/{filepath}",
-                storage_options=storage_options,
-                warehouse_ngen_ids=stripped_ids,
-                field_mapping=FIELD_MAPPING,
-                units_mapping=UNITS_MAPPING,
-                variable_name=VARIABLE_NAME,
-                configuration_name=CONFIGURATION_NAME,
-                ref_time=ref_time,
-                location_id_prefix=LOCATION_ID_PREFIX
-            )
-            if df is None:
-                logger.warning(
-                    f"Skipping file due to read error or no data: "
-                    f"s3://{BUCKET_NAME}/{filepath}"
+    for member in members:
+        for ref_tz_hour in ref_tz_hours:
+            if member is None:
+                prefix = (
+                    f"outputs/{datastream_name}/{hydrofabric_version}/ngen.{yrmoday}"
+                    f"/{forecast_configuration}/{ref_tz_hour}/"
                 )
+            else:
+                prefix = (
+                    f"outputs/{datastream_name}/{hydrofabric_version}/ngen.{yrmoday}"
+                    f"/{forecast_configuration}/{ref_tz_hour}/{member}/"
+                )
+            try:
+                response = s3.list_objects_v2(
+                    Bucket=BUCKET_NAME,
+                    Prefix=prefix,
+                    Delimiter='/',
+                    MaxKeys=100
+                )
+            except ClientError as e:
+                logger.error(f"Error listing objects in S3: {e}")
                 continue
 
+            # The troute filename currently uses the first valid time
+            file_valid_time = f"{int(ref_tz_hour) + 1:02d}"
+            # Construct reference time from s3 path
+            ref_time = datetime.strptime(f"{yrmoday}{ref_tz_hour}", "%Y%m%d%H")
+
+            # Get list of VPU prefixes
+            vpu_prefixes = response.get('CommonPrefixes', [])
+            for vpu_prefix in vpu_prefixes:
+                # Medium range forecasts are broken into 10 daily files
+                if forecast_configuration == "medium_range":
+                    for i in range(0, 10):
+                        yrmoday_i = (start_dt + timedelta(days=i)).strftime("%Y%m%d")
+                        fetch_troute_output_to_cache(
+                            vpu_prefix=vpu_prefix,
+                            yrmoday=yrmoday_i,
+                            file_valid_time=file_valid_time,
+                            output_cache_dir=output_cache_dir,
+                            bucket_name=BUCKET_NAME,
+                            warehouse_ngen_ids=stripped_ids,
+                            field_mapping=FIELD_MAPPING,
+                            units_mapping=UNITS_MAPPING,
+                            variable_name=VARIABLE_NAME,
+                            configuration_name=configuration_name,
+                            ref_time=ref_time,
+                            location_id_prefix=LOCATION_ID_PREFIX,
+                            member=member
+                        )
+                else:
+                    fetch_troute_output_to_cache(
+                        vpu_prefix=vpu_prefix,
+                        yrmoday=yrmoday,
+                        file_valid_time=file_valid_time,
+                        output_cache_dir=output_cache_dir,
+                        bucket_name=BUCKET_NAME,
+                        warehouse_ngen_ids=stripped_ids,
+                        field_mapping=FIELD_MAPPING,
+                        units_mapping=UNITS_MAPPING,
+                        variable_name=VARIABLE_NAME,
+                        configuration_name=configuration_name,
+                        ref_time=ref_time,
+                        location_id_prefix=LOCATION_ID_PREFIX,
+                        member=member
+                    )
+
+            # Load output for all VPUs for this ref time and member
             logger.info(
-                f"Loading {len(df)} records to warehouse from file: "
-                f"s3://{BUCKET_NAME}/{filepath}"
+                f"Loading troute output from cache for ref_time: "
+                f"{ref_time.strftime(FORMAT_PATTERN)}, member: {member}"
             )
             # Load to warehouse
-            ev.load.dataframe(
-                df=df,
+            ev.load.from_cache(
+                in_path=output_cache_dir,
                 table_name="secondary_timeseries"
             )
             logger.info(
-                "Successfully loaded data from file: "
-                f"s3://{BUCKET_NAME}/{filepath}"
+                f"Successfully loaded data for ref_time: "
+                f"{ref_time.strftime(FORMAT_PATTERN)}, member: {member}"
             )

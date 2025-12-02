@@ -1,31 +1,44 @@
 """Utility functions for working with datastream troute outputs."""
 from typing import List
 from datetime import datetime
+from pathlib import Path
 
 import xarray as xr
 from prefect import task, get_run_logger
 
+from teehr.fetching.utils import write_timeseries_parquet_file
+
 
 @task()
-def fetch_troute_output_as_dataframe(
-    s3_filepath: str,
-    storage_options: dict,
+def fetch_troute_output_to_cache(
+    vpu_prefix: dict,
+    bucket_name: str,
+    yrmoday: str,
+    file_valid_time: str,
     warehouse_ngen_ids: List[str],
     field_mapping: dict,
     units_mapping: dict,
     variable_name: str,
     configuration_name: str,
     ref_time: datetime,
-    location_id_prefix: str
+    location_id_prefix: str,
+    output_cache_dir: Path,
+    member: str | None
 ):
     """Fetch troute output from S3 and return as a pandas DataFrame."""
+    logger = get_run_logger()
+
+    # Note. The vpu_prefix['Prefix'] includes the trailing slash
+    filename = f"troute_output_{yrmoday}{file_valid_time}00.nc"
+    filepath = f"{vpu_prefix['Prefix']}ngen-run/outputs/troute/{filename}"
+    s3_filepath = f"s3://{bucket_name}/{filepath}"
+    logger.info(f"Processing file: {s3_filepath}")
     try:
-        logger = get_run_logger()
         # Open the dataset with xarray, specifying the engine
         ds = xr.open_dataset(
             s3_filepath,
             engine="h5netcdf",
-            backend_kwargs={"storage_options": storage_options}
+            backend_kwargs={"storage_options": {'anon': True}}
         )
         logger.info(f"Successfully opened file: {s3_filepath}")
     except Exception as e:
@@ -56,9 +69,23 @@ def fetch_troute_output_as_dataframe(
         "variable_name": variable_name,
         "configuration_name": configuration_name,
         "reference_time": ref_time,
-        "member": None
+        "member": member
     }
     for key in constant_field_values.keys():
         df[key] = constant_field_values[key]
 
-    return df
+    # Write to the cache with a unique filename
+    parquet_filename = Path(s3_filepath).name.replace(".nc", ".parquet")
+    unique_filename = f"{vpu_prefix['Prefix'].replace('/', '_')}{parquet_filename}"
+    cache_filepath = output_cache_dir / unique_filename
+    logger.info(
+        f"Caching fetched data to: {cache_filepath}"
+    )
+    write_timeseries_parquet_file(
+        filepath=cache_filepath,
+        data=df,
+        timeseries_type="secondary",
+        overwrite_output=True
+    )
+
+    return
