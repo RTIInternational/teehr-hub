@@ -4,6 +4,7 @@ from typing import Union
 import logging
 
 from prefect import flow, get_run_logger
+from prefect.futures import wait
 import pandas as pd
 import botocore.session
 from botocore import UNSIGNED
@@ -11,7 +12,7 @@ from botocore.config import Config
 from botocore.exceptions import ClientError
 
 from workflows.utils.common_utils import initialize_evaluation
-from utils.datastream_utils import fetch_troute_output_to_cache
+from utils.datastream_utils import fetch_troute_output_to_cache, generate_s3_filepaths
 from teehr.utils.utils import remove_dir_if_exists
 
 
@@ -63,6 +64,7 @@ def ingest_datastream_forecasts(
     forecast_configuration: str = FORECAST_CONFIGURATION,
     hydrofabric_version: str = HYDROFABRIC_VERSION,
     datastream_name: str = DATASTREAM_NAME,
+    num_cache_files: int = 5,
 ) -> None:
     """DataStream Forecasts Ingestion.
 
@@ -123,84 +125,50 @@ def ingest_datastream_forecasts(
     remove_dir_if_exists(output_cache_dir)
     output_cache_dir.mkdir(parents=True, exist_ok=True)
 
-    for member in members:
-        for ref_tz_hour in ref_tz_hours:
-            if member is None:
-                prefix = (
-                    f"outputs/{datastream_name}/{hydrofabric_version}/ngen.{yrmoday}"
-                    f"/{forecast_configuration}/{ref_tz_hour}/"
-                )
-            else:
-                prefix = (
-                    f"outputs/{datastream_name}/{hydrofabric_version}/ngen.{yrmoday}"
-                    f"/{forecast_configuration}/{ref_tz_hour}/{member}/"
-                )
-            try:
-                response = s3.list_objects_v2(
-                    Bucket=BUCKET_NAME,
-                    Prefix=prefix,
-                    Delimiter='/',
-                    MaxKeys=100
-                )
-            except ClientError as e:
-                logger.error(f"Error listing objects in S3: {e}")
-                continue
+    s3_filepaths = generate_s3_filepaths(
+        forecast_configuration=forecast_configuration,
+        hydrofabric_version=hydrofabric_version,
+        datastream_name=datastream_name,
+        yrmoday=yrmoday,
+        start_dt=start_dt,
+        members=members,
+        ref_tz_hours=ref_tz_hours,
+        bucket_name=BUCKET_NAME
+    )
 
-            # The troute filename currently uses the first valid time
-            file_valid_time = f"{int(ref_tz_hour) + 1:02d}"
-            # Construct reference time from s3 path
-            ref_time = datetime.strptime(f"{yrmoday}{ref_tz_hour}", "%Y%m%d%H")
+    futures = []
+    for filepath_info in s3_filepaths:
+        logger.info(
+            f"Fetching troute output from S3 for {configuration_name}: {filepath_info['filepath']}"
+        )
+        # Fetch troute output to cache
+        future = fetch_troute_output_to_cache.submit(
+            filepath_info=filepath_info,
+            output_cache_dir=output_cache_dir,
+            bucket_name=BUCKET_NAME,
+            warehouse_ngen_ids=stripped_ids,
+            field_mapping=FIELD_MAPPING,
+            units_mapping=UNITS_MAPPING,
+            variable_name=VARIABLE_NAME,
+            configuration_name=configuration_name,
+            location_id_prefix=LOCATION_ID_PREFIX,
+        )
+        futures.append(future)
 
-            # Get list of VPU prefixes
-            vpu_prefixes = response.get('CommonPrefixes', [])
-            for vpu_prefix in vpu_prefixes:
-                # Medium range forecasts are broken into 10 daily files
-                if forecast_configuration == "medium_range":
-                    for i in range(0, 10):
-                        yrmoday_i = (start_dt + timedelta(days=i)).strftime("%Y%m%d")
-                        fetch_troute_output_to_cache(
-                            vpu_prefix=vpu_prefix,
-                            yrmoday=yrmoday_i,
-                            file_valid_time=file_valid_time,
-                            output_cache_dir=output_cache_dir,
-                            bucket_name=BUCKET_NAME,
-                            warehouse_ngen_ids=stripped_ids,
-                            field_mapping=FIELD_MAPPING,
-                            units_mapping=UNITS_MAPPING,
-                            variable_name=VARIABLE_NAME,
-                            configuration_name=configuration_name,
-                            ref_time=ref_time,
-                            location_id_prefix=LOCATION_ID_PREFIX,
-                            member=member
-                        )
-                else:
-                    fetch_troute_output_to_cache(
-                        vpu_prefix=vpu_prefix,
-                        yrmoday=yrmoday,
-                        file_valid_time=file_valid_time,
-                        output_cache_dir=output_cache_dir,
-                        bucket_name=BUCKET_NAME,
-                        warehouse_ngen_ids=stripped_ids,
-                        field_mapping=FIELD_MAPPING,
-                        units_mapping=UNITS_MAPPING,
-                        variable_name=VARIABLE_NAME,
-                        configuration_name=configuration_name,
-                        ref_time=ref_time,
-                        location_id_prefix=LOCATION_ID_PREFIX,
-                        member=member
-                    )
+    wait(futures)
 
-            # Load output for all VPUs for this ref time and member
-            logger.info(
-                f"Loading troute output from cache for ref_time: "
-                f"{ref_time.strftime(FORMAT_PATTERN)}, member: {member}"
-            )
-            # Load to warehouse
-            ev.load.from_cache(
-                in_path=output_cache_dir,
-                table_name="secondary_timeseries"
-            )
-            logger.info(
-                f"Successfully loaded data for ref_time: "
-                f"{ref_time.strftime(FORMAT_PATTERN)}, member: {member}"
-            )
+    logger.info("Coalescing cache files for optimized loading")
+    coalesced_cache_dir = output_cache_dir / "coalesced"
+    sdf = ev.spark.read.parquet(str(output_cache_dir / "*.parquet"))
+    sdf.coalesce(num_cache_files).write.mode("overwrite").parquet(str(coalesced_cache_dir))
+
+    # Load output for all VPUs for this ref time and member
+    logger.info(
+        f"Loading troute output from cache for {configuration_name}: {yrmoday}"
+    )
+    # Load to warehouse
+    ev.load.from_cache(
+        in_path=coalesced_cache_dir,
+        table_name="secondary_timeseries"
+    )
+    logger.info("Successfully loaded data to warehouse")
