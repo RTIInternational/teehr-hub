@@ -9,7 +9,6 @@ import pandas as pd
 import botocore.session
 from botocore import UNSIGNED
 from botocore.config import Config
-from botocore.exceptions import ClientError
 
 from workflows.utils.common_utils import initialize_evaluation
 from utils.datastream_utils import fetch_troute_output_to_cache, generate_s3_filepaths

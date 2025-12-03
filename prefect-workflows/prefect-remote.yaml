@@ -113,7 +113,7 @@ deployments:
     }
     work_pool: *work_pool
     schedule:
-      cron: "0 10 * * *"
+      cron: "30 10 * * *"
       active: true
 
   - name: ingest-datastream-medium-range-cfe-forecasts
@@ -128,7 +128,7 @@ deployments:
     }
     work_pool: *work_pool
     schedule:
-      cron: "0 10 * * *"
+      cron: "0 11 * * *"
       active: true
 
   - name: ingest-datastream-short-range-lstm-forecasts
@@ -143,7 +143,7 @@ deployments:
     }
     work_pool: *work_pool
     schedule:
-      cron: "0 10 * * *"
+      cron: "30 11 * * *"
       active: true
 
   - name: ingest-datastream-medium-range-lstm-forecasts
@@ -158,7 +158,7 @@ deployments:
     }
     work_pool: *work_pool
     schedule:
-      cron: "0 10 * * *"
+      cron: "0 12 * * *"
       active: true
 
   - name: update-joined-forecast-table
