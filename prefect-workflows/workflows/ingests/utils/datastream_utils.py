@@ -5,13 +5,49 @@ from pathlib import Path
 
 import xarray as xr
 from prefect import task, get_run_logger
+from prefect.cache_policies import NO_CACHE
 import botocore
 from botocore.exceptions import ClientError
 
 from teehr.fetching.utils import write_timeseries_parquet_file
+import teehr
 
 
-@task()
+@task(cache_policy=NO_CACHE)
+def load_to_warehouse(
+    ev: teehr.Evaluation,
+    in_path: Path,
+    table_name: str,
+):
+    """Load cached parquet files into the warehouse."""
+    logger = get_run_logger()
+    logger.info(
+        f"Loading troute output from cache to {table_name}"
+    )
+    ev.load.from_cache(
+        in_path=in_path,
+        table_name=table_name
+    )
+    logger.info("Successfully loaded data to warehouse")
+    return
+
+
+@task(cache_policy=NO_CACHE)
+def coalesce_cache_files(
+    ev: teehr.Evaluation,
+    num_cache_files: int,
+    output_cache_dir: Path,
+    coalesced_cache_dir: Path,
+):
+    """Coalesce multiple parquet cache files into a single parquet file."""
+    logger = get_run_logger()
+    logger.info("Coalescing cache files for optimized loading")
+    sdf = ev.spark.read.parquet(str(output_cache_dir / "*.parquet"))
+    sdf.coalesce(num_cache_files).write.mode("overwrite").parquet(str(coalesced_cache_dir))
+    return
+
+
+@task(cache_policy=NO_CACHE)
 def generate_s3_filepaths(
     datastream_name: str,
     hydrofabric_version: str,

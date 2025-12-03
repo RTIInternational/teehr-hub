@@ -11,7 +11,12 @@ from botocore import UNSIGNED
 from botocore.config import Config
 
 from workflows.utils.common_utils import initialize_evaluation
-from utils.datastream_utils import fetch_troute_output_to_cache, generate_s3_filepaths
+from utils.datastream_utils import (
+    fetch_troute_output_to_cache,
+    generate_s3_filepaths,
+    coalesce_cache_files,
+    load_to_warehouse
+)
 from teehr.utils.utils import remove_dir_if_exists
 
 
@@ -154,21 +159,20 @@ def ingest_datastream_forecasts(
             location_id_prefix=LOCATION_ID_PREFIX,
         )
         futures.append(future)
-
     wait(futures)
 
-    logger.info("Coalescing cache files for optimized loading")
+    # Coalesce cache files for optimized loading
     coalesced_cache_dir = output_cache_dir / "coalesced"
-    sdf = ev.spark.read.parquet(str(output_cache_dir / "*.parquet"))
-    sdf.coalesce(num_cache_files).write.mode("overwrite").parquet(str(coalesced_cache_dir))
-
-    # Load output for all VPUs for this ref time and member
-    logger.info(
-        f"Loading troute output from cache for {configuration_name}: {yrmoday}"
+    coalesce_cache_files(
+        ev=ev,
+        num_cache_files=num_cache_files,
+        output_cache_dir=output_cache_dir,
+        coalesced_cache_dir=coalesced_cache_dir
     )
-    # Load to warehouse
-    ev.load.from_cache(
+
+    # Load output
+    load_to_warehouse(
+        ev=ev,
         in_path=coalesced_cache_dir,
         table_name="secondary_timeseries"
     )
-    logger.info("Successfully loaded data to warehouse")
