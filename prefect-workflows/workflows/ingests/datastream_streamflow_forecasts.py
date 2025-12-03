@@ -141,13 +141,12 @@ def ingest_datastream_forecasts(
         s3=s3
     )
 
-    futures = []
     for filepath_info in s3_filepaths:
         logger.info(
             f"Fetching troute output from S3 for {configuration_name}: {filepath_info['filepath']}"
         )
         # Fetch troute output to cache
-        future = fetch_troute_output_to_cache.submit(
+        fetch_troute_output_to_cache(
             filepath_info=filepath_info,
             output_cache_dir=output_cache_dir,
             bucket_name=BUCKET_NAME,
@@ -158,8 +157,26 @@ def ingest_datastream_forecasts(
             configuration_name=configuration_name,
             location_id_prefix=LOCATION_ID_PREFIX,
         )
-        futures.append(future)
-    wait(futures)
+
+    # futures = []
+    # for filepath_info in s3_filepaths:
+    #     logger.info(
+    #         f"Fetching troute output from S3 for {configuration_name}: {filepath_info['filepath']}"
+    #     )
+    #     # Fetch troute output to cache
+    #     future = fetch_troute_output_to_cache.submit(
+    #         filepath_info=filepath_info,
+    #         output_cache_dir=output_cache_dir,
+    #         bucket_name=BUCKET_NAME,
+    #         warehouse_ngen_ids=stripped_ids,
+    #         field_mapping=FIELD_MAPPING,
+    #         units_mapping=UNITS_MAPPING,
+    #         variable_name=VARIABLE_NAME,
+    #         configuration_name=configuration_name,
+    #         location_id_prefix=LOCATION_ID_PREFIX,
+    #     )
+    #     futures.append(future)
+    # wait(futures)
 
     # Coalesce cache files for optimized loading
     coalesced_cache_dir = output_cache_dir / "coalesced"
