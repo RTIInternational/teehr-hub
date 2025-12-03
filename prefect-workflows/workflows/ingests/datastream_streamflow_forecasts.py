@@ -132,7 +132,8 @@ def ingest_datastream_forecasts(
         start_dt=start_dt,
         members=members,
         ref_tz_hours=ref_tz_hours,
-        bucket_name=BUCKET_NAME
+        bucket_name=BUCKET_NAME,
+        s3=s3
     )
 
     futures = []
