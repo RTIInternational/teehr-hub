@@ -16,7 +16,7 @@ client = Client()
 logging.getLogger("teehr").setLevel(logging.INFO)
 
 
-CURRENT_DT = datetime.now(UTC)
+CURRENT_DT = datetime.now(UTC).replace(tzinfo=None)
 LOOKBACK_DAYS = 1
 
 
