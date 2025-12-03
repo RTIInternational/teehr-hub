@@ -20,7 +20,7 @@ from teehr.fetching.const import (
 )
 from teehr.utils.utils import remove_dir_if_exists
 from utils import usgs_utils
-from utils.common_utils import initialize_evaluation
+from workflows.utils.common_utils import initialize_evaluation
 
 logging.getLogger("teehr").setLevel(logging.INFO)
 

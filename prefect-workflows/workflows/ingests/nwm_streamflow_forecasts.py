@@ -7,7 +7,7 @@ from prefect import flow, get_run_logger
 import pandas as pd
 
 from teehr.fetching.utils import format_nwm_configuration_metadata
-from utils.common_utils import initialize_evaluation
+from workflows.utils.common_utils import initialize_evaluation
 
 # Start up a local Dask cluster
 from dask.distributed import Client

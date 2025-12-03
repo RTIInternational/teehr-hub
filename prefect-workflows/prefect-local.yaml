@@ -30,7 +30,7 @@ definitions:
       finished_job_ttl: 300
       pod_watch_timeout_seconds: 300
       env:
-        PREFECT_LOGGING_LEVEL: *log_level        
+        PREFECT_LOGGING_LEVEL: *log_level
         TEEHR_SPARK_IMAGE: "{{ $TEEHR_SPARK_IMAGE }}"
         TEEHR_NAMESPACE: "{{ $TEEHR_NAMESPACE }}"
         PREFECT_LOGGING_EXTRA_LOGGERS: teehr
@@ -56,38 +56,40 @@ definitions:
           operator: Equal
           value: worker
           effect: NoSchedule
- 
+
 # the deployments section allows you to provide configuration for deploying flows
 deployments:
-  # Workflows that are configured for local KIND cluster    
+  # Workflows that are configured for local KIND cluster
   - name: ingest-usgs-streamflow-obs
     version:
     tags: []
     description: Ingest USGS streamflow data from NWIS
-    entrypoint: workflows/usgs_streamflow_obs.py:ingest_usgs_streamflow_obs
+    entrypoint: workflows/ingests/usgs_streamflow_obs.py:ingest_usgs_streamflow_obs
     parameters: {"dir_path": *dir_path}
     work_pool: *work_pool
-    schedule:    
+    schedule:
+
   - name: ingest-nwm-short-range-streamflow-forecasts
     version:
     tags: []
     description: Ingest NWM short range streamflow forecasts from GCS
-    entrypoint: workflows/nwm_streamflow_forecasts.py:ingest_nwm_streamflow_forecasts
+    entrypoint: workflows/ingests/nwm_streamflow_forecasts.py:ingest_nwm_streamflow_forecasts
     parameters: {
       "dir_path": *dir_path,
       "nwm_configuration": "short_range"
     }
     work_pool: *work_pool
-    schedule:     
+    schedule:
+
   - name: ingest-nwm-medium-range-streamflow-forecasts
     version:
     tags: []
     description: Ingest NWM medium range member 1 streamflow forecasts from GCS
-    entrypoint: workflows/nwm_streamflow_forecasts.py:ingest_nwm_streamflow_forecasts
+    entrypoint: workflows/ingests/nwm_streamflow_forecasts.py:ingest_nwm_streamflow_forecasts
     parameters: {
       "dir_path": *dir_path,
       "nwm_configuration": "medium_range_mem1",
       "output_type": "channel_rt_1"
     }
     work_pool: *work_pool
-    schedule:     
+    schedule:
