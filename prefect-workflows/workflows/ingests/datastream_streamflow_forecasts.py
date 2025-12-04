@@ -1,5 +1,5 @@
 from pathlib import Path
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, UTC
 from typing import Union
 import logging
 
@@ -23,7 +23,7 @@ from teehr.utils.utils import remove_dir_if_exists
 logging.getLogger("teehr").setLevel(logging.INFO)
 
 
-CURRENT_DT = datetime.now()
+CURRENT_DT = datetime.now(UTC)
 LOOKBACK_DAYS = 1
 
 BUCKET_NAME = 'ciroh-community-ngen-datastream'
