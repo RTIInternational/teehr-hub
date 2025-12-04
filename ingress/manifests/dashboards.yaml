@@ -1,0 +1,20 @@
+apiVersion: projectcontour.io/v1
+kind: HTTPProxy
+metadata:
+  name: dashboards-httpproxy
+  namespace: ${environment.namespace}
+spec:
+  virtualhost:
+    fqdn: dashboards.${var.hostname}
+    tls:
+      secretName: dashboards.${var.hostname}-tls
+  routes:
+  - conditions:
+    - prefix: /
+    services:
+    - name: teehr-frontend
+      port: 5173
+    enableWebsockets: true
+    timeoutPolicy:
+      response: 300s
+      idle: 300s

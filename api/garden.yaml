@@ -1,0 +1,46 @@
+kind: Build
+type: container
+name: teehr-api
+
+spec:
+  dockerfile: Dockerfile
+
+environments:
+  - local
+  - remote
+
+---
+
+kind: Deploy
+type: kubernetes
+name: teehr-api
+environments:
+  - local
+  - remote
+
+dependencies:
+  - build.teehr-api
+  - deploy.secrets
+
+spec:
+  files:
+    - manifests/deployment.yaml
+    - manifests/service.yaml
+    - manifests/configmap.yaml
+
+  # defaultTarget:
+  #   kind: Deployment
+  #   name: teehr-api
+
+  # sync:
+  #   paths:
+  #     - source: src/
+  #       target: /app/src/
+  #       mode: one-way
+  #       exclude: ["__pycache__", "*.pyc"]
+
+  # portForwards:
+  #   - name: api
+  #     resource: service/teehr-api
+  #     targetPort: 8000
+  #     localPort: 8001

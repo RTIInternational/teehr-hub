@@ -1,0 +1,53 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: teehr-frontend
+  labels:
+    app: teehr-frontend
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: teehr-frontend
+  template:
+    metadata:
+      labels:
+        app: teehr-frontend
+    spec:
+      containers:
+      - name: frontend
+        image: ${actions.build.teehr-frontend.outputs.deployment-image-id}
+        ports:
+        - containerPort: 5173
+        env:
+        - name: NODE_ENV
+          value: "development"
+        - name: VITE_API_BASE_URL
+          valueFrom:
+            configMapKeyRef:
+              name: teehr-frontend-config
+              key: VITE_API_BASE_URL
+        - name: VITE_ALLOWED_HOSTS
+          valueFrom:
+            configMapKeyRef:
+              name: teehr-frontend-config
+              key: VITE_ALLOWED_HOSTS
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "100m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+        readinessProbe:
+          httpGet:
+            path: /
+            port: 5173
+          initialDelaySeconds: 10
+          periodSeconds: 5
+        livenessProbe:
+          httpGet:
+            path: /
+            port: 5173
+          initialDelaySeconds: 30
+          periodSeconds: 10

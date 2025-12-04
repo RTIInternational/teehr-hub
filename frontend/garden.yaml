@@ -1,0 +1,37 @@
+kind: Build
+type: container
+name: teehr-frontend
+
+spec:
+  dockerfile: Dockerfile
+  buildArgs:
+    VITE_API_BASE_URL: "https://api.${var.hostname}"
+
+environments:
+  - local
+  - remote
+
+---
+
+kind: Deploy
+type: kubernetes
+name: teehr-frontend
+environments:
+  - local
+  - remote
+
+dependencies:
+  - build.teehr-frontend
+
+spec:
+  files:
+    - manifests/deployment.yaml
+    - manifests/service.yaml
+    - manifests/configmap.yaml
+  
+  # Port forwarding for local development
+  portForwards:
+    - name: frontend
+      resource: service/teehr-frontend
+      targetPort: 5173
+      localPort: 3000
