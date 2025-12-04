@@ -28,19 +28,13 @@ spec:
     - manifests/service.yaml
     - manifests/configmap.yaml
 
-  # defaultTarget:
-  #   kind: Deployment
-  #   name: teehr-api
+  defaultTarget:
+    kind: Deployment
+    name: teehr-api
 
-  # sync:
-  #   paths:
-  #     - source: src/
-  #       target: /app/src/
-  #       mode: one-way
-  #       exclude: ["__pycache__", "*.pyc"]
-
-  # portForwards:
-  #   - name: api
-  #     resource: service/teehr-api
-  #     targetPort: 8000
-  #     localPort: 8001
+  sync:
+    paths:
+      - containerPath: /app/src
+        sourcePath: ./src
+        mode: one-way
+        exclude: ["__pycache__", "*.pyc"]

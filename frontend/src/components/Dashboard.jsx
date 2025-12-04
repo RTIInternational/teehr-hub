@@ -1,7 +1,6 @@
 import React, { useEffect } from 'react';
 import { useDashboard } from '../context/DashboardContext.jsx';
 import { useDataFetching } from '../hooks/useDataFetching';
-import Navbar from './Navbar.jsx';
 import MapComponent from './MapComponent.jsx';
 import TimeseriesComponent from './TimeseriesComponent.jsx';
 
@@ -25,8 +24,8 @@ const Dashboard = () => {
   }, [loadConfigurations, loadVariables, loadMetrics]);
   
   return (
-    <div className="d-flex flex-column vh-100">
-      <Navbar />
+    <div className="d-flex flex-column" style={{ height: 'calc(100vh - 56px)' }}>
+      {/* Height adjusted for navbar (Bootstrap navbar is typically 56px) */}
       
       <div className="container-fluid flex-grow-1 p-0">
         <div className="row g-0 h-100">
@@ -60,7 +59,7 @@ const Dashboard = () => {
                     top: '80px', 
                     right: '20px', 
                     width: '550px', 
-                    maxHeight: 'calc(100vh - 160px)',
+                    maxHeight: 'calc(100vh - 216px)', // 56px navbar + 160px original offset
                     zIndex: 1000,
                     overflowY: 'auto'
                   }}

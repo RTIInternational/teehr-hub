@@ -156,10 +156,8 @@ async def get_metrics(
             df["geometry"].apply(lambda x: bytes(x))
         )
         gdf = gpd.GeoDataFrame(df, crs="EPSG:4326", geometry="geometry")
-        # Convert to GeoJSON format
-        import json
-        geojson = json.loads(gdf.to_json())
-        return geojson
+        # Use the proper geopandas >=1.0.0 method
+        return gdf.to_geo_dict()
         
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to load metrics: {str(e)}")

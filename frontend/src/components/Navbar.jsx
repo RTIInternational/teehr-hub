@@ -1,17 +1,34 @@
 import React from 'react';
+import { Link, useLocation } from 'react-router-dom';
 
 const Navbar = () => {
+  const location = useLocation();
+  const isHome = location.pathname === '/';
+
   return (
     <nav className="navbar navbar-expand-lg navbar-dark bg-primary">
       <div className="container-fluid px-4">
-        <a className="navbar-brand" href="/">
+        <Link className="navbar-brand" to="/">
           <img 
             src="/teehr.png" 
             alt="TEEHR Dashboard" 
             height="32" 
             className="d-inline-block align-text-top"
           />
-        </a>
+          {!isHome && <span className="ms-2">Dashboard Hub</span>}
+        </Link>
+        
+        {/* Navigation Links */}
+        {!isHome && (
+          <div className="navbar-nav me-auto">
+            <Link 
+              className={`nav-link ${location.pathname === '/dashboard' ? 'active' : ''}`} 
+              to="/dashboard"
+            >
+              Retrospective Simulations
+            </Link>
+          </div>
+        )}
         
         {/* User Profile Section */}
         <div className="d-flex align-items-center">

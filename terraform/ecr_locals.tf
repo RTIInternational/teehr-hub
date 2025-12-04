@@ -43,6 +43,14 @@ locals {
     {
       name            = "teehr-hub/panel-dashboards"
       max_image_count = 10
+    },
+    {
+      name            = "teehr-hub/teehr-api"
+      max_image_count = 10
+    },
+    {
+      name            = "teehr-hub/teehr-dashboards"
+      max_image_count = 10
     }
   ]
 }

@@ -14,16 +14,16 @@ const MapComponent = () => {
   const { state, dispatch } = useDashboard();
   const { selectLocation } = useLocationSelection();
   const { loadLocations } = useDataFetching();
-  
-  // Initialize map
-  useEffect(() => {
+
+  // Initialize map function
+  const initializeMap = () => {
     if (map.current) return; // Initialize map only once
     
     if (!mapContainer.current) {
       console.error('MapComponent: Map container not found');
       return;
     }
-    
+
     try {
       map.current = new maplibregl.Map({
         container: mapContainer.current,
@@ -85,11 +85,16 @@ const MapComponent = () => {
         console.error('MapLibre error:', e);
         dispatch({ type: ActionTypes.SET_ERROR, payload: `Map error: ${e.error?.message || 'Unknown error'}` });
       });
-      
+
     } catch (error) {
       console.error('MapComponent: Error creating map:', error);
       dispatch({ type: ActionTypes.SET_ERROR, payload: `Map initialization failed: ${error.message}` });
     }
+  };
+
+  // Initialize map
+  useEffect(() => {
+    initializeMap();
     
     return () => {
       if (map.current) {
@@ -97,7 +102,7 @@ const MapComponent = () => {
         map.current = null;
       }
     };
-  }, [dispatch]);
+  }, []);
   
   // Load initial locations when map is ready and filters are available
   useEffect(() => {
@@ -282,10 +287,14 @@ const MapComponent = () => {
     
     // Cleanup function
     return () => {
-      if (mapInstance.getLayer('locations-layer')) {
-        mapInstance.off('click', 'locations-layer', handleLocationClick);
-        mapInstance.off('mouseenter', 'locations-layer', handleLocationHover);
-        mapInstance.off('mouseleave', 'locations-layer', handleLocationLeave);
+      try {
+        if (mapInstance && mapInstance.getLayer && mapInstance.getLayer('locations-layer')) {
+          mapInstance.off('click', 'locations-layer', handleLocationClick);
+          mapInstance.off('mouseenter', 'locations-layer', handleLocationHover);
+          mapInstance.off('mouseleave', 'locations-layer', handleLocationLeave);
+        }
+      } catch (error) {
+        // Silent cleanup - don't log in production
       }
     };
   }, [state.locations, state.mapLoaded, state.mapFilters.metric, selectLocation]);

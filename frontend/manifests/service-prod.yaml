@@ -6,10 +6,9 @@ metadata:
     app: teehr-frontend
 spec:
   type: ClusterIP
-  ports:
-  - port: 5173
-    targetPort: 5173
-    protocol: TCP
-    name: http
   selector:
     app: teehr-frontend
+  ports:
+    - protocol: TCP
+      port: 8080
+      targetPort: 8080

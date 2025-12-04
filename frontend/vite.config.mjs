@@ -4,9 +4,12 @@ import react from '@vitejs/plugin-react'
 // https://vitejs.dev/config/
 export default defineConfig({
   plugins: [react()],
+  build: {
+    sourcemap: false, // Disable source maps in production to avoid dev tools errors
+  },
   server: {
     host: '0.0.0.0', // Allow external connections in Docker
-    port: 5173,
+    port: 8080,
     strictPort: true,
     allowedHosts: [
       ...(process.env.VITE_ALLOWED_HOSTS ? process.env.VITE_ALLOWED_HOSTS.split(',') : []),

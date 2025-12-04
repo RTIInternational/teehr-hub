@@ -18,7 +18,7 @@ spec:
       - name: frontend
         image: ${actions.build.teehr-frontend.outputs.deployment-image-id}
         ports:
-        - containerPort: 5173
+        - containerPort: 8080
         env:
         - name: NODE_ENV
           value: "development"
@@ -37,17 +37,17 @@ spec:
             memory: "256Mi"
             cpu: "100m"
           limits:
-            memory: "512Mi"
+            memory: "1Gi"
             cpu: "500m"
         readinessProbe:
           httpGet:
             path: /
-            port: 5173
+            port: 8080
           initialDelaySeconds: 10
           periodSeconds: 5
         livenessProbe:
           httpGet:
             path: /
-            port: 5173
+            port: 8080
           initialDelaySeconds: 30
           periodSeconds: 10
