@@ -1,3 +1,4 @@
+from multiprocessing.resource_sharer import stop
 from pathlib import Path
 from typing import Union
 import logging
@@ -6,7 +7,7 @@ from prefect import flow, get_run_logger
 
 from teehr import DeterministicMetrics as dm
 from teehr import RowLevelCalculatedFields as rcf
-from utils.common_utils import initialize_evaluation
+from workflows.utils.common_utils import initialize_evaluation
 from update_joined_forecasts import JOINED_FORECAST_TABLE_NAME
 
 logging.getLogger("teehr").setLevel(logging.INFO)

@@ -1,5 +1,5 @@
 from pathlib import Path
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, UTC
 from typing import Union
 import logging
 
@@ -7,7 +7,7 @@ from prefect import flow, get_run_logger
 import pandas as pd
 
 from teehr.fetching.utils import format_nwm_configuration_metadata
-from utils.common_utils import initialize_evaluation
+from workflows.utils.common_utils import initialize_evaluation
 
 # Start up a local Dask cluster
 from dask.distributed import Client
@@ -16,7 +16,7 @@ client = Client()
 logging.getLogger("teehr").setLevel(logging.INFO)
 
 
-CURRENT_DT = datetime.now()
+CURRENT_DT = datetime.now(UTC).replace(tzinfo=None)
 LOOKBACK_DAYS = 1
 
 

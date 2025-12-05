@@ -1,5 +1,5 @@
 from pathlib import Path
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, UTC, timezone
 from typing import Union, Optional
 import logging
 
@@ -20,12 +20,12 @@ from teehr.fetching.const import (
 )
 from teehr.utils.utils import remove_dir_if_exists
 from utils import usgs_utils
-from utils.common_utils import initialize_evaluation
+from workflows.utils.common_utils import initialize_evaluation
 
 logging.getLogger("teehr").setLevel(logging.INFO)
 
 
-CURRENT_DT = datetime.now()
+CURRENT_DT = datetime.now(UTC)
 LOOKBACK_DAYS = 1
 CHUNK_SIZE = 100  # Number of sites to fetch per api call
 
@@ -61,6 +61,7 @@ def ingest_usgs_streamflow_obs(
     logger = get_run_logger()
 
     if isinstance(end_dt, str):
+        # Assumes UTC
         end_dt = datetime.fromisoformat(end_dt)
 
     ev = initialize_evaluation(dir_path=dir_path)
