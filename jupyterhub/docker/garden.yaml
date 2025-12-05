@@ -23,7 +23,6 @@ spec:
   buildArgs:
       TEEHR_VERSION: ${var.stableTeehrVersion}
 environments:
-  - local
   - remote
 dependencies:
   - build.teehr-jupyter-driver-image-edge

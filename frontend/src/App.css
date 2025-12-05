@@ -1,0 +1,193 @@
+/* Custom styles for TEEHR Dashboard */
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
+    sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  margin: 0;
+  padding: 0;
+  height: 100%;
+}
+
+html {
+  height: 100%;
+}
+
+#root {
+  height: 100vh;
+}
+
+/* Ensure proper Bootstrap spacing */
+.container-fluid {
+  padding: 0;
+}
+
+/* Custom card styling */
+.card {
+  box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+  border: 1px solid rgba(0, 0, 0, 0.125);
+}
+
+.card-header {
+  background-color: #f8f9fa;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.125);
+}
+
+/* Map container styling */
+.maplibregl-popup {
+  max-width: 300px;
+}
+
+.maplibregl-popup-content {
+  padding: 8px;
+  border-radius: 6px;
+}
+
+/* Form styling */
+.form-select, .form-control {
+  font-size: 0.9rem;
+}
+
+.form-label {
+  font-weight: 600;
+  color: #495057;
+}
+
+/* Loading states */
+.spinner-border-sm {
+  width: 1rem;
+  height: 1rem;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .sidebar {
+    height: auto;
+    min-height: 100vh;
+  }
+  
+  .card-body {
+    padding: 1rem;
+  }
+}
+
+/* Plotly overrides */
+.js-plotly-plot .plotly .modebar {
+  background: transparent;
+}
+
+.js-plotly-plot .plotly .modebar-btn {
+  background: rgba(255, 255, 255, 0.7);
+}
+
+/* Alert styling */
+.alert {
+  border-radius: 6px;
+}
+
+/* Small text improvements */
+.small {
+  font-size: 0.875rem;
+}
+
+.text-muted {
+  color: #6c757d !important;
+}
+
+/* Home Page Styles */
+.home-page {
+  min-height: 100vh;
+  background-color: #f8f9fa;
+}
+
+.hero-section {
+  background: linear-gradient(135deg, #0d6efd 0%, #0056b3 100%);
+}
+
+/* Dashboard Card Styles */
+.dashboard-card {
+  border: none;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  transition: all 0.3s ease;
+  height: 100%;
+}
+
+.dashboard-card-available:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 8px 15px rgba(0, 0, 0, 0.2);
+}
+
+.dashboard-card-disabled {
+  opacity: 0.7;
+}
+
+.dashboard-card .card-body {
+  padding: 1.5rem;
+}
+
+.dashboard-card .features-list {
+  flex-grow: 1;
+}
+
+.dashboard-card .features-list ul {
+  margin: 0;
+  padding-left: 1.2rem;
+  font-size: 0.9rem;
+}
+
+.dashboard-card .features-list li {
+  margin-bottom: 0.3rem;
+}
+
+.dashboard-card .card-header {
+  border-bottom: none;
+  padding: 1rem 1.5rem;
+}
+
+.dashboard-card .card-title {
+  font-size: 1.1rem;
+  font-weight: 600;
+}
+
+/* Navigation Styles */
+.navbar .nav-link {
+  color: rgba(255, 255, 255, 0.85) !important;
+  transition: color 0.2s ease;
+}
+
+.navbar .nav-link:hover {
+  color: white !important;
+}
+
+.navbar .nav-link.active {
+  color: white !important;
+  font-weight: 500;
+}
+
+/* Main content padding when navbar is present */
+main {
+  padding-top: 0;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .hero-section {
+    padding: 3rem 0 !important;
+  }
+  
+  .hero-section .display-4 {
+    font-size: 2rem;
+  }
+  
+  .dashboard-card .card-body {
+    padding: 1rem;
+  }
+}
+
+/* Bootstrap card hover effect override for disabled cards */
+.dashboard-card-disabled:hover {
+  transform: none;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}

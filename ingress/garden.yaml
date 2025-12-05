@@ -3,9 +3,67 @@ type: kubernetes
 name: jupyterhub-ingress
 spec:
   files:
-    - manifests/httpproxy.yaml
+    - manifests/hub.yaml
 dependencies:
-  - deploy.teehr-jupyterhub
+  - deploy.cert-manager
+  - deploy.letsencrypt
+  - deploy.cert
+  - deploy.contour
+environments:
+  - local
+  - remote
+---
+kind: Deploy
+type: kubernetes
+name: minio-ingress
+spec:
+  files:
+    - manifests/minio.yaml
+dependencies:
+  - deploy.cert-manager
+  - deploy.letsencrypt
+  - deploy.cert
+  - deploy.contour
+environments:
+  - local
+---
+kind: Deploy
+type: kubernetes
+name: panel-ingress
+spec:
+  files:
+    - manifests/panel.yaml
+dependencies:
+  - deploy.cert-manager
+  - deploy.letsencrypt
+  - deploy.cert
+  - deploy.contour
+environments:
+  - local
+  - remote
+---
+kind: Deploy
+type: kubernetes
+name: api-ingress
+spec:
+  files:
+    - manifests/api.yaml
+dependencies:
+  - deploy.cert-manager
+  - deploy.letsencrypt
+  - deploy.cert
+  - deploy.contour
+environments:
+  - local
+  - remote
+---
+kind: Deploy
+type: kubernetes
+name: dashboards-ingress
+spec:
+  files:
+    - manifests/dashboards.yaml
+dependencies:
   - deploy.cert-manager
   - deploy.letsencrypt
   - deploy.cert
