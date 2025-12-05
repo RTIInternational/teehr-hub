@@ -1,6 +1,5 @@
 import { Card, Row, Col, Spinner, CloseButton } from 'react-bootstrap';
-import { useDashboard } from '../context/DashboardContext.jsx';
-import { ActionTypes } from '../context/DashboardContext.jsx';
+import { useDashboard , ActionTypes } from '../context/DashboardContext.jsx';
 import PlotlyChart from './PlotlyChart.jsx';
 import TimeseriesControls from './TimeseriesControls.jsx';
 

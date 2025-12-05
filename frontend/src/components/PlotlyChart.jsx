@@ -1,5 +1,5 @@
-import React, { useEffect, useRef } from 'react';
 import Plotly from 'plotly.js-dist-min';
+import { useEffect, useRef } from 'react';
 
 // Helper function to determine y-axis title
 const getYAxisTitle = (primaryData, secondaryData, filters) => {

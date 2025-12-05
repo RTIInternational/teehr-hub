@@ -21,7 +21,7 @@ const Sidebar = () => {
                 <strong>2.</strong> Click on a location on the map to select it
               </div>
               <div className="mb-2">
-                <strong>3.</strong> Configure timeseries settings and click "Load Timeseries" to view data
+                <strong>3.</strong> Configure timeseries settings and click &ldquo;Load Timeseries&rdquo; to view data
               </div>
             </div>
           </Card.Body>

@@ -1,4 +1,5 @@
-import React, { createContext, useContext, useReducer } from 'react';
+/* eslint-disable react-refresh/only-export-components */
+import { createContext, useContext, useReducer } from 'react';
 
 // Initial state
 const initialState = {

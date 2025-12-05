@@ -1,8 +1,7 @@
-import React, { useEffect, useRef, useState } from 'react';
 import maplibregl from 'maplibre-gl';
+import { useEffect, useRef, useCallback } from 'react';
 import 'maplibre-gl/dist/maplibre-gl.css';
-import { useDashboard } from '../context/DashboardContext.jsx';
-import { ActionTypes } from '../context/DashboardContext.jsx';
+import { useDashboard , ActionTypes } from '../context/DashboardContext.jsx';
 import { useLocationSelection, useDataFetching } from '../hooks/useDataFetching';
 import MapFilterButton from './MapFilterButton.jsx';
 
@@ -16,7 +15,7 @@ const MapComponent = () => {
   const { loadLocations } = useDataFetching();
 
   // Initialize map function
-  const initializeMap = () => {
+  const initializeMap = useCallback(() => {
     if (map.current) return; // Initialize map only once
     
     if (!mapContainer.current) {
@@ -90,7 +89,7 @@ const MapComponent = () => {
       console.error('MapComponent: Error creating map:', error);
       dispatch({ type: ActionTypes.SET_ERROR, payload: `Map initialization failed: ${error.message}` });
     }
-  };
+  }, [dispatch, selectLocation]);
 
   // Initialize map
   useEffect(() => {
@@ -102,7 +101,7 @@ const MapComponent = () => {
         map.current = null;
       }
     };
-  }, []);
+  }, [initializeMap]);
   
   // Load initial locations when map is ready and filters are available
   useEffect(() => {
@@ -296,12 +295,12 @@ const MapComponent = () => {
           mapInstance.off('mouseenter', 'locations-layer', handleLocationHover);
           mapInstance.off('mouseleave', 'locations-layer', handleLocationLeave);
         }
-      } catch (error) {
+      } catch {
         // Silent cleanup - don't log in production
       }
     };
-    
-  }, [state.locations, state.mapLoaded, state.mapFilters.metric, selectLocation]);
+
+  }, [state.locations, state.mapLoaded, state.mapFilters.metric, selectLocation, dispatch]);
   
   return (
     <div className="position-relative h-100 w-100">

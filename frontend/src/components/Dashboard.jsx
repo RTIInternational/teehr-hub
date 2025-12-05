@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import { useEffect } from 'react';
 import { useDashboard } from '../context/DashboardContext.jsx';
 import { useDataFetching } from '../hooks/useDataFetching';
 import MapComponent from './MapComponent.jsx';

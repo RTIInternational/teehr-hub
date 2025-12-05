@@ -1,9 +1,9 @@
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { Container, Alert } from 'react-bootstrap';
-import { DashboardProvider } from './context/DashboardContext.jsx';
-import Home from './components/Home.jsx';
+import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import Dashboard from './components/Dashboard.jsx';
+import Home from './components/Home.jsx';
 import Navbar from './components/Navbar.jsx';
+import { DashboardProvider } from './context/DashboardContext.jsx';
 import 'bootstrap/dist/css/bootstrap.min.css';
 import './App.css';
 
