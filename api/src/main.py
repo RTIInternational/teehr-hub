@@ -118,11 +118,15 @@ async def get_metrics(
     try:
         conn = get_trino_connection()
         
+        params = {}
         where_conditions = ["primary_location_id LIKE 'usgs-%'"]
+        
         if configuration:
-            where_conditions.append(f"configuration_name = '{configuration}'")
+            where_conditions.append("configuration_name = %(configuration)s")
+            params['configuration'] = configuration
         if variable:
-            where_conditions.append(f"variable_name = '{variable}'")
+            where_conditions.append("variable_name = %(variable)s")
+            params['variable'] = variable
         
         where_clause = " AND ".join(where_conditions)
         
@@ -143,7 +147,7 @@ async def get_metrics(
         WHERE {where_clause}
         """
         
-        df = pd.read_sql(query, conn)
+        df = pd.read_sql(query, conn, params=params)
         conn.close()
         
         if df.empty:
@@ -198,15 +202,7 @@ async def get_metric_names():
         return metric_columns
         
     except Exception as e:
-        print(f"Error getting metric names: {str(e)}")
-        # Fallback to hardcoded list if query fails
-        return [
-            "count",
-            "average", 
-            "relative_bias",
-            "nash_sutcliffe_efficiency",
-            "kling_gupta_efficiency"
-        ]
+        raise HTTPException(status_code=500, detail=f"Failed to load metrics names: {str(e)}")
 
 
 @app.get("/api/configurations")
@@ -240,27 +236,31 @@ async def get_variables():
 @app.get("/api/timeseries/primary/{location_id}")
 async def get_primary_timeseries(
     location_id: str,
-    start_date: Optional[str] = None,
-    end_date: Optional[str] = None,
-    variable: Optional[str] = None
+    configuration: Optional[str] = None,
+    variable: Optional[str] = None,
+    start_date: Optional[datetime] = None,
+    end_date: Optional[datetime] = None,
 ):
     """Get primary timeseries data for a specific location."""
     try:
         conn = get_trino_connection()
         
-        # Build conditions for filtering
-        conditions = [f"location_id = '{location_id}'"]
+        # Build conditions for filtering with parameterized queries
+        params = {'location_id': location_id}
+        conditions = ["location_id = %(location_id)s"]
         
         if start_date:
-            # Convert datetime-local format (2018-01-01T00:00) to proper timestamp
-            start_ts = start_date.replace('T', ' ') + ':00'
-            conditions.append(f"value_time >= TIMESTAMP '{start_ts}'")
+            conditions.append("value_time >= TIMESTAMP %(start_date)s")
+            params['start_date'] = start_date.strftime('%Y-%m-%d %H:%M:%S')
         if end_date:
-            # Convert datetime-local format to proper timestamp  
-            end_ts = end_date.replace('T', ' ') + ':00'
-            conditions.append(f"value_time <= TIMESTAMP '{end_ts}'")
+            conditions.append("value_time <= TIMESTAMP %(end_date)s")
+            params['end_date'] = end_date.strftime('%Y-%m-%d %H:%M:%S')
         if variable:
-            conditions.append(f"variable_name = '{variable}'")
+            conditions.append("variable_name = %(variable)s")
+            params['variable'] = variable
+        if configuration:
+            conditions.append("configuration_name = %(configuration)s")
+            params['configuration'] = configuration
         
         where_clause = " AND ".join(conditions)
         
@@ -281,10 +281,11 @@ async def get_primary_timeseries(
         """
         
         print(f"Primary timeseries query: {query}")  # Debug log
+        print(f"Primary timeseries params: {params}")  # Debug log
         
         # Time the query execution
         query_start = time.time()
-        df = pd.read_sql(query, conn)
+        df = pd.read_sql(query, conn, params=params)
         conn.close()
         query_time = time.time() - query_start
         print(f"Primary query execution time: {query_time:.3f} seconds")
@@ -346,30 +347,39 @@ async def get_primary_timeseries(
 @app.get("/api/timeseries/secondary/{location_id}")
 async def get_secondary_timeseries(
     location_id: str,
-    start_date: Optional[str] = None,
-    end_date: Optional[str] = None,
     configuration: Optional[str] = None,
-    variable: Optional[str] = None
+    variable: Optional[str] = None,
+    start_date: Optional[datetime] = None,
+    end_date: Optional[datetime] = None,
+    reference_start_date: Optional[datetime] = None,
+    reference_end_date: Optional[datetime] = None
 ):
     """Get secondary timeseries data for a specific location."""
     try:
         conn = get_trino_connection()
         
-        # Build conditions for filtering - using the crosswalk join pattern
-        where_conditions = [f"lc.primary_location_id = '{location_id}'"]
+        # Build conditions for filtering - using the crosswalk join pattern with parameterized queries
+        params = {'location_id': location_id}
+        where_conditions = ["lc.primary_location_id = %(location_id)s"]
         
-        if start_date:
-            # Convert datetime-local format (2018-01-01T00:00) to proper timestamp
-            start_ts = start_date.replace('T', ' ') + ':00'
-            where_conditions.append(f"st.value_time >= TIMESTAMP '{start_ts}'")
-        if end_date:
-            # Convert datetime-local format to proper timestamp  
-            end_ts = end_date.replace('T', ' ') + ':00'
-            where_conditions.append(f"st.value_time <= TIMESTAMP '{end_ts}'")
         if configuration:
-            where_conditions.append(f"st.configuration_name = '{configuration}'")
+            where_conditions.append("st.configuration_name = %(configuration)s")
+            params['configuration'] = configuration
         if variable:
-            where_conditions.append(f"st.variable_name = '{variable}'")
+            where_conditions.append("st.variable_name = %(variable)s")
+            params['variable'] = variable
+        if start_date:
+            where_conditions.append("st.value_time >= TIMESTAMP %(start_date)s")
+            params['start_date'] = start_date.strftime('%Y-%m-%d %H:%M:%S')
+        if end_date:
+            where_conditions.append("st.value_time <= TIMESTAMP %(end_date)s")
+            params['end_date'] = end_date.strftime('%Y-%m-%d %H:%M:%S')
+        if reference_start_date:
+            where_conditions.append("st.reference_time >= TIMESTAMP %(reference_start_date)s")
+            params['reference_start_date'] = reference_start_date.strftime('%Y-%m-%d %H:%M:%S')
+        if reference_end_date:
+            where_conditions.append("st.reference_time <= TIMESTAMP %(reference_end_date)s")
+            params['reference_end_date'] = reference_end_date.strftime('%Y-%m-%d %H:%M:%S')
         
         where_clause = " AND ".join(where_conditions)
         
@@ -393,10 +403,11 @@ async def get_secondary_timeseries(
         """
         
         print(f"Secondary timeseries query: {query}")  # Debug log
+        print(f"Secondary timeseries params: {params}")  # Debug log
         
         # Time the query execution
         query_start = time.time()
-        df = pd.read_sql(query, conn)
+        df = pd.read_sql(query, conn, params=params)
         conn.close()
         query_time = time.time() - query_start
         print(f"Secondary query execution time: {query_time:.3f} seconds")
