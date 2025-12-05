@@ -4,7 +4,6 @@ import { DashboardProvider } from './context/DashboardContext.jsx';
 import Home from './components/Home.jsx';
 import Dashboard from './components/Dashboard.jsx';
 import Navbar from './components/Navbar.jsx';
-import ErrorBoundary from './components/ErrorBoundary.jsx';
 import 'bootstrap/dist/css/bootstrap.min.css';
 import './App.css';
 
@@ -19,11 +18,9 @@ function App() {
             <Route 
               path="/dashboard" 
               element={
-                <ErrorBoundary>
                   <DashboardProvider>
                     <Dashboard />
                   </DashboardProvider>
-                </ErrorBoundary>
               } 
             />
             {/* Future routes */}

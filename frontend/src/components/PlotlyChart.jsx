@@ -116,21 +116,21 @@ const PlotlyChart = ({ primaryData, secondaryData, selectedLocation, filters }) 
     });
 
     // Window resize handler
-    const handleResize = () => {
-      if (plotRef.current) {
-        Plotly.Plots.resize(plotRef.current);
-      }
-    };
+    // const handleResize = () => {
+    //   if (plotRef.current) {
+    //     Plotly.Plots.resize(plotRef.current);
+    //   }
+    // };
     
-    window.addEventListener('resize', handleResize);
+    // window.addEventListener('resize', handleResize);
 
     // Cleanup
-    return () => {
-      window.removeEventListener('resize', handleResize);
-      if (plotRef.current) {
-        Plotly.purge(plotRef.current);
-      }
-    };
+    // return () => {
+    //   window.removeEventListener('resize', handleResize);
+    //   if (plotRef.current) {
+    //     Plotly.purge(plotRef.current);
+    //   }
+    // };
   }, [primaryData, secondaryData, selectedLocation, filters]);
 
   return <div ref={plotRef} style={{ width: '100%', height: '500px' }} />;

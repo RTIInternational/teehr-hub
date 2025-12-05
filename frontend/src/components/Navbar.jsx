@@ -5,30 +5,47 @@ const Navbar = () => {
   const location = useLocation();
   const isHome = location.pathname === '/';
 
+  const getBreadcrumbs = () => {
+    const pathMap = {
+      '/dashboard': 'Retrospective Simulations',
+      '/forecast': 'Forecast Analysis',
+      '/data': 'Data Management'
+    };
+
+    if (isHome) return null;
+
+    return (
+      <nav aria-label="breadcrumb">
+        <ol className="breadcrumb mb-0 bg-transparent">
+          <li className="breadcrumb-item">
+            <Link to="/" className="text-light text-decoration-none">
+              Dashboard Hub
+            </Link>
+          </li>
+          <li className="breadcrumb-item active text-white" aria-current="page">
+            {pathMap[location.pathname] || 'Dashboard'}
+          </li>
+        </ol>
+      </nav>
+    );
+  };
+
   return (
     <nav className="navbar navbar-expand-lg navbar-dark bg-primary">
-      <div className="container-fluid px-4">
-        <Link className="navbar-brand" to="/">
+      <div className="container-fluid px-4 d-flex align-items-center">
+        <Link className="navbar-brand me-3" to="/">
           <img 
             src="/teehr.png" 
             alt="TEEHR Dashboard" 
             height="32" 
             className="d-inline-block align-text-top"
           />
-          {!isHome && <span className="ms-2">Dashboard Hub</span>}
         </Link>
         
-        {/* Navigation Links */}
-        {!isHome && (
-          <div className="navbar-nav me-auto">
-            <Link 
-              className={`nav-link ${location.pathname === '/dashboard' ? 'active' : ''}`} 
-              to="/dashboard"
-            >
-              Retrospective Simulations
-            </Link>
-          </div>
-        )}
+        {/* Breadcrumb Navigation */}
+        <div className="flex-grow-1 d-flex align-items-center">
+          {getBreadcrumbs()}
+        </div>
         
         {/* User Profile Section */}
         <div className="d-flex align-items-center">
