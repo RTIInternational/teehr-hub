@@ -1,4 +1,4 @@
-import React from 'react';
+import { Card, Badge } from 'react-bootstrap';
 import { useLocationSelection } from '../hooks/useDataFetching';
 
 const Sidebar = () => {
@@ -8,14 +8,14 @@ const Sidebar = () => {
     <div className="bg-light border-end h-100">
       <div className="p-3">
         {/* Instructions */}
-        <div className="card mb-3">
-          <div className="card-header">
-            <h6 className="card-title mb-0">🚀 How to Use</h6>
-          </div>
-          <div className="card-body">
+        <Card className="mb-3">
+          <Card.Header>
+            <Card.Title as="h6" className="mb-0">🚀 How to Use</Card.Title>
+          </Card.Header>
+          <Card.Body>
             <div className="small">
               <div className="mb-2">
-                <strong>1.</strong> Use the <span className="badge bg-light text-dark">🗺️ Map Filters</span> button on the map to filter locations
+                <strong>1.</strong> Use the <Badge bg="light" text="dark">🗺️ Map Filters</Badge> button on the map to filter locations
               </div>
               <div className="mb-2">
                 <strong>2.</strong> Click on a location on the map to select it
@@ -24,16 +24,16 @@ const Sidebar = () => {
                 <strong>3.</strong> Configure timeseries settings and click "Load Timeseries" to view data
               </div>
             </div>
-          </div>
-        </div>
+          </Card.Body>
+        </Card>
 
         {/* Selected Location Info */}
         {selectedLocation && (
-          <div className="card">
-            <div className="card-header">
-              <h6 className="card-title mb-0">📍 Selected Location</h6>
-            </div>
-            <div className="card-body">
+          <Card>
+            <Card.Header>
+              <Card.Title as="h6" className="mb-0">📍 Selected Location</Card.Title>
+            </Card.Header>
+            <Card.Body>
               <div className="mb-2">
                 <strong>Name:</strong><br/>
                 <span className="text-break">{selectedLocation.name}</span>
@@ -49,8 +49,8 @@ const Sidebar = () => {
                   Lon: {selectedLocation.coordinates[0]?.toFixed(4)}
                 </div>
               )}
-            </div>
-          </div>
+            </Card.Body>
+          </Card>
         )}
       </div>
     </div>

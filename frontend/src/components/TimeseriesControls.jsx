@@ -1,4 +1,4 @@
-import React from 'react';
+import { Form, Button, Row, Col, Spinner } from 'react-bootstrap';
 import { useDashboard } from '../context/DashboardContext.jsx';
 import { useFilters, useDataFetching, useLocationSelection } from '../hooks/useDataFetching';
 
@@ -30,100 +30,105 @@ const TimeseriesControls = () => {
 
   return (
     <div style={{ padding: '20px' }}>
-      <div className="mb-3">
-          <label className="form-label">Configuration</label>
-          <select 
-            className="form-select form-select-sm" 
-            value={timeseriesFilters.configuration || ''}
-            onChange={(e) => handleTimeseriesFilterChange('configuration', e.target.value)}
-          >
-            <option value="">Select Configuration</option>
-            {state.configurations.map(config => (
-              <option key={config} value={config}>{config}</option>
-            ))}
-          </select>
-        </div>
-        
-        <div className="mb-3">
-          <label className="form-label">Variable</label>
-          <select 
-            className="form-select form-select-sm" 
-            value={timeseriesFilters.variable || ''}
-            onChange={(e) => handleTimeseriesFilterChange('variable', e.target.value)}
-          >
-            <option value="">Select Variable</option>
-            {state.variables.map(variable => (
-              <option key={variable} value={variable}>{variable}</option>
-            ))}
-          </select>
-        </div>
-        
-        <div className="mb-3 mt-3">
-          <label className="form-label">Value Time Range (optional)</label>
-          <div className="row">
-            <div className="col-6">
-              <label className="form-label small">Start Date</label>
-              <input 
-                type="datetime-local" 
-                className="form-control form-control-sm" 
-                value={timeseriesFilters.start_date || ''}
-                onChange={(e) => handleTimeseriesFilterChange('start_date', e.target.value)}
+      <Form.Group className="mb-3">
+        <Form.Label>Configuration</Form.Label>
+        <Form.Select 
+          size="sm" 
+          value={timeseriesFilters.configuration || ''}
+          onChange={(e) => handleTimeseriesFilterChange('configuration', e.target.value)}
+        >
+          <option value="">Select Configuration</option>
+          {state.configurations.map(config => (
+            <option key={config} value={config}>{config}</option>
+          ))}
+        </Form.Select>
+      </Form.Group>
+      
+      <Form.Group className="mb-3">
+        <Form.Label>Variable</Form.Label>
+        <Form.Select 
+          size="sm" 
+          value={timeseriesFilters.variable || ''}
+          onChange={(e) => handleTimeseriesFilterChange('variable', e.target.value)}
+        >
+          <option value="">Select Variable</option>
+          {state.variables.map(variable => (
+            <option key={variable} value={variable}>{variable}</option>
+          ))}
+        </Form.Select>
+      </Form.Group>
+      
+      <Form.Group className="mb-3">
+        <Form.Label>Value Time Range (optional)</Form.Label>
+        <Row>
+          <Col xs={6}>
+            <Form.Label className="small">Start Date</Form.Label>
+            <Form.Control 
+              type="datetime-local" 
+              size="sm" 
+              value={timeseriesFilters.start_date || ''}
+              onChange={(e) => handleTimeseriesFilterChange('start_date', e.target.value)}
+            />
+          </Col>
+          <Col xs={6}>
+            <Form.Label className="small">End Date</Form.Label>
+            <Form.Control 
+              type="datetime-local" 
+              size="sm" 
+              value={timeseriesFilters.end_date || ''}
+              onChange={(e) => handleTimeseriesFilterChange('end_date', e.target.value)}
+            />
+          </Col>
+        </Row>
+      </Form.Group>
+      
+      <Form.Group className="mb-3">
+        <Form.Label>Reference Time Range (optional)</Form.Label>
+        <Row>
+          <Col xs={6}>
+            <Form.Label className="small">Start Reference Time</Form.Label>
+            <Form.Control 
+              type="datetime-local" 
+              size="sm" 
+              value={timeseriesFilters.reference_time_start || ''}
+              onChange={(e) => handleTimeseriesFilterChange('reference_time_start', e.target.value)}
+            />
+          </Col>
+          <Col xs={6}>
+            <Form.Label className="small">End Reference Time</Form.Label>
+            <Form.Control 
+              type="datetime-local" 
+              size="sm" 
+              value={timeseriesFilters.reference_time_end || ''}
+              onChange={(e) => handleTimeseriesFilterChange('reference_time_end', e.target.value)}
+            />
+          </Col>
+        </Row>
+      </Form.Group>
+      
+      <div className="d-grid">
+        <Button 
+          variant="primary"
+          onClick={handleLoadTimeseries}
+          disabled={!selectedLocation || !timeseriesFilters.configuration || !timeseriesFilters.variable || state.timeseriesLoading}
+        >
+          {state.timeseriesLoading ? (
+            <>
+              <Spinner
+                as="span"
+                animation="border"
+                size="sm"
+                role="status"
+                aria-hidden="true"
+                className="me-2"
               />
-            </div>
-            <div className="col-6">
-              <label className="form-label small">End Date</label>
-              <input 
-                type="datetime-local" 
-                className="form-control form-control-sm" 
-                value={timeseriesFilters.end_date || ''}
-                onChange={(e) => handleTimeseriesFilterChange('end_date', e.target.value)}
-              />
-            </div>
-          </div>
-        </div>
-        
-        <div className="mb-3 mt-3">
-          <label className="form-label">Reference Time Range (optional)</label>
-          <div className="row">
-            <div className="col-6">
-              <label className="form-label small">Start Reference Time</label>
-              <input 
-                type="datetime-local" 
-                className="form-control form-control-sm" 
-                value={timeseriesFilters.reference_time_start || ''}
-                onChange={(e) => handleTimeseriesFilterChange('reference_time_start', e.target.value)}
-              />
-            </div>
-            <div className="col-6">
-              <label className="form-label small">End Reference Time</label>
-              <input 
-                type="datetime-local" 
-                className="form-control form-control-sm" 
-                value={timeseriesFilters.reference_time_end || ''}
-                onChange={(e) => handleTimeseriesFilterChange('reference_time_end', e.target.value)}
-              />
-            </div>
-          </div>
-        </div>
-        
-        <div className="d-grid">
-          <button 
-            className="btn btn-primary"
-            onClick={handleLoadTimeseries}
-            disabled={!selectedLocation || !timeseriesFilters.configuration || !timeseriesFilters.variable || state.timeseriesLoading}
-          >
-            {state.timeseriesLoading ? (
-              <>
-                <span className="spinner-border spinner-border-sm me-2" role="status">
-                  <span className="visually-hidden">Loading...</span>
-                </span>
-                Loading...
-              </>
-            ) : (
-              'Load Timeseries'
-            )}
-          </button>
-        </div>
+              Loading...
+            </>
+          ) : (
+            'Load Timeseries'
+          )}
+        </Button>
+      </div>
     </div>
   );
 };

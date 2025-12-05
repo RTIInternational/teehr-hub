@@ -1,4 +1,4 @@
-import React from 'react';
+import { Card, Row, Col, Spinner, CloseButton } from 'react-bootstrap';
 import { useDashboard } from '../context/DashboardContext.jsx';
 import { ActionTypes } from '../context/DashboardContext.jsx';
 import PlotlyChart from './PlotlyChart.jsx';
@@ -15,17 +15,15 @@ const TimeseriesComponent = () => {
   };
   
   return (
-    <div className="card shadow-lg" style={{ borderRadius: '8px' }}>
-      <div className="card-header py-2 d-flex justify-content-between align-items-center">
-        <h6 className="card-title mb-0">📍 Location Details</h6>
-        <button 
-          type="button" 
-          className="btn-close" 
+    <Card className="shadow-lg" style={{ borderRadius: '8px' }}>
+      <Card.Header className="py-2 d-flex justify-content-between align-items-center">
+        <Card.Title as="h6" className="mb-0">📍 Location Details</Card.Title>
+        <CloseButton 
           aria-label="Close"
           onClick={handleClose}
-        ></button>
-      </div>
-      <div className="card-body p-3">
+        />
+      </Card.Header>
+      <Card.Body className="p-3">
         {!state.selectedLocation ? (
           <div className="d-flex align-items-center justify-content-center" style={{ height: '400px' }}>
             <div className="text-center text-muted">
@@ -39,24 +37,24 @@ const TimeseriesComponent = () => {
             {/* Location Information - Always shown when location is selected */}
             <div className="mb-3">
               <h6 className="text-primary mb-2">🎯 Selected Location</h6>
-              <div className="row g-2 small">
-                <div className="col-6">
+              <Row className="g-2 small">
+                <Col xs={6}>
                   <span className="text-muted">Location ID:</span>
                   <span className="fw-bold ms-1">{state.selectedLocation.location_id}</span>
-                </div>
-                <div className="col-6">
+                </Col>
+                <Col xs={6}>
                   <span className="text-muted">Latitude:</span>
                   <span className="fw-bold ms-1">{state.selectedLocation.coordinates?.[1]?.toFixed(4)}</span>
-                </div>
-                <div className="col-12">
+                </Col>
+                <Col xs={12}>
                   <span className="text-muted">Name:</span>
                   <span className="fw-bold ms-1">{state.selectedLocation.name}</span>
-                </div>
-                <div className="col-6">
+                </Col>
+                <Col xs={6}>
                   <span className="text-muted">Longitude:</span>
                   <span className="fw-bold ms-1">{state.selectedLocation.coordinates?.[0]?.toFixed(4)}</span>
-                </div>
-              </div>
+                </Col>
+              </Row>
             </div>
             <hr className="my-3" />
             
@@ -64,9 +62,7 @@ const TimeseriesComponent = () => {
             {state.timeseriesLoading ? (
               <div className="d-flex align-items-center justify-content-center" style={{ height: '400px' }}>
                 <div className="text-center">
-                  <div className="spinner-border text-primary mb-3" role="status">
-                    <span className="visually-hidden">Loading...</span>
-                  </div>
+                  <Spinner animation="border" variant="primary" className="mb-3" />
                   <h5>Loading Timeseries Data</h5>
                 </div>
               </div>
@@ -82,8 +78,8 @@ const TimeseriesComponent = () => {
             )}
           </>
         )}
-      </div>
-    </div>
+      </Card.Body>
+    </Card>
   );
 };
 

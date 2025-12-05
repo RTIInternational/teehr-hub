@@ -1,5 +1,5 @@
-import React from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { Container, Alert } from 'react-bootstrap';
 import { DashboardProvider } from './context/DashboardContext.jsx';
 import Home from './components/Home.jsx';
 import Dashboard from './components/Dashboard.jsx';
@@ -27,19 +27,23 @@ function App() {
             <Route 
               path="/forecast" 
               element={
-                <div className="container mt-5 text-center">
-                  <h2>Forecast Analysis</h2>
-                  <p className="text-muted">Coming Soon</p>
-                </div>
+                <Container className="mt-5 text-center">
+                  <Alert variant="info">
+                    <Alert.Heading>Forecast Analysis</Alert.Heading>
+                    <p>Coming Soon</p>
+                  </Alert>
+                </Container>
               } 
             />
             <Route 
               path="/data" 
               element={
-                <div className="container mt-5 text-center">
-                  <h2>Data Management</h2>
-                  <p className="text-muted">Coming Soon</p>
-                </div>
+                <Container className="mt-5 text-center">
+                  <Alert variant="info">
+                    <Alert.Heading>Data Management</Alert.Heading>
+                    <p>Coming Soon</p>
+                  </Alert>
+                </Container>
               } 
             />
           </Routes>

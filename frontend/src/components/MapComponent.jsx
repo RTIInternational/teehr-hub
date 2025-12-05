@@ -147,22 +147,22 @@ const MapComponent = () => {
         mapInstance.setFilter('locations-selected', ['==', 'location_id', properties.location_id]);
         
         // Show popup
-        const metricValue = properties[state.mapFilters.metric];
-        const metricLabel = getMetricLabel(state.mapFilters.metric);
+        // const metricValue = properties[state.mapFilters.metric];
+        // const metricLabel = getMetricLabel(state.mapFilters.metric);
         
-        popup.current
-          .setLngLat(coordinates)
-          .setHTML(`
-            <div style="padding: 8px; font-size: 0.85rem;">
-              <div style="font-weight: 600; margin-bottom: 4px; color: #495057;">${properties.name}</div>
-              <div style="margin: 2px 0;"><strong>ID:</strong> ${properties.location_id}</div>
-              <div style="margin: 2px 0;"><strong>Lat:</strong> ${coordinates[1].toFixed(4)}</div>
-              <div style="margin: 2px 0;"><strong>Lon:</strong> ${coordinates[0].toFixed(4)}</div>
-              <div style="margin: 2px 0;"><strong>${metricLabel}:</strong> ${metricValue !== null && metricValue !== undefined ? Number(metricValue).toFixed(3) : 'N/A'}</div>
-              <div style="margin-top: 4px; font-size: 0.75rem; color: #6c757d;">Click to select</div>
-            </div>
-          `)
-          .addTo(mapInstance);
+        // popup.current
+        //   .setLngLat(coordinates)
+        //   .setHTML(`
+        //     <div style="padding: 8px; font-size: 0.85rem;">
+        //       <div style="font-weight: 600; margin-bottom: 4px; color: #495057;">${properties.name}</div>
+        //       <div style="margin: 2px 0;"><strong>ID:</strong> ${properties.location_id}</div>
+        //       <div style="margin: 2px 0;"><strong>Lat:</strong> ${coordinates[1].toFixed(4)}</div>
+        //       <div style="margin: 2px 0;"><strong>Lon:</strong> ${coordinates[0].toFixed(4)}</div>
+        //       <div style="margin: 2px 0;"><strong>${metricLabel}:</strong> ${metricValue !== null && metricValue !== undefined ? Number(metricValue).toFixed(3) : 'N/A'}</div>
+        //       <div style="margin-top: 4px; font-size: 0.75rem; color: #6c757d;">Click to select</div>
+        //     </div>
+        //   `)
+        //   .addTo(mapInstance);
       }
     };
     
@@ -218,7 +218,10 @@ const MapComponent = () => {
         )
       };
       
+      // Unlikely edge case, but handled here.
       if (geojsonData.features.length === 0) {
+        console.warn('MapComponent: All location features were filtered out due to invalid format');
+        dispatch({ type: ActionTypes.SET_ERROR, payload: 'Location data format is invalid - no valid features found' });
         return;
       }
       
@@ -254,23 +257,23 @@ const MapComponent = () => {
     
     // Add selected location layer
     mapInstance.addLayer({
-      id: 'locations-selected',
-      type: 'circle',
-      source: 'locations',
-      paint: {
-        'circle-radius': [
-          'interpolate',
-          ['linear'],
-          ['zoom'],
-          4, 8,
-          8, 11,
-          12, 14
-        ],
-        'circle-color': '#dc3545',
-        'circle-stroke-width': 3,
-        'circle-stroke-color': '#ffffff',
-        'circle-opacity': 1
-      },
+        id: 'locations-selected',
+        type: 'circle',
+        source: 'locations',
+        paint: {
+          'circle-radius': [
+            'interpolate',
+            ['linear'],
+            ['zoom'],
+            4, 8,
+            8, 11,
+            12, 14
+          ],
+          'circle-color': '#dc3545',
+          'circle-stroke-width': 3,
+          'circle-stroke-color': '#ffffff',
+          'circle-opacity': 1
+        },
         filter: ['==', 'location_id', '']
       });
       
@@ -297,6 +300,7 @@ const MapComponent = () => {
         // Silent cleanup - don't log in production
       }
     };
+    
   }, [state.locations, state.mapLoaded, state.mapFilters.metric, selectLocation]);
   
   return (
