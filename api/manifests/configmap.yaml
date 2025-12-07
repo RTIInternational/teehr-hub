@@ -11,4 +11,4 @@ data:
   TRINO_USER: "teehr"
   TRINO_CATALOG: "iceberg"
   TRINO_SCHEMA: "teehr"
-  CORS_ORIGINS: ${var.allowedOrigins}
+  CORS_ORIGINS: "${var.allowedOrigins}"
