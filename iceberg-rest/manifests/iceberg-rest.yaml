@@ -17,7 +17,6 @@ spec:
   resources:
     requests:
       storage: 5Gi
-  storageClassName: gp2
 ---    
 apiVersion: apps/v1
 kind: Deployment
@@ -84,7 +83,6 @@ spec:
           value: ${var.iceberg.catalogWarehouse}
         - name: CATALOG_IO__IMPL
           value: org.apache.iceberg.aws.s3.S3FileIO
-        # Configure SQLite catalog with persistent storage
         - name: CATALOG_CATALOG__IMPL
           value: org.apache.iceberg.jdbc.JdbcCatalog
         - name: CATALOG_URI
