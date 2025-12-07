@@ -11,17 +11,3 @@ spec:
       storage: 1Mi
   storageClassName: ""
   volumeName: teehr-hub-data-nfs
-# ---
-# apiVersion: v1
-# kind: PersistentVolumeClaim
-# metadata:
-#   name: data-nfs
-#   namespace: spark
-# spec:
-#   accessModes:
-#     - ReadWriteMany
-#   resources:
-#     requests:
-#       storage: 1Mi
-#   storageClassName: ""
-#   volumeName: spark-data-nfs
