@@ -1,0 +1,49 @@
+name: Garden Deploy Remote
+on:
+  workflow_dispatch:
+
+permissions:
+      id-token: write
+      contents: read
+
+jobs:
+  garden-deploy-remote:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Git clone the repository
+        uses: actions/checkout@v3
+
+      - name: Setup app secrets
+        run: |
+          echo "${{ secrets.REMOTE_SECRETS }}" > secrets/secrets.remote.yaml
+          echo "${{ secrets.REMOTE_DEPLOY }}" > configs/deploy.remote-aws-srvs.yaml
+
+      - name: Set deployment env. vars
+        id: extract_values
+        run: |
+          echo "CLUSTER_ARN=$(yq eval '.clusterArn' configs/deploy.remote-aws-srvs.yaml)" >> $GITHUB_ENV
+          echo "CLUSTER_ROLE_ARN=$(yq eval '.clusterRoleArn' configs/deploy.remote-aws-srvs.yaml)" >> $GITHUB_ENV
+          echo "ACTION_ROLE_ARN=$(yq eval '.actionRoleArn' configs/deploy.remote-aws-srvs.yaml)" >> $GITHUB_ENV
+          echo "AWS_REGION=$(yq eval '.awsRegion' configs/deploy.remote-aws-srvs.yaml)" >> $GITHUB_ENV
+          echo "CLUSTER_NAME=$(yq eval '.clusterName' configs/deploy.remote-aws-srvs.yaml)" >> $GITHUB_ENV
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-region: ${{ env.AWS_REGION }}
+          role-to-assume: ${{ env.ACTION_ROLE_ARN }}
+          output-credentials: true
+
+      - name: Sts GetCallerIdentity
+        run: |
+          aws sts get-caller-identity
+
+      - name: AWS EKS Kubeconfig
+        run: |
+          aws eks update-kubeconfig --name ${CLUSTER_NAME} --region ${AWS_REGION} --role-arn ${CLUSTER_ROLE_ARN}
+
+      - name: Deploy preview env with Garden
+        uses: garden-io/garden-action@v2
+        with:
+          garden-version: 0.13.54
+          command: deploy --env remote
