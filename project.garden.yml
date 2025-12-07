@@ -25,6 +25,7 @@ environments:
         user: teehr
         catalog: iceberg
         schema: teehr
+      allowedOrigins: "*"
   - name: remote
     defaultNamespace: ${project.name}
     variables:
@@ -46,6 +47,7 @@ environments:
         user: teehr
         catalog: iceberg
         schema: teehr
+      allowedOrigins: "https://dashboards.${var.hostname},https://api.${var.hostname}"
 providers:
   # The name of the provider plugin to use.
   - name: local-kubernetes
