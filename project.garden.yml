@@ -25,7 +25,7 @@ environments:
         user: teehr
         catalog: iceberg
         schema: teehr
-      allowedOrigins: "*"
+      allowedOrigins: "https://dashboards.${var.hostname},https://api.${var.hostname}"
   - name: remote
     defaultNamespace: ${project.name}
     variables:
