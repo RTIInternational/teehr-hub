@@ -66,7 +66,7 @@ const TimeseriesControls = () => {
             <Form.Control 
               type="datetime-local" 
               size="sm" 
-              value={timeseriesFilters.start_date || ''}
+              value={timeseriesFilters.start_date || '2000-01-01T00:00'}
               onChange={(e) => handleTimeseriesFilterChange('start_date', e.target.value)}
             />
           </Col>
@@ -75,7 +75,7 @@ const TimeseriesControls = () => {
             <Form.Control 
               type="datetime-local" 
               size="sm" 
-              value={timeseriesFilters.end_date || ''}
+              value={timeseriesFilters.end_date || '2000-12-31T23:59'}
               onChange={(e) => handleTimeseriesFilterChange('end_date', e.target.value)}
             />
           </Col>

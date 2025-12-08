@@ -51,6 +51,10 @@ locals {
     {
       name            = "teehr-hub/teehr-dashboards"
       max_image_count = 10
+    },
+    {
+      name            = "teehr-hub/teehr-frontend"
+      max_image_count = 10
     }
   ]
 }
