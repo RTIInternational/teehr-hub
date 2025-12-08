@@ -25,7 +25,7 @@ from workflows.utils.common_utils import initialize_evaluation
 logging.getLogger("teehr").setLevel(logging.INFO)
 
 
-CURRENT_DT = datetime.now(UTC)
+CURRENT_DT = datetime.now(UTC).replace(tzinfo=None)
 LOOKBACK_DAYS = 1
 CHUNK_SIZE = 100  # Number of sites to fetch per api call
 
