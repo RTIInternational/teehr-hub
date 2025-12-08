@@ -4,7 +4,7 @@ resource "aws_ecr_repository" "repos" {
   image_scanning_configuration {
     scan_on_push = true
   }
-  image_tag_mutability = "IMMUTABLE"
+  image_tag_mutability = "MUTABLE"
   force_delete         = true
   encryption_configuration {
     encryption_type = "KMS"

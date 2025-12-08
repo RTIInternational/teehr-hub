@@ -49,6 +49,11 @@ spec:
             configMapKeyRef:
               name: teehr-api-config
               key: TRINO_SCHEMA
+        - name: CORS_ORIGINS
+          valueFrom:
+            configMapKeyRef:
+              name: teehr-api-config
+              key: CORS_ORIGINS
         livenessProbe:
           httpGet:
             path: /health

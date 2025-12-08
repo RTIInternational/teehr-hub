@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request, Query
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import HTMLResponse
 from fastapi.middleware.cors import CORSMiddleware
@@ -9,17 +9,35 @@ import os
 from typing import Optional, List, Dict, Any
 import json
 from datetime import datetime
+import re
 import time
 
 app = FastAPI(title="TEEHR Dashboard API", version="0.1.0")
 
-# CORS middleware to allow frontend requests
+# CORS middleware to allow frontend requests - MUST be first middleware
+# Get the allowed origins from environment or use defaults
+cors_origins_env = os.environ.get("CORS_ORIGINS", "*")
+print(f"DEBUG: CORS_ORIGINS from environment: {cors_origins_env}")
+
+if cors_origins_env == "*":
+    # In development, allow all origins
+    allow_origins = ["*"]
+    allow_credentials = False
+    print("DEBUG: Using wildcard CORS origins")
+else:
+    # In production, use specific origins from environment
+    allow_origins = [origin.strip() for origin in cors_origins_env.split(",")]
+    allow_credentials = True
+    print(f"DEBUG: Using specific CORS origins from config: {allow_origins}")
+
+# Add CORS middleware FIRST - this is critical
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # In production, specify allowed origins
-    allow_credentials=True,
-    allow_methods=["*"],
+    allow_origins=allow_origins,
+    allow_credentials=allow_credentials,
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allow_headers=["*"],
+    max_age=600,
 )
 
 # Trino connection configuration
@@ -28,6 +46,27 @@ TRINO_PORT = int(os.environ.get("TRINO_PORT", 8080))
 TRINO_USER = os.environ.get("TRINO_USER", "teehr")
 TRINO_CATALOG = os.environ.get("TRINO_CATALOG", "iceberg")
 TRINO_SCHEMA = os.environ.get("TRINO_SCHEMA", "teehr")
+
+def sanitize_string(value: str) -> str:
+    """Sanitize string to only allow safe characters for SQL queries."""
+    if not value:
+        return ""
+    # Allow only alphanumeric, underscore, hyphen, periods, and spaces for identifiers
+    return re.sub(r'[^a-zA-Z0-9_\-. ]', '', value)
+
+def validate_datetime_string(value: str) -> str:
+    """Validate and sanitize datetime string for SQL queries."""
+    if not value:
+        return ""
+    # Allow only characters valid in ISO datetime format: digits, hyphens, colons, spaces, T
+    sanitized = re.sub(r'[^0-9\-: T]', '', value)
+    
+    # Basic validation - check if it looks like a datetime
+    datetime_pattern = r'^\d{4}-\d{2}-\d{2}( \d{2}:\d{2}:\d{2})?$|^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}$'
+    if not re.match(datetime_pattern, sanitized):
+        raise ValueError(f"Invalid datetime format: {value}")
+    
+    return sanitized
 
 def get_trino_connection():
     """Establishes and returns a Trino database connection."""
@@ -118,15 +157,15 @@ async def get_metrics(
     try:
         conn = get_trino_connection()
         
-        params = {}
+        params = []
         where_conditions = ["primary_location_id LIKE 'usgs-%'"]
         
         if configuration:
-            where_conditions.append("configuration_name = %(configuration)s")
-            params['configuration'] = configuration
+            where_conditions.append("configuration_name = ?")
+            params.append(configuration)
         if variable:
-            where_conditions.append("variable_name = %(variable)s")
-            params['variable'] = variable
+            where_conditions.append("variable_name = ?")
+            params.append(variable)
         
         where_clause = " AND ".join(where_conditions)
         
@@ -245,24 +284,22 @@ async def get_primary_timeseries(
     try:
         conn = get_trino_connection()
         
-        # Build conditions for filtering with parameterized queries
-        params = {'location_id': location_id}
-        conditions = ["location_id = %(location_id)s"]
+        # Build conditions for filtering with safe string interpolation
+        safe_location_id = sanitize_string(location_id)
+        where_conditions = [f"location_id = '{safe_location_id}'"]
         
         if start_date:
-            conditions.append("value_time >= TIMESTAMP %(start_date)s")
-            params['start_date'] = start_date.strftime('%Y-%m-%d %H:%M:%S')
+            where_conditions.append(f"value_time >= TIMESTAMP '{start_date.strftime('%Y-%m-%d %H:%M:%S')}'")
         if end_date:
-            conditions.append("value_time <= TIMESTAMP %(end_date)s")
-            params['end_date'] = end_date.strftime('%Y-%m-%d %H:%M:%S')
+            where_conditions.append(f"value_time <= TIMESTAMP '{end_date.strftime('%Y-%m-%d %H:%M:%S')}'")
         if variable:
-            conditions.append("variable_name = %(variable)s")
-            params['variable'] = variable
+            safe_variable = sanitize_string(variable)
+            where_conditions.append(f"variable_name = '{safe_variable}'")
         if configuration:
-            conditions.append("configuration_name = %(configuration)s")
-            params['configuration'] = configuration
+            safe_configuration = sanitize_string(configuration)
+            where_conditions.append(f"configuration_name = '{safe_configuration}'")
         
-        where_clause = " AND ".join(conditions)
+        where_clause = " AND ".join(where_conditions)
         
         # Get primary timeseries data
         query = f"""
@@ -281,11 +318,10 @@ async def get_primary_timeseries(
         """
         
         print(f"Primary timeseries query: {query}")  # Debug log
-        print(f"Primary timeseries params: {params}")  # Debug log
         
         # Time the query execution
         query_start = time.time()
-        df = pd.read_sql(query, conn, params=params)
+        df = pd.read_sql(query, conn)
         conn.close()
         query_time = time.time() - query_start
         print(f"Primary query execution time: {query_time:.3f} seconds")
@@ -358,28 +394,24 @@ async def get_secondary_timeseries(
     try:
         conn = get_trino_connection()
         
-        # Build conditions for filtering - using the crosswalk join pattern with parameterized queries
-        params = {'location_id': location_id}
-        where_conditions = ["lc.primary_location_id = %(location_id)s"]
+        # Build conditions for filtering - using the crosswalk join pattern with safe string interpolation
+        safe_location_id = sanitize_string(location_id)
+        where_conditions = [f"lc.primary_location_id = '{safe_location_id}'"]
         
         if configuration:
-            where_conditions.append("st.configuration_name = %(configuration)s")
-            params['configuration'] = configuration
+            safe_configuration = sanitize_string(configuration)
+            where_conditions.append(f"st.configuration_name = '{safe_configuration}'")
         if variable:
-            where_conditions.append("st.variable_name = %(variable)s")
-            params['variable'] = variable
+            safe_variable = sanitize_string(variable)
+            where_conditions.append(f"st.variable_name = '{safe_variable}'")
         if start_date:
-            where_conditions.append("st.value_time >= TIMESTAMP %(start_date)s")
-            params['start_date'] = start_date.strftime('%Y-%m-%d %H:%M:%S')
+            where_conditions.append(f"st.value_time >= TIMESTAMP '{start_date.strftime('%Y-%m-%d %H:%M:%S')}'")
         if end_date:
-            where_conditions.append("st.value_time <= TIMESTAMP %(end_date)s")
-            params['end_date'] = end_date.strftime('%Y-%m-%d %H:%M:%S')
+            where_conditions.append(f"st.value_time <= TIMESTAMP '{end_date.strftime('%Y-%m-%d %H:%M:%S')}'")
         if reference_start_date:
-            where_conditions.append("st.reference_time >= TIMESTAMP %(reference_start_date)s")
-            params['reference_start_date'] = reference_start_date.strftime('%Y-%m-%d %H:%M:%S')
+            where_conditions.append(f"st.reference_time >= TIMESTAMP '{reference_start_date.strftime('%Y-%m-%d %H:%M:%S')}'")
         if reference_end_date:
-            where_conditions.append("st.reference_time <= TIMESTAMP %(reference_end_date)s")
-            params['reference_end_date'] = reference_end_date.strftime('%Y-%m-%d %H:%M:%S')
+            where_conditions.append(f"st.reference_time <= TIMESTAMP '{reference_end_date.strftime('%Y-%m-%d %H:%M:%S')}'")
         
         where_clause = " AND ".join(where_conditions)
         
@@ -403,11 +435,10 @@ async def get_secondary_timeseries(
         """
         
         print(f"Secondary timeseries query: {query}")  # Debug log
-        print(f"Secondary timeseries params: {params}")  # Debug log
         
         # Time the query execution
         query_start = time.time()
-        df = pd.read_sql(query, conn, params=params)
+        df = pd.read_sql(query, conn)
         conn.close()
         query_time = time.time() - query_start
         print(f"Secondary query execution time: {query_time:.3f} seconds")

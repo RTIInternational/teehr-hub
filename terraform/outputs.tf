@@ -5,3 +5,13 @@ output "nfs_server_dns" {
 output "cluster_arn" {
   value = module.eks.cluster_arn
 }
+
+output "github_actions_role_arn" {
+  value       = aws_iam_role.github_actions_garden_deploy.arn
+  description = "ARN of the GitHub Actions role for Garden deployments"
+}
+
+output "github_actions_role_name" {
+  value       = aws_iam_role.github_actions_garden_deploy.name
+  description = "Name of the GitHub Actions role for Garden deployments"
+}
