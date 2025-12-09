@@ -1,8 +1,8 @@
 import { Card, Badge } from 'react-bootstrap';
-import { useLocationSelection } from '../hooks/useDataFetching';
+import { useForecastLocationSelection } from '../../../hooks/useForecastDataFetching';
 
 const Sidebar = () => {
-  const { selectedLocation } = useLocationSelection();
+  const { selectedLocation } = useForecastLocationSelection();
 
   return (
     <div className="bg-light border-end h-100">

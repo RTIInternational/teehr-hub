@@ -13,7 +13,7 @@ const Home = () => {
         'Statistical performance metrics',
         'Multi-configuration analysis'
       ],
-      path: '/dashboard',
+      path: '/retrospective',
       status: 'available',
       image: '/api/static/preview-retrospective.png', // placeholder
       color: 'primary'
