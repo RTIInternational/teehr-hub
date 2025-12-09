@@ -24,7 +24,8 @@ const TimeseriesControls = () => {
       variable: timeseriesFilters.variable,
       start_date: timeseriesFilters.start_date,
       end_date: timeseriesFilters.end_date,
-      reference_time: timeseriesFilters.reference_time
+      reference_start_date: timeseriesFilters.reference_start_date,
+      reference_end_date: timeseriesFilters.reference_end_date
     });
   };
 
@@ -66,7 +67,7 @@ const TimeseriesControls = () => {
             <Form.Control 
               type="datetime-local" 
               size="sm" 
-              value={timeseriesFilters.start_date || '2000-01-01T00:00'}
+              value={timeseriesFilters.start_date || ''}
               onChange={(e) => handleTimeseriesFilterChange('start_date', e.target.value)}
             />
           </Col>
@@ -75,7 +76,7 @@ const TimeseriesControls = () => {
             <Form.Control 
               type="datetime-local" 
               size="sm" 
-              value={timeseriesFilters.end_date || '2000-12-31T23:59'}
+              value={timeseriesFilters.end_date || ''}
               onChange={(e) => handleTimeseriesFilterChange('end_date', e.target.value)}
             />
           </Col>
@@ -90,8 +91,8 @@ const TimeseriesControls = () => {
             <Form.Control 
               type="datetime-local" 
               size="sm" 
-              value={timeseriesFilters.reference_time_start || ''}
-              onChange={(e) => handleTimeseriesFilterChange('reference_time_start', e.target.value)}
+              value={timeseriesFilters.reference_start_date || ''}
+              onChange={(e) => handleTimeseriesFilterChange('reference_start_date', e.target.value)}
             />
           </Col>
           <Col xs={6}>
@@ -99,8 +100,8 @@ const TimeseriesControls = () => {
             <Form.Control 
               type="datetime-local" 
               size="sm" 
-              value={timeseriesFilters.reference_time_end || ''}
-              onChange={(e) => handleTimeseriesFilterChange('reference_time_end', e.target.value)}
+              value={timeseriesFilters.reference_end_date || ''}
+              onChange={(e) => handleTimeseriesFilterChange('reference_end_date', e.target.value)}
             />
           </Col>
         </Row>
