@@ -1,16 +1,16 @@
 import { useCallback } from 'react';
-import { useDashboard , ActionTypes } from '../context/DashboardContext.jsx';
+import { useForecastDashboard, ActionTypes } from '../context/ForecastDashboardContext.jsx';
 import { apiService } from '../services/api';
 
-// Custom hooks for data fetching with useReducer integration
-export const useDataFetching = () => {
-  const { dispatch } = useDashboard();
+// Custom hooks for forecast dashboard data fetching
+export const useForecastDataFetching = () => {
+  const { dispatch } = useForecastDashboard();
   
   // Load configurations
-  const loadConfigurations = useCallback(async () => {
+  const loadConfigurations = useCallback(async (table) => {
     try {
       dispatch({ type: ActionTypes.SET_LOADING, payload: { configurations: true } });
-      const configurations = await apiService.getConfigurations();
+      const configurations = await apiService.getConfigurations(table);
       dispatch({ type: ActionTypes.SET_CONFIGURATIONS, payload: configurations });
     } catch (error) {
       dispatch({ type: ActionTypes.SET_ERROR, payload: `Failed to load configurations: ${error.message}` });
@@ -18,10 +18,10 @@ export const useDataFetching = () => {
   }, [dispatch]);
   
   // Load variables
-  const loadVariables = useCallback(async () => {
+  const loadVariables = useCallback(async (table) => {
     try {
       dispatch({ type: ActionTypes.SET_LOADING, payload: { variables: true } });
-      const variables = await apiService.getVariables();
+      const variables = await apiService.getVariables(table);
       dispatch({ type: ActionTypes.SET_VARIABLES, payload: variables });
     } catch (error) {
       dispatch({ type: ActionTypes.SET_ERROR, payload: `Failed to load variables: ${error.message}` });
@@ -29,10 +29,10 @@ export const useDataFetching = () => {
   }, [dispatch]);
   
   // Load metrics
-  const loadMetrics = useCallback(async () => {
+  const loadMetrics = useCallback(async (table) => {
     try {
       dispatch({ type: ActionTypes.SET_LOADING, payload: { metrics: true } });
-      const metrics = await apiService.getMetricNames();
+      const metrics = await apiService.getMetricNames(table);
       dispatch({ type: ActionTypes.SET_METRICS, payload: metrics });
     } catch (error) {
       dispatch({ type: ActionTypes.SET_ERROR, payload: `Failed to load metrics: ${error.message}` });
@@ -40,18 +40,18 @@ export const useDataFetching = () => {
   }, [dispatch]);
   
   // Load locations with filtering
-  const loadLocations = useCallback(async (filters = {}) => {
+  const loadLocations = useCallback(async (filters = {}, table = null) => {
     try {
       dispatch({ type: ActionTypes.SET_LOADING, payload: { locations: true } });
       
       // Use getMetrics for filtered location data with metrics, or getLocations for basic locations
       const locations = filters.configuration && filters.variable 
-        ? await apiService.getMetrics(filters)
+        ? await apiService.getMetrics({ ...filters, table })
         : await apiService.getLocations();
       
       dispatch({ type: ActionTypes.SET_LOCATIONS, payload: locations });
     } catch (error) {
-      console.error('useDataFetching: Error loading locations:', error);
+      console.error('useForecastDataFetching: Error loading locations:', error);
       dispatch({ type: ActionTypes.SET_ERROR, payload: `Failed to load locations: ${error.message}` });
     }
   }, [dispatch]);
@@ -119,8 +119,8 @@ export const useDataFetching = () => {
 };
 
 // Custom hook for filter management
-export const useFilters = () => {
-  const { state, dispatch } = useDashboard();
+export const useForecastFilters = () => {
+  const { state, dispatch } = useForecastDashboard();
   
   const updateMapFilters = useCallback((filters) => {
     dispatch({ type: ActionTypes.UPDATE_MAP_FILTERS, payload: filters });
@@ -139,8 +139,8 @@ export const useFilters = () => {
 };
 
 // Custom hook for location selection
-export const useLocationSelection = () => {
-  const { state, dispatch } = useDashboard();
+export const useForecastLocationSelection = () => {
+  const { state, dispatch } = useForecastDashboard();
   
   const selectLocation = useCallback((location) => {
     dispatch({ type: ActionTypes.SELECT_LOCATION, payload: location });
@@ -153,5 +153,3 @@ export const useLocationSelection = () => {
     selectLocation
   };
 };
-
-export default useDataFetching;

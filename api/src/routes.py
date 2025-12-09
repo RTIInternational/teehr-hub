@@ -93,17 +93,7 @@ async def get_metrics(
         table_name = sanitize_string(table.value)
         query = f"""
         SELECT 
-            primary_location_id as location_id,
-            configuration_name,
-            variable_name,
-            unit_name,
-            count,
-            average,
-            relative_bias,
-            nash_sutcliffe_efficiency,
-            kling_gupta_efficiency,
-            name,
-            geometry
+            *
         FROM {trino_catalog}.{trino_schema}.{table_name}
         WHERE {where_clause}
         """
@@ -115,6 +105,8 @@ async def get_metrics(
         
         if df.empty:
             return {"type": "FeatureCollection", "features": []}
+        
+        df = df.rename(columns={"primary_location_id": "location_id"})
         
         df["geometry"] = gpd.GeoSeries.from_wkb(
             df["geometry"].apply(lambda x: bytes(x))

@@ -6,7 +6,7 @@ const Navbar = () => {
 
   const getBreadcrumbs = () => {
     const pathMap = {
-      '/dashboard': 'Retrospective Simulations',
+      '/retrospective': 'Retrospective Simulations',
       '/forecast': 'Forecast Analysis',
       '/data': 'Data Management'
     };

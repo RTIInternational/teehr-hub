@@ -1,12 +1,13 @@
 import { Form, Button, Row, Col, Spinner } from 'react-bootstrap';
-import { useDashboard } from '../context/DashboardContext.jsx';
-import { useFilters, useDataFetching, useLocationSelection } from '../hooks/useDataFetching';
+import { useRetrospectiveDashboard } from '../../../context/RetrospectiveDashboardContext.jsx';
+import { useRetrospectiveFilters, useRetrospectiveLocationSelection } from '../../../hooks/useRetrospectiveDataFetching';
+import { useRetrospectiveData } from './useRetrospectiveData';
 
 const TimeseriesControls = () => {
-  const { state } = useDashboard();
-  const { timeseriesFilters, updateTimeseriesFilters } = useFilters();
-  const { loadTimeseries } = useDataFetching();
-  const { selectedLocation } = useLocationSelection();
+  const { state } = useRetrospectiveDashboard();
+  const { timeseriesFilters, updateTimeseriesFilters } = useRetrospectiveFilters();
+  const { loadTimeseries } = useRetrospectiveData();
+  const { selectedLocation } = useRetrospectiveLocationSelection();
   
   const handleTimeseriesFilterChange = (filterType, value) => {
     updateTimeseriesFilters({ [filterType]: value });
@@ -39,9 +40,9 @@ const TimeseriesControls = () => {
           onChange={(e) => handleTimeseriesFilterChange('configuration', e.target.value)}
         >
           <option value="">Select Configuration</option>
-          {state.configurations.map(config => (
+          {Array.isArray(state.configurations) ? state.configurations.map(config => (
             <option key={config} value={config}>{config}</option>
-          ))}
+          )) : []}
         </Form.Select>
       </Form.Group>
       
@@ -53,9 +54,9 @@ const TimeseriesControls = () => {
           onChange={(e) => handleTimeseriesFilterChange('variable', e.target.value)}
         >
           <option value="">Select Variable</option>
-          {state.variables.map(variable => (
+          {Array.isArray(state.variables) ? state.variables.map(variable => (
             <option key={variable} value={variable}>{variable}</option>
-          ))}
+          )) : []}
         </Form.Select>
       </Form.Group>
       
@@ -83,7 +84,7 @@ const TimeseriesControls = () => {
         </Row>
       </Form.Group>
       
-      <Form.Group className="mb-3">
+      {/* <Form.Group className="mb-3">
         <Form.Label>Reference Time Range (optional)</Form.Label>
         <Row>
           <Col xs={6}>
@@ -105,7 +106,7 @@ const TimeseriesControls = () => {
             />
           </Col>
         </Row>
-      </Form.Group>
+      </Form.Group> */}
       
       <div className="d-grid">
         <Button 

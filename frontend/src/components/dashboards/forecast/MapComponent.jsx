@@ -1,8 +1,9 @@
 import maplibregl from 'maplibre-gl';
 import { useEffect, useRef, useCallback } from 'react';
 import 'maplibre-gl/dist/maplibre-gl.css';
-import { useDashboard , ActionTypes } from '../context/DashboardContext.jsx';
-import { useLocationSelection, useDataFetching } from '../hooks/useDataFetching';
+import { useForecastDashboard , ActionTypes } from '../../../context/ForecastDashboardContext.jsx';
+import { useForecastLocationSelection } from '../../../hooks/useForecastDataFetching';
+import { useForecastData } from './useForecastData';
 import MapFilterButton from './MapFilterButton.jsx';
 
 const MapComponent = () => {
@@ -10,9 +11,9 @@ const MapComponent = () => {
   const map = useRef(null);
   const popup = useRef(null);
   
-  const { state, dispatch } = useDashboard();
-  const { selectLocation } = useLocationSelection();
-  const { loadLocations } = useDataFetching();
+  const { state, dispatch } = useForecastDashboard();
+  const { selectLocation } = useForecastLocationSelection();
+  const { loadLocations } = useForecastData();
 
   // Initialize map function
   const initializeMap = useCallback(() => {
@@ -328,7 +329,7 @@ const MapComponent = () => {
 
 // Map Legend Component - shows color scale only
 const MapLegend = () => {
-  const { state } = useDashboard();
+  const { state } = useForecastDashboard();
   
   if (!state.mapFilters.metric) return null;
   

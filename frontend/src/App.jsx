@@ -1,9 +1,10 @@
 import { Container, Alert } from 'react-bootstrap';
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
-import Dashboard from './components/Dashboard.jsx';
-import Home from './components/Home.jsx';
-import Navbar from './components/Navbar.jsx';
-import { DashboardProvider } from './context/DashboardContext.jsx';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { Dashboard } from './components/dashboards/retrospective';
+import { ForecastDashboard } from './components/dashboards/forecast';
+import { Home, Navbar } from './components/common';
+import { RetrospectiveDashboardProvider } from './context/RetrospectiveDashboardContext.jsx';
+import { ForecastDashboardProvider } from './context/ForecastDashboardContext.jsx';
 import 'bootstrap/dist/css/bootstrap.min.css';
 import './App.css';
 
@@ -15,24 +16,23 @@ function App() {
         <main>
           <Routes>
             <Route path="/" element={<Home />} />
+            {/* Redirect old dashboard route to retrospective */}
+            <Route path="/dashboard" element={<Navigate to="/retrospective" replace />} />
             <Route 
-              path="/dashboard" 
+              path="/retrospective" 
               element={
-                  <DashboardProvider>
+                  <RetrospectiveDashboardProvider>
                     <Dashboard />
-                  </DashboardProvider>
+                  </RetrospectiveDashboardProvider>
               } 
             />
             {/* Future routes */}
             <Route 
               path="/forecast" 
               element={
-                <Container className="mt-5 text-center">
-                  <Alert variant="info">
-                    <Alert.Heading>Forecast Analysis</Alert.Heading>
-                    <p>Coming Soon</p>
-                  </Alert>
-                </Container>
+                  <ForecastDashboardProvider>
+                    <ForecastDashboard />
+                  </ForecastDashboardProvider>
               } 
             />
             <Route 
