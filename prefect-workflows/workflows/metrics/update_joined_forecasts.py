@@ -11,9 +11,13 @@ logging.getLogger("teehr").setLevel(logging.INFO)
 
 FORECAST_CONFIGURATION_NAMES = [
     "nwm30_short_range",
-    "nwm30_medium_range"
+    "nwm30_medium_range",
+    "nrds_v22_cfenom_medium_range",
+    "nrds_v22_cfenom_short_range",
+    "nrds_v22_lstm_short_range",
+    "nrds_v22_lstm_medium_range"
 ]
-JOINED_FORECAST_TABLE_NAME = "joined_forecast_timeseries"
+JOINED_FORECAST_TABLE_NAME = "fcst_joined_timeseries"
 
 
 @flow(
@@ -35,13 +39,21 @@ def update_joined_forecast_table(
     - Currently, the entire joined table is re-created each time.
     """
     logger = get_run_logger()
-    ev = initialize_evaluation(dir_path=dir_path)
+    ev = initialize_evaluation(
+        dir_path=dir_path,
+        start_spark_cluster=True,
+        executor_instances=4,
+        executor_cores=4,
+        executor_memory="16g"
+    )
 
+    logger.info("Joining forecast timeseries...")
     joined_sdf = join_forecast_timeseries(
         ev=ev,
         forecast_configuration_names=forecast_configuration_names
     )
 
+    logger.info("Writing joined forecast timeseries table to warehouse...")
     # Note. We could append to joined_timeseries here instead
     # of recreating a new table.
     ev.write.to_warehouse(
