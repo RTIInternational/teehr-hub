@@ -25,6 +25,7 @@ RUN ARCH=$(uname -m) && \
 RUN pip install --no-cache-dir \
     fastapi>=0.110.0 \
     uvicorn[standard]>=0.27.0 \
+    gunicorn>=21.2.0 \
     trino>=0.327.0 \
     sqlalchemy>=2.0.25 \
     pandas>=2.2.0 \
@@ -59,5 +60,5 @@ ENV PYTHONUNBUFFERED=1
 HEALTHCHECK --interval=30s --timeout=30s --start-period=5s --retries=3 \
     CMD curl -f http://localhost:8000/health || exit 1
 
-# Run the application
-CMD ["uvicorn", "src.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
+# Run the application (production by default)
+CMD ["gunicorn", "src.main:app", "-w", "4", "-k", "uvicorn.workers.UvicornWorker", "--bind", "0.0.0.0:8000"]

@@ -67,7 +67,6 @@ deployments:
     entrypoint: workflows/ingests/usgs_streamflow_obs.py:ingest_usgs_streamflow_obs
     parameters: {"dir_path": *dir_path}
     work_pool: *work_pool
-    schedule:
 
   - name: ingest-nwm-short-range-streamflow-forecasts
     version:
@@ -79,7 +78,6 @@ deployments:
       "nwm_configuration": "short_range"
     }
     work_pool: *work_pool
-    schedule:
 
   - name: ingest-nwm-medium-range-streamflow-forecasts
     version:
@@ -93,3 +91,67 @@ deployments:
     }
     work_pool: *work_pool
     schedule:
+
+  - name: ingest-datastream-short-range-cfe-forecasts
+    version:
+    tags: []
+    description: Ingest DataStream streamflow forecasts from S3
+    entrypoint: workflows/ingests/datastream_streamflow_forecasts.py:ingest_datastream_forecasts
+    parameters: {
+      "dir_path": *dir_path,
+      "forecast_configuration": "short_range",
+      "datastream_name": "cfe_nom"
+    }
+    work_pool: *work_pool
+
+  - name: ingest-datastream-medium-range-cfe-forecasts
+    version:
+    tags: []
+    description: Ingest DataStream streamflow forecasts from S3
+    entrypoint: workflows/ingests/datastream_streamflow_forecasts.py:ingest_datastream_forecasts
+    parameters: {
+      "dir_path": *dir_path,
+      "forecast_configuration": "medium_range",
+      "datastream_name": "cfe_nom"
+    }
+    work_pool: *work_pool
+
+  - name: ingest-datastream-short-range-lstm-forecasts
+    version:
+    tags: []
+    description: Ingest DataStream streamflow forecasts from S3
+    entrypoint: workflows/ingests/datastream_streamflow_forecasts.py:ingest_datastream_forecasts
+    parameters: {
+      "dir_path": *dir_path,
+      "forecast_configuration": "short_range",
+      "datastream_name": "lstm"
+    }
+    work_pool: *work_pool
+
+  - name: ingest-datastream-medium-range-lstm-forecasts
+    version:
+    tags: []
+    description: Ingest DataStream streamflow forecasts from S3
+    entrypoint: workflows/ingests/datastream_streamflow_forecasts.py:ingest_datastream_forecasts
+    parameters: {
+      "dir_path": *dir_path,
+      "forecast_configuration": "medium_range",
+      "datastream_name": "lstm"
+    }
+    work_pool: *work_pool
+
+  - name: update-joined-forecast-table
+    version:
+    tags: []
+    description: Create the joined forecast timeseries table
+    entrypoint: workflows/metrics/update_joined_forecasts.py:update_joined_forecast_table
+    parameters: {"dir_path": *dir_path}
+    work_pool: *work_pool
+
+  - name: update-forecast-metrics-table
+    version:
+    tags: []
+    description: Create the forecast metrics table
+    entrypoint: workflows/metrics/update_forecast_metrics.py:update_forecast_metrics_table
+    parameters: {"dir_path": *dir_path}
+    work_pool: *work_pool
