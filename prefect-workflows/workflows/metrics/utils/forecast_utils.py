@@ -1,14 +1,122 @@
 from typing import List
 import logging
 
-from prefect import get_run_logger
+from prefect import get_run_logger, task
+from prefect.cache_policies import NO_CACHE
+from pyspark.sql import DataFrame
 
 import teehr
-from pyspark.sql import DataFrame
+from teehr import DeterministicMetrics as dm
+from teehr import RowLevelCalculatedFields as rcf
 
 logging.getLogger("teehr").setLevel(logging.INFO)
 
 
+@task(cache_policy=NO_CACHE)
+def calculate_forecast_metrics_by_lead_time(
+    ev: teehr.Evaluation,
+    joined_forecast_table_name: str,
+) -> DataFrame:
+    """Calculate forecast metrics by lead time.
+
+    Notes
+    -----
+    - This requires the joined forecast table to be created first.
+    """
+    logger = get_run_logger()
+
+    logger.info("Creating forecast metrics by lead time table...")
+
+    pcorr = dm.PearsonCorrelation()
+    rbias = dm.RelativeBias()
+    nse = dm.NashSutcliffeEfficiency()
+    kge = dm.KlingGuptaEfficiency()
+
+    pcorr.add_epsilon = True
+    rbias.add_epsilon = True
+    nse.add_epsilon = True
+    kge.add_epsilon = True
+
+    sdf = (
+        ev
+        .metrics(table_name=joined_forecast_table_name).
+        add_calculated_fields([
+            rcf.ForecastLeadTime()
+        ])
+        .query(
+            include_metrics=[
+                pcorr,
+                rbias,
+                nse,
+                kge
+            ],
+            group_by=[
+                "primary_location_id",
+                "configuration_name",
+                "forecast_lead_time"
+            ],
+        ).to_sdf()
+    )
+    sdf.createTempView("forecast_metrics")
+
+    sdf = ev.spark.sql("""
+        SELECT m.*, l.*
+        FROM forecast_metrics m
+        JOIN iceberg.teehr.locations l
+        ON l.id = m.primary_location_id
+    """)
+    sdf = sdf.drop("id")
+    return sdf
+
+
+@task(cache_policy=NO_CACHE)
+def calculate_forecast_metrics_by_location(
+    ev: teehr.Evaluation,
+    joined_forecast_table_name: str,
+) -> DataFrame:
+    """Calculate forecast metrics by location.
+
+    Notes
+    -----
+    - This requires the joined forecast table to be created first.
+    """
+    logger = get_run_logger()
+
+    logger.info("Creating forecast metrics by location table...")
+
+    pcorr = teehr.DeterministicMetrics.PearsonCorrelation()
+    rbias = teehr.DeterministicMetrics.RelativeBias()
+    nse = teehr.DeterministicMetrics.NashSutcliffeEfficiency()
+    kge = teehr.DeterministicMetrics.KlingGuptaEfficiency()
+
+    pcorr.add_epsilon = True
+    rbias.add_epsilon = True
+    nse.add_epsilon = True
+    kge.add_epsilon = True
+
+    sdf = (
+        ev
+        .metrics(table_name=joined_forecast_table_name)
+        .query(
+            include_metrics=[
+                pcorr,
+                rbias,
+                nse,
+                kge
+            ],
+            group_by_fields=[
+                "primary_location_id",
+                "configuration_name",
+                "unit_name",
+                "variable_name",
+                "member"
+            ]
+        )
+    )
+    return sdf
+
+
+@task(cache_policy=NO_CACHE)
 def join_forecast_timeseries(
     ev: teehr.Evaluation,
     forecast_configuration_names: List[str]

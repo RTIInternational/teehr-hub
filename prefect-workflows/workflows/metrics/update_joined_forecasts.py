@@ -44,14 +44,16 @@ def update_joined_forecast_table(
         start_spark_cluster=True,
         executor_instances=4,
         executor_cores=4,
-        executor_memory="8g"
+        executor_memory="16g"
     )
 
+    logger.info("Joining forecast timeseries...")
     joined_sdf = join_forecast_timeseries(
         ev=ev,
         forecast_configuration_names=forecast_configuration_names
     )
 
+    logger.info("Writing joined forecast timeseries table to warehouse...")
     # Note. We could append to joined_timeseries here instead
     # of recreating a new table.
     ev.write.to_warehouse(
