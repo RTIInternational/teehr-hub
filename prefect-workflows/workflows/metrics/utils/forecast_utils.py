@@ -106,7 +106,7 @@ def calculate_forecast_metrics_by_location(
                 nse,
                 kge
             ],
-            group_by_fields=[
+            group_by=[
                 "primary_location_id",
                 "configuration_name",
                 "unit_name",
