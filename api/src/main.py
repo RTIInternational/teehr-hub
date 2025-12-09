@@ -359,13 +359,7 @@ async def get_primary_timeseries(
                 "configuration_name": configuration_name,
                 "variable_name": variable_name,
                 "unit_name": unit_name,
-                "timeseries": [
-                    {
-                        "value_time": row['value_time'],
-                        "value": row['value']
-                    }
-                    for _, row in group.iterrows()
-                ]
+                "timeseries": group[["value_time", "value"]].to_dict(orient="records")
             }
             data.append(timeseries_data)
         
@@ -484,13 +478,7 @@ async def get_secondary_timeseries(
                 "variable_name": variable_name,
                 "unit_name": unit_name,
                 "member": member if member != 'null' else None,
-                "timeseries": [
-                    {
-                        "value_time": row['value_time'],
-                        "value": row['value']
-                    }
-                    for _, row in group.iterrows()
-                ]
+                "timeseries": group[["value_time", "value"]].to_dict(orient="records")
             }
             data.append(timeseries_data)
         
