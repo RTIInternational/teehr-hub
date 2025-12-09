@@ -37,7 +37,7 @@ def update_forecast_metrics_table(
 
     ev = initialize_evaluation(
         dir_path=dir_path,
-        start_spark_cluster=True,
+        start_spark_cluster=False,
         executor_instances=4,
         executor_cores=4,
         executor_memory="16g"
