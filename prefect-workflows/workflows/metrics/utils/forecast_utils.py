@@ -37,6 +37,8 @@ def calculate_forecast_metrics_by_lead_time(
     nse.add_epsilon = True
     kge.add_epsilon = True
 
+    # TODO: Change to forecast bins once available
+
     sdf = (
         ev
         .metrics(table_name=joined_forecast_table_name).
