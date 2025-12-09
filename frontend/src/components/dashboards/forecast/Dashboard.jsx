@@ -1,27 +1,25 @@
 import { useEffect } from 'react';
-import { useDashboard } from '../context/DashboardContext.jsx';
-import { useDataFetching } from '../hooks/useDataFetching';
+import { useForecastDashboard } from '../../../context/ForecastDashboardContext.jsx';
+import { useForecastData } from './useForecastData';
 import MapComponent from './MapComponent.jsx';
 import TimeseriesComponent from './TimeseriesComponent.jsx';
 
 const Dashboard = () => {
-  const { state } = useDashboard();
-  const { loadConfigurations, loadVariables, loadMetrics } = useDataFetching();
+  const { state } = useForecastDashboard();
+  const { initializeForecastData } = useForecastData();
   
   // Load initial data when component mounts
   useEffect(() => {
     const initializeData = async () => {
       try {
-        await loadConfigurations();
-        await loadVariables();
-        await loadMetrics();
+        await initializeForecastData();
       } catch (error) {
-        console.error('Dashboard: Error during initialization:', error);
+        console.error('Forecast Dashboard: Error during initialization:', error);
       }
     };
     
     initializeData();
-  }, [loadConfigurations, loadVariables, loadMetrics]);
+  }, [initializeForecastData]);
   
   return (
     <div className="d-flex flex-column" style={{ height: 'calc(100vh - 56px)' }}>

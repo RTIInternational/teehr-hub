@@ -1,10 +1,10 @@
 import { Card, Row, Col, Spinner, CloseButton } from 'react-bootstrap';
-import { useDashboard , ActionTypes } from '../context/DashboardContext.jsx';
-import PlotlyChart from './PlotlyChart.jsx';
+import { useForecastDashboard , ActionTypes } from '../../../context/ForecastDashboardContext.jsx';
+import { PlotlyChart } from '../../common';
 import TimeseriesControls from './TimeseriesControls.jsx';
 
 const TimeseriesComponent = () => {
-  const { state, dispatch } = useDashboard();
+  const { state, dispatch } = useForecastDashboard();
   
   const hasData = state.timeseriesData.primary?.length > 0 || state.timeseriesData.secondary?.length > 0;
   const shouldShowPlot = hasData && !state.timeseriesLoading;

@@ -1,13 +1,14 @@
 import { useState } from 'react';
 import { Dropdown, Form } from 'react-bootstrap';
-import { useDashboard } from '../context/DashboardContext.jsx';
-import { useFilters, useDataFetching } from '../hooks/useDataFetching';
+import { useForecastDashboard } from '../../../context/ForecastDashboardContext.jsx';
+import { useForecastFilters } from '../../../hooks/useForecastDataFetching';
+import { useForecastData } from './useForecastData';
 
 const MapFilterButton = () => {
   const [showDropdown, setShowDropdown] = useState(false);
-  const { state } = useDashboard();
-  const { mapFilters, updateMapFilters } = useFilters();
-  const { loadLocations } = useDataFetching();
+  const { state } = useForecastDashboard();
+  const { mapFilters, updateMapFilters } = useForecastFilters();
+  const { loadLocations } = useForecastData();
 
   const handleMapFilterChange = async (filterType, value) => {
     const newFilters = { ...mapFilters, [filterType]: value };
@@ -58,9 +59,9 @@ const MapFilterButton = () => {
                 onChange={(e) => handleMapFilterChange('configuration', e.target.value)}
               >
                 <option value="">Select Configuration</option>
-                {state.configurations.map(config => (
+                {Array.isArray(state.configurations) ? state.configurations.map(config => (
                   <option key={config} value={config}>{config}</option>
-                ))}
+                )) : []}
               </Form.Select>
             </Form.Group>
             
@@ -72,9 +73,9 @@ const MapFilterButton = () => {
                 onChange={(e) => handleMapFilterChange('variable', e.target.value)}
               >
                 <option value="">Select Variable</option>
-                {state.variables.map(variable => (
+                {Array.isArray(state.variables) ? state.variables.map(variable => (
                   <option key={variable} value={variable}>{variable}</option>
-                ))}
+                )) : []}
               </Form.Select>
             </Form.Group>
             
@@ -86,11 +87,11 @@ const MapFilterButton = () => {
                 onChange={(e) => handleMapFilterChange('metric', e.target.value)}
               >
                 <option value="">Select Metric</option>
-                {state.metrics.map(metric => (
+                {Array.isArray(state.metrics) ? state.metrics.map(metric => (
                   <option key={metric} value={metric}>
                     {getMetricLabel(metric)}
                   </option>
-                ))}
+                )) : []}
               </Form.Select>
             </Form.Group>
           </div>

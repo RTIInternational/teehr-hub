@@ -1,8 +1,15 @@
 /* eslint-disable react-refresh/only-export-components */
 import { createContext, useContext, useReducer } from 'react';
 
-// Initial state
-const initialState = {
+// Calculate dynamic dates
+const getTenDaysAgo = () => {
+  const date = new Date();
+  date.setDate(date.getDate() - 10);
+  return date.toISOString().slice(0, 16); // Format: YYYY-MM-DDTHH:MM
+};
+
+// Initial state for forecast dashboard  
+const initialForecastState = {
   // Data
   locations: { features: [] },
   configurations: [],
@@ -16,13 +23,14 @@ const initialState = {
     metric: 'relative_bias'
   },
   
-  // Timeseries filters (separate)
+  // Timeseries filters (forecast-specific defaults)
   timeseriesFilters: {
     configuration: null,
     variable: null,
-    start_date: null,
+    start_date: getTenDaysAgo(),
     end_date: null,
-    reference_time: null
+    reference_start_date: getTenDaysAgo(),
+    reference_end_date: null
   },
   
   // Selected location
@@ -45,7 +53,7 @@ const initialState = {
   error: null
 };
 
-// Action types
+// Action types (same as retrospective)
 export const ActionTypes = {
   // Data loading
   SET_LOCATIONS: 'SET_LOCATIONS',
@@ -76,8 +84,8 @@ export const ActionTypes = {
   CLEAR_ERROR: 'CLEAR_ERROR'
 };
 
-// Reducer function
-const dashboardReducer = (state, action) => {
+// Reducer function (same logic as retrospective)
+const forecastDashboardReducer = (state, action) => {
   switch (action.type) {
     case ActionTypes.SET_LOCATIONS:
       return {
@@ -87,51 +95,60 @@ const dashboardReducer = (state, action) => {
       };
       
     case ActionTypes.SET_CONFIGURATIONS:
+      const configurations = Array.isArray(action.payload) ? action.payload : [];
       return {
         ...state,
-        configurations: action.payload,
+        configurations,
         // Set defaults if first time loading
         mapFilters: {
           ...state.mapFilters,
-          configuration: state.mapFilters.configuration || action.payload[0]
+          configuration: state.mapFilters.configuration || configurations[0]
         },
         timeseriesFilters: {
           ...state.timeseriesFilters,
-          configuration: state.timeseriesFilters.configuration || action.payload[0]
+          configuration: state.timeseriesFilters.configuration || configurations[0]
         }
       };
       
     case ActionTypes.SET_VARIABLES:
+      const variables = Array.isArray(action.payload) ? action.payload : [];
       return {
         ...state,
-        variables: action.payload,
+        variables,
         // Set defaults if first time loading
         mapFilters: {
           ...state.mapFilters,
-          variable: state.mapFilters.variable || action.payload[0]
+          variable: state.mapFilters.variable || variables[0]
         },
         timeseriesFilters: {
           ...state.timeseriesFilters,
-          variable: state.timeseriesFilters.variable || action.payload[0]
+          variable: state.timeseriesFilters.variable || variables[0]
         }
       };
       
     case ActionTypes.SET_METRICS:
+      const metrics = Array.isArray(action.payload) ? action.payload : [];
       return {
         ...state,
-        metrics: action.payload
+        metrics
       };
       
     case ActionTypes.UPDATE_MAP_FILTERS:
       return {
         ...state,
-        mapFilters: { ...state.mapFilters, ...action.payload }
+        mapFilters: {
+          ...state.mapFilters,
+          ...action.payload
+        }
       };
       
     case ActionTypes.UPDATE_TIMESERIES_FILTERS:
       return {
         ...state,
-        timeseriesFilters: { ...state.timeseriesFilters, ...action.payload }
+        timeseriesFilters: {
+          ...state.timeseriesFilters,
+          ...action.payload
+        }
       };
       
     case ActionTypes.SELECT_LOCATION:
@@ -156,8 +173,7 @@ const dashboardReducer = (state, action) => {
         timeseriesData: {
           ...state.timeseriesData,
           secondary: action.payload
-        },
-        timeseriesLoading: false
+        }
       };
       
     case ActionTypes.CLEAR_TIMESERIES:
@@ -172,8 +188,7 @@ const dashboardReducer = (state, action) => {
     case ActionTypes.SET_LOADING:
       return {
         ...state,
-        locationsLoading: action.payload.locations !== undefined ? action.payload.locations : state.locationsLoading,
-        timeseriesLoading: action.payload.timeseries !== undefined ? action.payload.timeseries : state.timeseriesLoading
+        ...action.payload
       };
       
     case ActionTypes.SET_MAP_LOADED:
@@ -185,9 +200,7 @@ const dashboardReducer = (state, action) => {
     case ActionTypes.SET_ERROR:
       return {
         ...state,
-        error: action.payload,
-        locationsLoading: false,
-        timeseriesLoading: false
+        error: action.payload
       };
       
     case ActionTypes.CLEAR_ERROR:
@@ -202,26 +215,26 @@ const dashboardReducer = (state, action) => {
 };
 
 // Create context
-const DashboardContext = createContext();
+const ForecastDashboardContext = createContext();
 
 // Provider component
-export const DashboardProvider = ({ children }) => {
-  const [state, dispatch] = useReducer(dashboardReducer, initialState);
+export const ForecastDashboardProvider = ({ children }) => {
+  const [state, dispatch] = useReducer(forecastDashboardReducer, initialForecastState);
   
   return (
-    <DashboardContext.Provider value={{ state, dispatch }}>
+    <ForecastDashboardContext.Provider value={{ state, dispatch }}>
       {children}
-    </DashboardContext.Provider>
+    </ForecastDashboardContext.Provider>
   );
 };
 
-// Custom hook to use the dashboard context
-export const useDashboard = () => {
-  const context = useContext(DashboardContext);
+// Hook to use the context
+export const useForecastDashboard = () => {
+  const context = useContext(ForecastDashboardContext);
   if (!context) {
-    throw new Error('useDashboard must be used within a DashboardProvider');
+    throw new Error('useForecastDashboard must be used within a ForecastDashboardProvider');
   }
   return context;
 };
 
-export default DashboardContext;
+export default ForecastDashboardContext;
