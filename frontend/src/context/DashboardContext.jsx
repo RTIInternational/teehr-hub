@@ -20,9 +20,10 @@ const initialState = {
   timeseriesFilters: {
     configuration: null,
     variable: null,
-    start_date: null,
-    end_date: null,
-    reference_time: null
+    start_date: '2000-01-01T00:00',
+    end_date: '2000-12-31T23:59',
+    reference_start_date: null,
+    reference_end_date: null
   },
   
   // Selected location

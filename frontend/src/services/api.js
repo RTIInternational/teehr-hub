@@ -74,6 +74,8 @@ export const apiService = {
     if (filters.end_date) params.append('end_date', filters.end_date);
     if (filters.configuration) params.append('configuration', filters.configuration);
     if (filters.variable) params.append('variable', filters.variable);
+    if (filters.reference_start_date) params.append('reference_start_date', filters.reference_start_date);
+    if (filters.reference_end_date) params.append('reference_end_date', filters.reference_end_date);
     
     const queryString = params.toString();
     const endpoint = queryString 
