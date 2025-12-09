@@ -11,7 +11,11 @@ logging.getLogger("teehr").setLevel(logging.INFO)
 
 FORECAST_CONFIGURATION_NAMES = [
     "nwm30_short_range",
-    "nwm30_medium_range"
+    "nwm30_medium_range",
+    "nrds_v22_cfenom_medium_range",
+    "nrds_v22_cfenom_short_range",
+    "nrds_v22_lstm_short_range",
+    "nrds_v22_lstm_medium_range"
 ]
 JOINED_FORECAST_TABLE_NAME = "joined_forecast_timeseries"
 
