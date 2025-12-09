@@ -21,13 +21,14 @@ def initialize_evaluation(
     """Initialize a Teehr Evaluation object."""
     logger = get_run_logger()
     logger.info("Initializing Teehr Evaluation")
-    spark = create_spark_session()
-    ev = teehr.Evaluation(
-        spark=spark,
+    spark = create_spark_session(
         start_spark_cluster=start_spark_cluster,
         executor_instances=executor_instances,
         executor_cores=executor_cores,
         executor_memory=executor_memory,
+    )
+    ev = teehr.Evaluation(
+        spark=spark,
         dir_path=dir_path,
         create_dir=False
     )
