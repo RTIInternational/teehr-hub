@@ -35,7 +35,13 @@ def update_joined_forecast_table(
     - Currently, the entire joined table is re-created each time.
     """
     logger = get_run_logger()
-    ev = initialize_evaluation(dir_path=dir_path)
+    ev = initialize_evaluation(
+        dir_path=dir_path,
+        start_spark_cluster=True,
+        executor_instances=4,
+        executor_cores=4,
+        executor_memory="8g"
+    )
 
     joined_sdf = join_forecast_timeseries(
         ev=ev,

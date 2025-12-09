@@ -11,15 +11,25 @@ from prefect import task, get_run_logger
     timeout_seconds=60 * 5,
     retries=2
 )
-def initialize_evaluation(dir_path: Union[str, Path]) -> teehr.Evaluation:
+def initialize_evaluation(
+    dir_path: Union[str, Path],
+    start_spark_cluster: bool = False,
+    executor_instances: int = 4,
+    executor_cores: int = 4,
+    executor_memory: str = "4g"
+) -> teehr.Evaluation:
     """Initialize a Teehr Evaluation object."""
     logger = get_run_logger()
     logger.info("Initializing Teehr Evaluation")
     spark = create_spark_session()
     ev = teehr.Evaluation(
         spark=spark,
+        start_spark_cluster=start_spark_cluster,
+        executor_instances=executor_instances,
+        executor_cores=executor_cores,
+        executor_memory=executor_memory,
         dir_path=dir_path,
-        check_evaluation_version=False
+        create_dir=False
     )
     ev.set_active_catalog("remote")
     return ev

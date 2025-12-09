@@ -12,7 +12,7 @@ from update_joined_forecasts import JOINED_FORECAST_TABLE_NAME
 
 logging.getLogger("teehr").setLevel(logging.INFO)
 
-METRICS_TABLE_NAME = "forecast_metrics_by_location"
+METRICS_TABLE_NAME = "forecast_metrics_by_lead_time"
 
 
 @flow(
