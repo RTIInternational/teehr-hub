@@ -17,7 +17,7 @@ FORECAST_CONFIGURATION_NAMES = [
     "nrds_v22_lstm_short_range",
     "nrds_v22_lstm_medium_range"
 ]
-JOINED_FORECAST_TABLE_NAME = "joined_forecast_timeseries"
+JOINED_FORECAST_TABLE_NAME = "fcst_joined_timeseries"
 
 
 @flow(
