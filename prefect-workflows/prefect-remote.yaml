@@ -57,6 +57,8 @@ definitions:
           operator: Equal
           value: worker
           effect: NoSchedule
+      cpu_request: "2"
+      memory_request: 8Gi
 
 # the deployments section allows you to provide configuration for deploying flows
 deployments:
