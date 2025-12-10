@@ -113,8 +113,18 @@ def calculate_forecast_metrics_by_location(
                 "variable_name",
                 "member"
             ]
-        )
+        ).to_sdf()
     )
+
+    sdf.createTempView("forecast_metrics")
+
+    sdf = ev.spark.sql("""
+        SELECT m.*, l.*
+        FROM forecast_metrics m
+        JOIN iceberg.teehr.locations l
+        ON l.id = m.primary_location_id
+    """)
+    sdf = sdf.drop("id")
     return sdf
 
 
