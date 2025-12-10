@@ -275,6 +275,27 @@ const MapComponent = () => {
           return;
         }
         
+        // Validate metric values that might cause varint issues
+        if (feature.properties && state.mapFilters.metric) {
+          const metricValue = feature.properties[state.mapFilters.metric];
+          if (metricValue !== null && metricValue !== undefined) {
+            if (typeof metricValue === 'number') {
+              if (!isFinite(metricValue)) {
+                console.error(`MapComponent: Feature ${index} has infinite or NaN metric value:`, { metric: state.mapFilters.metric, value: metricValue, feature });
+                invalidFeatures.push({ index, reason: `infinite metric value: ${state.mapFilters.metric}=${metricValue}`, feature });
+                return;
+              }
+              
+              // Check for extremely large metric values that might cause varint issues
+              if (Math.abs(metricValue) > 1e15) {
+                console.warn(`MapComponent: Feature ${index} has extremely large metric value:`, { metric: state.mapFilters.metric, value: metricValue, feature });
+                invalidFeatures.push({ index, reason: `extreme metric value: ${state.mapFilters.metric}=${metricValue}`, feature });
+                return;
+              }
+            }
+          }
+        }
+        
         validFeatures.push(feature);
       });
       
@@ -315,31 +336,13 @@ const MapComponent = () => {
       
       // Get color expression for metric-based coloring
       const colorExpression = getMetricColorExpression(state.mapFilters.metric);
+      console.log('MapComponent: Color expression:', colorExpression);
     
-    // Add locations layer
-    mapInstance.addLayer({
-      id: 'locations-layer',
-      type: 'circle',
-      source: 'locations',
-      paint: {
-        'circle-radius': [
-          'interpolate',
-          ['linear'],
-          ['zoom'],
-          4, 6,
-          8, 9,
-          12, 12
-        ],
-        'circle-color': colorExpression,
-        'circle-stroke-width': 2,
-        'circle-stroke-color': '#ffffff',
-        'circle-opacity': 0.8
-      }
-    });
-    
-    // Add selected location layer
-    mapInstance.addLayer({
-        id: 'locations-selected',
+    // Add locations layer with error handling
+    try {
+      console.log('MapComponent: Adding locations layer...');
+      mapInstance.addLayer({
+        id: 'locations-layer',
         type: 'circle',
         source: 'locations',
         paint: {
@@ -347,17 +350,54 @@ const MapComponent = () => {
             'interpolate',
             ['linear'],
             ['zoom'],
-            4, 8,
-            8, 11,
-            12, 14
+            4, 6,
+            8, 9,
+            12, 12
           ],
-          'circle-color': '#dc3545',
-          'circle-stroke-width': 3,
+          'circle-color': colorExpression,
+          'circle-stroke-width': 2,
           'circle-stroke-color': '#ffffff',
-          'circle-opacity': 1
-        },
-        filter: ['==', 'location_id', '']
+          'circle-opacity': 0.8
+        }
       });
+      console.log('MapComponent: Successfully added locations layer');
+    } catch (layerError) {
+      console.error('MapComponent: Error adding locations layer:', layerError);
+      console.error('MapComponent: Metric being used:', state.mapFilters.metric);
+      console.error('MapComponent: Sample feature properties:', geojsonData.features[0]?.properties);
+      dispatch({ type: ActionTypes.SET_ERROR, payload: `Map layer error: ${layerError.message}` });
+      return;
+    }
+    
+    // Add selected location layer with error handling
+    try {
+      console.log('MapComponent: Adding selected locations layer...');
+      mapInstance.addLayer({
+          id: 'locations-selected',
+          type: 'circle',
+          source: 'locations',
+          paint: {
+            'circle-radius': [
+              'interpolate',
+              ['linear'],
+              ['zoom'],
+              4, 8,
+              8, 11,
+              12, 14
+            ],
+            'circle-color': '#dc3545',
+            'circle-stroke-width': 3,
+            'circle-stroke-color': '#ffffff',
+            'circle-opacity': 1
+          },
+          filter: ['==', 'location_id', '']
+        });
+      console.log('MapComponent: Successfully added selected locations layer');
+    } catch (selectedLayerError) {
+      console.error('MapComponent: Error adding selected locations layer:', selectedLayerError);
+      dispatch({ type: ActionTypes.SET_ERROR, payload: `Map selected layer error: ${selectedLayerError.message}` });
+      return;
+    }
       
       // Add event listeners
       mapInstance.on('click', 'locations-layer', handleLocationClick);
