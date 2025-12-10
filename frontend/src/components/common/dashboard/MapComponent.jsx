@@ -193,6 +193,7 @@ const MapComponent = ({
       // Validate GeoJSON format before adding to map
       const validFeatures = [];
       const invalidFeatures = [];
+      const clampedMetrics = [];
       
       state.locations.features.forEach((feature, index) => {
         // Basic structure validation
@@ -200,7 +201,6 @@ const MapComponent = ({
             !feature.geometry || 
             !feature.geometry.coordinates ||
             !Array.isArray(feature.geometry.coordinates)) {
-          console.warn(`MapComponent: Feature ${index} has invalid structure:`, feature);
           invalidFeatures.push({ index, reason: 'invalid structure', feature });
           return;
         }
@@ -211,20 +211,17 @@ const MapComponent = ({
         
         // Coordinate validation
         if (typeof lon !== 'number' || typeof lat !== 'number') {
-          console.warn(`MapComponent: Feature ${index} has non-numeric coordinates:`, { lon, lat, feature });
           invalidFeatures.push({ index, reason: 'non-numeric coordinates', feature });
           return;
         }
         
         // Check for valid coordinate ranges
         if (lon < -180 || lon > 180) {
-          console.error(`MapComponent: Feature ${index} has invalid longitude ${lon}:`, feature);
           invalidFeatures.push({ index, reason: `longitude out of range: ${lon}`, feature });
           return;
         }
         
         if (lat < -90 || lat > 90) {
-          console.error(`MapComponent: Feature ${index} has invalid latitude ${lat}:`, feature);
           invalidFeatures.push({ index, reason: `latitude out of range: ${lat}`, feature });
           return;
         }
@@ -234,15 +231,12 @@ const MapComponent = ({
         const latStr = lat.toString();
         
         if (lonStr.length > 15 || latStr.length > 15) {
-          console.warn(`MapComponent: Feature ${index} has extremely precise coordinates that may cause varint errors:`, 
-            { lon, lat, lonLength: lonStr.length, latLength: latStr.length, feature });
           invalidFeatures.push({ index, reason: `extreme precision: lon=${lonStr}, lat=${latStr}`, feature });
           return;
         }
         
         // Check for NaN or Infinity
         if (!isFinite(lon) || !isFinite(lat)) {
-          console.error(`MapComponent: Feature ${index} has infinite or NaN coordinates:`, { lon, lat, feature });
           invalidFeatures.push({ index, reason: `infinite or NaN coordinates: lon=${lon}, lat=${lat}`, feature });
           return;
         }
@@ -256,7 +250,7 @@ const MapComponent = ({
                 feature.properties[key] = null;
               } else if (Math.abs(value) > 1e6) {
                 if (key === state.mapFilters.metric) {
-                  console.warn(`MapComponent: Feature ${index} has extremely large metric value, clamping:`, { metric: key, original: value });
+                  clampedMetrics.push({ index, metric: key, original: value, clamped: Math.sign(value) * 1e6 });
                 }
                 feature.properties[key] = Math.sign(value) * 1e6;
               }
@@ -267,9 +261,16 @@ const MapComponent = ({
         validFeatures.push(feature);
       });
       
-      // Log invalid features for debugging
-      if (invalidFeatures.length > 0) {
-        console.warn(`MapComponent: Filtered out ${invalidFeatures.length} invalid features. Map will render with ${validFeatures.length} valid features.`);
+      // Log validation results in a single message
+      if (invalidFeatures.length > 0 || clampedMetrics.length > 0) {
+        console.warn('MapComponent: Data validation results:', {
+          totalFeatures: state.locations.features.length,
+          validFeatures: validFeatures.length,
+          invalidFeatures: invalidFeatures.length,
+          clampedMetrics: clampedMetrics.length,
+          invalidDetails: invalidFeatures.map(f => ({ index: f.index, reason: f.reason })),
+          clampedDetails: clampedMetrics
+        });
       }
       
       const geojsonData = {
