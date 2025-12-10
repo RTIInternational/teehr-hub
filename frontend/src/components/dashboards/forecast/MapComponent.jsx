@@ -127,17 +127,6 @@ const MapComponent = () => {
       return;
     }
     
-    // Early logging to inspect raw data
-    console.log('MapComponent: Raw location data:', {
-      totalFeatures: state.locations.features.length,
-      firstFeature: state.locations.features[0],
-      sampleCoords: state.locations.features.slice(0, 3).map((f, i) => ({
-        index: i,
-        coords: f.geometry?.coordinates,
-        properties: f.properties
-      }))
-    });
-    
     const mapInstance = map.current;
     
     // Define event handlers outside try block so they're accessible in cleanup
@@ -156,24 +145,7 @@ const MapComponent = () => {
         
         // Update map selection
         mapInstance.setFilter('locations-selected', ['==', 'location_id', properties.location_id]);
-        
-        // Show popup
-        // const metricValue = properties[state.mapFilters.metric];
-        // const metricLabel = getMetricLabel(state.mapFilters.metric);
-        
-        // popup.current
-        //   .setLngLat(coordinates)
-        //   .setHTML(`
-        //     <div style="padding: 8px; font-size: 0.85rem;">
-        //       <div style="font-weight: 600; margin-bottom: 4px; color: #495057;">${properties.name}</div>
-        //       <div style="margin: 2px 0;"><strong>ID:</strong> ${properties.location_id}</div>
-        //       <div style="margin: 2px 0;"><strong>Lat:</strong> ${coordinates[1].toFixed(4)}</div>
-        //       <div style="margin: 2px 0;"><strong>Lon:</strong> ${coordinates[0].toFixed(4)}</div>
-        //       <div style="margin: 2px 0;"><strong>${metricLabel}:</strong> ${metricValue !== null && metricValue !== undefined ? Number(metricValue).toFixed(3) : 'N/A'}</div>
-        //       <div style="margin-top: 4px; font-size: 0.75rem; color: #6c757d;">Click to select</div>
-        //     </div>
-        //   `)
-        //   .addTo(mapInstance);
+
       }
     };
     
@@ -275,22 +247,19 @@ const MapComponent = () => {
           return;
         }
         
-        // Validate metric values that might cause varint issues
+        // Validate and clamp metric values that might cause varint issues
         if (feature.properties && state.mapFilters.metric) {
           const metricValue = feature.properties[state.mapFilters.metric];
           if (metricValue !== null && metricValue !== undefined) {
             if (typeof metricValue === 'number') {
               if (!isFinite(metricValue)) {
                 console.error(`MapComponent: Feature ${index} has infinite or NaN metric value:`, { metric: state.mapFilters.metric, value: metricValue, feature });
-                invalidFeatures.push({ index, reason: `infinite metric value: ${state.mapFilters.metric}=${metricValue}`, feature });
-                return;
-              }
-              
-              // Check for extremely large metric values that might cause varint issues
-              if (Math.abs(metricValue) > 1e15) {
-                console.warn(`MapComponent: Feature ${index} has extremely large metric value:`, { metric: state.mapFilters.metric, value: metricValue, feature });
-                invalidFeatures.push({ index, reason: `extreme metric value: ${state.mapFilters.metric}=${metricValue}`, feature });
-                return;
+                // Replace with null for map rendering
+                feature.properties[state.mapFilters.metric] = null;
+              } else if (Math.abs(metricValue) > 1e6) {
+                console.warn(`MapComponent: Feature ${index} has extremely large metric value, clamping:`, { metric: state.mapFilters.metric, original: metricValue });
+                // Clamp to reasonable range for map rendering
+                feature.properties[state.mapFilters.metric] = Math.sign(metricValue) * 1e6;
               }
             }
           }
@@ -299,9 +268,7 @@ const MapComponent = () => {
         validFeatures.push(feature);
       });
       
-      // Log summary of validation results
-      console.log(`MapComponent: Validation complete - ${validFeatures.length} valid, ${invalidFeatures.length} invalid features`);
-      
+      // Log only if there are invalid features
       if (invalidFeatures.length > 0) {
         console.error('MapComponent: Invalid features detected:', invalidFeatures);
         dispatch({ type: ActionTypes.SET_ERROR, payload: `${invalidFeatures.length} invalid location features detected. Check console for details.` });
@@ -321,26 +288,21 @@ const MapComponent = () => {
       
       // Add new source with error handling
       try {
-        console.log('MapComponent: Adding GeoJSON source with', geojsonData.features.length, 'features');
         mapInstance.addSource('locations', {
           type: 'geojson',
           data: geojsonData
         });
-        console.log('MapComponent: Successfully added GeoJSON source');
       } catch (sourceError) {
         console.error('MapComponent: Error adding GeoJSON source:', sourceError);
-        console.error('MapComponent: Problematic GeoJSON data:', geojsonData);
         dispatch({ type: ActionTypes.SET_ERROR, payload: `Map source error: ${sourceError.message}` });
         return;
       }
       
       // Get color expression for metric-based coloring
       const colorExpression = getMetricColorExpression(state.mapFilters.metric);
-      console.log('MapComponent: Color expression:', colorExpression);
     
     // Add locations layer with error handling
     try {
-      console.log('MapComponent: Adding locations layer...');
       mapInstance.addLayer({
         id: 'locations-layer',
         type: 'circle',
@@ -360,18 +322,14 @@ const MapComponent = () => {
           'circle-opacity': 0.8
         }
       });
-      console.log('MapComponent: Successfully added locations layer');
     } catch (layerError) {
       console.error('MapComponent: Error adding locations layer:', layerError);
-      console.error('MapComponent: Metric being used:', state.mapFilters.metric);
-      console.error('MapComponent: Sample feature properties:', geojsonData.features[0]?.properties);
       dispatch({ type: ActionTypes.SET_ERROR, payload: `Map layer error: ${layerError.message}` });
       return;
     }
     
     // Add selected location layer with error handling
     try {
-      console.log('MapComponent: Adding selected locations layer...');
       mapInstance.addLayer({
           id: 'locations-selected',
           type: 'circle',
@@ -392,7 +350,6 @@ const MapComponent = () => {
           },
           filter: ['==', 'location_id', '']
         });
-      console.log('MapComponent: Successfully added selected locations layer');
     } catch (selectedLayerError) {
       console.error('MapComponent: Error adding selected locations layer:', selectedLayerError);
       dispatch({ type: ActionTypes.SET_ERROR, payload: `Map selected layer error: ${selectedLayerError.message}` });
