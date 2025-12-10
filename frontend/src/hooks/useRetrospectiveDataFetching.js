@@ -73,42 +73,44 @@ export const useRetrospectiveDataFetching = () => {
   
   // Load timeseries data
   const loadTimeseries = useCallback(async (filters = {}) => {
-    try {
-      // Clear existing timeseries data first
-      dispatch({ type: ActionTypes.CLEAR_TIMESERIES });
-      dispatch({ type: ActionTypes.SET_LOADING, payload: { timeseries: true } });
-      
-      const { location_id, configuration, variable, start_date, end_date, reference_time } = filters;
-      
-      if (!location_id || !configuration || !variable) {
-        throw new Error('Missing required parameters: location_id, configuration, and variable are required');
+      try {
+        // Clear existing timeseries data first
+        dispatch({ type: ActionTypes.CLEAR_TIMESERIES });
+        dispatch({ type: ActionTypes.SET_LOADING, payload: { timeseries: true } });
+        
+        const { location_id, configuration, variable, start_date, end_date, reference_start_date, reference_end_date } = filters;
+        
+        if (!location_id || !configuration || !variable) {
+          throw new Error('Missing required parameters: location_id, configuration, and variable are required');
+        }
+  
+        // Load primary data (simulation data) - uses variable parameter
+        const primaryFilters = {
+          variable,
+          start_date,
+          end_date,
+          reference_start_date,
+          reference_end_date
+        };
+        const primaryData = await apiService.getPrimaryTimeseries(location_id, primaryFilters);
+        dispatch({ type: ActionTypes.SET_PRIMARY_TIMESERIES, payload: primaryData });
+  
+        // Load secondary data (observation data) - uses configuration parameter  
+        const secondaryFilters = {
+          configuration,
+          variable,
+          start_date,
+          end_date,
+          reference_start_date,
+          reference_end_date
+        };
+        const secondaryData = await apiService.getSecondaryTimeseries(location_id, secondaryFilters);
+        dispatch({ type: ActionTypes.SET_SECONDARY_TIMESERIES, payload: secondaryData });
+        
+      } catch (error) {
+        dispatch({ type: ActionTypes.SET_ERROR, payload: `Failed to load timeseries: ${error.message}` });
       }
-
-      // Load primary data (simulation data) - uses variable parameter
-      const primaryFilters = {
-        variable,
-        start_date,
-        end_date,
-        reference_time
-      };
-      const primaryData = await apiService.getPrimaryTimeseries(location_id, primaryFilters);
-      dispatch({ type: ActionTypes.SET_PRIMARY_TIMESERIES, payload: primaryData });
-
-      // Load secondary data (observation data) - uses configuration parameter  
-      const secondaryFilters = {
-        configuration,
-        variable,
-        start_date,
-        end_date,
-        reference_time
-      };
-      const secondaryData = await apiService.getSecondaryTimeseries(location_id, secondaryFilters);
-      dispatch({ type: ActionTypes.SET_SECONDARY_TIMESERIES, payload: secondaryData });
-      
-    } catch (error) {
-      dispatch({ type: ActionTypes.SET_ERROR, payload: `Failed to load timeseries: ${error.message}` });
-    }
-  }, [dispatch]);
+    }, [dispatch]);
   
   // Initialize all data
   const initializeData = useCallback(async () => {
