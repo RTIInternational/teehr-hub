@@ -1,12 +1,43 @@
 import { useEffect } from 'react';
-import { useForecastDashboard } from '../../../context/ForecastDashboardContext.jsx';
+import { useForecastDashboard, ActionTypes } from '../../../context/ForecastDashboardContext.jsx';
 import { useForecastData } from './useForecastData';
-import MapComponent from './MapComponent.jsx';
-import TimeseriesComponent from './TimeseriesComponent.jsx';
+import { 
+  MapComponent, 
+  TimeseriesComponent, 
+  MapFilterButton, 
+  TimeseriesControls 
+} from '../../common/dashboard';
+import { getMetricLabel } from '../../common/dashboard/utils.js';
+import { useForecastLocationSelection, useForecastFilters } from '../../../hooks/useForecastDataFetching';
 
 const Dashboard = () => {
-  const { state } = useForecastDashboard();
+  const { state, dispatch } = useForecastDashboard();
   const { initializeForecastData } = useForecastData();
+  const { selectLocation } = useForecastLocationSelection();
+  const { loadLocations } = useForecastData();
+  const { mapFilters, updateMapFilters, timeseriesFilters, updateTimeseriesFilters } = useForecastFilters();
+  const { loadTimeseries } = useForecastData();
+  const { selectedLocation } = useForecastLocationSelection();
+  
+  // Create dashboard-specific components with injected dependencies
+  const ForecastMapFilterButton = () => (
+    <MapFilterButton
+      state={state}
+      mapFilters={mapFilters}
+      updateMapFilters={updateMapFilters}
+      loadLocations={loadLocations}
+    />
+  );
+  
+  const ForecastTimeseriesControls = () => (
+    <TimeseriesControls
+      state={state}
+      timeseriesFilters={timeseriesFilters}
+      updateTimeseriesFilters={updateTimeseriesFilters}
+      loadTimeseries={loadTimeseries}
+      selectedLocation={selectedLocation}
+    />
+  );
   
   // Load initial data when component mounts
   useEffect(() => {
@@ -38,7 +69,7 @@ const Dashboard = () => {
                   <button 
                     type="button" 
                     className="btn-close" 
-                    onClick={() => window.location.reload()}
+                    onClick={() => dispatch({ type: ActionTypes.CLEAR_ERROR })}
                     aria-label="Close"
                   ></button>
                 </div>
@@ -46,7 +77,15 @@ const Dashboard = () => {
               
               {/* Full-screen map */}
               <div className="h-100">
-                <MapComponent />
+                <MapComponent
+                  state={state}
+                  dispatch={dispatch}
+                  ActionTypes={ActionTypes}
+                  selectLocation={selectLocation}
+                  loadLocations={loadLocations}
+                  MapFilterButton={ForecastMapFilterButton}
+                  getMetricLabel={getMetricLabel}
+                />
               </div>
               
               {/* Overlay timeseries card */}
@@ -62,7 +101,12 @@ const Dashboard = () => {
                     overflowY: 'auto'
                   }}
                 >
-                  <TimeseriesComponent />
+                  <TimeseriesComponent
+                    state={state}
+                    dispatch={dispatch}
+                    ActionTypes={ActionTypes}
+                    TimeseriesControls={ForecastTimeseriesControls}
+                  />
                 </div>
               )}
             </div>

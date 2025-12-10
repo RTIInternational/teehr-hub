@@ -1,12 +1,43 @@
 import { useEffect } from 'react';
-import { useRetrospectiveDashboard } from '../../../context/RetrospectiveDashboardContext.jsx';
+import { useRetrospectiveDashboard, ActionTypes } from '../../../context/RetrospectiveDashboardContext.jsx';
 import { useRetrospectiveData } from './useRetrospectiveData';
-import MapComponent from './MapComponent.jsx';
-import TimeseriesComponent from './TimeseriesComponent.jsx';
+import { 
+  MapComponent, 
+  TimeseriesComponent, 
+  MapFilterButton, 
+  TimeseriesControls 
+} from '../../common/dashboard';
+import { getMetricLabel } from '../../common/dashboard/utils.js';
+import { useRetrospectiveLocationSelection, useRetrospectiveFilters } from '../../../hooks/useRetrospectiveDataFetching';
 
 const Dashboard = () => {
-  const { state } = useRetrospectiveDashboard();
+  const { state, dispatch } = useRetrospectiveDashboard();
   const { initializeRetrospectiveData } = useRetrospectiveData();
+  const { selectLocation } = useRetrospectiveLocationSelection();
+  const { loadLocations } = useRetrospectiveData();
+  const { mapFilters, updateMapFilters, timeseriesFilters, updateTimeseriesFilters } = useRetrospectiveFilters();
+  const { loadTimeseries } = useRetrospectiveData();
+  const { selectedLocation } = useRetrospectiveLocationSelection();
+  
+  // Create dashboard-specific components with injected dependencies
+  const RetrospectiveMapFilterButton = () => (
+    <MapFilterButton
+      state={state}
+      mapFilters={mapFilters}
+      updateMapFilters={updateMapFilters}
+      loadLocations={loadLocations}
+    />
+  );
+  
+  const RetrospectiveTimeseriesControls = () => (
+    <TimeseriesControls
+      state={state}
+      timeseriesFilters={timeseriesFilters}
+      updateTimeseriesFilters={updateTimeseriesFilters}
+      loadTimeseries={loadTimeseries}
+      selectedLocation={selectedLocation}
+    />
+  );
   
   // Debug: Log state changes
   useEffect(() => {
@@ -50,7 +81,7 @@ const Dashboard = () => {
                   <button 
                     type="button" 
                     className="btn-close" 
-                    onClick={() => window.location.reload()}
+                    onClick={() => dispatch({ type: ActionTypes.CLEAR_ERROR })}
                     aria-label="Close"
                   ></button>
                 </div>
@@ -58,7 +89,15 @@ const Dashboard = () => {
               
               {/* Full-screen map */}
               <div className="h-100">
-                <MapComponent />
+                <MapComponent
+                  state={state}
+                  dispatch={dispatch}
+                  ActionTypes={ActionTypes}
+                  selectLocation={selectLocation}
+                  loadLocations={loadLocations}
+                  MapFilterButton={RetrospectiveMapFilterButton}
+                  getMetricLabel={getMetricLabel}
+                />
               </div>
               
               {/* Overlay timeseries card */}
@@ -74,7 +113,12 @@ const Dashboard = () => {
                     overflowY: 'auto'
                   }}
                 >
-                  <TimeseriesComponent />
+                  <TimeseriesComponent
+                    state={state}
+                    dispatch={dispatch}
+                    ActionTypes={ActionTypes}
+                    TimeseriesControls={RetrospectiveTimeseriesControls}
+                  />
                 </div>
               )}
             </div>
