@@ -63,7 +63,7 @@ export const useForecastDataFetching = () => {
       dispatch({ type: ActionTypes.CLEAR_TIMESERIES });
       dispatch({ type: ActionTypes.SET_LOADING, payload: { timeseries: true } });
       
-      const { location_id, configuration, variable, start_date, end_date, reference_time } = filters;
+      const { location_id, configuration, variable, start_date, end_date, reference_start_date, reference_end_date } = filters;
       
       if (!location_id || !configuration || !variable) {
         throw new Error('Missing required parameters: location_id, configuration, and variable are required');
@@ -74,7 +74,8 @@ export const useForecastDataFetching = () => {
         variable,
         start_date,
         end_date,
-        reference_time
+        reference_start_date,
+        reference_end_date
       };
       const primaryData = await apiService.getPrimaryTimeseries(location_id, primaryFilters);
       dispatch({ type: ActionTypes.SET_PRIMARY_TIMESERIES, payload: primaryData });
@@ -85,7 +86,8 @@ export const useForecastDataFetching = () => {
         variable,
         start_date,
         end_date,
-        reference_time
+        reference_start_date,
+        reference_end_date
       };
       const secondaryData = await apiService.getSecondaryTimeseries(location_id, secondaryFilters);
       dispatch({ type: ActionTypes.SET_SECONDARY_TIMESERIES, payload: secondaryData });
