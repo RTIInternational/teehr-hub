@@ -4,9 +4,9 @@ const MapLegend = ({ metric, getMetricLabel }) => {
   
   const colorScales = {
     'relative_bias': {
-      colors: ['#2166ac', '#5aae61', '#fdd49e', '#d73027'],
-      stops: [-1, -0.2, 0.2, 1],
-      labels: ['Good', 'Fair', 'Poor', 'Bad']
+      colors: ['#d73027', '#fc8d59', '#91bfdb', '#4575b4', '#91bfdb', '#fc8d59', '#d73027'],
+      stops: [-1, -0.5, -0.1, 0, 0.1, 0.5, 1],
+      labels: ['Very Bad', 'Bad', 'Fair', 'Excellent', 'Fair', 'Bad', 'Very Bad']
     },
     'nash_sutcliffe_efficiency': {
       colors: ['#d73027', '#fc8d59', '#91bfdb', '#2166ac'],
