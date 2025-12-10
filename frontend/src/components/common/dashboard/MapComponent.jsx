@@ -1,19 +1,20 @@
 import maplibregl from 'maplibre-gl';
 import { useEffect, useRef, useCallback } from 'react';
 import 'maplibre-gl/dist/maplibre-gl.css';
-import { useForecastDashboard , ActionTypes } from '../../../context/ForecastDashboardContext.jsx';
-import { useForecastLocationSelection } from '../../../hooks/useForecastDataFetching';
-import { useForecastData } from './useForecastData';
-import MapFilterButton from './MapFilterButton.jsx';
+import MapLegend from './MapLegend.jsx';
 
-const MapComponent = () => {
+const MapComponent = ({ 
+  state, 
+  dispatch, 
+  ActionTypes, 
+  selectLocation, 
+  loadLocations, 
+  MapFilterButton,
+  getMetricLabel 
+}) => {
   const mapContainer = useRef(null);
   const map = useRef(null);
   const popup = useRef(null);
-  
-  const { state, dispatch } = useForecastDashboard();
-  const { selectLocation } = useForecastLocationSelection();
-  const { loadLocations } = useForecastData();
 
   // Initialize map function
   const initializeMap = useCallback(() => {
@@ -90,7 +91,7 @@ const MapComponent = () => {
       console.error('MapComponent: Error creating map:', error);
       dispatch({ type: ActionTypes.SET_ERROR, payload: `Map initialization failed: ${error.message}` });
     }
-  }, [dispatch, selectLocation]);
+  }, [dispatch, selectLocation, ActionTypes]);
 
   // Initialize map
   useEffect(() => {
@@ -145,7 +146,6 @@ const MapComponent = () => {
         
         // Update map selection
         mapInstance.setFilter('locations-selected', ['==', 'location_id', properties.location_id]);
-
       }
     };
     
@@ -247,31 +247,29 @@ const MapComponent = () => {
           return;
         }
         
-        // Validate and clamp metric values that might cause varint issues
-        if (feature.properties && state.mapFilters.metric) {
-          const metricValue = feature.properties[state.mapFilters.metric];
-          if (metricValue !== null && metricValue !== undefined) {
-            if (typeof metricValue === 'number') {
-              if (!isFinite(metricValue)) {
-                console.error(`MapComponent: Feature ${index} has infinite or NaN metric value:`, { metric: state.mapFilters.metric, value: metricValue, feature });
-                // Replace with null for map rendering
-                feature.properties[state.mapFilters.metric] = null;
-              } else if (Math.abs(metricValue) > 1e6) {
-                console.warn(`MapComponent: Feature ${index} has extremely large metric value, clamping:`, { metric: state.mapFilters.metric, original: metricValue });
-                // Clamp to reasonable range for map rendering
-                feature.properties[state.mapFilters.metric] = Math.sign(metricValue) * 1e6;
+        // Validate and clamp ALL numeric properties that might cause varint issues
+        if (feature.properties) {
+          Object.keys(feature.properties).forEach(key => {
+            const value = feature.properties[key];
+            if (typeof value === 'number') {
+              if (!isFinite(value)) {
+                feature.properties[key] = null;
+              } else if (Math.abs(value) > 1e6) {
+                if (key === state.mapFilters.metric) {
+                  console.warn(`MapComponent: Feature ${index} has extremely large metric value, clamping:`, { metric: key, original: value });
+                }
+                feature.properties[key] = Math.sign(value) * 1e6;
               }
             }
-          }
+          });
         }
         
         validFeatures.push(feature);
       });
       
-      // Log only if there are invalid features
+      // Log invalid features for debugging
       if (invalidFeatures.length > 0) {
-        console.error('MapComponent: Invalid features detected:', invalidFeatures);
-        dispatch({ type: ActionTypes.SET_ERROR, payload: `${invalidFeatures.length} invalid location features detected. Check console for details.` });
+        console.warn(`MapComponent: Filtered out ${invalidFeatures.length} invalid features. Map will render with ${validFeatures.length} valid features.`);
       }
       
       const geojsonData = {
@@ -380,7 +378,7 @@ const MapComponent = () => {
       }
     };
 
-  }, [state.locations, state.mapLoaded, state.mapFilters.metric, selectLocation, dispatch]);
+  }, [state.locations, state.mapLoaded, state.mapFilters.metric, selectLocation, dispatch, ActionTypes, getMetricLabel]);
   
   return (
     <div className="position-relative h-100 w-100">
@@ -400,81 +398,13 @@ const MapComponent = () => {
         {state.mapLoaded && <MapFilterButton />}
         
         {/* Map Legend */}
-        {state.mapLoaded && <MapLegend />}
+        {state.mapLoaded && <MapLegend metric={state.mapFilters.metric} getMetricLabel={getMetricLabel} />}
       </div>
     </div>
   );
 };
 
-// Map Legend Component - shows color scale only
-const MapLegend = () => {
-  const { state } = useForecastDashboard();
-  
-  if (!state.mapFilters.metric) return null;
-  
-  const colorScales = {
-    'relative_bias': {
-      colors: ['#2166ac', '#5aae61', '#fdd49e', '#d73027'],
-      stops: [-1, -0.2, 0.2, 1],
-      labels: ['Good', 'Fair', 'Poor', 'Bad']
-    },
-    'nash_sutcliffe_efficiency': {
-      colors: ['#d73027', '#fc8d59', '#91bfdb', '#2166ac'],
-      stops: [-1, 0.3, 0.7, 1],
-      labels: ['Poor', 'Fair', 'Good', 'Excellent']
-    },
-    'kling_gupta_efficiency': {
-      colors: ['#d73027', '#fc8d59', '#91bfdb', '#2166ac'],
-      stops: [-1, 0.3, 0.7, 1],
-      labels: ['Poor', 'Fair', 'Good', 'Excellent']
-    },
-    'count': {
-      colors: ['#ffffcc', '#a1dab4', '#41b6c4', '#225ea8'],
-      stops: [0, 100, 500, 1000],
-      labels: ['Low', 'Medium', 'High', 'Very High']
-    },
-    'average': {
-      colors: ['#ffffcc', '#c2e699', '#78c679', '#238443'],
-      stops: [0, 1, 5, 20],
-      labels: ['Low', 'Medium', 'High', 'Very High']
-    }
-  };
-  
-  const scale = colorScales[state.mapFilters.metric];
-  if (!scale) return null;
-  
-  const metricLabel = getMetricLabel(state.mapFilters.metric);
-  
-  return (
-    <div 
-      className="card position-absolute bottom-0 start-0 m-3 shadow-sm" 
-      style={{ minWidth: '150px', maxWidth: '200px', zIndex: 1000, fontSize: '0.85rem' }}
-    >
-      <div className="card-header py-2">
-        <h6 className="card-title mb-0 small">Legend</h6>
-      </div>
-      <div className="card-body py-2">
-        <div className="small"><strong>{metricLabel}</strong></div>
-        {scale.colors.map((color, i) => (
-          <div key={i} className="d-flex align-items-center mt-1">
-            <div 
-              style={{
-                width: '12px',
-                height: '12px',
-                backgroundColor: color,
-                border: '1px solid #ccc',
-                marginRight: '6px'
-              }}
-            ></div>
-            <small>{scale.labels[i]} ({scale.stops[i]})</small>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-};
-
-// Helper functions
+// Helper function for metric color expression
 const getMetricColorExpression = (metric) => {
   if (!metric) return '#0d6efd';
   
@@ -510,17 +440,6 @@ const getMetricColorExpression = (metric) => {
     ['get', metric],
     ...scale.stops.flatMap((stop, i) => [stop, scale.colors[i]])
   ];
-};
-
-const getMetricLabel = (metric) => {
-  const labels = {
-    'count': 'Count',
-    'average': 'Average',
-    'relative_bias': 'Relative Bias',
-    'nash_sutcliffe_efficiency': 'Nash-Sutcliffe Efficiency',
-    'kling_gupta_efficiency': 'Kling-Gupta Efficiency'
-  };
-  return labels[metric] || metric;
 };
 
 export default MapComponent;
