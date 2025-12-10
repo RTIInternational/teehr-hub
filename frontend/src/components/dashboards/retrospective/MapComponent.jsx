@@ -127,6 +127,17 @@ const MapComponent = () => {
       return;
     }
     
+    // Early logging to inspect raw data
+    console.log('MapComponent: Raw location data:', {
+      totalFeatures: state.locations.features.length,
+      firstFeature: state.locations.features[0],
+      sampleCoords: state.locations.features.slice(0, 3).map((f, i) => ({
+        index: i,
+        coords: f.geometry?.coordinates,
+        properties: f.properties
+      }))
+    });
+    
     const mapInstance = map.current;
     
     // Define event handlers outside try block so they're accessible in cleanup
@@ -208,14 +219,76 @@ const MapComponent = () => {
       }
       
       // Validate GeoJSON format before adding to map
+      const validFeatures = [];
+      const invalidFeatures = [];
+      
+      state.locations.features.forEach((feature, index) => {
+        // Basic structure validation
+        if (!feature.type || feature.type !== 'Feature' || 
+            !feature.geometry || 
+            !feature.geometry.coordinates ||
+            !Array.isArray(feature.geometry.coordinates)) {
+          console.warn(`MapComponent: Feature ${index} has invalid structure:`, feature);
+          invalidFeatures.push({ index, reason: 'invalid structure', feature });
+          return;
+        }
+        
+        const coords = feature.geometry.coordinates;
+        const lon = coords[0];
+        const lat = coords[1];
+        
+        // Coordinate validation
+        if (typeof lon !== 'number' || typeof lat !== 'number') {
+          console.warn(`MapComponent: Feature ${index} has non-numeric coordinates:`, { lon, lat, feature });
+          invalidFeatures.push({ index, reason: 'non-numeric coordinates', feature });
+          return;
+        }
+        
+        // Check for valid coordinate ranges
+        if (lon < -180 || lon > 180) {
+          console.error(`MapComponent: Feature ${index} has invalid longitude ${lon}:`, feature);
+          invalidFeatures.push({ index, reason: `longitude out of range: ${lon}`, feature });
+          return;
+        }
+        
+        if (lat < -90 || lat > 90) {
+          console.error(`MapComponent: Feature ${index} has invalid latitude ${lat}:`, feature);
+          invalidFeatures.push({ index, reason: `latitude out of range: ${lat}`, feature });
+          return;
+        }
+        
+        // Check for extreme precision that might cause varint issues
+        const lonStr = lon.toString();
+        const latStr = lat.toString();
+        
+        if (lonStr.length > 15 || latStr.length > 15) {
+          console.warn(`MapComponent: Feature ${index} has extremely precise coordinates that may cause varint errors:`, 
+            { lon, lat, lonLength: lonStr.length, latLength: latStr.length, feature });
+          invalidFeatures.push({ index, reason: `extreme precision: lon=${lonStr}, lat=${latStr}`, feature });
+          return;
+        }
+        
+        // Check for NaN or Infinity
+        if (!isFinite(lon) || !isFinite(lat)) {
+          console.error(`MapComponent: Feature ${index} has infinite or NaN coordinates:`, { lon, lat, feature });
+          invalidFeatures.push({ index, reason: `infinite or NaN coordinates: lon=${lon}, lat=${lat}`, feature });
+          return;
+        }
+        
+        validFeatures.push(feature);
+      });
+      
+      // Log summary of validation results
+      console.log(`MapComponent: Validation complete - ${validFeatures.length} valid, ${invalidFeatures.length} invalid features`);
+      
+      if (invalidFeatures.length > 0) {
+        console.error('MapComponent: Invalid features detected:', invalidFeatures);
+        dispatch({ type: ActionTypes.SET_ERROR, payload: `${invalidFeatures.length} invalid location features detected. Check console for details.` });
+      }
+      
       const geojsonData = {
         type: 'FeatureCollection',
-        features: state.locations.features.filter(feature => 
-          feature.type === 'Feature' && 
-          feature.geometry && 
-          feature.geometry.coordinates &&
-          Array.isArray(feature.geometry.coordinates)
-        )
+        features: validFeatures
       };
       
       // Unlikely edge case, but handled here.
@@ -225,11 +298,20 @@ const MapComponent = () => {
         return;
       }
       
-      // Add new source
-      mapInstance.addSource('locations', {
-        type: 'geojson',
-        data: geojsonData
-      });
+      // Add new source with error handling
+      try {
+        console.log('MapComponent: Adding GeoJSON source with', geojsonData.features.length, 'features');
+        mapInstance.addSource('locations', {
+          type: 'geojson',
+          data: geojsonData
+        });
+        console.log('MapComponent: Successfully added GeoJSON source');
+      } catch (sourceError) {
+        console.error('MapComponent: Error adding GeoJSON source:', sourceError);
+        console.error('MapComponent: Problematic GeoJSON data:', geojsonData);
+        dispatch({ type: ActionTypes.SET_ERROR, payload: `Map source error: ${sourceError.message}` });
+        return;
+      }
       
       // Get color expression for metric-based coloring
       const colorExpression = getMetricColorExpression(state.mapFilters.metric);
