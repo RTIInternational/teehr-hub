@@ -77,7 +77,7 @@ def calculate_forecast_metrics_by_lead_time_bins(
             group_by=FORECAST_BY_LEAD_TIME_BIN_GROUPBY,
         ).to_sdf()
     )
-    sdf.createTempView("forecast_metrics")
+    sdf.createOrReplaceTempView("forecast_metrics")
 
     sdf = ev.spark.sql("""
         SELECT m.*, l.*
@@ -112,7 +112,7 @@ def calculate_forecast_metrics_by_location(
         ).to_sdf()
     )
 
-    sdf.createTempView("forecast_metrics")
+    sdf.createOrReplaceTempView("forecast_metrics")
 
     sdf = ev.spark.sql("""
         SELECT m.*, l.*
