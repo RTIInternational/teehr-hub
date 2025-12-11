@@ -14,7 +14,7 @@ logging.getLogger("teehr").setLevel(logging.INFO)
 
 
 @task(cache_policy=NO_CACHE)
-def calculate_forecast_metrics_by_lead_time(
+def calculate_forecast_metrics_by_lead_time_bins(
     ev: teehr.Evaluation,
     joined_forecast_table_name: str,
 ) -> DataFrame:
@@ -26,8 +26,7 @@ def calculate_forecast_metrics_by_lead_time(
     """
     logger = get_run_logger()
 
-    logger.info("Creating forecast metrics by lead time table...")
-
+    logger.info("Creating forecast metrics by lead time bins table...")
     count = s.Count()
     rmsdr = dm.RootMeanStandardDeviationRatio()
     rbias = dm.RelativeBias()
@@ -59,7 +58,7 @@ def calculate_forecast_metrics_by_lead_time(
                 "primary_location_id",
                 "secondary_location_id",
                 "configuration_name",
-                "forecast_lead_time",
+                "forecast_lead_time_bin",
                 "variable_name",
                 "unit_name",
                 "member"
