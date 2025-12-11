@@ -14,13 +14,13 @@ const initialForecastState = {
   locations: { features: [] },
   configurations: [],
   variables: [],
-  metrics: [],
+  metricNames: [],
   
   // Map filters (original structure)
   mapFilters: {
     configuration: null,
     variable: null,
-    metric: 'relative_bias'
+    metricName: 'relative_bias'
   },
   
   // Timeseries filters (forecast-specific defaults)
@@ -42,9 +42,13 @@ const initialForecastState = {
     secondary: []
   },
   
+  // Location metrics
+  locationMetrics: [],
+  
   // Loading states
   locationsLoading: false,
   timeseriesLoading: false,
+  metricsLoading: false,
   
   // Map state
   mapLoaded: false,
@@ -59,7 +63,7 @@ export const ActionTypes = {
   SET_LOCATIONS: 'SET_LOCATIONS',
   SET_CONFIGURATIONS: 'SET_CONFIGURATIONS',
   SET_VARIABLES: 'SET_VARIABLES',
-  SET_METRICS: 'SET_METRICS',
+  SET_METRIC_NAMES: 'SET_METRIC_NAMES',
   
   // Filter updates
   UPDATE_MAP_FILTERS: 'UPDATE_MAP_FILTERS',
@@ -72,6 +76,10 @@ export const ActionTypes = {
   SET_PRIMARY_TIMESERIES: 'SET_PRIMARY_TIMESERIES',
   SET_SECONDARY_TIMESERIES: 'SET_SECONDARY_TIMESERIES',
   CLEAR_TIMESERIES: 'CLEAR_TIMESERIES',
+  
+  // Location metrics
+  SET_LOCATION_METRICS: 'SET_LOCATION_METRICS',
+  CLEAR_LOCATION_METRICS: 'CLEAR_LOCATION_METRICS',
   
   // Loading states
   SET_LOADING: 'SET_LOADING',
@@ -126,11 +134,11 @@ const forecastDashboardReducer = (state, action) => {
         }
       };
       
-    case ActionTypes.SET_METRICS:
-      const metrics = Array.isArray(action.payload) ? action.payload : [];
+    case ActionTypes.SET_METRIC_NAMES:
+      const metricNames = Array.isArray(action.payload) ? action.payload : [];
       return {
         ...state,
-        metrics
+        metricNames
       };
       
     case ActionTypes.UPDATE_MAP_FILTERS:
@@ -207,6 +215,20 @@ const forecastDashboardReducer = (state, action) => {
       return {
         ...state,
         error: null
+      };
+      
+    case ActionTypes.SET_LOCATION_METRICS:
+      return {
+        ...state,
+        locationMetrics: action.payload,
+        metricsLoading: false
+      };
+      
+    case ActionTypes.CLEAR_LOCATION_METRICS:
+      return {
+        ...state,
+        locationMetrics: [],
+        metricsLoading: false
       };
       
     default:

@@ -58,6 +58,7 @@ export const apiService = {
     if (filters.configuration) params.append('configuration', filters.configuration);
     if (filters.variable) params.append('variable', filters.variable);
     if (filters.table) params.append('table', filters.table);
+    if (filters.location_id) params.append('location_id', filters.location_id);
     
     const queryString = params.toString();
     const endpoint = queryString ? `/api/metrics?${queryString}` : '/api/metrics';

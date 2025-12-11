@@ -2,7 +2,7 @@ import Plotly from 'plotly.js-dist-min';
 import { useEffect, useRef } from 'react';
 import { formatVariableName, formatUnitName, getYAxisTitle } from '../../utils/formatters';
 
-const PlotlyChart = ({ primaryData, secondaryData, selectedLocation, filters }) => {
+const PlotlyChart = ({ primaryData, secondaryData, selectedLocation, filters, height = '500px' }) => {
   const plotRef = useRef(null);
 
   useEffect(() => {
@@ -99,7 +99,7 @@ const PlotlyChart = ({ primaryData, secondaryData, selectedLocation, filters }) 
 
   }, [primaryData, secondaryData, selectedLocation, filters]);
 
-  return <div ref={plotRef} style={{ width: '100%', height: '500px' }} />;
+  return <div ref={plotRef} style={{ width: '100%', height }} />;
 };
 
 export default PlotlyChart;
