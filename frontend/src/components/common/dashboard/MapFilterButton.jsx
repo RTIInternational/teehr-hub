@@ -72,13 +72,13 @@ const MapFilterButton = ({
               <Form.Label className="small fw-bold">Color By Metric</Form.Label>
               <Form.Select
                 size="sm"
-                value={mapFilters.metric || ''}
-                onChange={(e) => handleMapFilterChange('metric', e.target.value || null)}
+                value={mapFilters.metricName || ''}
+                onChange={(e) => handleMapFilterChange('metricName', e.target.value || null)}
               >
                 <option value="">Select Metric...</option>
-                {Array.isArray(state.metrics) && state.metrics.map((metric) => (
-                  <option key={metric} value={metric}>
-                    {metric}
+                {Array.isArray(state.metricNames) && state.metricNames.map((metricName) => (
+                  <option key={metricName} value={metricName}>
+                    {metricName}
                   </option>
                 ))}
               </Form.Select>

@@ -155,8 +155,8 @@ const MapComponent = ({
       const coordinates = e.features[0].geometry.coordinates.slice();
       const properties = e.features[0].properties;
       
-      const metricValue = properties[state.mapFilters.metric];
-      const metricLabel = getMetricLabel(state.mapFilters.metric);
+      const metricValue = properties[state.mapFilters.metricName];
+      const metricLabel = getMetricLabel(state.mapFilters.metricName);
       
       popup.current
         .setLngLat(coordinates)
@@ -249,7 +249,7 @@ const MapComponent = ({
               if (!isFinite(value)) {
                 feature.properties[key] = null;
               } else if (Math.abs(value) > 1e6) {
-                if (key === state.mapFilters.metric) {
+                if (key === state.mapFilters.metricName) {
                   clampedMetrics.push({ index, metric: key, original: value, clamped: Math.sign(value) * 1e6 });
                 }
                 feature.properties[key] = Math.sign(value) * 1e6;
@@ -298,7 +298,7 @@ const MapComponent = ({
       }
       
       // Get color expression for metric-based coloring
-      const colorExpression = getMetricColorExpression(state.mapFilters.metric);
+      const colorExpression = getMetricColorExpression(state.mapFilters.metricName);
     
     // Add locations layer with error handling
     try {
@@ -379,7 +379,7 @@ const MapComponent = ({
       }
     };
 
-  }, [state.locations, state.mapLoaded, state.mapFilters.metric, selectLocation, dispatch, ActionTypes, getMetricLabel]);
+  }, [state.locations, state.mapLoaded, state.mapFilters.metricName, selectLocation, dispatch, ActionTypes, getMetricLabel]);
   
   return (
     <div className="position-relative h-100 w-100">
@@ -399,7 +399,7 @@ const MapComponent = ({
         {state.mapLoaded && <MapFilterButton />}
         
         {/* Map Legend */}
-        {state.mapLoaded && <MapLegend metric={state.mapFilters.metric} getMetricLabel={getMetricLabel} />}
+        {state.mapLoaded && <MapLegend metric={state.mapFilters.metricName} getMetricLabel={getMetricLabel} />}
       </div>
     </div>
   );

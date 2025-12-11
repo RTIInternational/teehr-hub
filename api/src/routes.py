@@ -73,13 +73,18 @@ async def get_locations():
 @router.get("/api/metrics")
 async def get_metrics(
     table: MetricsTable = Query(MetricsTable.SIM_METRICS_BY_LOCATION, description="Metrics table to query"),
+    location_id: Optional[str] = Query(None, description="Filter by location ID"),
     configuration: Optional[str] = Query(None, description="Filter by configuration"),
     variable: Optional[str] = Query(None, description="Filter by variable"),
 ):
     """Get simulation metrics by location with optional filtering, returns GeoJSON."""
     try:
         
-        where_conditions = ["primary_location_id LIKE 'usgs-%'"]
+        if location_id:
+            sanitized_location_id = sanitize_string(location_id)
+            where_conditions = [f"primary_location_id = '{sanitized_location_id}'"]
+        else:
+            where_conditions = ["primary_location_id LIKE 'usgs-%'"]
         
         if configuration:
             sanitized_configuration = sanitize_string(configuration)
@@ -107,7 +112,7 @@ async def get_metrics(
             return {"type": "FeatureCollection", "features": []}
         
         df = df.rename(columns={"primary_location_id": "location_id"})
-        
+
         df["geometry"] = gpd.GeoSeries.from_wkb(
             df["geometry"].apply(lambda x: bytes(x))
         )

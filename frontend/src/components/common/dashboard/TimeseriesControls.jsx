@@ -5,7 +5,8 @@ const TimeseriesControls = ({
   timeseriesFilters, 
   updateTimeseriesFilters, 
   loadTimeseries, 
-  selectedLocation 
+  selectedLocation,
+  mapFilters
 }) => {
   
   const handleFilterChange = (field, value) => {
@@ -35,7 +36,7 @@ const TimeseriesControls = ({
             <Form.Label className="small fw-bold">Configuration</Form.Label>
             <Form.Select
               size="sm"
-              value={timeseriesFilters.configuration || ''}
+              value={timeseriesFilters.configuration || mapFilters.configuration || ''}
               onChange={(e) => handleFilterChange('configuration', e.target.value || null)}
             >
               <option value="">Select Configuration...</option>
@@ -54,7 +55,7 @@ const TimeseriesControls = ({
             <Form.Label className="small fw-bold">Variable</Form.Label>
             <Form.Select
               size="sm"
-              value={timeseriesFilters.variable || ''}
+              value={timeseriesFilters.variable || mapFilters.variable || ''}
               onChange={(e) => handleFilterChange('variable', e.target.value || null)}
             >
               <option value="">Select Variable...</option>

@@ -39,14 +39,14 @@ export const useRetrospectiveDataFetching = () => {
   }, [dispatch]);
   
   // Load metrics
-  const loadMetrics = useCallback(async (table) => {
+  const loadMetricNames = useCallback(async (table) => {
     try {
       console.log('Loading metrics for table:', table);
-      dispatch({ type: ActionTypes.SET_LOADING, payload: { metrics: true } });
-      const metrics = await apiService.getMetricNames(table);
-      console.log('Metrics loaded:', metrics);
-      dispatch({ type: ActionTypes.SET_METRICS, payload: metrics });
-      return metrics;
+      dispatch({ type: ActionTypes.SET_LOADING, payload: { metricsNames: true } });
+      const metricNames = await apiService.getMetricNames(table);
+      console.log('Metrics loaded:', metricNames);
+      dispatch({ type: ActionTypes.SET_METRIC_NAMES, payload: metricNames });
+      return metricNames;
     } catch (error) {
       console.error('Error loading metrics:', error);
       dispatch({ type: ActionTypes.SET_ERROR, payload: `Failed to load metrics: ${error.message}` });
@@ -118,17 +118,17 @@ export const useRetrospectiveDataFetching = () => {
       await Promise.all([
         loadConfigurations(),
         loadVariables(),
-        loadMetrics()
+        loadMetricNames()
       ]);
     } catch (error) {
       console.error('Failed to initialize data:', error);
     }
-  }, [loadConfigurations, loadVariables, loadMetrics]);
+  }, [loadConfigurations, loadVariables, loadMetricNames]);
   
   return {
     loadConfigurations,
     loadVariables,
-    loadMetrics,
+    loadMetricNames,
     loadLocations,
     loadTimeseries,
     initializeData

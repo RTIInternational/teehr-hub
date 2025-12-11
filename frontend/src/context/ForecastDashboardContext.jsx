@@ -14,13 +14,13 @@ const initialForecastState = {
   locations: { features: [] },
   configurations: [],
   variables: [],
-  metrics: [],
+  metricNames: [],
   
   // Map filters (original structure)
   mapFilters: {
     configuration: null,
     variable: null,
-    metric: 'relative_bias'
+    metricName: 'relative_bias'
   },
   
   // Timeseries filters (forecast-specific defaults)
@@ -59,7 +59,7 @@ export const ActionTypes = {
   SET_LOCATIONS: 'SET_LOCATIONS',
   SET_CONFIGURATIONS: 'SET_CONFIGURATIONS',
   SET_VARIABLES: 'SET_VARIABLES',
-  SET_METRICS: 'SET_METRICS',
+  SET_METRIC_NAMES: 'SET_METRIC_NAMES',
   
   // Filter updates
   UPDATE_MAP_FILTERS: 'UPDATE_MAP_FILTERS',
@@ -126,11 +126,11 @@ const forecastDashboardReducer = (state, action) => {
         }
       };
       
-    case ActionTypes.SET_METRICS:
-      const metrics = Array.isArray(action.payload) ? action.payload : [];
+    case ActionTypes.SET_METRIC_NAMES:
+      const metricNames = Array.isArray(action.payload) ? action.payload : [];
       return {
         ...state,
-        metrics
+        metricNames
       };
       
     case ActionTypes.UPDATE_MAP_FILTERS:

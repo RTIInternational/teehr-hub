@@ -6,7 +6,7 @@ import { useRetrospectiveDataFetching } from '../../../hooks/useRetrospectiveDat
  * Handles the sim_metrics_by_location table specifically
  */
 export const useRetrospectiveData = () => {
-  const { loadConfigurations, loadVariables, loadMetrics, loadLocations, loadTimeseries, ...otherHooks } = useRetrospectiveDataFetching();
+  const { loadConfigurations, loadVariables, loadMetricNames, loadLocations, loadTimeseries, ...otherHooks } = useRetrospectiveDataFetching();
   
   // Table name for retrospective dashboard
   const TABLE_NAME = 'sim_metrics_by_location';
@@ -22,9 +22,9 @@ export const useRetrospectiveData = () => {
   }, [loadVariables]);
   
   // Load metrics for simulation metrics
-  const loadSimMetrics = useCallback(async () => {
-    return loadMetrics(TABLE_NAME);
-  }, [loadMetrics]);
+  const loadSimMetricNames = useCallback(async () => {
+    return loadMetricNames(TABLE_NAME);
+  }, [loadMetricNames]);
 
   // Load locations with retrospective table context
   const loadSimLocations = useCallback(async (filters = {}) => {
@@ -43,20 +43,20 @@ export const useRetrospectiveData = () => {
       const results = await Promise.all([
         loadSimConfigurations(),
         loadSimVariables(), 
-        loadSimMetrics()
+        loadSimMetricNames()
       ]);
       console.log('useRetrospectiveData: Initialization completed successfully', results);
     } catch (error) {
       console.error('Failed to initialize retrospective data:', error);
       throw error;
     }
-  }, [loadSimConfigurations, loadSimVariables, loadSimMetrics]);
+  }, [loadSimConfigurations, loadSimVariables, loadSimMetricNames]);
   
   return {
     ...otherHooks,
     loadConfigurations: loadSimConfigurations,
     loadVariables: loadSimVariables,
-    loadMetrics: loadSimMetrics,
+    loadMetricNames: loadSimMetricNames,
     loadLocations: loadSimLocations,
     loadTimeseries: loadSimTimeseries,
     initializeRetrospectiveData,

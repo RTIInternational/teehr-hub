@@ -29,13 +29,13 @@ export const useForecastDataFetching = () => {
   }, [dispatch]);
   
   // Load metrics
-  const loadMetrics = useCallback(async (table) => {
+  const loadMetricNames = useCallback(async (table) => {
     try {
-      dispatch({ type: ActionTypes.SET_LOADING, payload: { metrics: true } });
-      const metrics = await apiService.getMetricNames(table);
-      dispatch({ type: ActionTypes.SET_METRICS, payload: metrics });
+      dispatch({ type: ActionTypes.SET_LOADING, payload: { metricNames: true } });
+      const metricNames = await apiService.getMetricNames(table);
+      dispatch({ type: ActionTypes.SET_METRIC_NAMES, payload: metricNames });
     } catch (error) {
-      dispatch({ type: ActionTypes.SET_ERROR, payload: `Failed to load metrics: ${error.message}` });
+      dispatch({ type: ActionTypes.SET_ERROR, payload: `Failed to load metric names: ${error.message}` });
     }
   }, [dispatch]);
   
@@ -103,17 +103,17 @@ export const useForecastDataFetching = () => {
       await Promise.all([
         loadConfigurations(),
         loadVariables(),
-        loadMetrics()
+        loadMetricNames()
       ]);
     } catch (error) {
       console.error('Failed to initialize data:', error);
     }
-  }, [loadConfigurations, loadVariables, loadMetrics]);
+  }, [loadConfigurations, loadVariables, loadMetricNames]);
   
   return {
     loadConfigurations,
     loadVariables,
-    loadMetrics,
+    loadMetricNames,
     loadLocations,
     loadTimeseries,
     initializeData

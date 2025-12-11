@@ -6,7 +6,7 @@ import { useForecastDataFetching } from '../../../hooks/useForecastDataFetching'
  * Handles the forecast_metrics_by_location table specifically
  */
 export const useForecastData = () => {
-  const { loadConfigurations, loadVariables, loadMetrics, loadLocations, loadTimeseries, ...otherHooks } = useForecastDataFetching();
+  const { loadConfigurations, loadVariables, loadMetricNames, loadLocations, loadTimeseries, ...otherHooks } = useForecastDataFetching();
   
   // Table name for forecast dashboard
   const TABLE_NAME = 'fcst_metrics_by_location';
@@ -21,10 +21,10 @@ export const useForecastData = () => {
     return loadVariables(TABLE_NAME);
   }, [loadVariables]);
   
-  // Load metrics for forecast metrics
-  const loadForecastMetrics = useCallback(async () => {
-    return loadMetrics(TABLE_NAME);
-  }, [loadMetrics]);
+  // Load metric names for forecast metrics
+  const loadForecastMetricNames = useCallback(async () => {
+    return loadMetricNames(TABLE_NAME);
+  }, [loadMetricNames]);
 
   // Load locations with forecast table context
   const loadForecastLocations = useCallback(async (filters = {}) => {
@@ -42,19 +42,19 @@ export const useForecastData = () => {
       await Promise.all([
         loadForecastConfigurations(),
         loadForecastVariables(), 
-        loadForecastMetrics()
+        loadForecastMetricNames()
       ]);
     } catch (error) {
       console.error('Failed to initialize forecast data:', error);
       throw error;
     }
-  }, [loadForecastConfigurations, loadForecastVariables, loadForecastMetrics]);
+  }, [loadForecastConfigurations, loadForecastVariables, loadForecastMetricNames]);
   
   return {
     ...otherHooks,
     loadConfigurations: loadForecastConfigurations,
     loadVariables: loadForecastVariables,
-    loadMetrics: loadForecastMetrics,
+    loadMetricNames: loadForecastMetricNames,
     loadLocations: loadForecastLocations,
     loadTimeseries: loadForecastTimeseries,
     initializeForecastData,
