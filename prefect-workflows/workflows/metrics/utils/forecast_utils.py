@@ -37,13 +37,13 @@ def calculate_forecast_metrics_by_lead_time(
     nse.add_epsilon = True
     kge.add_epsilon = True
 
-    # TODO: Change to forecast bins once available
-
     sdf = (
         ev
         .metrics(table_name=joined_forecast_table_name).
         add_calculated_fields([
-            rcf.ForecastLeadTime()
+            rcf.ForecastLeadTimeBins(
+                bin_size="6 hours"
+            )
         ])
         .query(
             include_metrics=[
@@ -55,7 +55,10 @@ def calculate_forecast_metrics_by_lead_time(
             group_by=[
                 "primary_location_id",
                 "configuration_name",
-                "forecast_lead_time"
+                "forecast_lead_time",
+                "variable_name",
+                "unit_name",
+                "member"
             ],
         ).to_sdf()
     )
