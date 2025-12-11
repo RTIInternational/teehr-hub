@@ -8,12 +8,50 @@ from pyspark.sql import DataFrame
 import teehr
 from teehr import DeterministicMetrics as dm
 from teehr import RowLevelCalculatedFields as rcf
+from teehr import Signatures as s
 
 logging.getLogger("teehr").setLevel(logging.INFO)
 
+FORECAST_BY_LEAD_TIME_BIN_GROUPBY = [
+    "primary_location_id",
+    "secondary_location_id",
+    "configuration_name",
+    "forecast_lead_time_bin",
+    "variable_name",
+    "unit_name",
+    "member"
+]
+FORECAST_BY_LOCATION_GROUPBY = [
+    "primary_location_id",
+    "secondary_location_id",
+    "configuration_name",
+    "unit_name",
+    "variable_name",
+    "member"
+]
+
+count = s.Count()
+rmsdr = dm.RootMeanStandardDeviationRatio()
+rbias = dm.RelativeBias()
+nse = dm.NashSutcliffeEfficiency()
+kge = dm.KlingGuptaEfficiency()
+
+rmsdr.add_epsilon = True
+rbias.add_epsilon = True
+nse.add_epsilon = True
+kge.add_epsilon = True
+
+FORECAST_METRICS = [
+    count,
+    rmsdr,
+    rbias,
+    nse,
+    kge
+]
+
 
 @task(cache_policy=NO_CACHE)
-def calculate_forecast_metrics_by_lead_time(
+def calculate_forecast_metrics_by_lead_time_bins(
     ev: teehr.Evaluation,
     joined_forecast_table_name: str,
 ) -> DataFrame:
@@ -24,39 +62,19 @@ def calculate_forecast_metrics_by_lead_time(
     - This requires the joined forecast table to be created first.
     """
     logger = get_run_logger()
-
-    logger.info("Creating forecast metrics by lead time table...")
-
-    pcorr = dm.PearsonCorrelation()
-    rbias = dm.RelativeBias()
-    nse = dm.NashSutcliffeEfficiency()
-    kge = dm.KlingGuptaEfficiency()
-
-    pcorr.add_epsilon = True
-    rbias.add_epsilon = True
-    nse.add_epsilon = True
-    kge.add_epsilon = True
-
-    # TODO: Change to forecast bins once available
+    logger.info("Creating forecast metrics by lead time bins table...")
 
     sdf = (
         ev
         .metrics(table_name=joined_forecast_table_name).
         add_calculated_fields([
-            rcf.ForecastLeadTime()
+            rcf.ForecastLeadTimeBins(
+                bin_size="6 hours"
+            )
         ])
         .query(
-            include_metrics=[
-                pcorr,
-                rbias,
-                nse,
-                kge
-            ],
-            group_by=[
-                "primary_location_id",
-                "configuration_name",
-                "forecast_lead_time"
-            ],
+            include_metrics=FORECAST_METRICS,
+            group_by=FORECAST_BY_LEAD_TIME_BIN_GROUPBY,
         ).to_sdf()
     )
     sdf.createTempView("forecast_metrics")
@@ -83,36 +101,14 @@ def calculate_forecast_metrics_by_location(
     - This requires the joined forecast table to be created first.
     """
     logger = get_run_logger()
-
     logger.info("Creating forecast metrics by location table...")
-
-    pcorr = teehr.DeterministicMetrics.PearsonCorrelation()
-    rbias = teehr.DeterministicMetrics.RelativeBias()
-    nse = teehr.DeterministicMetrics.NashSutcliffeEfficiency()
-    kge = teehr.DeterministicMetrics.KlingGuptaEfficiency()
-
-    pcorr.add_epsilon = True
-    rbias.add_epsilon = True
-    nse.add_epsilon = True
-    kge.add_epsilon = True
 
     sdf = (
         ev
         .metrics(table_name=joined_forecast_table_name)
         .query(
-            include_metrics=[
-                pcorr,
-                rbias,
-                nse,
-                kge
-            ],
-            group_by=[
-                "primary_location_id",
-                "configuration_name",
-                "unit_name",
-                "variable_name",
-                "member"
-            ]
+            include_metrics=FORECAST_METRICS,
+            group_by=FORECAST_BY_LOCATION_GROUPBY
         ).to_sdf()
     )
 
@@ -142,7 +138,6 @@ def join_forecast_timeseries(
       crosswalk.
     """
     logger = get_run_logger()
-
     logger.info("Creating joined forecast timeseries table...")
     # Build the WHERE clause for configuration filtering
     where_clause = ""
