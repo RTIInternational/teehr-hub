@@ -35,9 +35,13 @@ const initialRetrospectiveState = {
     secondary: []
   },
   
+  // Metrics table data
+  locationMetrics: [],
+  
   // Loading states
   locationsLoading: false,
   timeseriesLoading: false,
+  metricsLoading: false,
   
   // Map state
   mapLoaded: false,
@@ -65,6 +69,10 @@ export const ActionTypes = {
   SET_PRIMARY_TIMESERIES: 'SET_PRIMARY_TIMESERIES',
   SET_SECONDARY_TIMESERIES: 'SET_SECONDARY_TIMESERIES',
   CLEAR_TIMESERIES: 'CLEAR_TIMESERIES',
+  
+  // Location metrics
+  SET_LOCATION_METRICS: 'SET_LOCATION_METRICS',
+  CLEAR_LOCATION_METRICS: 'CLEAR_LOCATION_METRICS',
   
   // Loading states
   SET_LOADING: 'SET_LOADING',
@@ -200,6 +208,20 @@ const retrospectiveDashboardReducer = (state, action) => {
       return {
         ...state,
         error: null
+      };
+      
+    case ActionTypes.SET_LOCATION_METRICS:
+      return {
+        ...state,
+        locationMetrics: action.payload,
+        metricsLoading: false
+      };
+      
+    case ActionTypes.CLEAR_LOCATION_METRICS:
+      return {
+        ...state,
+        locationMetrics: [],
+        metricsLoading: false
       };
       
     default:

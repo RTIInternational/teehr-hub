@@ -28,12 +28,13 @@ const TimeseriesControls = ({
   };
 
   return (
-    <Form className="mb-3">
-      <Row className="g-2">
-        {/* Configuration */}
-        <Col md={6}>
-          <Form.Group>
-            <Form.Label className="small fw-bold">Configuration</Form.Label>
+    <div className="h-100 d-flex flex-column">
+      <Form className="flex-grow-1">
+        <Row className="g-2 h-100">
+          {/* Configuration */}
+          <Col md={6}>
+            <Form.Group>
+              <Form.Label className="small fw-bold">Configuration</Form.Label>
             <Form.Select
               size="sm"
               value={timeseriesFilters.configuration || mapFilters.configuration || ''}
@@ -133,8 +134,9 @@ const TimeseriesControls = ({
             </Button>
           </div>
         </Col>
-      </Row>
-    </Form>
+        </Row>
+      </Form>
+    </div>
   );
 };
 

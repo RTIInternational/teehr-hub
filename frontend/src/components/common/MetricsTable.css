@@ -1,0 +1,142 @@
+.metrics-table-container {
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  background-color: white;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  overflow: hidden;
+}
+
+.metrics-table-header {
+  background-color: #f8f9fa;
+  padding: 12px 16px;
+  border-bottom: 1px solid #e0e0e0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.metrics-table-header h3 {
+  margin: 0;
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: #333;
+}
+
+.metrics-count {
+  font-size: 0.9rem;
+  color: #666;
+  font-weight: normal;
+}
+
+.metrics-table-wrapper {
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+.metrics-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+
+.metrics-table th {
+  background-color: #f8f9fa;
+  padding: 12px 16px;
+  text-align: left;
+  font-weight: 600;
+  color: #555;
+  border-bottom: 2px solid #e0e0e0;
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+
+.metrics-table td {
+  padding: 10px 16px;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.metrics-table tr.even {
+  background-color: #fafafa;
+}
+
+.metrics-table tr.odd {
+  background-color: white;
+}
+
+.metrics-table tr:hover {
+  background-color: #f5f5f5;
+}
+
+.metric-name {
+  font-weight: 500;
+  color: #333;
+}
+
+.metric-value {
+  color: #333;
+  text-align: right;
+  font-family: 'Courier New', monospace;
+}
+
+.metrics-table-loading,
+.metrics-table-error,
+.metrics-table-empty {
+  padding: 24px;
+  text-align: center;
+  color: #666;
+}
+
+.metrics-table-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+}
+
+.loading-spinner {
+  width: 20px;
+  height: 20px;
+  border: 2px solid #f3f3f3;
+  border-top: 2px solid #007bff;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.metrics-table-error {
+  color: #dc3545;
+  background-color: #f8d7da;
+  border: 1px solid #f5c6cb;
+  border-radius: 4px;
+  margin: 16px;
+}
+
+.metrics-table-empty {
+  font-style: italic;
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+  .metrics-table-container {
+    margin: 0 -8px;
+    border-radius: 0;
+  }
+  
+  .metrics-table th,
+  .metrics-table td {
+    padding: 8px 12px;
+  }
+  
+  .metrics-table-header {
+    padding: 8px 12px;
+  }
+  
+  .metrics-table-header h3 {
+    font-size: 1rem;
+  }
+}

@@ -7,6 +7,7 @@ import {
   MapFilterButton, 
   TimeseriesControls 
 } from '../../common/dashboard';
+import { LocationMetrics, LocationCard } from '../../common';
 import { getMetricLabel } from '../../common/dashboard/utils.js';
 import { useForecastLocationSelection, useForecastFilters } from '../../../hooks/useForecastDataFetching';
 
@@ -16,7 +17,7 @@ const Dashboard = () => {
   const { selectLocation } = useForecastLocationSelection();
   const { loadLocations } = useForecastData();
   const { mapFilters, updateMapFilters, timeseriesFilters, updateTimeseriesFilters } = useForecastFilters();
-  const { loadTimeseries } = useForecastData();
+  const { loadTimeseries, loadLocationMetrics } = useForecastData();
   const { selectedLocation } = useForecastLocationSelection();
   
   // Create dashboard-specific components with injected dependencies
@@ -57,59 +58,134 @@ const Dashboard = () => {
       {/* Height adjusted for navbar (Bootstrap navbar is typically 56px) */}
       
       <div className="container-fluid flex-grow-1 p-0">
-        <div className="row g-0 h-100">
-          {/* Main content - full width */}
-          <div className="col-12">
-            <div className="position-relative h-100">
-              {/* Error Alert */}
-              {state.error && (
-                <div className="alert alert-danger alert-dismissible m-3" role="alert" style={{ position: 'absolute', top: 0, left: 0, right: 0, zIndex: 1000 }}>
-                  <i className="bi bi-exclamation-triangle-fill me-2"></i>
-                  <strong>Error:</strong> {state.error}
-                  <button 
-                    type="button" 
-                    className="btn-close" 
-                    onClick={() => dispatch({ type: ActionTypes.CLEAR_ERROR })}
-                    aria-label="Close"
-                  ></button>
-                </div>
-              )}
-              
-              {/* Full-screen map */}
-              <div className="h-100">
-                <MapComponent
-                  state={state}
-                  dispatch={dispatch}
-                  ActionTypes={ActionTypes}
-                  selectLocation={selectLocation}
-                  loadLocations={loadLocations}
-                  MapFilterButton={ForecastMapFilterButton}
-                  getMetricLabel={getMetricLabel}
-                />
-              </div>
-              
-              {/* Overlay timeseries card */}
-              {state.selectedLocation && (
-                <div 
-                  className="position-absolute" 
-                  style={{ 
-                    top: '80px', 
-                    right: '20px', 
-                    width: '550px', 
-                    maxHeight: 'calc(100vh - 216px)', // 56px navbar + 160px original offset
-                    zIndex: 1000,
-                    overflowY: 'auto'
-                  }}
-                >
-                  <TimeseriesComponent
-                    state={state}
-                    dispatch={dispatch}
-                    ActionTypes={ActionTypes}
-                    TimeseriesControls={ForecastTimeseriesControls}
-                  />
-                </div>
-              )}
+        <div 
+          className="dashboard-grid h-100" 
+          style={{
+            display: 'grid',
+            gridTemplateColumns: '60% 40%',
+            gridTemplateRows: 'auto 15vh 1fr 35vh',
+            gap: '12px',
+            padding: '12px',
+            height: '100vh',
+            overflow: 'hidden'
+          }}
+        >
+          {/* Error Alert */}
+          {state.error && (
+            <div 
+              className="alert alert-danger alert-dismissible" 
+              role="alert" 
+              style={{ 
+                gridColumn: '1 / -1',
+                gridRow: '1 / 2',
+                zIndex: 1000,
+                margin: 0
+              }}
+            >
+              <i className="bi bi-exclamation-triangle-fill me-2"></i>
+              <strong>Error:</strong> {state.error}
+              <button 
+                type="button" 
+                className="btn-close" 
+                onClick={() => dispatch({ type: ActionTypes.CLEAR_ERROR })}
+                aria-label="Close"
+              ></button>
             </div>
+          )}
+          
+          {/* Map Panel - Left Column, spans full height */}
+          <div 
+            className="map-panel" 
+            style={{
+              gridColumn: '1 / 2',
+              gridRow: state.error ? '2 / 5' : '1 / 5',
+              border: '1px solid #e0e0e0',
+              borderRadius: '8px',
+              overflow: 'hidden',
+              position: 'relative'
+            }}
+          >
+            <MapComponent
+              state={state}
+              dispatch={dispatch}
+              ActionTypes={ActionTypes}
+              selectLocation={selectLocation}
+              loadLocations={loadLocations}
+              MapFilterButton={ForecastMapFilterButton}
+              getMetricLabel={getMetricLabel}
+            />
+          </div>
+
+          {/* Location Info Card - Upper Right */}
+          <div 
+            style={{
+              gridColumn: '2 / 3',
+              gridRow: state.error ? '2 / 3' : '1 / 2'
+            }}
+          >
+            <LocationCard 
+              selectedLocation={state.selectedLocation}
+              onClose={() => selectLocation(null)}
+            />
+          </div>
+
+          {/* Timeseries Panel - Middle Right */}
+          <div 
+            className="timeseries-panel" 
+            style={{
+              gridColumn: '2 / 3',
+              gridRow: state.error ? '3 / 4' : '2 / 4',
+              border: '1px solid #e0e0e0',
+              borderRadius: '8px',
+              overflow: 'hidden'
+            }}
+          >
+            {state.selectedLocation ? (
+              <TimeseriesComponent
+                state={state}
+                dispatch={dispatch}
+                ActionTypes={ActionTypes}
+                TimeseriesControls={ForecastTimeseriesControls}
+              />
+            ) : (
+              <div className="d-flex align-items-center justify-content-center h-100 text-muted">
+                <div className="text-center">
+                  <div style={{ fontSize: '3rem' }}>📈</div>
+                  <h5>Select a Location</h5>
+                  <p>Click on a location on the map to view its time series data.</p>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Metrics Panel - Bottom Right */}
+          <div 
+            className="metrics-panel" 
+            style={{
+              gridColumn: '2 / 3',
+              gridRow: state.error ? '4 / 5' : '4 / 5',
+              border: '1px solid #e0e0e0',
+              borderRadius: '8px',
+              overflow: 'auto'
+            }}
+          >
+            {state.selectedLocation ? (
+              <LocationMetrics
+                selectedLocation={state.selectedLocation}
+                locationMetrics={state.locationMetrics}
+                metricsLoading={state.metricsLoading}
+                error={state.error}
+                loadLocationMetrics={loadLocationMetrics}
+              />
+            ) : (
+              <div className="d-flex align-items-center justify-content-center h-100 text-muted">
+                <div className="text-center">
+                  <div style={{ fontSize: '2rem' }}>📊</div>
+                  <h6>Metrics</h6>
+                  <p className="small">Select a location to view metrics.</p>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </div>

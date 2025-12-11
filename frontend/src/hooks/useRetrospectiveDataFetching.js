@@ -112,6 +112,50 @@ export const useRetrospectiveDataFetching = () => {
       }
     }, [dispatch]);
   
+  // Load location-specific metrics
+  const loadLocationMetrics = useCallback(async (locationId, table) => {
+    try {
+      console.log('Loading metrics for location:', locationId, 'table:', table);
+      dispatch({ type: ActionTypes.SET_LOADING, payload: { metricsLoading: true } });
+      
+      const geojsonResponse = await apiService.getMetrics({ 
+        location_id: locationId, 
+        table: table 
+      });
+      
+      console.log('Location metrics GeoJSON loaded:', geojsonResponse);
+      
+      // Extract metrics from GeoJSON features
+      let metrics = [];
+      if (geojsonResponse?.features && geojsonResponse.features.length > 0) {
+        const feature = geojsonResponse.features[0]; // Should only be one feature for a specific location
+        const properties = feature.properties || {};
+        
+        // Convert properties to metrics array, excluding non-metric fields
+        const excludeFields = new Set([
+          'location_id', 'primary_location_id', 'name', 'location_name',
+          'configuration_name', 'variable_name', 'unit_name'
+        ]);
+        
+        metrics = Object.entries(properties)
+          .filter(([key, value]) => !excludeFields.has(key) && value !== null && value !== undefined)
+          .map(([key, value]) => ({
+            metric_name: key,
+            metric_value: value
+          }));
+      }
+      
+      console.log('Processed metrics:', metrics);
+      dispatch({ type: ActionTypes.SET_LOCATION_METRICS, payload: metrics });
+      return metrics;
+    } catch (error) {
+      console.error('Error loading location metrics:', error);
+      dispatch({ type: ActionTypes.SET_ERROR, payload: `Failed to load location metrics: ${error.message}` });
+      dispatch({ type: ActionTypes.CLEAR_LOCATION_METRICS });
+      throw error;
+    }
+  }, [dispatch]);
+  
   // Initialize all data
   const initializeData = useCallback(async () => {
     try {
@@ -131,6 +175,7 @@ export const useRetrospectiveDataFetching = () => {
     loadMetricNames,
     loadLocations,
     loadTimeseries,
+    loadLocationMetrics,
     initializeData
   };
 };
@@ -163,6 +208,8 @@ export const useRetrospectiveLocationSelection = () => {
     dispatch({ type: ActionTypes.SELECT_LOCATION, payload: location });
     // Always clear timeseries when location changes (including deselection)
     dispatch({ type: ActionTypes.CLEAR_TIMESERIES });
+    // Clear metrics when location changes
+    dispatch({ type: ActionTypes.CLEAR_LOCATION_METRICS });
   }, [dispatch]);
   
   return {
