@@ -12,6 +12,43 @@ from teehr import Signatures as s
 
 logging.getLogger("teehr").setLevel(logging.INFO)
 
+FORECAST_BY_LEAD_TIME_BIN_GROUPBY = [
+    "primary_location_id",
+    "secondary_location_id",
+    "configuration_name",
+    "forecast_lead_time_bin",
+    "variable_name",
+    "unit_name",
+    "member"
+]
+FORECAST_BY_LOCATION_GROUPBY = [
+    "primary_location_id",
+    "secondary_location_id",
+    "configuration_name",
+    "unit_name",
+    "variable_name",
+    "member"
+]
+
+count = s.Count()
+rmsdr = dm.RootMeanStandardDeviationRatio()
+rbias = dm.RelativeBias()
+nse = dm.NashSutcliffeEfficiency()
+kge = dm.KlingGuptaEfficiency()
+
+rmsdr.add_epsilon = True
+rbias.add_epsilon = True
+nse.add_epsilon = True
+kge.add_epsilon = True
+
+FORECAST_METRICS = [
+    count,
+    rmsdr,
+    rbias,
+    nse,
+    kge
+]
+
 
 @task(cache_policy=NO_CACHE)
 def calculate_forecast_metrics_by_lead_time_bins(
@@ -25,18 +62,7 @@ def calculate_forecast_metrics_by_lead_time_bins(
     - This requires the joined forecast table to be created first.
     """
     logger = get_run_logger()
-
     logger.info("Creating forecast metrics by lead time bins table...")
-    count = s.Count()
-    rmsdr = dm.RootMeanStandardDeviationRatio()
-    rbias = dm.RelativeBias()
-    nse = dm.NashSutcliffeEfficiency()
-    kge = dm.KlingGuptaEfficiency()
-
-    rmsdr.add_epsilon = True
-    rbias.add_epsilon = True
-    nse.add_epsilon = True
-    kge.add_epsilon = True
 
     sdf = (
         ev
@@ -47,22 +73,8 @@ def calculate_forecast_metrics_by_lead_time_bins(
             )
         ])
         .query(
-            include_metrics=[
-                count,
-                rmsdr,
-                rbias,
-                nse,
-                kge
-            ],
-            group_by=[
-                "primary_location_id",
-                "secondary_location_id",
-                "configuration_name",
-                "forecast_lead_time_bin",
-                "variable_name",
-                "unit_name",
-                "member"
-            ],
+            include_metrics=FORECAST_METRICS,
+            group_by=FORECAST_BY_LEAD_TIME_BIN_GROUPBY,
         ).to_sdf()
     )
     sdf.createTempView("forecast_metrics")
@@ -89,39 +101,14 @@ def calculate_forecast_metrics_by_location(
     - This requires the joined forecast table to be created first.
     """
     logger = get_run_logger()
-
     logger.info("Creating forecast metrics by location table...")
-
-    count = s.Count()
-    rmsdr = dm.RootMeanStandardDeviationRatio()
-    rbias = dm.RelativeBias()
-    nse = dm.NashSutcliffeEfficiency()
-    kge = dm.KlingGuptaEfficiency()
-
-    rmsdr.add_epsilon = True
-    rbias.add_epsilon = True
-    nse.add_epsilon = True
-    kge.add_epsilon = True
 
     sdf = (
         ev
         .metrics(table_name=joined_forecast_table_name)
         .query(
-            include_metrics=[
-                count,
-                rmsdr,
-                rbias,
-                nse,
-                kge
-            ],
-            group_by=[
-                "primary_location_id",
-                "secondary_location_id",
-                "configuration_name",
-                "unit_name",
-                "variable_name",
-                "member"
-            ]
+            include_metrics=FORECAST_METRICS,
+            group_by=FORECAST_BY_LOCATION_GROUPBY
         ).to_sdf()
     )
 
@@ -151,7 +138,6 @@ def join_forecast_timeseries(
       crosswalk.
     """
     logger = get_run_logger()
-
     logger.info("Creating joined forecast timeseries table...")
     # Build the WHERE clause for configuration filtering
     where_clause = ""

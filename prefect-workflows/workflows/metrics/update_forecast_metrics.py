@@ -8,13 +8,17 @@ from workflows.utils.common_utils import initialize_evaluation, set_table_proper
 from update_joined_forecasts import JOINED_FORECAST_TABLE_NAME
 from utils.forecast_utils import (
     calculate_forecast_metrics_by_lead_time_bins,
-    calculate_forecast_metrics_by_location
+    calculate_forecast_metrics_by_location,
+    FORECAST_BY_LEAD_TIME_BIN_GROUPBY,
+    FORECAST_BY_LOCATION_GROUPBY,
+    FORECAST_METRICS
 )
 
 logging.getLogger("teehr").setLevel(logging.INFO)
 
 METRICS_BY_LEAD_TIME_TABLE_NAME = "fcst_metrics_by_lead_time_bins"
 METRICS_BY_LOCATION_TABLE_NAME = "fcst_metrics_by_location"
+METRIC_COL_NAMES = [metric.output_field_name for metric in FORECAST_METRICS]
 
 
 @flow(
@@ -60,22 +64,8 @@ def update_forecast_metrics_table(
         table_name=METRICS_BY_LEAD_TIME_TABLE_NAME,
         properties={
             "description": "Forecast metrics by location ID and lead time bins",
-            "group_by": (
-                "primary_location_id, "
-                "secondary_location_id, "
-                "configuration_name, "
-                "forecast_lead_time_bin, "
-                "variable_name, "
-                "unit_name, "
-                "member"
-            ),
-            "metrics": (
-                "Count, "
-                "Root Mean Standard Deviation Ratio, "
-                "Relative Bias, "
-                "Nash-Sutcliffe Efficiency, "
-                "Kling-Gupta Efficiency"
-            )
+            "group_by": ", ".join(FORECAST_BY_LEAD_TIME_BIN_GROUPBY),
+            "metrics": ", ".join(METRIC_COL_NAMES)
         }
     )
     logger.info("Forecast metrics by lead time bins table created.")
@@ -97,21 +87,8 @@ def update_forecast_metrics_table(
         table_name=METRICS_BY_LOCATION_TABLE_NAME,
         properties={
             "description": "Forecast metrics by location ID",
-            "group_by": (
-                "primary_location_id, "
-                "secondary_location_id, "
-                "configuration_name, "
-                "variable_name, "
-                "unit_name, "
-                "member"
-            ),
-            "metrics": (
-                "Count, "
-                "Root Mean Standard Deviation Ratio, "
-                "Relative Bias, "
-                "Nash-Sutcliffe Efficiency, "
-                "Kling-Gupta Efficiency"
-            )
+            "group_by": ", ".join(FORECAST_BY_LOCATION_GROUPBY),
+            "metrics": ", ".join(METRIC_COL_NAMES)
         }
     )
     logger.info("Forecast metrics by location table created.")
