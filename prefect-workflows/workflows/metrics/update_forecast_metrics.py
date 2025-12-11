@@ -4,7 +4,7 @@ import logging
 
 from prefect import flow, get_run_logger
 
-from workflows.utils.common_utils import initialize_evaluation
+from workflows.utils.common_utils import initialize_evaluation, set_table_properties
 from update_joined_forecasts import JOINED_FORECAST_TABLE_NAME
 from utils.forecast_utils import (
     calculate_forecast_metrics_by_lead_time_bins,
@@ -55,6 +55,29 @@ def update_forecast_metrics_table(
         table_name=METRICS_BY_LEAD_TIME_TABLE_NAME,
         write_mode="create_or_replace"
     )
+    set_table_properties(
+        ev=ev,
+        table_name=METRICS_BY_LEAD_TIME_TABLE_NAME,
+        properties={
+            "description": "Forecast metrics by location ID and lead time bins",
+            "group_by": (
+                "primary_location_id, "
+                "secondary_location_id, "
+                "configuration_name, "
+                "forecast_lead_time_bin, "
+                "variable_name, "
+                "unit_name, "
+                "member"
+            ),
+            "metrics": (
+                "Count, "
+                "Root Mean Standard Deviation Ratio, "
+                "Relative Bias, "
+                "Nash-Sutcliffe Efficiency, "
+                "Kling-Gupta Efficiency"
+            )
+        }
+    )
     logger.info("Forecast metrics by lead time bins table created.")
 
     logger.info("Calculating forecast metrics by location...")
@@ -68,5 +91,27 @@ def update_forecast_metrics_table(
         source_data=sdf,
         table_name=METRICS_BY_LOCATION_TABLE_NAME,
         write_mode="create_or_replace"
+    )
+    set_table_properties(
+        ev=ev,
+        table_name=METRICS_BY_LOCATION_TABLE_NAME,
+        properties={
+            "description": "Forecast metrics by location ID",
+            "group_by": (
+                "primary_location_id, "
+                "secondary_location_id, "
+                "configuration_name, "
+                "variable_name, "
+                "unit_name, "
+                "member"
+            ),
+            "metrics": (
+                "Count, "
+                "Root Mean Standard Deviation Ratio, "
+                "Relative Bias, "
+                "Nash-Sutcliffe Efficiency, "
+                "Kling-Gupta Efficiency"
+            )
+        }
     )
     logger.info("Forecast metrics by location table created.")
