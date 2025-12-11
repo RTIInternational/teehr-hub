@@ -8,6 +8,7 @@ from pyspark.sql import DataFrame
 import teehr
 from teehr import DeterministicMetrics as dm
 from teehr import RowLevelCalculatedFields as rcf
+from teehr import Signatures as s
 
 logging.getLogger("teehr").setLevel(logging.INFO)
 
@@ -27,12 +28,13 @@ def calculate_forecast_metrics_by_lead_time(
 
     logger.info("Creating forecast metrics by lead time table...")
 
-    pcorr = dm.PearsonCorrelation()
+    count = s.Count()
+    rmsdr = dm.RootMeanStandardDeviationRatio()
     rbias = dm.RelativeBias()
     nse = dm.NashSutcliffeEfficiency()
     kge = dm.KlingGuptaEfficiency()
 
-    pcorr.add_epsilon = True
+    rmsdr.add_epsilon = True
     rbias.add_epsilon = True
     nse.add_epsilon = True
     kge.add_epsilon = True
@@ -47,7 +49,8 @@ def calculate_forecast_metrics_by_lead_time(
         ])
         .query(
             include_metrics=[
-                pcorr,
+                count,
+                rmsdr,
                 rbias,
                 nse,
                 kge
@@ -89,12 +92,13 @@ def calculate_forecast_metrics_by_location(
 
     logger.info("Creating forecast metrics by location table...")
 
-    pcorr = teehr.DeterministicMetrics.PearsonCorrelation()
-    rbias = teehr.DeterministicMetrics.RelativeBias()
-    nse = teehr.DeterministicMetrics.NashSutcliffeEfficiency()
-    kge = teehr.DeterministicMetrics.KlingGuptaEfficiency()
+    count = s.Count()
+    rmsdr = dm.RootMeanStandardDeviationRatio()
+    rbias = dm.RelativeBias()
+    nse = dm.NashSutcliffeEfficiency()
+    kge = dm.KlingGuptaEfficiency()
 
-    pcorr.add_epsilon = True
+    rmsdr.add_epsilon = True
     rbias.add_epsilon = True
     nse.add_epsilon = True
     kge.add_epsilon = True
@@ -104,7 +108,8 @@ def calculate_forecast_metrics_by_location(
         .metrics(table_name=joined_forecast_table_name)
         .query(
             include_metrics=[
-                pcorr,
+                count,
+                rmsdr,
                 rbias,
                 nse,
                 kge
