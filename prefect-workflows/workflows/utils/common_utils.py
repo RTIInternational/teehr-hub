@@ -1,4 +1,4 @@
-from typing import Union, List, Dict
+from typing import Union, Dict
 from pathlib import Path
 
 import teehr
