@@ -57,6 +57,7 @@ def calculate_forecast_metrics_by_lead_time(
             ],
             group_by=[
                 "primary_location_id",
+                "secondary_location_id",
                 "configuration_name",
                 "forecast_lead_time",
                 "variable_name",
@@ -116,6 +117,7 @@ def calculate_forecast_metrics_by_location(
             ],
             group_by=[
                 "primary_location_id",
+                "secondary_location_id",
                 "configuration_name",
                 "unit_name",
                 "variable_name",
