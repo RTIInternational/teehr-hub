@@ -26,3 +26,18 @@ environments:
   - remote
 dependencies:
   - build.teehr-jupyter-driver-image-edge
+---
+kind: Build
+type: container
+name: teehr-jupyter-driver-image-previous
+description: Build TEEHR Jupyter Driver Image
+spec:
+  dockerfile: Dockerfile.jupyter-driver
+  localId: jupyter-driver
+  publishId: jupyter-driver:${var.previousTeehrVersion}
+  buildArgs:
+      TEEHR_VERSION: ${var.previousTeehrVersion}
+environments:
+  - remote
+dependencies:
+  - build.teehr-jupyter-driver-image-stable

@@ -263,7 +263,7 @@ spec:
               previous-tag:
                 display_name: Version ${var.previousTeehrVersion}
                 kubespawner_override:
-                  image: "935462133478.dkr.ecr.us-east-2.amazonaws.com/teehr:${var.previousTeehrVersion}"
+                  image: ${actions.build.teehr-jupyter-driver-image-previous.outputs.deploymentImageId}
               current-tag:
                 display_name: Version ${var.stableTeehrVersion}
                 default: true
