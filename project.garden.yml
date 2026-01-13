@@ -31,8 +31,8 @@ environments:
     variables:
       hostname: teehr.rtiamanzi.org
       devTeehrVersion: 355f40767d82e218d27d59574d9d755d34cc2ed9
-      stableTeehrVersion: v0.5.2
-      previousTeehrVersion: v0.5.0
+      stableTeehrVersion: v0.5.3
+      previousTeehrVersion: v0.5.2
       iceberg:
         inCluster: "false"
         catalogS3PathStyleAccess: "false"
