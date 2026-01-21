@@ -1,5 +1,5 @@
-import { useEffect } from 'react';
-import { Card } from 'react-bootstrap';
+import { useEffect, useState } from 'react';
+import { Card, Form, ButtonGroup, Button } from 'react-bootstrap';
 import MetricsTable from './MetricsTable';
 
 const LocationMetrics = ({ 
@@ -7,14 +7,40 @@ const LocationMetrics = ({
   locationMetrics, 
   metricsLoading, 
   error, 
-  loadLocationMetrics 
+  loadLocationMetrics,
+  tableProperties = {}, // Available tables with their properties
+  defaultTable = null // Default table to use
 }) => {
-  // Load metrics when location is selected
+  // Get available tables that have metrics
+  const availableTables = Object.keys(tableProperties).filter(tableName => 
+    tableProperties[tableName]?.metrics?.length > 0
+  );
+  
+  // State for selected table and view mode
+  const [selectedTable, setSelectedTable] = useState(
+    defaultTable || availableTables[0] || null
+  );
+  const [viewMode, setViewMode] = useState('table');
+  
+  // Check if current table has lead time bins for plot capability
+  const hasLeadTimeBin = selectedTable && tableProperties[selectedTable]?.group_by?.some(field => 
+    field.toLowerCase().includes('lead_time_bin') || 
+    field.toLowerCase().includes('forecast_lead_time_bin')
+  );
+  
+  // Update selected table when default changes or tables become available
   useEffect(() => {
-    if (selectedLocation?.location_id) {
-      loadLocationMetrics(selectedLocation.location_id);
+    if (!selectedTable && availableTables.length > 0) {
+      setSelectedTable(defaultTable || availableTables[0]);
     }
-  }, [selectedLocation?.location_id, loadLocationMetrics]);
+  }, [defaultTable, availableTables, selectedTable]);
+
+  // Load metrics when location or table selection changes
+  useEffect(() => {
+    if (selectedLocation?.location_id && selectedTable) {
+      loadLocationMetrics(selectedLocation.location_id, selectedTable);
+    }
+  }, [selectedLocation?.location_id, selectedTable, loadLocationMetrics]);
 
   if (!selectedLocation) {
     return null;
@@ -23,7 +49,47 @@ const LocationMetrics = ({
   return (
     <Card className="shadow-lg" style={{ borderRadius: '8px' }}>
       <Card.Header className="py-2 d-flex justify-content-between align-items-center">
-        <Card.Title as="h6" className="mb-0">📊 Metrics</Card.Title>
+        <div className="d-flex align-items-center gap-2">
+          <Card.Title as="h6" className="mb-0">📊 Metrics</Card.Title>
+          {hasLeadTimeBin && (
+            <ButtonGroup size="sm">
+              <Button 
+                variant={viewMode === 'table' ? 'primary' : 'outline-primary'}
+                onClick={() => setViewMode('table')}
+                style={{ fontSize: '11px' }}
+              >
+                📊 Table
+              </Button>
+              <Button 
+                variant={viewMode === 'plot' ? 'primary' : 'outline-primary'}
+                onClick={() => setViewMode('plot')}
+                style={{ fontSize: '11px' }}
+              >
+                📈 Plot
+              </Button>
+            </ButtonGroup>
+          )}
+        </div>
+        <div className="d-flex align-items-center gap-2">
+          {availableTables.length > 1 && (
+            <Form.Select
+              size="sm"
+              value={selectedTable || ''}
+              onChange={(e) => setSelectedTable(e.target.value)}
+              style={{ width: 'auto', minWidth: '200px' }}
+            >
+            <option value="">Select Table...</option>
+            {availableTables.map(tableName => {
+              const description = tableProperties[tableName]?.description || tableName;
+              return (
+                <option key={tableName} value={tableName}>
+                  {description}
+                </option>
+              );
+            })}
+            </Form.Select>
+          )}
+        </div>
       </Card.Header>
       <Card.Body className="p-0">
         <MetricsTable
@@ -31,8 +97,11 @@ const LocationMetrics = ({
           loading={metricsLoading}
           error={error}
           title="Metrics"
-          emptyMessage="No metrics available for this location."
+          emptyMessage={selectedTable ? `No metrics available for this location in ${selectedTable}.` : "Select a table to view metrics."}
           showTitle={false}
+          tableProperties={selectedTable ? tableProperties[selectedTable] : null}
+          viewMode={viewMode}
+          onViewModeChange={setViewMode}
         />
       </Card.Body>
     </Card>

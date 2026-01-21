@@ -16,7 +16,7 @@ from .models import (
     HealthResponse
 )
 from .database import (
-    execute_query, sanitize_string, trino_catalog, trino_schema
+    execute_query, sanitize_string, trino_catalog, trino_schema, get_trino_connection
 )
 
 router = APIRouter()
@@ -92,25 +92,25 @@ async def get_metrics(
         if variable:
             sanitized_variable = sanitize_string(variable)
             where_conditions.append(f"variable_name = '{sanitized_variable}'")
-        
+
         where_clause = " AND ".join(where_conditions)
-        
+
         table_name = sanitize_string(table.value)
         query = f"""
-        SELECT 
-            *
-        FROM {trino_catalog}.{trino_schema}.{table_name}
-        WHERE {where_clause}
+            SELECT 
+                *
+            FROM {trino_catalog}.{trino_schema}.{table_name}
+            WHERE {where_clause}
         """
-        
+
         query_start = time.time()
         df = execute_query(query)
         query_time = time.time() - query_start
         print(f"Query execution time: {query_time:.3f} seconds")
-        
+
         if df.empty:
             return {"type": "FeatureCollection", "features": []}
-        
+
         df = df.rename(columns={"primary_location_id": "location_id"})
 
         df["geometry"] = gpd.GeoSeries.from_wkb(
@@ -121,53 +121,94 @@ async def get_metrics(
         # Use the proper geopandas >=1.0.0 method
         # return gdf.to_geo_dict()
         geojson = json.loads(gdf.to_json())
-        
+
         return geojson
-        
+
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to load metrics: {str(e)}")
 
 
 
-@router.get("/api/metric-names")
-async def get_metric_names(
+@router.get("/api/table-properties")
+async def get_table_properties(
     table: MetricsTable = Query(MetricsTable.SIM_METRICS_BY_LOCATION, description="Metrics table to query")
 ):
-    """Get unique metric names available in the specified table."""
+    """Get table properties including metrics, group_by, and description."""
     try:
-        # Query to get all column names from the metrics table
+        # Query to get table properties
         table_name = sanitize_string(table.value)
+
         query = f"""
-        SELECT column_name
-        FROM information_schema.columns 
-        WHERE table_schema = '{trino_schema}' 
-        AND table_name = '{table_name}'
-        ORDER BY column_name
+            SELECT key, value FROM "{table_name}$properties"
+            WHERE key IN ('metrics', 'group_by', 'description')
         """
+        conn = get_trino_connection()
+        cur = conn.cursor()
+        cur.execute(query)
+        results = cur.fetchall()
         
-        query_start = time.time()
-        df = execute_query(query)
-        query_time = time.time() - query_start
-        print(f"Query execution time: {query_time:.3f} seconds")
+        # Build response dictionary
+        properties = {}
+        for key, value in results:
+            if key == 'metrics':
+                # Convert comma-separated string to list
+                properties[key] = [s.strip() for s in value.split(",")]
+            elif key == 'group_by':
+                # Convert comma-separated string to list
+                properties[key] = [s.strip() for s in value.split(",")]
+            else:
+                # Keep description as string
+                properties[key] = value
         
-        # Get all column names
-        all_columns = df['column_name'].tolist()
-        
-        # Filter out non-metric columns.  Thi is not robust but works for now.
-        non_metric_columns = {
-            'primary_location_id', 'location_id', 'name', 'location_name',
-            'variable_name', 'configuration_name', 'unit_name',
-            'geometry', 'created_at', 'updated_at'
-        }
-        
-        # Keep only columns that are likely metrics (not in the exclusion set)
-        metric_columns = [col for col in all_columns if col.lower() not in non_metric_columns]
-        
-        print(f"Found metric columns: {metric_columns}")
-        return metric_columns
+        print(f"Found table properties: {properties}")
+        return properties
         
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to load metrics names: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to load table properties: {str(e)}")
+
+
+@router.get("/api/table-properties-batch")
+async def get_table_properties_batch(
+    tables: List[MetricsTable] = Query(..., description="List of metrics tables to query")
+):
+    """Get table properties for multiple tables in a single request."""
+    try:
+        conn = get_trino_connection()
+        cur = conn.cursor()
+        
+        result = {}
+        
+        for table in tables:
+            table_name = sanitize_string(table.value)
+            
+            query = f"""
+                SELECT key, value FROM "{table_name}$properties"
+                WHERE key IN ('metrics', 'group_by', 'description')
+            """
+            
+            cur.execute(query)
+            table_results = cur.fetchall()
+            
+            # Build response dictionary for this table
+            properties = {}
+            for key, value in table_results:
+                if key == 'metrics':
+                    # Convert comma-separated string to list
+                    properties[key] = [s.strip() for s in value.split(",")]
+                elif key == 'group_by':
+                    # Convert comma-separated string to list
+                    properties[key] = [s.strip() for s in value.split(",")]
+                else:
+                    # Keep description as string
+                    properties[key] = value
+            
+            result[table.value] = properties
+        
+        print(f"Found batch table properties: {result}")
+        return result
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to load batch table properties: {str(e)}")
 
 
 @router.get("/api/configurations")

@@ -7,7 +7,7 @@ const initialRetrospectiveState = {
   locations: { features: [] },
   configurations: [],
   variables: [],
-  metricNames: [],
+  tableProperties: {}, // Will contain { "table_name": { metrics: [], group_by: [], description: "" } }
   
   // Map filters (original structure)
   mapFilters: {
@@ -56,7 +56,7 @@ export const ActionTypes = {
   SET_LOCATIONS: 'SET_LOCATIONS',
   SET_CONFIGURATIONS: 'SET_CONFIGURATIONS',
   SET_VARIABLES: 'SET_VARIABLES',
-  SET_METRIC_NAMES: 'SET_METRIC_NAMES',
+  SET_TABLE_PROPERTIES: 'SET_TABLE_PROPERTIES',
   
   // Filter updates
   UPDATE_MAP_FILTERS: 'UPDATE_MAP_FILTERS',
@@ -127,11 +127,11 @@ const retrospectiveDashboardReducer = (state, action) => {
         }
       };
       
-    case ActionTypes.SET_METRIC_NAMES:
-      const metricNames = Array.isArray(action.payload) ? action.payload : [];
+    case ActionTypes.SET_TABLE_PROPERTIES:
+      const tableProperties = action.payload || {};
       return {
         ...state,
-        metricNames
+        tableProperties
       };
       
     case ActionTypes.UPDATE_MAP_FILTERS:

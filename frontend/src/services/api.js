@@ -45,11 +45,18 @@ export const apiService = {
     return apiCall(`/api/variables?${params.toString()}`);
   },
   
-  // Get metric names
-  getMetricNames: (table = 'sim_metrics_by_location') => {
+  // Get table properties (metrics, group_by, description)
+  getTableProperties: (table = 'sim_metrics_by_location') => {
     const params = new URLSearchParams();
     params.append('table', table);
-    return apiCall(`/api/metric-names?${params.toString()}`);
+    return apiCall(`/api/table-properties?${params.toString()}`);
+  },
+
+  // Get table properties for multiple tables in batch
+  getTablePropertiesBatch: (tables = ['sim_metrics_by_location']) => {
+    const params = new URLSearchParams();
+    tables.forEach(table => params.append('tables', table));
+    return apiCall(`/api/table-properties-batch?${params.toString()}`);
   },
   
   // Get metrics with filtering

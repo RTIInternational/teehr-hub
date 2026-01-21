@@ -38,18 +38,18 @@ export const useRetrospectiveDataFetching = () => {
     }
   }, [dispatch]);
   
-  // Load metrics
-  const loadMetricNames = useCallback(async (table) => {
+  // Load table properties (batch)
+  const loadTableProperties = useCallback(async (tables) => {
     try {
-      console.log('Loading metrics for table:', table);
-      dispatch({ type: ActionTypes.SET_LOADING, payload: { metricsNames: true } });
-      const metricNames = await apiService.getMetricNames(table);
-      console.log('Metrics loaded:', metricNames);
-      dispatch({ type: ActionTypes.SET_METRIC_NAMES, payload: metricNames });
-      return metricNames;
+      console.log('Loading table properties for tables:', tables);
+      dispatch({ type: ActionTypes.SET_LOADING, payload: { tableProperties: true } });
+      const tableProperties = await apiService.getTablePropertiesBatch(Array.isArray(tables) ? tables : [tables]);
+      console.log('Table properties loaded:', tableProperties);
+      dispatch({ type: ActionTypes.SET_TABLE_PROPERTIES, payload: tableProperties });
+      return tableProperties;
     } catch (error) {
-      console.error('Error loading metrics:', error);
-      dispatch({ type: ActionTypes.SET_ERROR, payload: `Failed to load metrics: ${error.message}` });
+      console.error('Error loading table properties:', error);
+      dispatch({ type: ActionTypes.SET_ERROR, payload: `Failed to load table properties: ${error.message}` });
       throw error;
     }
   }, [dispatch]);
@@ -125,29 +125,18 @@ export const useRetrospectiveDataFetching = () => {
       
       console.log('Location metrics GeoJSON loaded:', geojsonResponse);
       
-      // Extract metrics from GeoJSON features
-      let metrics = [];
+      // Extract raw properties from GeoJSON features for pivoting
+      let locationData = [];
       if (geojsonResponse?.features && geojsonResponse.features.length > 0) {
-        const feature = geojsonResponse.features[0]; // Should only be one feature for a specific location
-        const properties = feature.properties || {};
-        
-        // Convert properties to metrics array, excluding non-metric fields
-        const excludeFields = new Set([
-          'location_id', 'primary_location_id', 'name', 'location_name',
-          'configuration_name', 'variable_name', 'unit_name'
-        ]);
-        
-        metrics = Object.entries(properties)
-          .filter(([key, value]) => !excludeFields.has(key) && value !== null && value !== undefined)
-          .map(([key, value]) => ({
-            metric_name: key,
-            metric_value: value
-          }));
+        // Convert each feature to a row of data
+        locationData = geojsonResponse.features.map(feature => {
+          return feature.properties || {};
+        });
       }
       
-      console.log('Processed metrics:', metrics);
-      dispatch({ type: ActionTypes.SET_LOCATION_METRICS, payload: metrics });
-      return metrics;
+      console.log('Raw location data for pivoting:', locationData);
+      dispatch({ type: ActionTypes.SET_LOCATION_METRICS, payload: locationData });
+      return locationData;
     } catch (error) {
       console.error('Error loading location metrics:', error);
       dispatch({ type: ActionTypes.SET_ERROR, payload: `Failed to load location metrics: ${error.message}` });
@@ -162,17 +151,17 @@ export const useRetrospectiveDataFetching = () => {
       await Promise.all([
         loadConfigurations(),
         loadVariables(),
-        loadMetricNames()
+        loadTableProperties()
       ]);
     } catch (error) {
       console.error('Failed to initialize data:', error);
     }
-  }, [loadConfigurations, loadVariables, loadMetricNames]);
+  }, [loadConfigurations, loadVariables, loadTableProperties]);
   
   return {
     loadConfigurations,
     loadVariables,
-    loadMetricNames,
+    loadTableProperties,
     loadLocations,
     loadTimeseries,
     loadLocationMetrics,

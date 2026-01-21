@@ -31,12 +31,14 @@
 .metrics-table-wrapper {
   max-height: 400px;
   overflow-y: auto;
+  overflow-x: auto; /* Enable horizontal scroll for wide pivoted tables */
 }
 
 .metrics-table {
   width: 100%;
   border-collapse: collapse;
   font-size: 0.9rem;
+  min-width: 600px; /* Ensure table has minimum width */
 }
 
 .metrics-table th {
@@ -48,12 +50,71 @@
   border-bottom: 2px solid #e0e0e0;
   position: sticky;
   top: 0;
+  white-space: nowrap; /* Prevent header text wrapping */
+  z-index: 1;
+}
+
+/* Sortable header styles */
+.sortable-header:hover {
+  background-color: rgba(0, 0, 0, 0.05);
+  border-radius: 4px;
+}
+
+.sort-indicator {
+  font-size: 12px;
+  margin-left: 4px;
+  color: #666;
+}
+
+/* Filter input styles */
+.metrics-table th input[type="text"] {
+  border: 1px solid #ddd;
+  border-radius: 3px;
+  padding: 2px 6px;
+  width: 100%;
+  max-width: 120px;
+}
+
+.metrics-table th input[type="text"]:focus {
+  border-color: #0d6efd;
+  outline: none;
+  box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.25);
+}
+
+/* Styles for pivoted table headers */
+.group-by-header {
+  background-color: #e3f2fd !important;
+  color: #1976d2 !important;
+  border-right: 2px solid #bbdefb;
+}
+
+.metric-header {
+  background-color: #f3e5f5 !important;
+  color: #7b1fa2 !important;
+}
+
+.metrics-table th {
   z-index: 1;
 }
 
 .metrics-table td {
   padding: 10px 16px;
   border-bottom: 1px solid #f0f0f0;
+  white-space: nowrap; /* Prevent cell content wrapping */
+}
+
+/* Styles for pivoted table cells */
+.group-by-cell {
+  background-color: #f8f9fa;
+  font-weight: 500;
+  border-right: 1px solid #e0e0e0;
+  color: #1976d2;
+}
+
+.metric-cell {
+  color: #333;
+  text-align: right;
+  font-family: 'Courier New', monospace;
 }
 
 .metrics-table tr.even {
