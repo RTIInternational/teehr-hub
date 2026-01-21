@@ -23,6 +23,41 @@ const MetricsTable = ({
   const [sortConfig, setSortConfig] = useState({ column: null, direction: 'asc' });
   const [filters, setFilters] = useState({});
   const [dropdownOpen, setDropdownOpen] = useState({});
+  const [dropdownPosition, setDropdownPosition] = useState({});
+  const dropdownRefs = useRef({});
+  
+  // Close dropdowns when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      // Check if click is outside all dropdown buttons and content
+      let isOutside = true;
+      
+      // Check dropdown buttons
+      Object.keys(dropdownOpen).forEach(columnIndex => {
+        const button = dropdownRefs.current[columnIndex];
+        if (button && button.contains(event.target)) {
+          isOutside = false;
+        }
+      });
+      
+      // Check dropdown content elements
+      if (isOutside) {
+        const dropdownContents = document.querySelectorAll('[data-dropdown-content="true"]');
+        dropdownContents.forEach(content => {
+          if (content.contains(event.target)) {
+            isOutside = false;
+          }
+        });
+      }
+      
+      if (isOutside && Object.values(dropdownOpen).some(open => open)) {
+        setDropdownOpen({});
+      }
+    };
+    
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [dropdownOpen]);
   
   // Function to parse duration for sorting
   const parseDurationForSort = (durationStr) => {
@@ -134,6 +169,20 @@ const MetricsTable = ({
   
   // Toggle dropdown visibility
   const toggleDropdown = (columnIndex) => {
+    if (!dropdownOpen[columnIndex] && dropdownRefs.current[columnIndex]) {
+      // Calculate position relative to viewport when opening
+      const button = dropdownRefs.current[columnIndex];
+      const rect = button.getBoundingClientRect();
+      setDropdownPosition(prev => ({
+        ...prev,
+        [columnIndex]: {
+          top: rect.bottom + window.scrollY,
+          left: rect.left + window.scrollX,
+          width: rect.width
+        }
+      }));
+    }
+    
     setDropdownOpen(prev => ({
       ...prev,
       [columnIndex]: !prev[columnIndex]
@@ -488,7 +537,7 @@ const MetricsTable = ({
           <div ref={plotRef} style={{ width: '100%', height: '100%' }} />
         </div>
       ) : (
-        <div key="table-view" className="metrics-table-wrapper" style={{ overflowX: 'auto' }}>
+        <div key="table-view" className="metrics-table-wrapper" style={{ overflowX: 'auto', overflowY: 'visible' }}>
           {/* Filter controls */}
           {Object.keys(filters).length > 0 && Object.values(filters).some(f => Array.isArray(f) ? f.length > 0 : f) && (
             <div className="filter-controls" style={{ 
@@ -546,67 +595,18 @@ const MetricsTable = ({
                       {isGroupByColumn && (
                         <div className="position-relative mt-1">
                           <button
+                            ref={el => dropdownRefs.current[index] = el}
                             className="btn btn-sm btn-outline-secondary w-100 d-flex justify-content-between align-items-center"
                             type="button"
-                            style={{ fontSize: '11px' }}
+                            style={{ fontSize: '13px' }}
                             onClick={(e) => {
                               e.stopPropagation();
                               toggleDropdown(index);
                             }}
                           >
                             <span>{selectedValues.length === 0 ? 'All' : `${selectedValues.length} selected`}</span>
-                            <span style={{ fontSize: '8px' }}>{dropdownOpen[index] ? '▲' : '▼'}</span>
+                            <span style={{ fontSize: '10px' }}>{dropdownOpen[index] ? '▲' : '▼'}</span>
                           </button>
-                          {dropdownOpen[index] && (
-                            <div 
-                              className="position-absolute bg-white border rounded shadow-sm" 
-                              style={{ 
-                                top: '100%', 
-                                left: 0, 
-                                right: 0, 
-                                maxHeight: '200px', 
-                                overflowY: 'auto', 
-                                zIndex: 1000,
-                                fontSize: '12px'
-                              }}
-                            >
-                              <div className="p-2 border-bottom">
-                                <button
-                                  className="btn btn-sm btn-link p-0 text-decoration-none"
-                                  style={{ fontSize: '11px' }}
-                                  onClick={(e) => {
-                                    e.preventDefault();
-                                    setFilters(prev => ({ ...prev, [index]: [] }));
-                                  }}
-                                >
-                                  Clear All
-                                </button>
-                              </div>
-                              {uniqueValues.map(value => (
-                                <div key={value} className="p-2 d-flex align-items-center" style={{ cursor: 'pointer' }}>
-                                  <input
-                                    type="checkbox"
-                                    className="form-check-input me-2"
-                                    checked={selectedValues.includes(value)}
-                                    onChange={(e) => handleCheckboxFilterChange(index, value, e.target.checked)}
-                                    onClick={(e) => e.stopPropagation()}
-                                  />
-                                  <label 
-                                    className="mb-0 flex-grow-1" 
-                                    style={{ cursor: 'pointer', fontSize: '11px' }}
-                                    onClick={() => handleCheckboxFilterChange(index, value, !selectedValues.includes(value))}
-                                  >
-                                    {value}
-                                  </label>
-                                </div>
-                              ))}
-                              {uniqueValues.length === 0 && (
-                                <div className="p-2 text-muted" style={{ fontSize: '11px' }}>
-                                  No values available
-                                </div>
-                              )}
-                            </div>
-                          )}
                         </div>
                       )}
                     </th>
@@ -628,6 +628,70 @@ const MetricsTable = ({
           </table>
         </div>
       )}
+      
+      {/* Positioned dropdowns */}
+      {Object.keys(dropdownOpen).map(columnIndex => {
+        const index = parseInt(columnIndex);
+        if (!dropdownOpen[index] || !dropdownPosition[index]) return null;
+        
+        const uniqueValues = uniqueValuesByColumn[index] || [];
+        const selectedValues = filters[index] || [];
+        
+        return (
+          <div
+            key={`dropdown-${index}`}
+            className="position-fixed bg-white border rounded shadow-sm"
+            data-dropdown-content="true"
+            style={{
+              top: dropdownPosition[index].top,
+              left: dropdownPosition[index].left,
+              minWidth: dropdownPosition[index].width,
+              maxHeight: '200px',
+              overflowY: 'auto',
+              zIndex: 9999,
+              fontSize: '12px',
+              whiteSpace: 'nowrap'
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="p-2 border-bottom">
+              <button
+                className="btn btn-sm btn-link p-0 text-decoration-none"
+                style={{ fontSize: '13px' }}
+                onClick={(e) => {
+                  e.preventDefault();
+                  setFilters(prev => ({ ...prev, [index]: [] }));
+                }}
+              >
+                Clear All
+              </button>
+            </div>
+            {uniqueValues.map(value => (
+              <div key={value} className="p-2 d-flex align-items-center" style={{ cursor: 'pointer' }}>
+                <input
+                  type="checkbox"
+                  className="form-check-input me-2"
+                  checked={selectedValues.includes(value)}
+                  onChange={(e) => handleCheckboxFilterChange(index, value, e.target.checked)}
+                  onClick={(e) => e.stopPropagation()}
+                />
+                <label 
+                  className="mb-0 flex-grow-1" 
+                  style={{ cursor: 'pointer', fontSize: '14px' }}
+                  onClick={() => handleCheckboxFilterChange(index, value, !selectedValues.includes(value))}
+                >
+                  {value}
+                </label>
+              </div>
+            ))}
+            {uniqueValues.length === 0 && (
+              <div className="p-2 text-muted" style={{ fontSize: '13px' }}>
+                No values available
+              </div>
+            )}
+          </div>
+        );
+      })}
     </div>
   );
 };

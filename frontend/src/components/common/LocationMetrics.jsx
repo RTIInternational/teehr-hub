@@ -47,7 +47,7 @@ const LocationMetrics = ({
   }
 
   return (
-    <Card className="shadow-lg" style={{ borderRadius: '8px' }}>
+    <Card className="shadow-lg h-100" style={{ borderRadius: '8px', display: 'flex', flexDirection: 'column' }}>
       <Card.Header className="py-2 d-flex justify-content-between align-items-center">
         <div className="d-flex align-items-center gap-2">
           <Card.Title as="h6" className="mb-0">📊 Metrics</Card.Title>
@@ -91,7 +91,7 @@ const LocationMetrics = ({
           )}
         </div>
       </Card.Header>
-      <Card.Body className="p-0">
+      <Card.Body className="p-0 flex-grow-1" style={{ overflow: 'hidden' }}>
         <MetricsTable
           metrics={locationMetrics}
           loading={metricsLoading}

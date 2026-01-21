@@ -166,9 +166,9 @@ const Dashboard = () => {
               gridRow: state.error ? '5 / 6' : '4 / 5', // Bottom row
               border: '1px solid #e0e0e0',
               borderRadius: '8px',
-              overflow: 'auto',
-              minHeight: '300px', // Ensure minimum height for table
-              maxHeight: '400px' // Prevent it from taking too much space
+              height: '400px', // Fixed height instead of min/max
+              display: 'flex',
+              flexDirection: 'column'
             }}
           >
             {state.selectedLocation ? (
