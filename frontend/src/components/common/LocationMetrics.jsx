@@ -22,6 +22,9 @@ const LocationMetrics = ({
   );
   const [viewMode, setViewMode] = useState('table');
   
+  // Check if current table has group_by fields for filter capability
+  const hasFilters = selectedTable && tableProperties[selectedTable]?.group_by?.length > 0;
+  
   // Check if current table has lead time bins for plot capability
   const hasLeadTimeBin = selectedTable && tableProperties[selectedTable]?.group_by?.some(field => 
     field.toLowerCase().includes('lead_time_bin') || 
@@ -51,8 +54,17 @@ const LocationMetrics = ({
       <Card.Header className="py-2 d-flex justify-content-between align-items-center">
         <div className="d-flex align-items-center gap-2">
           <Card.Title as="h6" className="mb-0">📊 Metrics</Card.Title>
-          {hasLeadTimeBin && (
+          {(hasLeadTimeBin || hasFilters) && (
             <ButtonGroup size="sm">
+              {hasFilters && (
+                <Button 
+                  variant={viewMode === 'filters' ? 'primary' : 'outline-primary'}
+                  onClick={() => setViewMode('filters')}
+                  style={{ fontSize: '11px' }}
+                >
+                  🔍 Filters
+                </Button>
+              )}
               <Button 
                 variant={viewMode === 'table' ? 'primary' : 'outline-primary'}
                 onClick={() => setViewMode('table')}
@@ -60,13 +72,15 @@ const LocationMetrics = ({
               >
                 📊 Table
               </Button>
-              <Button 
-                variant={viewMode === 'plot' ? 'primary' : 'outline-primary'}
-                onClick={() => setViewMode('plot')}
-                style={{ fontSize: '11px' }}
-              >
-                📈 Plot
-              </Button>
+              {hasLeadTimeBin && (
+                <Button 
+                  variant={viewMode === 'plot' ? 'primary' : 'outline-primary'}
+                  onClick={() => setViewMode('plot')}
+                  style={{ fontSize: '11px' }}
+                >
+                  📈 Plot
+                </Button>
+              )}
             </ButtonGroup>
           )}
         </div>
@@ -91,7 +105,7 @@ const LocationMetrics = ({
           )}
         </div>
       </Card.Header>
-      <Card.Body className="p-0 flex-grow-1" style={{ overflow: 'hidden' }}>
+      <Card.Body className="p-0 flex-grow-1" style={{ overflow: 'auto' }}>
         <MetricsTable
           metrics={locationMetrics}
           loading={metricsLoading}

@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useRef, useEffect, useCallback } from 'react';
 import { Duration } from 'luxon';
 import Plotly from 'plotly.js-dist-min';
-import { Button, ButtonGroup } from 'react-bootstrap';
+import { Button, ButtonGroup, Dropdown, Form } from 'react-bootstrap';
 import './MetricsTable.css';
 
 const MetricsTable = ({ 
@@ -22,42 +22,7 @@ const MetricsTable = ({
   const plotRef = useRef(null);
   const [sortConfig, setSortConfig] = useState({ column: null, direction: 'asc' });
   const [filters, setFilters] = useState({});
-  const [dropdownOpen, setDropdownOpen] = useState({});
-  const [dropdownPosition, setDropdownPosition] = useState({});
-  const dropdownRefs = useRef({});
-  
-  // Close dropdowns when clicking outside
-  useEffect(() => {
-    const handleClickOutside = (event) => {
-      // Check if click is outside all dropdown buttons and content
-      let isOutside = true;
-      
-      // Check dropdown buttons
-      Object.keys(dropdownOpen).forEach(columnIndex => {
-        const button = dropdownRefs.current[columnIndex];
-        if (button && button.contains(event.target)) {
-          isOutside = false;
-        }
-      });
-      
-      // Check dropdown content elements
-      if (isOutside) {
-        const dropdownContents = document.querySelectorAll('[data-dropdown-content="true"]');
-        dropdownContents.forEach(content => {
-          if (content.contains(event.target)) {
-            isOutside = false;
-          }
-        });
-      }
-      
-      if (isOutside && Object.values(dropdownOpen).some(open => open)) {
-        setDropdownOpen({});
-      }
-    };
-    
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, [dropdownOpen]);
+  const [selectedMetrics, setSelectedMetrics] = useState([]);
   
   // Function to parse duration for sorting
   const parseDurationForSort = (durationStr) => {
@@ -77,46 +42,13 @@ const MetricsTable = ({
     }
   };
   
-  // Function to format lead time bin values using Luxon
-  const formatLeadTimeBin = (value) => {
-    if (!value || typeof value !== 'string') return value;
-    
-    // Check if it matches the BINSTART_BINEND pattern
-    if (value.includes('_') && (value.startsWith('P') || value.includes('PT'))) {
-      try {
-        const [startDuration, endDuration] = value.split('_');
-        
-        // Parse ISO8601 durations with Luxon
-        const startDur = Duration.fromISO(startDuration);
-        const endDur = Duration.fromISO(endDuration);
-        
-        if (!startDur.isValid || !endDur.isValid) {
-          return value; // Fallback to original if parsing fails
-        }
-        
-        // Format durations in human readable form
-        const startText = startDur.as('milliseconds') === 0 ? '0' : 
-          startDur.toHuman({ maximumFractionDigits: 0 });
-        const endText = endDur.toHuman({ maximumFractionDigits: 0 });
-        
-        return `${startText} - ${endText}`;
-      } catch (error) {
-        console.warn('Failed to parse lead time bin:', value, error);
-        return value; // Fallback to original value
-      }
-    }
-    
-    return value;
-  };
-  
   // Function to format cell values based on field name and content
   const formatCellValue = (header, value) => {
     if (value === null || value === undefined) return 'N/A';
     
-    // Special formatting for lead time bin fields
-    if (header.toLowerCase().includes('lead_time_bin') || 
-        header.toLowerCase().includes('forecast_lead_time_bin')) {
-      return formatLeadTimeBin(value);
+    // Don't format forecast_lead_time_bin - show raw values
+    if (header.toLowerCase().includes('forecast_lead_time_bin')) {
+      return value;
     }
     
     // Format numbers
@@ -167,26 +99,29 @@ const MetricsTable = ({
     setFilters({});
   };
   
-  // Toggle dropdown visibility
-  const toggleDropdown = (columnIndex) => {
-    if (!dropdownOpen[columnIndex] && dropdownRefs.current[columnIndex]) {
-      // Calculate position relative to viewport when opening
-      const button = dropdownRefs.current[columnIndex];
-      const rect = button.getBoundingClientRect();
-      setDropdownPosition(prev => ({
-        ...prev,
-        [columnIndex]: {
-          top: rect.bottom + window.scrollY,
-          left: rect.left + window.scrollX,
-          width: rect.width
-        }
-      }));
+  // Initialize selectedMetrics with all metrics when tableProperties changes
+  useEffect(() => {
+    if (tableProperties?.metrics?.length > 0) {
+      setSelectedMetrics(tableProperties.metrics.slice());
     }
-    
-    setDropdownOpen(prev => ({
-      ...prev,
-      [columnIndex]: !prev[columnIndex]
-    }));
+  }, [tableProperties]);
+  
+  // Handle metrics filter change
+  const handleMetricFilterChange = (metric, checked) => {
+    setSelectedMetrics(prev => {
+      if (checked) {
+        return [...prev, metric];
+      } else {
+        return prev.filter(m => m !== metric);
+      }
+    });
+  };
+  
+  // Clear all metrics filters
+  const clearMetricsFilter = () => {
+    if (tableProperties?.metrics?.length > 0) {
+      setSelectedMetrics(tableProperties.metrics.slice());
+    }
   };
   
   // Function to sort rows
@@ -277,7 +212,8 @@ const MetricsTable = ({
     }
     
     // No need to group - each row in metrics array is already a complete row
-    const headers = [...groupByFields, ...metricFields];
+    const filteredMetricFields = metricFields.filter(field => selectedMetrics.includes(field));
+    const headers = [...groupByFields, ...filteredMetricFields];
     
     // Build rows directly from the sorted data
     const rows = sortedMetrics.map(item => {
@@ -288,7 +224,7 @@ const MetricsTable = ({
     });
     
     return { headers, rows, hasLeadTimeBin };
-  }, [metrics, tableProperties]);
+  }, [metrics, tableProperties, selectedMetrics]);
   
   // Compute unique values for all group_by columns
   const uniqueValuesByColumn = useMemo(() => {
@@ -353,6 +289,21 @@ const MetricsTable = ({
       return item;
     });
     
+    // Map filtered data back to original raw metrics for duration parsing
+    const rawDataForPlot = filteredData.map(filteredItem => {
+      // Find the corresponding raw metric item
+      const rawItem = metrics.find(metric => {
+        // Match on all group_by fields to find the right raw item
+        return groupByFields.every(field => {
+          const filteredValue = filteredItem[field];
+          const rawValue = metric[field];
+          // Compare formatted vs raw values - need to check if they match conceptually
+          return filteredValue === formatCellValue(field, rawValue) || filteredValue === rawValue;
+        });
+      });
+      return rawItem || filteredItem; // Fallback to filtered item if no raw match found
+    });
+    
     // Check which non-lead-time columns have more than one unique value
     const relevantGroupByFields = nonLeadTimeGroupByFields.filter(field => {
       const uniqueValues = new Set(filteredData.map(item => item[field]));
@@ -384,11 +335,58 @@ const MetricsTable = ({
         return aValue - bValue;
       });
       
-      metricFields.forEach(metric => {
-        const xValues = sortedGroupData.map(item => formatCellValue(leadTimeBinField, item[leadTimeBinField]));
-        const yValues = sortedGroupData.map(item => {
-          const value = item[metric];
-          return typeof value === 'string' ? parseFloat(value) : value;
+      metricFields.filter(metric => selectedMetrics.includes(metric)).forEach(metric => {
+        // Create step plot data using bin start values only
+        const stepXValues = [];
+        const stepYValues = [];
+        
+        // Now we can use the sorted group data directly since forecast_lead_time_bin is not formatted
+        sortedGroupData.forEach((item, index) => {
+          const binValue = item[leadTimeBinField]; // Raw duration like "PT6H_PT12H"
+          const yValue = typeof item[metric] === 'string' ? parseFloat(item[metric]) : item[metric];
+          
+          let startHours = 0;
+          
+          if (binValue && binValue.includes('_')) {
+            // Parse BINSTART_BINEND format - only use the start value
+            const [startStr] = binValue.split('_');
+            
+            try {
+              const startDuration = Duration.fromISO(startStr);
+              if (startDuration.isValid) {
+                startHours = startDuration.as('hours');
+              } else {
+                // Fallback to the original parsing function
+                startHours = parseDurationForSort(startStr) / (1000 * 60 * 60);
+              }
+            } catch (e) {
+              console.warn('Error parsing bin start duration:', startStr, e);
+              return;
+            }
+          } else {
+            // Single duration - use as start time
+            try {
+              const duration = Duration.fromISO(binValue);
+              if (duration.isValid) {
+                startHours = duration.as('hours');
+              } else {
+                startHours = parseDurationForSort(binValue) / (1000 * 60 * 60);
+              }
+            } catch (e) {
+              console.warn('Error parsing single duration:', binValue, e);
+              return;
+            }
+          }
+          
+          // Add the data point (only start time needed for step plot)
+          stepXValues.push(startHours);
+          stepYValues.push(yValue);
+        });
+        
+        console.log(`Final ${metric} data:`, { 
+          xRange: [Math.min(...stepXValues), Math.max(...stepXValues)], 
+          yRange: [Math.min(...stepYValues), Math.max(...stepYValues)],
+          totalPoints: stepXValues.length
         });
         
         // Create trace name combining group and metric (only for relevant columns)
@@ -397,23 +395,30 @@ const MetricsTable = ({
           : metric;
         
         traces.push({
-          x: xValues,
-          y: yValues,
+          x: stepXValues,
+          y: stepYValues,
           type: 'scatter',
-          mode: 'lines+markers',
+          mode: 'lines',
+          line: { 
+            width: 2,
+            shape: 'hv' // Horizontal then vertical for step effect
+          },
           name: traceName,
-          line: { width: 2 },
-          marker: { size: 6 },
           // Add hover info showing the relevant group values only
           hovertemplate: relevantGroupByFields.length > 0 
-            ? `${metric}<br>${groupKey}<br>Lead Time: %{x}<br>Value: %{y}<extra></extra>`
-            : `${metric}<br>Lead Time: %{x}<br>Value: %{y}<extra></extra>`
+            ? `${metric}<br>${groupKey}<br>Lead Time: %{x:.1f}h<br>Value: %{y}<extra></extra>`
+            : `${metric}<br>Lead Time: %{x:.1f}h<br>Value: %{y}<extra></extra>`
         });
+        
+        // Print the actual trace values
+        console.log(`TRACE VALUES for ${traceName}:`);
+        console.log('X Values:', stepXValues);
+        console.log('Y Values:', stepYValues);
       });
     });
     
     return traces;
-  }, [processedRows, headers, tableProperties, hasLeadTimeBin]);
+  }, [processedRows, headers, tableProperties, hasLeadTimeBin, selectedMetrics]);
   
   // Effect to render plot when in plot mode
   useEffect(() => {
@@ -421,11 +426,15 @@ const MetricsTable = ({
       const layout = {
         title: 'Metrics by Lead Time Bin',
         xaxis: { 
-          title: 'Lead Time Bin',
-          type: 'category'
+          title: 'Lead Time (hours)',
+          type: 'linear',
+          showgrid: true,
+          gridcolor: 'rgba(0,0,0,0.1)'
         },
         yaxis: { 
-          title: 'Metric Value'
+          title: 'Metric Value',
+          showgrid: true,
+          gridcolor: 'rgba(0,0,0,0.1)'
         },
         margin: { l: 50, r: 50, t: 50, b: 100 },
         showlegend: true,
@@ -532,13 +541,181 @@ const MetricsTable = ({
         </div>
       )}
       
-      {currentViewMode === 'plot' && hasLeadTimeBin ? (
+      {currentViewMode === 'filters' && tableProperties?.group_by?.length > 0 ? (
+        <div key="filters-view" className="table-filters p-4">
+          <div className="row">
+            <div className="col-12 mb-3">
+              <h5 className="text-muted">Filter Options</h5>
+              <p className="text-muted small">Select values to filter the data. Switch to Table or Plot view to see results.</p>
+            </div>
+            {headers.slice(0, tableProperties.group_by.length).map((header, index) => {
+              const uniqueValues = uniqueValuesByColumn[index] || [];
+              const selectedValues = filters[index] || [];
+              
+              return (
+                <div key={index} className="col-lg-4 col-md-6 mb-3">
+                  <label className="form-label fw-bold">{header}</label>
+                  <Dropdown className="w-100">
+                    <Dropdown.Toggle 
+                      variant="outline-secondary" 
+                      className="w-100 d-flex justify-content-between align-items-center"
+                      style={{ fontSize: '14px' }}
+                    >
+                      <span>{selectedValues.length === 0 ? 'All' : `${selectedValues.length} selected`}</span>
+                    </Dropdown.Toggle>
+
+                    <Dropdown.Menu 
+                      style={{ 
+                        minWidth: '250px',
+                        maxHeight: '300px', 
+                        overflowY: 'auto'
+                      }}
+                    >
+                      <Dropdown.Header>
+                        <button
+                          className="btn btn-sm btn-link p-0 text-decoration-none"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            setFilters(prev => ({ ...prev, [index]: [] }));
+                          }}
+                        >
+                          Clear All
+                        </button>
+                      </Dropdown.Header>
+                      
+                      <Dropdown.Divider />
+                      
+                      {uniqueValues.map(value => (
+                        <Dropdown.Item 
+                          key={value} 
+                          as="div" 
+                          className="p-0"
+                          onClick={(e) => e.preventDefault()}
+                        >
+                          <div className="px-3 py-2">
+                            <Form.Check
+                              type="checkbox"
+                              id={`filter-${index}-${value}`}
+                              label={value}
+                              checked={selectedValues.includes(value)}
+                              onChange={(e) => handleCheckboxFilterChange(index, value, e.target.checked)}
+                              className="mb-0"
+                            />
+                          </div>
+                        </Dropdown.Item>
+                      ))}
+                      
+                      {uniqueValues.length === 0 && (
+                        <Dropdown.Item disabled>
+                          No values available
+                        </Dropdown.Item>
+                      )}
+                    </Dropdown.Menu>
+                  </Dropdown>
+                </div>
+              );
+            })}
+            
+            {/* Metrics filter section */}
+            {tableProperties?.metrics?.length > 0 && (
+              <>
+                <div className="col-12 mt-4 mb-3">
+                  <hr />
+                  <h6 className="text-muted">Select Metrics</h6>
+                  <p className="text-muted small">Choose which metrics to display in the table and plot.</p>
+                </div>
+                <div className="col-12">
+                  <Dropdown className="w-100">
+                    <Dropdown.Toggle 
+                      variant="outline-secondary" 
+                      className="w-100 d-flex justify-content-between align-items-center"
+                      style={{ fontSize: '14px' }}
+                    >
+                      <span>{selectedMetrics.length === 0 ? 'No metrics' : selectedMetrics.length === tableProperties.metrics.length ? 'All metrics' : `${selectedMetrics.length} of ${tableProperties.metrics.length} metrics`}</span>
+                    </Dropdown.Toggle>
+
+                    <Dropdown.Menu 
+                      style={{ 
+                        minWidth: '300px',
+                        maxHeight: '300px', 
+                        overflowY: 'auto'
+                      }}
+                    >
+                      <Dropdown.Header>
+                        <div className="d-flex justify-content-between">
+                          <button
+                            className="btn btn-sm btn-link p-0 text-decoration-none"
+                            onClick={(e) => {
+                              e.preventDefault();
+                              clearMetricsFilter();
+                            }}
+                          >
+                            Select All
+                          </button>
+                          <button
+                            className="btn btn-sm btn-link p-0 text-decoration-none text-danger"
+                            onClick={(e) => {
+                              e.preventDefault();
+                              setSelectedMetrics([]);
+                            }}
+                          >
+                            Clear All
+                          </button>
+                        </div>
+                      </Dropdown.Header>
+                      
+                      <Dropdown.Divider />
+                      
+                      {tableProperties.metrics.map(metric => (
+                        <Dropdown.Item 
+                          key={metric} 
+                          as="div" 
+                          className="p-0"
+                          onClick={(e) => e.preventDefault()}
+                        >
+                          <div className="px-3 py-2">
+                            <Form.Check
+                              type="checkbox"
+                              id={`metric-${metric}`}
+                              label={metric}
+                              checked={selectedMetrics.includes(metric)}
+                              onChange={(e) => handleMetricFilterChange(metric, e.target.checked)}
+                              className="mb-0"
+                            />
+                          </div>
+                        </Dropdown.Item>
+                      ))}
+                    </Dropdown.Menu>
+                  </Dropdown>
+                </div>
+              </>
+            )}
+            
+            {/* Active filters summary and clear all */}
+            {Object.keys(filters).length > 0 && Object.values(filters).some(f => Array.isArray(f) ? f.length > 0 : f) && (
+              <div className="col-12 mt-3">
+                <div className="alert alert-info d-flex justify-content-between align-items-center">
+                  <span>
+                    <strong>Active Filters:</strong> {Object.values(filters).reduce((total, f) => total + (Array.isArray(f) ? f.length : 0), 0)} selections
+                  </span>
+                  <button 
+                    className="btn btn-sm btn-outline-danger"
+                    onClick={clearFilters}
+                  >
+                    Clear All Filters
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      ) : currentViewMode === 'plot' && hasLeadTimeBin ? (
         <div key="plot-view" className="metrics-plot-container" style={{ height: '400px', padding: '10px' }}>
           <div ref={plotRef} style={{ width: '100%', height: '100%' }} />
         </div>
       ) : (
-        <div key="table-view" className="metrics-table-wrapper" style={{ overflowX: 'auto', overflowY: 'visible' }}>
-          {/* Filter controls */}
+        <div key="table-view" className="metrics-table-wrapper" style={{ overflowX: 'auto' }}>
+          {/* Existing filter controls display */}
           {Object.keys(filters).length > 0 && Object.values(filters).some(f => Array.isArray(f) ? f.length > 0 : f) && (
             <div className="filter-controls" style={{ 
               padding: '8px 12px', 
@@ -564,13 +741,11 @@ const MetricsTable = ({
               <tr>
                 {headers.map((header, index) => {
                   const isGroupByColumn = index < (tableProperties?.group_by?.length || 0);
-                  const uniqueValues = isGroupByColumn ? (uniqueValuesByColumn[index] || []) : [];
-                  const selectedValues = filters[index] || [];
                   
                   return (
                     <th key={index} 
                         className={isGroupByColumn ? 'group-by-header' : 'metric-header'}
-                        style={{ position: 'relative', minWidth: '120px' }}
+                        style={{ minWidth: '120px' }}
                     >
                       <div 
                         className="sortable-header"
@@ -580,7 +755,8 @@ const MetricsTable = ({
                           display: 'flex', 
                           alignItems: 'center', 
                           justifyContent: 'space-between',
-                          userSelect: 'none'
+                          userSelect: 'none',
+                          padding: '8px 4px'
                         }}
                       >
                         <span>{header}</span>
@@ -590,25 +766,6 @@ const MetricsTable = ({
                           )}
                         </span>
                       </div>
-                      
-                      {/* Only show filters for group_by columns */}
-                      {isGroupByColumn && (
-                        <div className="position-relative mt-1">
-                          <button
-                            ref={el => dropdownRefs.current[index] = el}
-                            className="btn btn-sm btn-outline-secondary w-100 d-flex justify-content-between align-items-center"
-                            type="button"
-                            style={{ fontSize: '13px' }}
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              toggleDropdown(index);
-                            }}
-                          >
-                            <span>{selectedValues.length === 0 ? 'All' : `${selectedValues.length} selected`}</span>
-                            <span style={{ fontSize: '10px' }}>{dropdownOpen[index] ? '▲' : '▼'}</span>
-                          </button>
-                        </div>
-                      )}
                     </th>
                   );
                 })}
@@ -628,70 +785,6 @@ const MetricsTable = ({
           </table>
         </div>
       )}
-      
-      {/* Positioned dropdowns */}
-      {Object.keys(dropdownOpen).map(columnIndex => {
-        const index = parseInt(columnIndex);
-        if (!dropdownOpen[index] || !dropdownPosition[index]) return null;
-        
-        const uniqueValues = uniqueValuesByColumn[index] || [];
-        const selectedValues = filters[index] || [];
-        
-        return (
-          <div
-            key={`dropdown-${index}`}
-            className="position-fixed bg-white border rounded shadow-sm"
-            data-dropdown-content="true"
-            style={{
-              top: dropdownPosition[index].top,
-              left: dropdownPosition[index].left,
-              minWidth: dropdownPosition[index].width,
-              maxHeight: '200px',
-              overflowY: 'auto',
-              zIndex: 9999,
-              fontSize: '12px',
-              whiteSpace: 'nowrap'
-            }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="p-2 border-bottom">
-              <button
-                className="btn btn-sm btn-link p-0 text-decoration-none"
-                style={{ fontSize: '13px' }}
-                onClick={(e) => {
-                  e.preventDefault();
-                  setFilters(prev => ({ ...prev, [index]: [] }));
-                }}
-              >
-                Clear All
-              </button>
-            </div>
-            {uniqueValues.map(value => (
-              <div key={value} className="p-2 d-flex align-items-center" style={{ cursor: 'pointer' }}>
-                <input
-                  type="checkbox"
-                  className="form-check-input me-2"
-                  checked={selectedValues.includes(value)}
-                  onChange={(e) => handleCheckboxFilterChange(index, value, e.target.checked)}
-                  onClick={(e) => e.stopPropagation()}
-                />
-                <label 
-                  className="mb-0 flex-grow-1" 
-                  style={{ cursor: 'pointer', fontSize: '14px' }}
-                  onClick={() => handleCheckboxFilterChange(index, value, !selectedValues.includes(value))}
-                >
-                  {value}
-                </label>
-              </div>
-            ))}
-            {uniqueValues.length === 0 && (
-              <div className="p-2 text-muted" style={{ fontSize: '13px' }}>
-                No values available
-              </div>
-            )}
-          </div>
-        );
-      })}
     </div>
   );
 };
