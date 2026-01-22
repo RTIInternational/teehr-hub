@@ -39,7 +39,7 @@ async def get_locations():
     try:
         query = f"""
         SELECT 
-            id as location_id,
+            id as primary_location_id,
             name,
             geometry
         FROM {trino_catalog}.{trino_schema}.locations 
@@ -73,15 +73,15 @@ async def get_locations():
 @router.get("/api/metrics")
 async def get_metrics(
     table: MetricsTable = Query(MetricsTable.SIM_METRICS_BY_LOCATION, description="Metrics table to query"),
-    location_id: Optional[str] = Query(None, description="Filter by location ID"),
+    primary_location_id: Optional[str] = Query(None, description="Filter by primary location ID"),
     configuration: Optional[str] = Query(None, description="Filter by configuration"),
     variable: Optional[str] = Query(None, description="Filter by variable"),
 ):
     """Get simulation metrics by location with optional filtering, returns GeoJSON."""
     try:
         
-        if location_id:
-            sanitized_location_id = sanitize_string(location_id)
+        if primary_location_id:
+            sanitized_location_id = sanitize_string(primary_location_id)
             where_conditions = [f"primary_location_id = '{sanitized_location_id}'"]
         else:
             where_conditions = ["primary_location_id LIKE 'usgs-%'"]
@@ -111,7 +111,7 @@ async def get_metrics(
         if df.empty:
             return {"type": "FeatureCollection", "features": []}
 
-        df = df.rename(columns={"primary_location_id": "location_id"})
+        # df = df.rename(columns={"primary_location_id": "location_id"})
 
         df["geometry"] = gpd.GeoSeries.from_wkb(
             df["geometry"].apply(lambda x: bytes(x))
@@ -259,9 +259,9 @@ async def get_variables(
         raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
 
 
-@router.get("/api/timeseries/primary/{location_id}")
+@router.get("/api/timeseries/primary/{primary_location_id}")
 async def get_primary_timeseries(
-    location_id: str,
+    primary_location_id: str,
     configuration: Optional[str] = None,
     variable: Optional[str] = None,
     start_date: Optional[datetime] = None,
@@ -270,7 +270,7 @@ async def get_primary_timeseries(
     """Get primary timeseries data for a specific location."""
     try: 
         # Build conditions for filtering with safe string interpolation
-        safe_location_id = sanitize_string(location_id)
+        safe_location_id = sanitize_string(primary_location_id)
         where_conditions = [f"location_id = '{safe_location_id}'"]
         
         if start_date:
@@ -290,7 +290,7 @@ async def get_primary_timeseries(
         query = f"""
         SELECT 
             'primary' as series_type,
-            location_id,
+            location_id as primary_location_id,
             reference_time,
             configuration_name,
             variable_name,
@@ -308,7 +308,7 @@ async def get_primary_timeseries(
         
         # Check if we have any data
         if df.empty:
-            print(f"No primary timeseries data found for location {location_id}")
+            print(f"No primary timeseries data found for location {primary_location_id}")
             return []
         
         print(f"Query returned {len(df)} primary timeseries records")
@@ -328,13 +328,22 @@ async def get_primary_timeseries(
             df['reference_time'] = 'null'
 
         # Group by series metadata and create nested structure
-        grouped = df.groupby(['series_type', 'location_id', 'reference_time', 'configuration_name', 'variable_name', 'unit_name'])
+        grouped = df.groupby(
+            [
+                'series_type', 
+                'primary_location_id', 
+                'reference_time', 
+                'configuration_name', 
+                'variable_name', 
+                'unit_name'
+            ]
+        )
         
         data = []
-        for (series_type, location_id, reference_time, configuration_name, variable_name, unit_name), group in grouped:
+        for (series_type, primary_location_id, reference_time, configuration_name, variable_name, unit_name), group in grouped:
             timeseries_data = {
                 "series_type": series_type,
-                "location_id": location_id,
+                "primary_location_id": primary_location_id,
                 "reference_time": reference_time,
                 "configuration_name": configuration_name,
                 "variable_name": variable_name,
@@ -351,12 +360,12 @@ async def get_primary_timeseries(
         
     except Exception as e:
         print(f"Primary timeseries error: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Failed to load primary timeseries for location {location_id}: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to load primary timeseries for location {primary_location_id}: {str(e)}")
 
 
-@router.get("/api/timeseries/secondary/{location_id}")
+@router.get("/api/timeseries/secondary/{primary_location_id}")
 async def get_secondary_timeseries(
-    location_id: str,
+    primary_location_id: str,
     configuration: Optional[str] = None,
     variable: Optional[str] = None,
     start_date: Optional[datetime] = None,
@@ -367,8 +376,8 @@ async def get_secondary_timeseries(
     """Get secondary timeseries data for a specific location."""
     try:
         # Build conditions for filtering - using the crosswalk join pattern with safe string interpolation
-        safe_location_id = sanitize_string(location_id)
-        where_conditions = [f"lc.primary_location_id = '{safe_location_id}'"]
+        safe_primary_location_id = sanitize_string(primary_location_id)
+        where_conditions = [f"lc.primary_location_id = '{safe_primary_location_id}'"]
         
         if configuration:
             safe_configuration = sanitize_string(configuration)
@@ -397,7 +406,7 @@ async def get_secondary_timeseries(
             st.unit_name,
             st.member,
             st.reference_time,
-            lc.primary_location_id as location_id,
+            lc.primary_location_id as primary_location_id,
             'secondary' as series_type
         FROM {trino_catalog}.{trino_schema}.secondary_timeseries st
         JOIN {trino_catalog}.{trino_schema}.location_crosswalks lc
@@ -416,7 +425,7 @@ async def get_secondary_timeseries(
         
         # Check if we have any data
         if df.empty:
-            print(f"No secondary timeseries data found for location {location_id}")
+            print(f"No secondary timeseries data found for location {primary_location_id}")
             return []
         
         print(f"Query returned {len(df)} secondary timeseries records")
@@ -443,13 +452,13 @@ async def get_secondary_timeseries(
         df['member'] = df['member'].fillna('null')
         
         # Group by series metadata and create nested structure
-        grouped = df.groupby(['series_type', 'location_id', 'reference_time', 'configuration_name', 'variable_name', 'unit_name', 'member'])
+        grouped = df.groupby(['series_type', 'primary_location_id', 'reference_time', 'configuration_name', 'variable_name', 'unit_name', 'member'])
         
         data = []
         for (series_type, location_id, reference_time, configuration_name, variable_name, unit_name, member), group in grouped:
             timeseries_data = {
                 "series_type": series_type,
-                "location_id": location_id,
+                "primary_location_id": primary_location_id,
                 "reference_time": reference_time if reference_time != 'null' else None,
                 "configuration_name": configuration_name,
                 "variable_name": variable_name,
@@ -467,7 +476,7 @@ async def get_secondary_timeseries(
         
     except Exception as e:
         print(f"Secondary timeseries error: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Failed to load secondary timeseries for location {location_id}: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to load secondary timeseries for location {primary_location_id}: {str(e)}")
 
 
 # @router.get("/health", response_model=HealthResponse)

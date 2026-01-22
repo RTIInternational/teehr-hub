@@ -15,10 +15,10 @@ const TimeseriesControls = ({
   };
 
   const handleLoadData = async () => {
-    if (!selectedLocation?.location_id) return;
+    if (!selectedLocation?.primary_location_id) return;
     
     await loadTimeseries({
-      location_id: selectedLocation.location_id,
+      primary_location_id: selectedLocation.primary_location_id,
       configuration: timeseriesFilters.configuration,
       variable: timeseriesFilters.variable,
       start_date: timeseriesFilters.start_date,
@@ -134,7 +134,7 @@ const TimeseriesControls = ({
               variant="primary" 
               size="sm" 
               onClick={handleLoadData}
-              disabled={!selectedLocation?.location_id || !timeseriesFilters.configuration || !timeseriesFilters.variable}
+              disabled={!selectedLocation?.primary_location_id || !timeseriesFilters.configuration || !timeseriesFilters.variable}
             >
               Load Timeseries Data
             </Button>

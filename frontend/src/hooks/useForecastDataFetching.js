@@ -63,10 +63,10 @@ export const useForecastDataFetching = () => {
       dispatch({ type: ActionTypes.CLEAR_TIMESERIES });
       dispatch({ type: ActionTypes.SET_LOADING, payload: { timeseries: true } });
       
-      const { location_id, configuration, variable, start_date, end_date, reference_start_date, reference_end_date } = filters;
+      const { primary_location_id, configuration, variable, start_date, end_date, reference_start_date, reference_end_date } = filters;
       
-      if (!location_id || !configuration || !variable) {
-        throw new Error('Missing required parameters: location_id, configuration, and variable are required');
+      if (!primary_location_id || !configuration || !variable) {
+        throw new Error('Missing required parameters: primary_location_id, configuration, and variable are required');
       }
 
       // Load primary data (simulation data) - uses variable parameter
@@ -77,7 +77,7 @@ export const useForecastDataFetching = () => {
         reference_start_date,
         reference_end_date
       };
-      const primaryData = await apiService.getPrimaryTimeseries(location_id, primaryFilters);
+      const primaryData = await apiService.getPrimaryTimeseries(primary_location_id, primaryFilters);
       dispatch({ type: ActionTypes.SET_PRIMARY_TIMESERIES, payload: primaryData });
 
       // Load secondary data (observation data) - uses configuration parameter  
@@ -89,7 +89,7 @@ export const useForecastDataFetching = () => {
         reference_start_date,
         reference_end_date
       };
-      const secondaryData = await apiService.getSecondaryTimeseries(location_id, secondaryFilters);
+      const secondaryData = await apiService.getSecondaryTimeseries(primary_location_id, secondaryFilters);
       dispatch({ type: ActionTypes.SET_SECONDARY_TIMESERIES, payload: secondaryData });
       
     } catch (error) {
@@ -98,23 +98,23 @@ export const useForecastDataFetching = () => {
   }, [dispatch]);
   
   // Load location-specific metrics
-  const loadLocationMetrics = useCallback(async (locationId, table) => {
+  const loadLocationMetrics = useCallback(async (primaryLocationId, table) => {
     try {
-      console.log('Loading metrics for location:', locationId, 'table:', table);
+      console.log('Loading metrics for location:', primaryLocationId, 'table:', table);
       dispatch({ type: ActionTypes.SET_LOADING, payload: { metricsLoading: true } });
       
-      const geojsonResponse = await apiService.getMetrics({ 
-        location_id: locationId, 
+      const metricsData = await apiService.getMetrics({
+        primary_location_id: primaryLocationId,
         table: table 
       });
       
-      console.log('Location metrics GeoJSON loaded:', geojsonResponse);
+      console.log('Location metrics GeoJSON loaded:', metricsData);
       
       // Extract raw properties from GeoJSON features for pivoting
       let locationData = [];
-      if (geojsonResponse?.features && geojsonResponse.features.length > 0) {
+      if (metricsData?.features && metricsData.features.length > 0) {
         // Convert each feature to a row of data
-        locationData = geojsonResponse.features.map(feature => {
+        locationData = metricsData.features.map(feature => {
           return feature.properties || {};
         });
       }

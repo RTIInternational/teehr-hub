@@ -65,7 +65,7 @@ export const apiService = {
     if (filters.configuration) params.append('configuration', filters.configuration);
     if (filters.variable) params.append('variable', filters.variable);
     if (filters.table) params.append('table', filters.table);
-    if (filters.location_id) params.append('location_id', filters.location_id);
+    if (filters.primary_location_id) params.append('primary_location_id', filters.primary_location_id);
     
     const queryString = params.toString();
     const endpoint = queryString ? `/api/metrics?${queryString}` : '/api/metrics';
@@ -74,7 +74,7 @@ export const apiService = {
   },
   
   // Get primary timeseries
-  getPrimaryTimeseries: (locationId, filters = {}) => {
+  getPrimaryTimeseries: (primaryLocationId, filters = {}) => {
     const params = new URLSearchParams();
     if (filters.start_date) params.append('start_date', filters.start_date);
     if (filters.end_date) params.append('end_date', filters.end_date);
@@ -82,14 +82,14 @@ export const apiService = {
     
     const queryString = params.toString();
     const endpoint = queryString 
-      ? `/api/timeseries/primary/${locationId}?${queryString}`
-      : `/api/timeseries/primary/${locationId}`;
+      ? `/api/timeseries/primary/${primaryLocationId}?${queryString}`
+      : `/api/timeseries/primary/${primaryLocationId}`;
     
     return apiCall(endpoint);
   },
   
   // Get secondary timeseries
-  getSecondaryTimeseries: (locationId, filters = {}) => {
+  getSecondaryTimeseries: (primaryLocationId, filters = {}) => {
     const params = new URLSearchParams();
     if (filters.start_date) params.append('start_date', filters.start_date);
     if (filters.end_date) params.append('end_date', filters.end_date);
@@ -100,8 +100,8 @@ export const apiService = {
     
     const queryString = params.toString();
     const endpoint = queryString 
-      ? `/api/timeseries/secondary/${locationId}?${queryString}`
-      : `/api/timeseries/secondary/${locationId}`;
+      ? `/api/timeseries/secondary/${primaryLocationId}?${queryString}`
+      : `/api/timeseries/secondary/${primaryLocationId}`;
     
     return apiCall(endpoint);
   },

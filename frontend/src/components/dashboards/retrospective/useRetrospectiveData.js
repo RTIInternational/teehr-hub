@@ -37,8 +37,8 @@ export const useRetrospectiveData = () => {
   }, [loadTimeseries]);
   
   // Load location metrics with retrospective table context
-  const loadSimLocationMetrics = useCallback(async (locationId) => {
-    return loadLocationMetrics(locationId, TABLE_NAME);
+  const loadSimLocationMetrics = useCallback(async (primaryLocationId) => {
+    return loadLocationMetrics(primaryLocationId, TABLE_NAME);
   }, [loadLocationMetrics]);
   
   // Initialize all retrospective data

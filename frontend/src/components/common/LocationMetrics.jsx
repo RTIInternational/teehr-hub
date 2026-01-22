@@ -40,10 +40,10 @@ const LocationMetrics = ({
 
   // Load metrics when location or table selection changes
   useEffect(() => {
-    if (selectedLocation?.location_id && selectedTable) {
-      loadLocationMetrics(selectedLocation.location_id, selectedTable);
+    if (selectedLocation?.primary_location_id && selectedTable) {
+      loadLocationMetrics(selectedLocation.primary_location_id, selectedTable);
     }
-  }, [selectedLocation?.location_id, selectedTable, loadLocationMetrics]);
+  }, [selectedLocation?.primary_location_id, selectedTable, loadLocationMetrics]);
 
   if (!selectedLocation) {
     return null;

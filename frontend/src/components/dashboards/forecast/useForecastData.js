@@ -37,8 +37,8 @@ export const useForecastData = () => {
   }, [loadTimeseries]);
   
   // Load location metrics with forecast table context
-  const loadForecastLocationMetrics = useCallback(async (locationId, selectedTable = TABLE_NAMES[0]) => {
-    return loadLocationMetrics(locationId, selectedTable);
+  const loadForecastLocationMetrics = useCallback(async (primaryLocationId, selectedTable = TABLE_NAMES[0]) => {
+    return loadLocationMetrics(primaryLocationId, selectedTable);
   }, [loadLocationMetrics]);
   
   // Initialize all forecast data
