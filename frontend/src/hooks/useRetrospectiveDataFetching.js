@@ -42,7 +42,7 @@ export const useRetrospectiveDataFetching = () => {
   const loadTableProperties = useCallback(async (tables) => {
     try {
       console.log('Loading table properties for tables:', tables);
-      dispatch({ type: ActionTypes.SET_LOADING, payload: { tableProperties: true } });
+      dispatch({ type: ActionTypes.SET_LOADING, payload: { tablePropertiesLoading: true } });
       const tableProperties = await apiService.getTablePropertiesBatch(Array.isArray(tables) ? tables : [tables]);
       console.log('Table properties loaded:', tableProperties);
       dispatch({ type: ActionTypes.SET_TABLE_PROPERTIES, payload: tableProperties });

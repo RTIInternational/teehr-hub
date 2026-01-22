@@ -42,6 +42,7 @@ const initialRetrospectiveState = {
   locationsLoading: false,
   timeseriesLoading: false,
   metricsLoading: false,
+  tablePropertiesLoading: false,
   
   // Map state
   mapLoaded: false,
@@ -131,7 +132,8 @@ const retrospectiveDashboardReducer = (state, action) => {
       const tableProperties = action.payload || {};
       return {
         ...state,
-        tableProperties
+        tableProperties,
+        tablePropertiesLoading: false
       };
       
     case ActionTypes.UPDATE_MAP_FILTERS:
