@@ -49,6 +49,7 @@ const initialForecastState = {
   locationsLoading: false,
   timeseriesLoading: false,
   metricsLoading: false,
+  tablePropertiesLoading: false,
   
   // Map state
   mapLoaded: false,
@@ -138,7 +139,8 @@ const forecastDashboardReducer = (state, action) => {
       const tableProperties = action.payload || {};
       return {
         ...state,
-        tableProperties
+        tableProperties,
+        tablePropertiesLoading: false
       };
       
     case ActionTypes.UPDATE_MAP_FILTERS:
