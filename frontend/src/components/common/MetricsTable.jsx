@@ -1,6 +1,6 @@
-import React, { useState, useMemo, useRef, useEffect, useCallback } from 'react';
 import { Duration } from 'luxon';
 import Plotly from 'plotly.js-dist-min';
+import { useState, useMemo, useRef, useEffect, useCallback } from 'react';
 import { Button, ButtonGroup, Dropdown, Form } from 'react-bootstrap';
 import './MetricsTable.css';
 
@@ -25,14 +25,11 @@ const MetricsTable = ({
   const [selectedMetrics, setSelectedMetrics] = useState([]);
   
   // Function to parse duration for sorting
-  const parseDurationForSort = (durationStr) => {
+  const parseDurationForSort = useCallback((durationStr) => {
     if (!durationStr || typeof durationStr !== 'string') return 0;
     
     // Handle BINSTART_BINEND format - use start time for sorting
-    let duration = durationStr;
-    if (durationStr.includes('_')) {
-      duration = durationStr.split('_')[0];
-    }
+    const duration = durationStr.includes('_') ? durationStr.split('_')[0] : durationStr;
     
     try {
       const dur = Duration.fromISO(duration);
@@ -40,10 +37,10 @@ const MetricsTable = ({
     } catch {
       return 0;
     }
-  };
+  }, []);
   
   // Function to format cell values based on field name and content
-  const formatCellValue = (header, value) => {
+  const formatCellValue = useCallback((header, value) => {
     if (value === null || value === undefined) return 'N/A';
     
     // Don't format forecast_lead_time_bin - show raw values
@@ -57,10 +54,10 @@ const MetricsTable = ({
     }
     
     return value;
-  };
+  }, []);
   
   // Sorting function
-  const handleSort = (columnIndex, header) => {
+  const handleSort = (columnIndex, _header) => {
     let direction = 'asc';
     if (sortConfig.column === columnIndex && sortConfig.direction === 'asc') {
       direction = 'desc';
@@ -68,14 +65,7 @@ const MetricsTable = ({
     setSortConfig({ column: columnIndex, direction });
   };
   
-  // Filter function for text inputs (fallback)
-  const handleFilterChange = (columnIndex, value) => {
-    setFilters(prev => ({
-      ...prev,
-      [columnIndex]: value
-    }));
-  };
-  
+
   // Checkbox filter function for group_by columns
   const handleCheckboxFilterChange = (columnIndex, value, checked) => {
     setFilters(prev => {
@@ -124,9 +114,22 @@ const MetricsTable = ({
     }
   };
   
-  // Function to sort rows
-  const sortRows = (rowsToSort, headers) => {
-    if (sortConfig.column === null) return rowsToSort;
+  // Memoized lead time bin field detection
+  const leadTimeBinField = useMemo(() => {
+    if (!tableProperties?.group_by) return null;
+    
+    return tableProperties.group_by.find(field => {
+      const lowerField = field.toLowerCase();
+      return lowerField.includes('forecast_lead_time_bin') || 
+             lowerField.includes('lead_time_bin') ||
+             lowerField.includes('leadtimebin') ||
+             lowerField.includes('lead_time');
+    }) || null;
+  }, [tableProperties?.group_by]);
+  
+  // Function to sort rows - memoized for performance
+  const sortRows = useCallback((rowsToSort, _headers) => {
+    if (sortConfig.column === null || !rowsToSort.length) return rowsToSort;
     
     return [...rowsToSort].sort((a, b) => {
       const aVal = a[sortConfig.column];
@@ -140,25 +143,23 @@ const MetricsTable = ({
         return sortConfig.direction === 'asc' ? aNum - bNum : bNum - aNum;
       }
       
-      // Handle string values
-      const aStr = String(aVal).toLowerCase();
-      const bStr = String(bVal).toLowerCase();
-      
-      if (aStr < bStr) return sortConfig.direction === 'asc' ? -1 : 1;
-      if (aStr > bStr) return sortConfig.direction === 'asc' ? 1 : -1;
-      return 0;
+      // Handle string values with case-insensitive comparison
+      const result = String(aVal).localeCompare(String(bVal));
+      return sortConfig.direction === 'asc' ? result : -result;
     });
-  };
+  }, [sortConfig]);
   
-  // Function to filter rows
-  const filterRows = (rowsToFilter) => {
+  // Function to filter rows - memoized for performance
+  const filterRows = useCallback((rowsToFilter) => {
+    if (!rowsToFilter.length || !Object.keys(filters).length) return rowsToFilter;
+    
     return rowsToFilter.filter(row => {
       return Object.entries(filters).every(([columnIndex, filterValue]) => {
         if (!filterValue || (Array.isArray(filterValue) && filterValue.length === 0)) return true;
         
         const cellValue = String(row[parseInt(columnIndex)]);
         
-        // Handle checkbox-based filters (arrays)
+        // Handle checkbox-based filters (arrays) - most common case
         if (Array.isArray(filterValue)) {
           return filterValue.includes(cellValue);
         }
@@ -167,7 +168,7 @@ const MetricsTable = ({
         return cellValue.toLowerCase().includes(filterValue.toLowerCase());
       });
     });
-  };
+  }, [filters]);
   
   // Function to pivot the data based on table properties
   const { headers, rows: rawRows, hasLeadTimeBin } = useMemo(() => {
@@ -181,7 +182,7 @@ const MetricsTable = ({
         }
         // If it's raw properties, show first object's key-value pairs
         const firstItem = metrics[0];
-        const entries = Object.entries(firstItem).filter(([key, value]) => value !== null && value !== undefined);
+        const entries = Object.entries(firstItem).filter(([_key, value]) => value !== null && value !== undefined);
         return { headers: ['Field', 'Value'], rows: entries.map(([key, value]) => [key, formatCellValue(key, value)]), hasLeadTimeBin: false };
       }
       return { headers: ['Field', 'Value'], rows: [], hasLeadTimeBin: false };
@@ -189,42 +190,27 @@ const MetricsTable = ({
     
     const groupByFields = tableProperties.group_by;
     const metricFields = tableProperties.metrics;
-    
-    // Check if we have a lead time bin column
-    const leadTimeBinField = groupByFields.find(field => 
-      field.toLowerCase().includes('lead_time_bin') || 
-      field.toLowerCase().includes('forecast_lead_time_bin') ||
-      field.toLowerCase().includes('leadtimebin') ||
-      field.toLowerCase().includes('lead_time') ||
-      field.toLowerCase().includes('bin')
-    );
     const hasLeadTimeBin = !!leadTimeBinField;
     
-    // Debug: log the first data item to see available fields
     // Sort data by lead time bin if present
-    let sortedMetrics = [...metrics];
-    if (hasLeadTimeBin && leadTimeBinField) {
-      sortedMetrics.sort((a, b) => {
-        const aValue = parseDurationForSort(a[leadTimeBinField]);
-        const bValue = parseDurationForSort(b[leadTimeBinField]);
-        return aValue - bValue;
-      });
-    }
+    const sortedMetrics = hasLeadTimeBin && leadTimeBinField 
+      ? [...metrics].sort((a, b) => {
+          const aValue = parseDurationForSort(a[leadTimeBinField]);
+          const bValue = parseDurationForSort(b[leadTimeBinField]);
+          return aValue - bValue;
+        })
+      : [...metrics];
     
-    // No need to group - each row in metrics array is already a complete row
+    // Build headers and rows efficiently
     const filteredMetricFields = metricFields.filter(field => selectedMetrics.includes(field));
     const headers = [...groupByFields, ...filteredMetricFields];
     
-    // Build rows directly from the sorted data
     const rows = sortedMetrics.map(item => {
-      return headers.map(header => {
-        const value = item[header];
-        return formatCellValue(header, value);
-      });
+      return headers.map(header => formatCellValue(header, item[header]));
     });
     
     return { headers, rows, hasLeadTimeBin };
-  }, [metrics, tableProperties, selectedMetrics]);
+  }, [metrics, tableProperties, selectedMetrics, leadTimeBinField, parseDurationForSort, formatCellValue]);
   
   // Compute unique values for all group_by columns
   const uniqueValuesByColumn = useMemo(() => {
@@ -249,12 +235,12 @@ const MetricsTable = ({
     return uniqueValues;
   }, [rawRows, tableProperties?.group_by]);
 
-  // Apply filtering and sorting
+  // Apply filtering and sorting - optimized with proper dependencies
   const processedRows = useMemo(() => {
-    let filteredRows = filterRows(rawRows);
-    let sortedRows = sortRows(filteredRows, headers);
-    return sortedRows;
-  }, [rawRows, headers, filters, sortConfig]);
+    if (!rawRows.length) return [];
+    const filteredRows = filterRows(rawRows);
+    return sortRows(filteredRows, headers);
+  }, [rawRows, filterRows, sortRows, headers]);
   
   // Prepare data for plotting
   const plotData = useMemo(() => {
@@ -289,21 +275,7 @@ const MetricsTable = ({
       return item;
     });
     
-    // Map filtered data back to original raw metrics for duration parsing
-    const rawDataForPlot = filteredData.map(filteredItem => {
-      // Find the corresponding raw metric item
-      const rawItem = metrics.find(metric => {
-        // Match on all group_by fields to find the right raw item
-        return groupByFields.every(field => {
-          const filteredValue = filteredItem[field];
-          const rawValue = metric[field];
-          // Compare formatted vs raw values - need to check if they match conceptually
-          return filteredValue === formatCellValue(field, rawValue) || filteredValue === rawValue;
-        });
-      });
-      return rawItem || filteredItem; // Fallback to filtered item if no raw match found
-    });
-    
+
     // Check which non-lead-time columns have more than one unique value
     const relevantGroupByFields = nonLeadTimeGroupByFields.filter(field => {
       const uniqueValues = new Set(filteredData.map(item => item[field]));
@@ -341,7 +313,7 @@ const MetricsTable = ({
         const stepYValues = [];
         
         // Now we can use the sorted group data directly since forecast_lead_time_bin is not formatted
-        sortedGroupData.forEach((item, index) => {
+        sortedGroupData.forEach((item, _index) => {
           const binValue = item[leadTimeBinField]; // Raw duration like "PT6H_PT12H"
           const yValue = typeof item[metric] === 'string' ? parseFloat(item[metric]) : item[metric];
           
@@ -383,12 +355,7 @@ const MetricsTable = ({
           stepYValues.push(yValue);
         });
         
-        console.log(`Final ${metric} data:`, { 
-          xRange: [Math.min(...stepXValues), Math.max(...stepXValues)], 
-          yRange: [Math.min(...stepYValues), Math.max(...stepYValues)],
-          totalPoints: stepXValues.length
-        });
-        
+
         // Create trace name combining group and metric (only for relevant columns)
         const traceName = relevantGroupByFields.length > 0 
           ? `${metric} (${groupKey})`
@@ -409,40 +376,47 @@ const MetricsTable = ({
             ? `${metric}<br>${groupKey}<br>Lead Time: %{x:.1f}h<br>Value: %{y}<extra></extra>`
             : `${metric}<br>Lead Time: %{x:.1f}h<br>Value: %{y}<extra></extra>`
         });
-        
-        // Print the actual trace values
-        console.log(`TRACE VALUES for ${traceName}:`);
-        console.log('X Values:', stepXValues);
-        console.log('Y Values:', stepYValues);
+
       });
     });
     
     return traces;
-  }, [processedRows, headers, tableProperties, hasLeadTimeBin, selectedMetrics]);
+  }, [processedRows, headers, tableProperties, hasLeadTimeBin, selectedMetrics, parseDurationForSort]);
   
   // Effect to render plot when in plot mode
   useEffect(() => {
     if (currentViewMode === 'plot' && hasLeadTimeBin && plotRef.current && plotData.length > 0) {
       const layout = {
-        title: 'Metrics by Lead Time Bin',
+        title: {
+          text: 'Metrics by Lead Time Bin',
+          x: 0.5,
+          xanchor: 'center'
+        },
         xaxis: { 
-          title: 'Lead Time (hours)',
+          title: {
+            text: 'Lead Time (hours)',
+            standoff: 20
+          },
           type: 'linear',
           showgrid: true,
           gridcolor: 'rgba(0,0,0,0.1)'
         },
         yaxis: { 
-          title: 'Metric Value',
+          title: {
+            text: 'Metric Value',
+            standoff: 20
+          },
           showgrid: true,
           gridcolor: 'rgba(0,0,0,0.1)'
         },
-        margin: { l: 50, r: 50, t: 50, b: 100 },
+        margin: { l: 70, r: 50, t: 70, b: 70 },
         showlegend: true,
         legend: {
           x: 1,
           xanchor: 'left',
           y: 1
-        }
+        },
+        autosize: true
       };
       
       Plotly.react(plotRef.current, plotData, layout, {

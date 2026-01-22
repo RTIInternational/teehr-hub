@@ -30,13 +30,14 @@ const Dashboard = () => {
     />
   );
   
-  const RetrospectiveTimeseriesControls = () => (
+  const RetrospectiveTimeseriesControls = ({ onViewModeChange }) => (
     <TimeseriesControls
       state={state}
       timeseriesFilters={timeseriesFilters}
       updateTimeseriesFilters={updateTimeseriesFilters}
       loadTimeseries={loadTimeseries}
       selectedLocation={selectedLocation}
+      onViewModeChange={onViewModeChange}
     />
   );
   

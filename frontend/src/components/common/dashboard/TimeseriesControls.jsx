@@ -6,7 +6,8 @@ const TimeseriesControls = ({
   updateTimeseriesFilters, 
   loadTimeseries, 
   selectedLocation,
-  mapFilters
+  mapFilters,
+  onViewModeChange
 }) => {
   
   const handleFilterChange = (field, value) => {
@@ -25,6 +26,11 @@ const TimeseriesControls = ({
       reference_start_date: timeseriesFilters.reference_start_date,
       reference_end_date: timeseriesFilters.reference_end_date
     });
+    
+    // Switch to plot view after loading data
+    if (onViewModeChange) {
+      onViewModeChange('plot');
+    }
   };
 
   return (
