@@ -31,7 +31,7 @@ export const useForecastDataFetching = () => {
   // Load table properties (batch)
   const loadTableProperties = useCallback(async (tables) => {
     try {
-      dispatch({ type: ActionTypes.SET_LOADING, payload: { tableProperties: true } });
+      dispatch({ type: ActionTypes.SET_LOADING, payload: { tablePropertiesLoading: true } });
       const tableProperties = await apiService.getTablePropertiesBatch(Array.isArray(tables) ? tables : [tables]);
       dispatch({ type: ActionTypes.SET_TABLE_PROPERTIES, payload: tableProperties });
     } catch (error) {
