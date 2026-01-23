@@ -329,7 +329,8 @@ async def get_primary_timeseries(
             mask = df['reference_time'] != 'null'
             if mask.any():
                 # Ensure reference_time is datetime type before using .dt accessor
-                df.loc[mask, 'reference_time'] = pd.to_datetime(df.loc[mask, 'reference_time']).dt.strftime('%Y-%m-%d %H:%M:%S')
+                datetime_converted = pd.to_datetime(df.loc[mask, 'reference_time'])
+                df.loc[mask, 'reference_time'] = datetime_converted.dt.strftime('%Y-%m-%d %H:%M:%S')
         else:
             df['reference_time'] = 'null'
 
@@ -452,7 +453,8 @@ async def get_secondary_timeseries(
             mask = df['reference_time'] != 'null'
             if mask.any():
                 # Ensure reference_time is datetime type before using .dt accessor
-                df.loc[mask, 'reference_time'] = pd.to_datetime(df.loc[mask, 'reference_time']).dt.strftime('%Y-%m-%d %H:%M:%S')
+                datetime_converted = pd.to_datetime(df.loc[mask, 'reference_time'])
+                df.loc[mask, 'reference_time'] = datetime_converted.dt.strftime('%Y-%m-%d %H:%M:%S')
         else:
             df['reference_time'] = 'null'
         
