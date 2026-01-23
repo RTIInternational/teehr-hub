@@ -9,6 +9,7 @@ import logging
 from datetime import datetime
 from .routes import router
 from .models import HealthResponse
+from .config import config
 
 # Configure logging
 logging.basicConfig(
@@ -21,7 +22,7 @@ logger = logging.getLogger("teehr-api")
 app = FastAPI(
     title="TEEHR Dashboard API", 
     version="0.1.0",
-    timeout=300  # 5 minute timeout
+    timeout=config.REQUEST_TIMEOUT
 )
 
 # CORS middleware to allow frontend requests - MUST be first middleware
@@ -59,7 +60,7 @@ async def timeout_middleware(request: Request, call_next):
     
     try:
         # Set a timeout for request processing
-        response = await asyncio.wait_for(call_next(request), timeout=300)  # 5 minutes
+        response = await asyncio.wait_for(call_next(request), timeout=config.REQUEST_TIMEOUT)
         
         process_time = time.time() - start_time
         response.headers["X-Process-Time"] = str(process_time)
@@ -75,7 +76,7 @@ async def timeout_middleware(request: Request, call_next):
         logger.error(f"REQUEST TIMEOUT: {request.method} {request.url.path} after {time.time() - start_time:.3f}s")
         return JSONResponse(
             status_code=504,
-            content={"detail": "Request timed out after 5 minutes. Try reducing the data range or adding more filters."}
+            content={"detail": f"Request timed out after {config.REQUEST_TIMEOUT} seconds. Try reducing the data range or adding more filters."}
         )
     except Exception as e:
         logger.error(f"REQUEST ERROR: {request.method} {request.url.path} - {str(e)}")
