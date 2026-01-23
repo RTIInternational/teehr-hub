@@ -318,8 +318,9 @@ async def get_primary_timeseries(
 
         # Time the formatting
         format_start = time.time()
-        # Convert timestamp to string for JSON serialization - use more efficient method
-        df['value_time'] = df['value_time'].dt.strftime('%Y-%m-%d %H:%M:%S')
+        # Convert timestamp to string for JSON serialization
+        # Ensure value_time is datetime type before using .dt accessor
+        df['value_time'] = pd.to_datetime(df['value_time']).dt.strftime('%Y-%m-%d %H:%M:%S')
         
         if 'reference_time' in df.columns:
             # Handle null reference times more efficiently
@@ -327,7 +328,8 @@ async def get_primary_timeseries(
             # Convert non-null values to string using vectorized operation
             mask = df['reference_time'] != 'null'
             if mask.any():
-                df.loc[mask, 'reference_time'] = df.loc[mask, 'reference_time'].dt.strftime('%Y-%m-%d %H:%M:%S')
+                # Ensure reference_time is datetime type before using .dt accessor
+                df.loc[mask, 'reference_time'] = pd.to_datetime(df.loc[mask, 'reference_time']).dt.strftime('%Y-%m-%d %H:%M:%S')
         else:
             df['reference_time'] = 'null'
 
@@ -439,8 +441,9 @@ async def get_secondary_timeseries(
 
         # Time the formatting
         format_start = time.time()
-        # Convert timestamp to string for JSON serialization - use more efficient method
-        df['value_time'] = df['value_time'].dt.strftime('%Y-%m-%d %H:%M:%S')
+        # Convert timestamp to string for JSON serialization
+        # Ensure value_time is datetime type before using .dt accessor
+        df['value_time'] = pd.to_datetime(df['value_time']).dt.strftime('%Y-%m-%d %H:%M:%S')
         
         if 'reference_time' in df.columns:
             # Handle null reference times more efficiently
@@ -448,7 +451,8 @@ async def get_secondary_timeseries(
             # Convert non-null values to string using vectorized operation
             mask = df['reference_time'] != 'null'
             if mask.any():
-                df.loc[mask, 'reference_time'] = df.loc[mask, 'reference_time'].dt.strftime('%Y-%m-%d %H:%M:%S')
+                # Ensure reference_time is datetime type before using .dt accessor
+                df.loc[mask, 'reference_time'] = pd.to_datetime(df.loc[mask, 'reference_time']).dt.strftime('%Y-%m-%d %H:%M:%S')
         else:
             df['reference_time'] = 'null'
         
