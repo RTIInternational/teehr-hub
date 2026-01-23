@@ -66,13 +66,13 @@ async def get_locations():
             for i in range(0, len(df), chunk_size):
                 chunk = df["geometry"].iloc[i:i+chunk_size]
                 chunk_geom = gpd.GeoSeries.from_wkb(
-                    chunk.apply(lambda x: bytes(x))
+                    chunk.apply(bytes)
                 )
                 geometry_series.append(chunk_geom)
             df["geometry"] = pd.concat(geometry_series, ignore_index=True)
         else:
             df["geometry"] = gpd.GeoSeries.from_wkb(
-                df["geometry"].apply(lambda x: bytes(x))
+                df["geometry"].apply(bytes)
             )
         
         gdf = gpd.GeoDataFrame(df, crs="EPSG:4326", geometry="geometry")
@@ -140,13 +140,13 @@ async def get_metrics(
             for i in range(0, len(df), chunk_size):
                 chunk = df["geometry"].iloc[i:i+chunk_size]
                 chunk_geom = gpd.GeoSeries.from_wkb(
-                    chunk.apply(lambda x: bytes(x))
+                    chunk.apply(bytes)
                 )
                 geometry_series.append(chunk_geom)
-            df["geometry"] = pd.concat(geometry_series, ignore_index=False)
+            df["geometry"] = pd.concat(geometry_series, ignore_index=True)
         else:
             df["geometry"] = gpd.GeoSeries.from_wkb(
-                df["geometry"].apply(lambda x: bytes(x))
+                df["geometry"].apply(bytes)
             )
         
         gdf = gpd.GeoDataFrame(df, crs="EPSG:4326", geometry="geometry")
@@ -323,14 +323,14 @@ async def get_primary_timeseries(
         df['value_time'] = pd.to_datetime(df['value_time']).dt.strftime('%Y-%m-%d %H:%M:%S')
         
         if 'reference_time' in df.columns:
-            # Handle null reference times more efficiently
-            df['reference_time'] = df['reference_time'].fillna('null')
-            # Convert non-null values to string using vectorized operation
-            mask = df['reference_time'] != 'null'
+            # Handle null reference times safely by checking for null before fillna
+            # Create mask for non-null values before any type conversion
+            mask = pd.notna(df['reference_time'])
             if mask.any():
-                # Ensure reference_time is datetime type before using .dt accessor
-                datetime_converted = pd.to_datetime(df.loc[mask, 'reference_time'])
-                df.loc[mask, 'reference_time'] = datetime_converted.dt.strftime('%Y-%m-%d %H:%M:%S')
+                # Convert non-null datetime values to string
+                df.loc[mask, 'reference_time'] = df.loc[mask, 'reference_time'].dt.strftime('%Y-%m-%d %H:%M:%S')
+            # Now fill remaining null values with 'null' string
+            df['reference_time'] = df['reference_time'].fillna('null')
         else:
             df['reference_time'] = 'null'
 
@@ -447,14 +447,14 @@ async def get_secondary_timeseries(
         df['value_time'] = pd.to_datetime(df['value_time']).dt.strftime('%Y-%m-%d %H:%M:%S')
         
         if 'reference_time' in df.columns:
-            # Handle null reference times more efficiently
-            df['reference_time'] = df['reference_time'].fillna('null')
-            # Convert non-null values to string using vectorized operation
-            mask = df['reference_time'] != 'null'
+            # Handle null reference times safely by checking for null before fillna
+            # Create mask for non-null values before any type conversion
+            mask = pd.notna(df['reference_time'])
             if mask.any():
-                # Ensure reference_time is datetime type before using .dt accessor
-                datetime_converted = pd.to_datetime(df.loc[mask, 'reference_time'])
-                df.loc[mask, 'reference_time'] = datetime_converted.dt.strftime('%Y-%m-%d %H:%M:%S')
+                # Convert non-null datetime values to string
+                df.loc[mask, 'reference_time'] = df.loc[mask, 'reference_time'].dt.strftime('%Y-%m-%d %H:%M:%S')
+            # Now fill remaining null values with 'null' string
+            df['reference_time'] = df['reference_time'].fillna('null')
         else:
             df['reference_time'] = 'null'
         
