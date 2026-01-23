@@ -66,13 +66,13 @@ async def get_locations():
             for i in range(0, len(df), chunk_size):
                 chunk = df["geometry"].iloc[i:i+chunk_size]
                 chunk_geom = gpd.GeoSeries.from_wkb(
-                    chunk.apply(lambda x: bytes(x))
+                    chunk.apply(bytes)
                 )
                 geometry_series.append(chunk_geom)
             df["geometry"] = pd.concat(geometry_series, ignore_index=True)
         else:
             df["geometry"] = gpd.GeoSeries.from_wkb(
-                df["geometry"].apply(lambda x: bytes(x))
+                df["geometry"].apply(bytes)
             )
         
         gdf = gpd.GeoDataFrame(df, crs="EPSG:4326", geometry="geometry")
