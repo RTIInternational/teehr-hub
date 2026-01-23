@@ -322,12 +322,14 @@ async def get_primary_timeseries(
         df['value_time'] = df['value_time'].dt.strftime('%Y-%m-%d %H:%M:%S')
         
         if 'reference_time' in df.columns:
-            # Handle null reference times more efficiently
-            df['reference_time'] = df['reference_time'].fillna('null')
-            # Convert non-null values to string using vectorized operation
-            mask = df['reference_time'] != 'null'
+            # Handle null reference times safely by checking for null before fillna
+            # Create mask for non-null values before any type conversion
+            mask = pd.notna(df['reference_time'])
             if mask.any():
+                # Convert non-null datetime values to string
                 df.loc[mask, 'reference_time'] = df.loc[mask, 'reference_time'].dt.strftime('%Y-%m-%d %H:%M:%S')
+            # Now fill remaining null values with 'null' string
+            df['reference_time'] = df['reference_time'].fillna('null')
         else:
             df['reference_time'] = 'null'
 
@@ -443,12 +445,14 @@ async def get_secondary_timeseries(
         df['value_time'] = df['value_time'].dt.strftime('%Y-%m-%d %H:%M:%S')
         
         if 'reference_time' in df.columns:
-            # Handle null reference times more efficiently
-            df['reference_time'] = df['reference_time'].fillna('null')
-            # Convert non-null values to string using vectorized operation
-            mask = df['reference_time'] != 'null'
+            # Handle null reference times safely by checking for null before fillna
+            # Create mask for non-null values before any type conversion
+            mask = pd.notna(df['reference_time'])
             if mask.any():
+                # Convert non-null datetime values to string
                 df.loc[mask, 'reference_time'] = df.loc[mask, 'reference_time'].dt.strftime('%Y-%m-%d %H:%M:%S')
+            # Now fill remaining null values with 'null' string
+            df['reference_time'] = df['reference_time'].fillna('null')
         else:
             df['reference_time'] = 'null'
         
