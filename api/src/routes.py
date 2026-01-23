@@ -143,7 +143,7 @@ async def get_metrics(
                     chunk.apply(lambda x: bytes(x))
                 )
                 geometry_series.append(chunk_geom)
-            df["geometry"] = pd.concat(geometry_series, ignore_index=True)
+            df["geometry"] = pd.concat(geometry_series, ignore_index=False)
         else:
             df["geometry"] = gpd.GeoSeries.from_wkb(
                 df["geometry"].apply(lambda x: bytes(x))
