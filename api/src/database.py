@@ -47,8 +47,6 @@ def get_trino_connection():
         user=trino_user,
         catalog=trino_catalog,
         schema=trino_schema,
-        http_session_timeout=config.DB_TIMEOUT,  # Use config timeout
-        request_timeout=config.DB_TIMEOUT,  # Use config timeout
     )
 
 

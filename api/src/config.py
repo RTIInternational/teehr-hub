@@ -12,9 +12,9 @@ class Config:
     REQUEST_TIMEOUT = int(os.environ.get("REQUEST_TIMEOUT", "300"))  # 5 minutes
     DB_TIMEOUT = int(os.environ.get("DB_TIMEOUT", "300"))  # 5 minutes
     
-    # Query limits
-    MAX_ROWS_DEFAULT = int(os.environ.get("MAX_ROWS_DEFAULT", "50000"))
-    MAX_TIMESERIES_DEFAULT = int(os.environ.get("MAX_TIMESERIES_DEFAULT", "10000"))
+    # Query limits (not used for now)
+    # MAX_ROWS_DEFAULT = int(os.environ.get("MAX_ROWS_DEFAULT", "50000"))
+    # MAX_TIMESERIES_DEFAULT = int(os.environ.get("MAX_TIMESERIES_DEFAULT", "10000"))
     
     # Performance settings
     CHUNK_SIZE = int(os.environ.get("CHUNK_SIZE", "1000"))
