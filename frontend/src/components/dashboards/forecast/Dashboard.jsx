@@ -30,13 +30,15 @@ const Dashboard = () => {
     />
   );
   
-  const ForecastTimeseriesControls = () => (
+  const ForecastTimeseriesControls = ({ onViewModeChange }) => (
     <TimeseriesControls
       state={state}
       timeseriesFilters={timeseriesFilters}
       updateTimeseriesFilters={updateTimeseriesFilters}
       loadTimeseries={loadTimeseries}
       selectedLocation={selectedLocation}
+      onViewModeChange={onViewModeChange}
+      mapFilters={mapFilters}
     />
   );
   
@@ -63,7 +65,7 @@ const Dashboard = () => {
           style={{
             display: 'grid',
             gridTemplateColumns: '60% 40%',
-            gridTemplateRows: 'auto 15vh 1fr 35vh',
+            gridTemplateRows: 'auto 12vh 1fr auto', // Changed last row to auto for flexible metrics height
             gap: '12px',
             padding: '12px',
             height: '100vh',
@@ -93,12 +95,12 @@ const Dashboard = () => {
             </div>
           )}
           
-          {/* Map Panel - Left Column, spans full height */}
+          {/* Map Panel - Left Column, reduced height */}
           <div 
             className="map-panel" 
             style={{
               gridColumn: '1 / 2',
-              gridRow: state.error ? '2 / 5' : '1 / 5',
+              gridRow: state.error ? '2 / 4' : '1 / 4', // Reduced from 5 to 4
               border: '1px solid #e0e0e0',
               borderRadius: '8px',
               overflow: 'hidden',
@@ -134,7 +136,7 @@ const Dashboard = () => {
             className="timeseries-panel" 
             style={{
               gridColumn: '2 / 3',
-              gridRow: state.error ? '3 / 4' : '2 / 4',
+              gridRow: state.error ? '3 / 4' : '2 / 4', // Keep same positioning
               border: '1px solid #e0e0e0',
               borderRadius: '8px',
               overflow: 'hidden'
@@ -158,15 +160,18 @@ const Dashboard = () => {
             )}
           </div>
 
-          {/* Metrics Panel - Bottom Right */}
+          {/* Metrics Panel - Full Width Bottom */}
           <div 
             className="metrics-panel" 
             style={{
-              gridColumn: '2 / 3',
-              gridRow: state.error ? '4 / 5' : '4 / 5',
+              gridColumn: '1 / -1', // Span full width
+              gridRow: state.error ? '5 / 6' : '4 / 5', // Bottom row
               border: '1px solid #e0e0e0',
               borderRadius: '8px',
-              overflow: 'auto'
+              height: '400px', // Fixed height
+              display: 'flex',
+              flexDirection: 'column',
+              overflow: 'hidden' // Prevent the panel itself from overflowing
             }}
           >
             {state.selectedLocation ? (
@@ -175,8 +180,8 @@ const Dashboard = () => {
                 locationMetrics={state.locationMetrics}
                 metricsLoading={state.metricsLoading}
                 error={state.error}
-                loadLocationMetrics={loadLocationMetrics}
-              />
+                loadLocationMetrics={loadLocationMetrics}                tableProperties={state.tableProperties}
+                defaultTable="fcst_metrics_by_location"              />
             ) : (
               <div className="d-flex align-items-center justify-content-center h-100 text-muted">
                 <div className="text-center">
