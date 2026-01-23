@@ -12,7 +12,6 @@ from typing import Optional, List, Dict, Any
 from .models import MetricsTable
 from .config import config
 import time
-from functools import lru_cache
 
 # Configure logging
 logger = logging.getLogger("teehr-api.database")
