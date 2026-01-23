@@ -2,7 +2,6 @@
 Configuration settings for the TEEHR API.
 """
 import os
-from typing import Optional
 
 class Config:
     """Application configuration."""
