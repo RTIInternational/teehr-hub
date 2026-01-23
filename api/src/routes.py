@@ -18,6 +18,7 @@ from .models import (
 from .database import (
     execute_query, sanitize_string, trino_catalog, trino_schema, get_trino_connection
 )
+from .config import config
 
 router = APIRouter()
 
@@ -54,10 +55,26 @@ async def get_locations():
         if df.empty:
             return {"type": "FeatureCollection", "features": []}
         
-        # Convert to GeoDataFrame
-        df["geometry"] = gpd.GeoSeries.from_wkb(
-            df["geometry"].apply(lambda x: bytes(x))
-        )
+        # Convert to GeoDataFrame with chunked processing for large datasets
+        print(f"Processing {len(df)} location records")
+        
+        # Process geometry conversion in chunks to avoid memory issues
+        chunk_size = config.CHUNK_SIZE
+        if len(df) > chunk_size:
+            print(f"Large dataset detected, processing in chunks of {chunk_size}")
+            geometry_series = []
+            for i in range(0, len(df), chunk_size):
+                chunk = df["geometry"].iloc[i:i+chunk_size]
+                chunk_geom = gpd.GeoSeries.from_wkb(
+                    chunk.apply(bytes)
+                )
+                geometry_series.append(chunk_geom)
+            df["geometry"] = pd.concat(geometry_series, ignore_index=True)
+        else:
+            df["geometry"] = gpd.GeoSeries.from_wkb(
+                df["geometry"].apply(bytes)
+            )
+        
         gdf = gpd.GeoDataFrame(df, crs="EPSG:4326", geometry="geometry")
         
         # Use the proper geopandas >=1.0.0 method
@@ -113,9 +130,23 @@ async def get_metrics(
 
         # df = df.rename(columns={"primary_location_id": "location_id"})
 
-        df["geometry"] = gpd.GeoSeries.from_wkb(
-            df["geometry"].apply(lambda x: bytes(x))
-        )
+        # Process geometry conversion in chunks to avoid memory issues
+        chunk_size = config.CHUNK_SIZE
+        if len(df) > chunk_size:
+            print(f"Large dataset detected, processing in chunks of {chunk_size}")
+            geometry_series = []
+            for i in range(0, len(df), chunk_size):
+                chunk = df["geometry"].iloc[i:i+chunk_size]
+                chunk_geom = gpd.GeoSeries.from_wkb(
+                    chunk.apply(bytes)
+                )
+                geometry_series.append(chunk_geom)
+            df["geometry"] = pd.concat(geometry_series, ignore_index=True)
+        else:
+            df["geometry"] = gpd.GeoSeries.from_wkb(
+                df["geometry"].apply(bytes)
+            )
+        
         gdf = gpd.GeoDataFrame(df, crs="EPSG:4326", geometry="geometry")
 
         # Use the proper geopandas >=1.0.0 method
@@ -266,8 +297,18 @@ async def get_primary_timeseries(
     variable: Optional[str] = None,
     start_date: Optional[datetime] = None,
     end_date: Optional[datetime] = None,
+    limit: Optional[int] = Query(None, description="Maximum number of records to return (optional)")
 ):
-    """Get primary timeseries data for a specific location."""
+    """Get primary timeseries data for a specific location.
+    
+    Args:
+        location_id: Location identifier
+        configuration: Optional configuration filter
+        variable: Optional variable filter  
+        start_date: Optional start date filter
+        end_date: Optional end date filter
+        limit: Maximum number of records (optional)
+    """
     try: 
         # Build conditions for filtering with safe string interpolation
         safe_location_id = sanitize_string(primary_location_id)
@@ -301,8 +342,9 @@ async def get_primary_timeseries(
         WHERE {where_clause}
         ORDER BY value_time
         """
+            
         query_start = time.time()
-        df = execute_query(query)
+        df = execute_query(query, max_rows=limit)  # Pass limit to execute_query
         query_time = time.time() - query_start
         print(f"Query execution time: {query_time:.3f} seconds")
         
@@ -316,14 +358,18 @@ async def get_primary_timeseries(
         # Time the formatting
         format_start = time.time()
         # Convert timestamp to string for JSON serialization
+        # Ensure value_time is datetime type before using .dt accessor
         df['value_time'] = pd.to_datetime(df['value_time']).dt.strftime('%Y-%m-%d %H:%M:%S')
+        
         if 'reference_time' in df.columns:
-            # Handle null reference times by filling with a placeholder
-            df['reference_time'] = df['reference_time'].fillna('null')
-            # Convert non-null values to string
-            mask = df['reference_time'] != 'null'
+            # Handle null reference times safely by checking for null before fillna
+            # Create mask for non-null values before any type conversion
+            mask = pd.notna(df['reference_time'])
             if mask.any():
-                df.loc[mask, 'reference_time'] = pd.to_datetime(df.loc[mask, 'reference_time']).dt.strftime('%Y-%m-%d %H:%M:%S')
+                # Convert non-null datetime values to string
+                df.loc[mask, 'reference_time'] = df.loc[mask, 'reference_time'].dt.strftime('%Y-%m-%d %H:%M:%S')
+            # Now fill remaining null values with 'null' string
+            df['reference_time'] = df['reference_time'].fillna('null')
         else:
             df['reference_time'] = 'null'
 
@@ -371,9 +417,21 @@ async def get_secondary_timeseries(
     start_date: Optional[datetime] = None,
     end_date: Optional[datetime] = None,
     reference_start_date: Optional[datetime] = None,
-    reference_end_date: Optional[datetime] = None
+    reference_end_date: Optional[datetime] = None,
+    limit: Optional[int] = Query(None, description="Maximum number of records to return (optional)")
 ):
-    """Get secondary timeseries data for a specific location."""
+    """Get secondary timeseries data for a specific location.
+    
+    Args:
+        location_id: Location identifier
+        configuration: Optional configuration filter
+        variable: Optional variable filter
+        start_date: Optional start date filter
+        end_date: Optional end date filter
+        reference_start_date: Optional reference start date filter
+        reference_end_date: Optional reference end date filter
+        limit: Maximum number of records (optional)
+    """
     try:
         # Build conditions for filtering - using the crosswalk join pattern with safe string interpolation
         safe_primary_location_id = sanitize_string(primary_location_id)
@@ -419,7 +477,7 @@ async def get_secondary_timeseries(
         
         # Time the query execution
         query_start = time.time()
-        df = execute_query(query)
+        df = execute_query(query, max_rows=limit)  # Pass limit to execute_query
         query_time = time.time() - query_start
         print(f"Secondary query execution time: {query_time:.3f} seconds")
         
@@ -433,14 +491,18 @@ async def get_secondary_timeseries(
         # Time the formatting
         format_start = time.time()
         # Convert timestamp to string for JSON serialization
+        # Ensure value_time is datetime type before using .dt accessor
         df['value_time'] = pd.to_datetime(df['value_time']).dt.strftime('%Y-%m-%d %H:%M:%S')
+        
         if 'reference_time' in df.columns:
-            # Handle null reference times by filling with a placeholder
-            df['reference_time'] = df['reference_time'].fillna('null')
-            # Convert non-null values to string
-            mask = df['reference_time'] != 'null'
+            # Handle null reference times safely by checking for null before fillna
+            # Create mask for non-null values before any type conversion
+            mask = pd.notna(df['reference_time'])
             if mask.any():
-                df.loc[mask, 'reference_time'] = pd.to_datetime(df.loc[mask, 'reference_time']).dt.strftime('%Y-%m-%d %H:%M:%S')
+                # Convert non-null datetime values to string
+                df.loc[mask, 'reference_time'] = df.loc[mask, 'reference_time'].dt.strftime('%Y-%m-%d %H:%M:%S')
+            # Now fill remaining null values with 'null' string
+            df['reference_time'] = df['reference_time'].fillna('null')
         else:
             df['reference_time'] = 'null'
         
