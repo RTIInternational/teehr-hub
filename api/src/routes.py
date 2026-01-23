@@ -318,8 +318,9 @@ async def get_primary_timeseries(
 
         # Time the formatting
         format_start = time.time()
-        # Convert timestamp to string for JSON serialization - use more efficient method
-        df['value_time'] = df['value_time'].dt.strftime('%Y-%m-%d %H:%M:%S')
+        # Convert timestamp to string for JSON serialization
+        # Ensure value_time is datetime type before using .dt accessor
+        df['value_time'] = pd.to_datetime(df['value_time']).dt.strftime('%Y-%m-%d %H:%M:%S')
         
         if 'reference_time' in df.columns:
             # Handle null reference times safely by checking for null before fillna
@@ -441,8 +442,9 @@ async def get_secondary_timeseries(
 
         # Time the formatting
         format_start = time.time()
-        # Convert timestamp to string for JSON serialization - use more efficient method
-        df['value_time'] = df['value_time'].dt.strftime('%Y-%m-%d %H:%M:%S')
+        # Convert timestamp to string for JSON serialization
+        # Ensure value_time is datetime type before using .dt accessor
+        df['value_time'] = pd.to_datetime(df['value_time']).dt.strftime('%Y-%m-%d %H:%M:%S')
         
         if 'reference_time' in df.columns:
             # Handle null reference times safely by checking for null before fillna
