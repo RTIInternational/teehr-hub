@@ -1,4 +1,4 @@
-// API configuration
+// API configuration - OGC-compliant endpoints
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8000';
 
 // Helper function for API calls
@@ -8,7 +8,7 @@ const apiCall = async (endpoint, options = {}) => {
     
     const response = await fetch(url, {
       headers: {
-        'Content-Type': 'application/json',
+        'Accept': 'application/json',
         ...options.headers,
       },
       ...options,
@@ -26,100 +26,126 @@ const apiCall = async (endpoint, options = {}) => {
   }
 };
 
-// API service object
+// Helper to format ISO 8601 datetime interval
+const formatDatetimeInterval = (startDate, endDate) => {
+  if (!startDate && !endDate) return null;
+  const start = startDate || '..';
+  const end = endDate || '..';
+  return `${start}/${end}`;
+};
+
+// API service object - OGC API compliant
 export const apiService = {
-  // Get all locations
-  getLocations: () => apiCall('/api/locations'),
-  
-  // Get configurations
-  getConfigurations: (table = 'sim_metrics_by_location') => {
+  // Get all locations (OGC API - Features)
+  getLocations: (limit = 1000, offset = 0) => {
     const params = new URLSearchParams();
-    params.append('table', table);
-    return apiCall(`/api/configurations?${params.toString()}`);
+    params.append('limit', limit);
+    params.append('offset', offset);
+    return apiCall(`/collections/locations/items?${params.toString()}`);
   },
   
-  // Get variables
-  getVariables: (table = 'sim_metrics_by_location') => {
-    const params = new URLSearchParams();
-    params.append('table', table);
-    return apiCall(`/api/variables?${params.toString()}`);
+  // Get queryables for a collection (OGC API - Features Part 3)
+  // Returns schema with x-teehr-role extensions for group_by/metric fields
+  getQueryables: (collection = 'sim_metrics_by_location') => {
+    return apiCall(`/collections/${collection}/queryables`);
   },
   
-  // Get table properties (metrics, group_by, description)
+  // Get distinct values for a queryable property (TEEHR extension)
+  getQueryableValues: (collection, propertyName) => {
+    return apiCall(`/collections/${collection}/queryables/${propertyName}/values`);
+  },
+  
+  // Get configurations (distinct configuration_name values)
+  getConfigurations: async (table = 'sim_metrics_by_location') => {
+    return apiCall(`/collections/${table}/queryables/configuration_name/values`);
+  },
+  
+  // Get variables (distinct variable_name values)
+  getVariables: async (table = 'sim_metrics_by_location') => {
+    return apiCall(`/collections/${table}/queryables/variable_name/values`);
+  },
+  
+  // Get table properties (now via queryables endpoint)
   getTableProperties: (table = 'sim_metrics_by_location') => {
-    const params = new URLSearchParams();
-    params.append('table', table);
-    return apiCall(`/api/table-properties?${params.toString()}`);
+    return apiCall(`/collections/${table}/queryables`);
   },
 
   // Get table properties for multiple tables in batch
-  getTablePropertiesBatch: (tables = ['sim_metrics_by_location']) => {
-    const params = new URLSearchParams();
-    tables.forEach(table => params.append('tables', table));
-    return apiCall(`/api/table-properties-batch?${params.toString()}`);
+  getTablePropertiesBatch: async (tables = ['sim_metrics_by_location']) => {
+    const results = await Promise.all(
+      tables.map(table => apiCall(`/collections/${table}/queryables`))
+    );
+    // Return as object keyed by table name
+    return tables.reduce((acc, table, idx) => {
+      acc[table] = results[idx];
+      return acc;
+    }, {});
   },
   
-  // Get metrics with filtering
+  // Get metrics with filtering (OGC API - Features)
   getMetrics: (filters = {}) => {
     const params = new URLSearchParams();
+    const table = filters.table || 'sim_metrics_by_location';
+    
     if (filters.configuration) params.append('configuration', filters.configuration);
-    if (filters.variable) params.append('variable', filters.variable);
-    if (filters.table) params.append('table', filters.table);
-    if (filters.primary_location_id) params.append('primary_location_id', filters.primary_location_id);
+    if (filters.variable) params.append('parameter', filters.variable);
+    if (filters.primary_location_id) params.append('location_id', filters.primary_location_id);
+    if (filters.limit) params.append('limit', filters.limit);
+    if (filters.offset) params.append('offset', filters.offset);
     
     const queryString = params.toString();
-    const endpoint = queryString ? `/api/metrics?${queryString}` : '/api/metrics';
+    const endpoint = queryString 
+      ? `/collections/${table}/items?${queryString}` 
+      : `/collections/${table}/items`;
     
     return apiCall(endpoint);
   },
   
-  // Get primary timeseries
+  // Get primary timeseries (OGC API - Coverages)
   getPrimaryTimeseries: (primaryLocationId, filters = {}) => {
     const params = new URLSearchParams();
-    if (filters.start_date) params.append('start_date', filters.start_date);
-    if (filters.end_date) params.append('end_date', filters.end_date);
-    if (filters.variable) params.append('variable', filters.variable);
+    params.append('location', primaryLocationId);
     
-    const queryString = params.toString();
-    const endpoint = queryString 
-      ? `/api/timeseries/primary/${primaryLocationId}?${queryString}`
-      : `/api/timeseries/primary/${primaryLocationId}`;
+    // Use ISO 8601 datetime interval
+    const datetime = formatDatetimeInterval(filters.start_date, filters.end_date);
+    if (datetime) params.append('datetime', datetime);
     
-    return apiCall(endpoint);
+    if (filters.variable) params.append('parameter', filters.variable);
+    if (filters.configuration) params.append('configuration', filters.configuration);
+    
+    return apiCall(`/collections/primary_timeseries/coverage?${params.toString()}`);
   },
   
-  // Get secondary timeseries
+  // Get secondary timeseries (OGC API - Coverages)
   getSecondaryTimeseries: (primaryLocationId, filters = {}) => {
     const params = new URLSearchParams();
-    if (filters.start_date) params.append('start_date', filters.start_date);
-    if (filters.end_date) params.append('end_date', filters.end_date);
+    params.append('location', primaryLocationId);
+    
+    // Use ISO 8601 datetime interval for value_time
+    const datetime = formatDatetimeInterval(filters.start_date, filters.end_date);
+    if (datetime) params.append('datetime', datetime);
+    
+    // Use ISO 8601 datetime interval for reference_time
+    const refDatetime = formatDatetimeInterval(
+      filters.reference_start_date, 
+      filters.reference_end_date
+    );
+    if (refDatetime) params.append('reference_time', refDatetime);
+    
     if (filters.configuration) params.append('configuration', filters.configuration);
-    if (filters.variable) params.append('variable', filters.variable);
-    if (filters.reference_start_date) params.append('reference_start_date', filters.reference_start_date);
-    if (filters.reference_end_date) params.append('reference_end_date', filters.reference_end_date);
+    if (filters.variable) params.append('parameter', filters.variable);
     
-    const queryString = params.toString();
-    const endpoint = queryString 
-      ? `/api/timeseries/secondary/${primaryLocationId}?${queryString}`
-      : `/api/timeseries/secondary/${primaryLocationId}`;
-    
-    return apiCall(endpoint);
+    return apiCall(`/collections/secondary_timeseries/coverage?${params.toString()}`);
   },
-  
-  // Get timeseries data
-  // getTimeseries: (locationId, filters = {}) => {
-  //   const params = new URLSearchParams();
-  //   if (filters.configuration) params.append('configuration', filters.configuration);
-  //   if (filters.variable) params.append('variable', filters.variable);
-  //   if (filters.reference_time) params.append('reference_time', filters.reference_time);
-    
-  //   const queryString = params.toString();
-  //   const endpoint = queryString 
-  //     ? `/api/timeseries/${locationId}?${queryString}`
-  //     : `/api/timeseries/${locationId}`;
-    
-  //   return apiCall(endpoint);
-  // },
+
+  // Get available collections (OGC API - Common)
+  getCollections: () => apiCall('/collections'),
+
+  // Get landing page (OGC API - Common)
+  getLandingPage: () => apiCall('/'),
+
+  // Get conformance (OGC API - Common)
+  getConformance: () => apiCall('/conformance'),
 
   // Health check
   healthCheck: () => apiCall('/health'),

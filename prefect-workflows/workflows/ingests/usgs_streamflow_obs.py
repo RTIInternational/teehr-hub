@@ -1,5 +1,5 @@
 from pathlib import Path
-from datetime import datetime, timedelta, UTC, timezone
+from datetime import datetime, timedelta, UTC
 from typing import Union, Optional
 import logging
 

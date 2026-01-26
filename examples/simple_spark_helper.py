@@ -89,7 +89,7 @@ def create_spark_session(
         conf.set("spark.kubernetes.executor.podTemplateFile", pod_template_path)
     else:
         print(f"⚠️  Executor pod template not found: {pod_template_path}") 
-        print(f"    You must provide a valid pod template for executors to launch correctly.") 
+        print("    You must provide a valid pod template for executors to launch correctly.") 
         raise FileNotFoundError(f"Executor pod template not found: {pod_template_path}")
     
     conf.set("spark.kubernetes.executor.deleteOnTermination", "true")

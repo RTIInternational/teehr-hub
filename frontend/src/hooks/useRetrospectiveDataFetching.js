@@ -1,16 +1,18 @@
 import { useCallback } from 'react';
 import { useRetrospectiveDashboard, ActionTypes } from '../context/RetrospectiveDashboardContext.jsx';
 import { apiService } from '../services/api';
+import { extractTableProperties, coverageJsonToPlotlyFormat } from '../utils/ogcTransformers';
 
 // Custom hooks for retrospective dashboard data fetching
 export const useRetrospectiveDataFetching = () => {
   const { dispatch } = useRetrospectiveDashboard();
   
-  // Load configurations
+  // Load configurations (distinct values from database)
   const loadConfigurations = useCallback(async (table) => {
     try {
       console.log('Loading configurations for table:', table);
       dispatch({ type: ActionTypes.SET_LOADING, payload: { configurations: true } });
+      // Use the new distinct values endpoint
       const configurations = await apiService.getConfigurations(table);
       console.log('Configurations loaded:', configurations);
       dispatch({ type: ActionTypes.SET_CONFIGURATIONS, payload: configurations });
@@ -22,11 +24,12 @@ export const useRetrospectiveDataFetching = () => {
     }
   }, [dispatch]);
   
-  // Load variables
+  // Load variables (distinct values from database)
   const loadVariables = useCallback(async (table) => {
     try {
       console.log('Loading variables for table:', table);
       dispatch({ type: ActionTypes.SET_LOADING, payload: { variables: true } });
+      // Use the new distinct values endpoint
       const variables = await apiService.getVariables(table);
       console.log('Variables loaded:', variables);
       dispatch({ type: ActionTypes.SET_VARIABLES, payload: variables });
@@ -38,12 +41,27 @@ export const useRetrospectiveDataFetching = () => {
     }
   }, [dispatch]);
   
-  // Load table properties (batch)
+  // Load table properties (batch) from queryables
   const loadTableProperties = useCallback(async (tables) => {
     try {
       console.log('Loading table properties for tables:', tables);
       dispatch({ type: ActionTypes.SET_LOADING, payload: { tablePropertiesLoading: true } });
-      const tableProperties = await apiService.getTablePropertiesBatch(Array.isArray(tables) ? tables : [tables]);
+      const tableArray = Array.isArray(tables) ? tables : [tables];
+      
+      // Fetch queryables for each table and transform to table properties
+      const results = await Promise.all(
+        tableArray.map(async (table) => {
+          const queryables = await apiService.getQueryables(table);
+          return { table, properties: extractTableProperties(queryables) };
+        })
+      );
+      
+      // Convert to object keyed by table name
+      const tableProperties = results.reduce((acc, { table, properties }) => {
+        acc[table] = properties;
+        return acc;
+      }, {});
+      
       console.log('Table properties loaded:', tableProperties);
       dispatch({ type: ActionTypes.SET_TABLE_PROPERTIES, payload: tableProperties });
       return tableProperties;
@@ -78,33 +96,35 @@ export const useRetrospectiveDataFetching = () => {
         dispatch({ type: ActionTypes.CLEAR_TIMESERIES });
         dispatch({ type: ActionTypes.SET_LOADING, payload: { timeseries: true } });
         
-        const { primary_location_id, configuration, variable, start_date, end_date, reference_start_date, reference_end_date } = filters;
+        const { primary_location_id, configuration, variable, start_date, end_date } = filters;
         
         if (!primary_location_id || !configuration || !variable) {
           throw new Error('Missing required parameters: primary_location_id, configuration, and variable are required');
         }
   
-        // Load primary data (simulation data) - uses variable parameter
+        // Load primary data (USGS observations) - does NOT need configuration
+        // Primary timeseries = observed USGS data
         const primaryFilters = {
           variable,
           start_date,
-          end_date,
-          reference_start_date,
-          reference_end_date
+          end_date
         };
-        const primaryData = await apiService.getPrimaryTimeseries(primary_location_id, primaryFilters);
+        // API returns CoverageJSON - transform to PlotlyChart format
+        const primaryCoverage = await apiService.getPrimaryTimeseries(primary_location_id, primaryFilters);
+        const primaryData = coverageJsonToPlotlyFormat(primaryCoverage);
         dispatch({ type: ActionTypes.SET_PRIMARY_TIMESERIES, payload: primaryData });
   
-        // Load secondary data (observation data) - uses configuration parameter  
+        // Load secondary data (NWM retrospective simulation) - NEEDS configuration
+        // Secondary timeseries = simulated data (no reference_time for retrospective)
         const secondaryFilters = {
           configuration,
           variable,
           start_date,
-          end_date,
-          reference_start_date,
-          reference_end_date
+          end_date
         };
-        const secondaryData = await apiService.getSecondaryTimeseries(primary_location_id, secondaryFilters);
+        // API returns CoverageJSON - transform to PlotlyChart format
+        const secondaryCoverage = await apiService.getSecondaryTimeseries(primary_location_id, secondaryFilters);
+        const secondaryData = coverageJsonToPlotlyFormat(secondaryCoverage);
         dispatch({ type: ActionTypes.SET_SECONDARY_TIMESERIES, payload: secondaryData });
         
       } catch (error) {

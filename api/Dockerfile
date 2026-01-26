@@ -21,30 +21,16 @@ RUN ARCH=$(uname -m) && \
         rm -rf /var/lib/apt/lists/*; \
     fi
 
-# Install Python dependencies (excluding geospatial packages first)
-RUN pip install --no-cache-dir \
-    fastapi>=0.110.0 \
-    uvicorn[standard]>=0.27.0 \
-    gunicorn>=21.2.0 \
-    trino>=0.327.0 \
-    sqlalchemy>=2.0.25 \
-    pandas>=2.2.0 \
-    "numpy>=1.26.0,<2.0.0" \
-    httpx>=0.26.0 \
-    python-multipart>=0.0.7 \
-    python-dotenv>=1.0.0 \
-    orjson>=3.9.15
+# Copy pyproject.toml first for dependency installation
+COPY pyproject.toml ./
 
-# Install geospatial packages (set GDAL config for ARM64 builds)
+# Install dependencies from pyproject.toml
+# Set GDAL config for ARM64 geospatial builds
 RUN ARCH=$(uname -m) && \
     if [ "$ARCH" = "aarch64" ]; then \
         export GDAL_CONFIG=/usr/bin/gdal-config; \
     fi && \
-    pip install --no-cache-dir \
-    shapely==2.0.2 \
-    pyproj==3.6.1 \
-    fiona>=1.9.6 \
-    "geopandas>=1.0.0,<2.0.0"
+    pip install --no-cache-dir .
 
 # Copy application code
 COPY src/ ./src/
