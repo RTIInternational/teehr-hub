@@ -9,6 +9,7 @@
     "@testing-library/react": "^16.3.0",
     "@testing-library/user-event": "^13.5.0",
     "bootstrap": "^5.3.8",
+    "luxon": "^3.7.2",
     "maplibre-gl": "^5.13.0",
     "plotly.js-dist-min": "^3.3.0",
     "react": "^19.2.0",

@@ -12,6 +12,7 @@ class MetricsTable(str, Enum):
     """Available metrics table names."""
     SIM_METRICS_BY_LOCATION = "sim_metrics_by_location"
     FCST_METRICS_BY_LOCATION = "fcst_metrics_by_location"
+    FCST_METRICS_BY_LEAD_TIME_BINS = "fcst_metrics_by_lead_time_bins"
 
 
 # class LocationResponse(BaseModel):

@@ -16,8 +16,9 @@ from .models import (
     HealthResponse
 )
 from .database import (
-    execute_query, sanitize_string, trino_catalog, trino_schema
+    execute_query, sanitize_string, trino_catalog, trino_schema, get_trino_connection
 )
+from .config import config
 
 router = APIRouter()
 
@@ -39,7 +40,7 @@ async def get_locations():
     try:
         query = f"""
         SELECT 
-            id as location_id,
+            id as primary_location_id,
             name,
             geometry
         FROM {trino_catalog}.{trino_schema}.locations 
@@ -54,10 +55,26 @@ async def get_locations():
         if df.empty:
             return {"type": "FeatureCollection", "features": []}
         
-        # Convert to GeoDataFrame
-        df["geometry"] = gpd.GeoSeries.from_wkb(
-            df["geometry"].apply(lambda x: bytes(x))
-        )
+        # Convert to GeoDataFrame with chunked processing for large datasets
+        print(f"Processing {len(df)} location records")
+        
+        # Process geometry conversion in chunks to avoid memory issues
+        chunk_size = config.CHUNK_SIZE
+        if len(df) > chunk_size:
+            print(f"Large dataset detected, processing in chunks of {chunk_size}")
+            geometry_series = []
+            for i in range(0, len(df), chunk_size):
+                chunk = df["geometry"].iloc[i:i+chunk_size]
+                chunk_geom = gpd.GeoSeries.from_wkb(
+                    chunk.apply(bytes)
+                )
+                geometry_series.append(chunk_geom)
+            df["geometry"] = pd.concat(geometry_series, ignore_index=True)
+        else:
+            df["geometry"] = gpd.GeoSeries.from_wkb(
+                df["geometry"].apply(bytes)
+            )
+        
         gdf = gpd.GeoDataFrame(df, crs="EPSG:4326", geometry="geometry")
         
         # Use the proper geopandas >=1.0.0 method
@@ -73,15 +90,15 @@ async def get_locations():
 @router.get("/api/metrics")
 async def get_metrics(
     table: MetricsTable = Query(MetricsTable.SIM_METRICS_BY_LOCATION, description="Metrics table to query"),
-    location_id: Optional[str] = Query(None, description="Filter by location ID"),
+    primary_location_id: Optional[str] = Query(None, description="Filter by primary location ID"),
     configuration: Optional[str] = Query(None, description="Filter by configuration"),
     variable: Optional[str] = Query(None, description="Filter by variable"),
 ):
     """Get simulation metrics by location with optional filtering, returns GeoJSON."""
     try:
         
-        if location_id:
-            sanitized_location_id = sanitize_string(location_id)
+        if primary_location_id:
+            sanitized_location_id = sanitize_string(primary_location_id)
             where_conditions = [f"primary_location_id = '{sanitized_location_id}'"]
         else:
             where_conditions = ["primary_location_id LIKE 'usgs-%'"]
@@ -92,82 +109,137 @@ async def get_metrics(
         if variable:
             sanitized_variable = sanitize_string(variable)
             where_conditions.append(f"variable_name = '{sanitized_variable}'")
-        
+
         where_clause = " AND ".join(where_conditions)
-        
+
         table_name = sanitize_string(table.value)
         query = f"""
-        SELECT 
-            *
-        FROM {trino_catalog}.{trino_schema}.{table_name}
-        WHERE {where_clause}
+            SELECT 
+                *
+            FROM {trino_catalog}.{trino_schema}.{table_name}
+            WHERE {where_clause}
         """
-        
+
         query_start = time.time()
         df = execute_query(query)
         query_time = time.time() - query_start
         print(f"Query execution time: {query_time:.3f} seconds")
-        
+
         if df.empty:
             return {"type": "FeatureCollection", "features": []}
-        
-        df = df.rename(columns={"primary_location_id": "location_id"})
 
-        df["geometry"] = gpd.GeoSeries.from_wkb(
-            df["geometry"].apply(lambda x: bytes(x))
-        )
+        # df = df.rename(columns={"primary_location_id": "location_id"})
+
+        # Process geometry conversion in chunks to avoid memory issues
+        chunk_size = config.CHUNK_SIZE
+        if len(df) > chunk_size:
+            print(f"Large dataset detected, processing in chunks of {chunk_size}")
+            geometry_series = []
+            for i in range(0, len(df), chunk_size):
+                chunk = df["geometry"].iloc[i:i+chunk_size]
+                chunk_geom = gpd.GeoSeries.from_wkb(
+                    chunk.apply(bytes)
+                )
+                geometry_series.append(chunk_geom)
+            df["geometry"] = pd.concat(geometry_series, ignore_index=True)
+        else:
+            df["geometry"] = gpd.GeoSeries.from_wkb(
+                df["geometry"].apply(bytes)
+            )
+        
         gdf = gpd.GeoDataFrame(df, crs="EPSG:4326", geometry="geometry")
 
         # Use the proper geopandas >=1.0.0 method
         # return gdf.to_geo_dict()
         geojson = json.loads(gdf.to_json())
-        
+
         return geojson
-        
+
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to load metrics: {str(e)}")
 
 
 
-@router.get("/api/metric-names")
-async def get_metric_names(
+@router.get("/api/table-properties")
+async def get_table_properties(
     table: MetricsTable = Query(MetricsTable.SIM_METRICS_BY_LOCATION, description="Metrics table to query")
 ):
-    """Get unique metric names available in the specified table."""
+    """Get table properties including metrics, group_by, and description."""
     try:
-        # Query to get all column names from the metrics table
+        # Query to get table properties
         table_name = sanitize_string(table.value)
+
         query = f"""
-        SELECT column_name
-        FROM information_schema.columns 
-        WHERE table_schema = '{trino_schema}' 
-        AND table_name = '{table_name}'
-        ORDER BY column_name
+            SELECT key, value FROM "{table_name}$properties"
+            WHERE key IN ('metrics', 'group_by', 'description')
         """
+        conn = get_trino_connection()
+        cur = conn.cursor()
+        cur.execute(query)
+        results = cur.fetchall()
         
-        query_start = time.time()
-        df = execute_query(query)
-        query_time = time.time() - query_start
-        print(f"Query execution time: {query_time:.3f} seconds")
+        # Build response dictionary
+        properties = {}
+        for key, value in results:
+            if key == 'metrics':
+                # Convert comma-separated string to list
+                properties[key] = [s.strip() for s in value.split(",")]
+            elif key == 'group_by':
+                # Convert comma-separated string to list
+                properties[key] = [s.strip() for s in value.split(",")]
+            else:
+                # Keep description as string
+                properties[key] = value
         
-        # Get all column names
-        all_columns = df['column_name'].tolist()
-        
-        # Filter out non-metric columns.  Thi is not robust but works for now.
-        non_metric_columns = {
-            'primary_location_id', 'location_id', 'name', 'location_name',
-            'variable_name', 'configuration_name', 'unit_name',
-            'geometry', 'created_at', 'updated_at'
-        }
-        
-        # Keep only columns that are likely metrics (not in the exclusion set)
-        metric_columns = [col for col in all_columns if col.lower() not in non_metric_columns]
-        
-        print(f"Found metric columns: {metric_columns}")
-        return metric_columns
+        print(f"Found table properties: {properties}")
+        return properties
         
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to load metrics names: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to load table properties: {str(e)}")
+
+
+@router.get("/api/table-properties-batch")
+async def get_table_properties_batch(
+    tables: List[MetricsTable] = Query(..., description="List of metrics tables to query")
+):
+    """Get table properties for multiple tables in a single request."""
+    try:
+        conn = get_trino_connection()
+        cur = conn.cursor()
+        
+        result = {}
+        
+        for table in tables:
+            table_name = sanitize_string(table.value)
+            
+            query = f"""
+                SELECT key, value FROM "{table_name}$properties"
+                WHERE key IN ('metrics', 'group_by', 'description')
+            """
+            
+            cur.execute(query)
+            table_results = cur.fetchall()
+            
+            # Build response dictionary for this table
+            properties = {}
+            for key, value in table_results:
+                if key == 'metrics':
+                    # Convert comma-separated string to list
+                    properties[key] = [s.strip() for s in value.split(",")]
+                elif key == 'group_by':
+                    # Convert comma-separated string to list
+                    properties[key] = [s.strip() for s in value.split(",")]
+                else:
+                    # Keep description as string
+                    properties[key] = value
+            
+            result[table.value] = properties
+        
+        print(f"Found batch table properties: {result}")
+        return result
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to load batch table properties: {str(e)}")
 
 
 @router.get("/api/configurations")
@@ -218,18 +290,28 @@ async def get_variables(
         raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
 
 
-@router.get("/api/timeseries/primary/{location_id}")
+@router.get("/api/timeseries/primary/{primary_location_id}")
 async def get_primary_timeseries(
-    location_id: str,
+    primary_location_id: str,
     configuration: Optional[str] = None,
     variable: Optional[str] = None,
     start_date: Optional[datetime] = None,
     end_date: Optional[datetime] = None,
+    limit: Optional[int] = Query(None, description="Maximum number of records to return (optional)")
 ):
-    """Get primary timeseries data for a specific location."""
+    """Get primary timeseries data for a specific location.
+    
+    Args:
+        location_id: Location identifier
+        configuration: Optional configuration filter
+        variable: Optional variable filter  
+        start_date: Optional start date filter
+        end_date: Optional end date filter
+        limit: Maximum number of records (optional)
+    """
     try: 
         # Build conditions for filtering with safe string interpolation
-        safe_location_id = sanitize_string(location_id)
+        safe_location_id = sanitize_string(primary_location_id)
         where_conditions = [f"location_id = '{safe_location_id}'"]
         
         if start_date:
@@ -249,7 +331,7 @@ async def get_primary_timeseries(
         query = f"""
         SELECT 
             'primary' as series_type,
-            location_id,
+            location_id as primary_location_id,
             reference_time,
             configuration_name,
             variable_name,
@@ -260,14 +342,15 @@ async def get_primary_timeseries(
         WHERE {where_clause}
         ORDER BY value_time
         """
+            
         query_start = time.time()
-        df = execute_query(query)
+        df = execute_query(query, max_rows=limit)  # Pass limit to execute_query
         query_time = time.time() - query_start
         print(f"Query execution time: {query_time:.3f} seconds")
         
         # Check if we have any data
         if df.empty:
-            print(f"No primary timeseries data found for location {location_id}")
+            print(f"No primary timeseries data found for location {primary_location_id}")
             return []
         
         print(f"Query returned {len(df)} primary timeseries records")
@@ -275,25 +358,38 @@ async def get_primary_timeseries(
         # Time the formatting
         format_start = time.time()
         # Convert timestamp to string for JSON serialization
+        # Ensure value_time is datetime type before using .dt accessor
         df['value_time'] = pd.to_datetime(df['value_time']).dt.strftime('%Y-%m-%d %H:%M:%S')
+        
         if 'reference_time' in df.columns:
-            # Handle null reference times by filling with a placeholder
-            df['reference_time'] = df['reference_time'].fillna('null')
-            # Convert non-null values to string
-            mask = df['reference_time'] != 'null'
+            # Handle null reference times safely by checking for null before fillna
+            # Create mask for non-null values before any type conversion
+            mask = pd.notna(df['reference_time'])
             if mask.any():
-                df.loc[mask, 'reference_time'] = pd.to_datetime(df.loc[mask, 'reference_time']).dt.strftime('%Y-%m-%d %H:%M:%S')
+                # Convert non-null datetime values to string
+                df.loc[mask, 'reference_time'] = df.loc[mask, 'reference_time'].dt.strftime('%Y-%m-%d %H:%M:%S')
+            # Now fill remaining null values with 'null' string
+            df['reference_time'] = df['reference_time'].fillna('null')
         else:
             df['reference_time'] = 'null'
 
         # Group by series metadata and create nested structure
-        grouped = df.groupby(['series_type', 'location_id', 'reference_time', 'configuration_name', 'variable_name', 'unit_name'])
+        grouped = df.groupby(
+            [
+                'series_type', 
+                'primary_location_id', 
+                'reference_time', 
+                'configuration_name', 
+                'variable_name', 
+                'unit_name'
+            ]
+        )
         
         data = []
-        for (series_type, location_id, reference_time, configuration_name, variable_name, unit_name), group in grouped:
+        for (series_type, primary_location_id, reference_time, configuration_name, variable_name, unit_name), group in grouped:
             timeseries_data = {
                 "series_type": series_type,
-                "location_id": location_id,
+                "primary_location_id": primary_location_id,
                 "reference_time": reference_time,
                 "configuration_name": configuration_name,
                 "variable_name": variable_name,
@@ -310,24 +406,36 @@ async def get_primary_timeseries(
         
     except Exception as e:
         print(f"Primary timeseries error: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Failed to load primary timeseries for location {location_id}: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to load primary timeseries for location {primary_location_id}: {str(e)}")
 
 
-@router.get("/api/timeseries/secondary/{location_id}")
+@router.get("/api/timeseries/secondary/{primary_location_id}")
 async def get_secondary_timeseries(
-    location_id: str,
+    primary_location_id: str,
     configuration: Optional[str] = None,
     variable: Optional[str] = None,
     start_date: Optional[datetime] = None,
     end_date: Optional[datetime] = None,
     reference_start_date: Optional[datetime] = None,
-    reference_end_date: Optional[datetime] = None
+    reference_end_date: Optional[datetime] = None,
+    limit: Optional[int] = Query(None, description="Maximum number of records to return (optional)")
 ):
-    """Get secondary timeseries data for a specific location."""
+    """Get secondary timeseries data for a specific location.
+    
+    Args:
+        location_id: Location identifier
+        configuration: Optional configuration filter
+        variable: Optional variable filter
+        start_date: Optional start date filter
+        end_date: Optional end date filter
+        reference_start_date: Optional reference start date filter
+        reference_end_date: Optional reference end date filter
+        limit: Maximum number of records (optional)
+    """
     try:
         # Build conditions for filtering - using the crosswalk join pattern with safe string interpolation
-        safe_location_id = sanitize_string(location_id)
-        where_conditions = [f"lc.primary_location_id = '{safe_location_id}'"]
+        safe_primary_location_id = sanitize_string(primary_location_id)
+        where_conditions = [f"lc.primary_location_id = '{safe_primary_location_id}'"]
         
         if configuration:
             safe_configuration = sanitize_string(configuration)
@@ -356,7 +464,7 @@ async def get_secondary_timeseries(
             st.unit_name,
             st.member,
             st.reference_time,
-            lc.primary_location_id as location_id,
+            lc.primary_location_id as primary_location_id,
             'secondary' as series_type
         FROM {trino_catalog}.{trino_schema}.secondary_timeseries st
         JOIN {trino_catalog}.{trino_schema}.location_crosswalks lc
@@ -369,13 +477,13 @@ async def get_secondary_timeseries(
         
         # Time the query execution
         query_start = time.time()
-        df = execute_query(query)
+        df = execute_query(query, max_rows=limit)  # Pass limit to execute_query
         query_time = time.time() - query_start
         print(f"Secondary query execution time: {query_time:.3f} seconds")
         
         # Check if we have any data
         if df.empty:
-            print(f"No secondary timeseries data found for location {location_id}")
+            print(f"No secondary timeseries data found for location {primary_location_id}")
             return []
         
         print(f"Query returned {len(df)} secondary timeseries records")
@@ -383,14 +491,18 @@ async def get_secondary_timeseries(
         # Time the formatting
         format_start = time.time()
         # Convert timestamp to string for JSON serialization
+        # Ensure value_time is datetime type before using .dt accessor
         df['value_time'] = pd.to_datetime(df['value_time']).dt.strftime('%Y-%m-%d %H:%M:%S')
+        
         if 'reference_time' in df.columns:
-            # Handle null reference times by filling with a placeholder
-            df['reference_time'] = df['reference_time'].fillna('null')
-            # Convert non-null values to string
-            mask = df['reference_time'] != 'null'
+            # Handle null reference times safely by checking for null before fillna
+            # Create mask for non-null values before any type conversion
+            mask = pd.notna(df['reference_time'])
             if mask.any():
-                df.loc[mask, 'reference_time'] = pd.to_datetime(df.loc[mask, 'reference_time']).dt.strftime('%Y-%m-%d %H:%M:%S')
+                # Convert non-null datetime values to string
+                df.loc[mask, 'reference_time'] = df.loc[mask, 'reference_time'].dt.strftime('%Y-%m-%d %H:%M:%S')
+            # Now fill remaining null values with 'null' string
+            df['reference_time'] = df['reference_time'].fillna('null')
         else:
             df['reference_time'] = 'null'
         
@@ -402,13 +514,13 @@ async def get_secondary_timeseries(
         df['member'] = df['member'].fillna('null')
         
         # Group by series metadata and create nested structure
-        grouped = df.groupby(['series_type', 'location_id', 'reference_time', 'configuration_name', 'variable_name', 'unit_name', 'member'])
+        grouped = df.groupby(['series_type', 'primary_location_id', 'reference_time', 'configuration_name', 'variable_name', 'unit_name', 'member'])
         
         data = []
         for (series_type, location_id, reference_time, configuration_name, variable_name, unit_name, member), group in grouped:
             timeseries_data = {
                 "series_type": series_type,
-                "location_id": location_id,
+                "primary_location_id": primary_location_id,
                 "reference_time": reference_time if reference_time != 'null' else None,
                 "configuration_name": configuration_name,
                 "variable_name": variable_name,
@@ -426,7 +538,7 @@ async def get_secondary_timeseries(
         
     except Exception as e:
         print(f"Secondary timeseries error: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Failed to load secondary timeseries for location {location_id}: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to load secondary timeseries for location {primary_location_id}: {str(e)}")
 
 
 # @router.get("/health", response_model=HealthResponse)

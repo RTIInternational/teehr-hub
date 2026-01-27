@@ -6,7 +6,7 @@ import { useRetrospectiveDataFetching } from '../../../hooks/useRetrospectiveDat
  * Handles the sim_metrics_by_location table specifically
  */
 export const useRetrospectiveData = () => {
-  const { loadConfigurations, loadVariables, loadMetricNames, loadLocations, loadTimeseries, loadLocationMetrics, ...otherHooks } = useRetrospectiveDataFetching();
+  const { loadConfigurations, loadVariables, loadTableProperties, loadLocations, loadTimeseries, loadLocationMetrics, ...otherHooks } = useRetrospectiveDataFetching();
   
   // Table name for retrospective dashboard
   const TABLE_NAME = 'sim_metrics_by_location';
@@ -21,10 +21,10 @@ export const useRetrospectiveData = () => {
     return loadVariables(TABLE_NAME);
   }, [loadVariables]);
   
-  // Load metrics for simulation metrics
-  const loadSimMetricNames = useCallback(async () => {
-    return loadMetricNames(TABLE_NAME);
-  }, [loadMetricNames]);
+  // Load table properties for simulation metrics
+  const loadSimTableProperties = useCallback(async () => {
+    return loadTableProperties([TABLE_NAME]);
+  }, [loadTableProperties]);
 
   // Load locations with retrospective table context
   const loadSimLocations = useCallback(async (filters = {}) => {
@@ -37,8 +37,8 @@ export const useRetrospectiveData = () => {
   }, [loadTimeseries]);
   
   // Load location metrics with retrospective table context
-  const loadSimLocationMetrics = useCallback(async (locationId) => {
-    return loadLocationMetrics(locationId, TABLE_NAME);
+  const loadSimLocationMetrics = useCallback(async (primaryLocationId) => {
+    return loadLocationMetrics(primaryLocationId, TABLE_NAME);
   }, [loadLocationMetrics]);
   
   // Initialize all retrospective data
@@ -48,20 +48,20 @@ export const useRetrospectiveData = () => {
       const results = await Promise.all([
         loadSimConfigurations(),
         loadSimVariables(), 
-        loadSimMetricNames()
+        loadSimTableProperties()
       ]);
       console.log('useRetrospectiveData: Initialization completed successfully', results);
     } catch (error) {
       console.error('Failed to initialize retrospective data:', error);
       throw error;
     }
-  }, [loadSimConfigurations, loadSimVariables, loadSimMetricNames]);
+  }, [loadSimConfigurations, loadSimVariables, loadSimTableProperties]);
   
   return {
     ...otherHooks,
     loadConfigurations: loadSimConfigurations,
     loadVariables: loadSimVariables,
-    loadMetricNames: loadSimMetricNames,
+    loadTableProperties: loadSimTableProperties,
     loadLocations: loadSimLocations,
     loadTimeseries: loadSimTimeseries,
     loadLocationMetrics: loadSimLocationMetrics,

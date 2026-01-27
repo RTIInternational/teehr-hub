@@ -38,18 +38,18 @@ export const useRetrospectiveDataFetching = () => {
     }
   }, [dispatch]);
   
-  // Load metrics
-  const loadMetricNames = useCallback(async (table) => {
+  // Load table properties (batch)
+  const loadTableProperties = useCallback(async (tables) => {
     try {
-      console.log('Loading metrics for table:', table);
-      dispatch({ type: ActionTypes.SET_LOADING, payload: { metricsNames: true } });
-      const metricNames = await apiService.getMetricNames(table);
-      console.log('Metrics loaded:', metricNames);
-      dispatch({ type: ActionTypes.SET_METRIC_NAMES, payload: metricNames });
-      return metricNames;
+      console.log('Loading table properties for tables:', tables);
+      dispatch({ type: ActionTypes.SET_LOADING, payload: { tablePropertiesLoading: true } });
+      const tableProperties = await apiService.getTablePropertiesBatch(Array.isArray(tables) ? tables : [tables]);
+      console.log('Table properties loaded:', tableProperties);
+      dispatch({ type: ActionTypes.SET_TABLE_PROPERTIES, payload: tableProperties });
+      return tableProperties;
     } catch (error) {
-      console.error('Error loading metrics:', error);
-      dispatch({ type: ActionTypes.SET_ERROR, payload: `Failed to load metrics: ${error.message}` });
+      console.error('Error loading table properties:', error);
+      dispatch({ type: ActionTypes.SET_ERROR, payload: `Failed to load table properties: ${error.message}` });
       throw error;
     }
   }, [dispatch]);
@@ -78,10 +78,10 @@ export const useRetrospectiveDataFetching = () => {
         dispatch({ type: ActionTypes.CLEAR_TIMESERIES });
         dispatch({ type: ActionTypes.SET_LOADING, payload: { timeseries: true } });
         
-        const { location_id, configuration, variable, start_date, end_date, reference_start_date, reference_end_date } = filters;
+        const { primary_location_id, configuration, variable, start_date, end_date, reference_start_date, reference_end_date } = filters;
         
-        if (!location_id || !configuration || !variable) {
-          throw new Error('Missing required parameters: location_id, configuration, and variable are required');
+        if (!primary_location_id || !configuration || !variable) {
+          throw new Error('Missing required parameters: primary_location_id, configuration, and variable are required');
         }
   
         // Load primary data (simulation data) - uses variable parameter
@@ -92,7 +92,7 @@ export const useRetrospectiveDataFetching = () => {
           reference_start_date,
           reference_end_date
         };
-        const primaryData = await apiService.getPrimaryTimeseries(location_id, primaryFilters);
+        const primaryData = await apiService.getPrimaryTimeseries(primary_location_id, primaryFilters);
         dispatch({ type: ActionTypes.SET_PRIMARY_TIMESERIES, payload: primaryData });
   
         // Load secondary data (observation data) - uses configuration parameter  
@@ -104,7 +104,7 @@ export const useRetrospectiveDataFetching = () => {
           reference_start_date,
           reference_end_date
         };
-        const secondaryData = await apiService.getSecondaryTimeseries(location_id, secondaryFilters);
+        const secondaryData = await apiService.getSecondaryTimeseries(primary_location_id, secondaryFilters);
         dispatch({ type: ActionTypes.SET_SECONDARY_TIMESERIES, payload: secondaryData });
         
       } catch (error) {
@@ -113,41 +113,30 @@ export const useRetrospectiveDataFetching = () => {
     }, [dispatch]);
   
   // Load location-specific metrics
-  const loadLocationMetrics = useCallback(async (locationId, table) => {
+  const loadLocationMetrics = useCallback(async (primaryLocationId, table) => {
     try {
-      console.log('Loading metrics for location:', locationId, 'table:', table);
+      console.log('Loading metrics for location:', primaryLocationId, 'table:', table);
       dispatch({ type: ActionTypes.SET_LOADING, payload: { metricsLoading: true } });
       
-      const geojsonResponse = await apiService.getMetrics({ 
-        location_id: locationId, 
+      const metricsData = await apiService.getMetrics({
+        primary_location_id: primaryLocationId,
         table: table 
       });
       
-      console.log('Location metrics GeoJSON loaded:', geojsonResponse);
+      console.log('Location metrics GeoJSON loaded:', metricsData);
       
-      // Extract metrics from GeoJSON features
-      let metrics = [];
-      if (geojsonResponse?.features && geojsonResponse.features.length > 0) {
-        const feature = geojsonResponse.features[0]; // Should only be one feature for a specific location
-        const properties = feature.properties || {};
-        
-        // Convert properties to metrics array, excluding non-metric fields
-        const excludeFields = new Set([
-          'location_id', 'primary_location_id', 'name', 'location_name',
-          'configuration_name', 'variable_name', 'unit_name'
-        ]);
-        
-        metrics = Object.entries(properties)
-          .filter(([key, value]) => !excludeFields.has(key) && value !== null && value !== undefined)
-          .map(([key, value]) => ({
-            metric_name: key,
-            metric_value: value
-          }));
+      // Extract raw properties from GeoJSON features for pivoting
+      let locationData = [];
+      if (metricsData?.features && metricsData.features.length > 0) {
+        // Convert each feature to a row of data
+        locationData = metricsData.features.map(feature => {
+          return feature.properties || {};
+        });
       }
       
-      console.log('Processed metrics:', metrics);
-      dispatch({ type: ActionTypes.SET_LOCATION_METRICS, payload: metrics });
-      return metrics;
+      console.log('Raw location data for pivoting:', locationData);
+      dispatch({ type: ActionTypes.SET_LOCATION_METRICS, payload: locationData });
+      return locationData;
     } catch (error) {
       console.error('Error loading location metrics:', error);
       dispatch({ type: ActionTypes.SET_ERROR, payload: `Failed to load location metrics: ${error.message}` });
@@ -162,17 +151,17 @@ export const useRetrospectiveDataFetching = () => {
       await Promise.all([
         loadConfigurations(),
         loadVariables(),
-        loadMetricNames()
+        loadTableProperties()
       ]);
     } catch (error) {
       console.error('Failed to initialize data:', error);
     }
-  }, [loadConfigurations, loadVariables, loadMetricNames]);
+  }, [loadConfigurations, loadVariables, loadTableProperties]);
   
   return {
     loadConfigurations,
     loadVariables,
-    loadMetricNames,
+    loadTableProperties,
     loadLocations,
     loadTimeseries,
     loadLocationMetrics,

@@ -74,7 +74,7 @@ const MapComponent = ({
           
           // Clear map selection
           if (map.current.getLayer('locations-selected')) {
-            map.current.setFilter('locations-selected', ['==', 'location_id', '']);
+            map.current.setFilter('locations-selected', ['==', 'primary_location_id', '']);
           }
           
           // Close popup
@@ -139,13 +139,13 @@ const MapComponent = ({
         
         // Update selected location
         selectLocation({
-          location_id: properties.location_id,
+          primary_location_id: properties.primary_location_id,
           name: properties.name,
           coordinates: coordinates
         });
         
         // Update map selection
-        mapInstance.setFilter('locations-selected', ['==', 'location_id', properties.location_id]);
+        mapInstance.setFilter('locations-selected', ['==', 'primary_location_id', properties.primary_location_id]);
       }
     };
     
@@ -163,7 +163,7 @@ const MapComponent = ({
         .setHTML(`
           <div style="padding: 8px; font-size: 0.85rem;">
             <div style="font-weight: 600; margin-bottom: 4px; color: #495057;">${properties.name}</div>
-            <div style="margin: 2px 0;"><strong>ID:</strong> ${properties.location_id}</div>
+            <div style="margin: 2px 0;"><strong>ID:</strong> ${properties.primary_location_id}</div>
             <div style="margin: 2px 0;"><strong>Lat:</strong> ${coordinates[1].toFixed(4)}</div>
             <div style="margin: 2px 0;"><strong>Lon:</strong> ${coordinates[0].toFixed(4)}</div>
             <div style="margin: 2px 0;"><strong>${metricLabel}:</strong> ${metricValue !== null && metricValue !== undefined ? Number(metricValue).toFixed(3) : 'N/A'}</div>
@@ -347,7 +347,7 @@ const MapComponent = ({
             'circle-stroke-color': '#ffffff',
             'circle-opacity': 1
           },
-          filter: ['==', 'location_id', '']
+          filter: ['==', 'primary_location_id', '']
         });
     } catch (selectedLayerError) {
       console.error('MapComponent: Error adding selected locations layer:', selectedLayerError);

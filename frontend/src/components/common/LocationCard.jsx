@@ -42,7 +42,7 @@ const LocationCard = ({ selectedLocation, onClose }) => {
           <strong>{selectedLocation.name}</strong>
         </div>
         <div className="text-muted small text-truncate">
-          ID: {selectedLocation.location_id}
+          ID: {selectedLocation.primary_location_id}
         </div>
         {selectedLocation.coordinates && (
           <div className="text-muted small text-truncate">
