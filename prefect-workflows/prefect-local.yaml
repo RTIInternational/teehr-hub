@@ -92,6 +92,34 @@ deployments:
     work_pool: *work_pool
     schedule:
 
+  - name: ingest-nwm31se-short-range-streamflow-forecasts
+    version:
+    tags: []
+    description: Ingest NWM 3.1 SE short range streamflow forecasts from NOAA FTP
+    entrypoint: workflows/ingests/nwm31se_streamflow_forecasts.py:ingest_nwm31se_forecasts
+    parameters: {
+      "dir_path": *dir_path,
+      "forecast_configuration": "short_range"
+    }
+    work_pool: *work_pool
+    schedule:
+      cron: "0 7,19 * * *"
+      active: true
+
+  - name: ingest-nwm31se-medium-range-streamflow-forecasts
+    version:
+    tags: []
+    description: Ingest NWM 3.1 SE medium range member 1 streamflow forecasts from NOAA FTP
+    entrypoint: workflows/ingests/nwm31se_streamflow_forecasts.py:ingest_nwm31se_forecasts
+    parameters: {
+      "dir_path": *dir_path,
+      "forecast_configuration": "medium_range"
+    }
+    work_pool: *work_pool
+    schedule:
+      cron: "0 6,18 * * *"
+      active: true
+
   - name: ingest-datastream-short-range-cfe-forecasts
     version:
     tags: []
