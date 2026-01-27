@@ -167,6 +167,24 @@ async def get_collections():
             crs=[CRS84],
         ),
         Collection(
+            id="location_crosswalks",
+            title="Location Crosswalks",
+            description="Mappings between primary (e.g., USGS) and secondary (e.g., NWM) location identifiers",
+            links=[
+                Link(
+                    href="/collections/location_crosswalks",
+                    rel="self",
+                    type="application/json",
+                ),
+                Link(
+                    href="/collections/location_crosswalks/items",
+                    rel="items",
+                    type="application/json",
+                ),
+            ],
+            itemType="record",
+        ),
+        Collection(
             id="primary_timeseries",
             title="Primary Timeseries",
             description="Observed timeseries data at monitoring locations",
@@ -292,6 +310,96 @@ async def get_collections():
             extent=Extent(spatial=spatial_extent) if spatial_extent else None,
             itemType="feature",
             crs=[CRS84],
+        ),
+        Collection(
+            id="configurations",
+            title="Configurations",
+            description="Data source configurations (e.g., nwm30_retrospective, usgs_observations)",
+            links=[
+                Link(
+                    href="/collections/configurations",
+                    rel="self",
+                    type="application/json",
+                ),
+                Link(
+                    href="/collections/configurations/items",
+                    rel="items",
+                    type="application/json",
+                ),
+            ],
+            itemType="record",
+        ),
+        Collection(
+            id="units",
+            title="Units",
+            description="Measurement unit definitions (e.g., m^3/s, ft^3/s)",
+            links=[
+                Link(
+                    href="/collections/units",
+                    rel="self",
+                    type="application/json",
+                ),
+                Link(
+                    href="/collections/units/items",
+                    rel="items",
+                    type="application/json",
+                ),
+            ],
+            itemType="record",
+        ),
+        Collection(
+            id="variables",
+            title="Variables",
+            description="Variable/parameter definitions (e.g., streamflow_hourly_inst)",
+            links=[
+                Link(
+                    href="/collections/variables",
+                    rel="self",
+                    type="application/json",
+                ),
+                Link(
+                    href="/collections/variables/items",
+                    rel="items",
+                    type="application/json",
+                ),
+            ],
+            itemType="record",
+        ),
+        Collection(
+            id="attributes",
+            title="Attributes",
+            description="Location attribute definitions (e.g., drainage_area_km2, state, huc8)",
+            links=[
+                Link(
+                    href="/collections/attributes",
+                    rel="self",
+                    type="application/json",
+                ),
+                Link(
+                    href="/collections/attributes/items",
+                    rel="items",
+                    type="application/json",
+                ),
+            ],
+            itemType="record",
+        ),
+        Collection(
+            id="location_attributes",
+            title="Location Attributes",
+            description="Attribute values for each location (location_id, attribute_name, value)",
+            links=[
+                Link(
+                    href="/collections/location_attributes",
+                    rel="self",
+                    type="application/json",
+                ),
+                Link(
+                    href="/collections/location_attributes/items",
+                    rel="items",
+                    type="application/json",
+                ),
+            ],
+            itemType="record",
         ),
     ]
 

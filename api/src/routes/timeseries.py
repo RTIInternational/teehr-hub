@@ -22,8 +22,8 @@ async def get_primary_timeseries_coverage(
         [],
         description='OGC subset parameters (e.g., location("id"), time("start:end"))',  # noqa: E501
     ),
-    location: str | None = Query(
-        None, description="Location ID (alternative to subset)"
+    location_id: str | None = Query(
+        None, description="Location ID"
     ),
     datetime_param: str | None = Query(
         None,
@@ -49,15 +49,15 @@ async def get_primary_timeseries_coverage(
     - subset=time("2020-01-01T00:00:00Z":"2020-12-31T23:59:59Z")
 
     Simple parameter examples:
-    - location=usgs-01347000&datetime=2020-01-01/2020-12-31
-    - location=usgs-01347000&parameter=streamflow_hourly_inst
+    - location_id=usgs-01347000&datetime=2020-01-01/2020-12-31
+    - location_id=usgs-01347000&parameter=streamflow_hourly_inst
     """
     try:
         # Build subset list for non-temporal parameters
         subset_list = list(subset)
 
-        if location:
-            subset_list.append(f'location("{location}")')
+        if location_id:
+            subset_list.append(f'location("{location_id}")')
         if parameter:
             subset_list.append(f'parameter("{parameter}")')
         if configuration:
@@ -68,10 +68,10 @@ async def get_primary_timeseries_coverage(
 
         # Extract location (required)
         if "location" not in subsets:
-            raise HTTPException(status_code=400, detail="location subset is required")
+            raise HTTPException(status_code=400, detail="location_id is required")
 
-        primary_location_id = subsets["location"][0]
-        safe_location_id = sanitize_string(primary_location_id)
+        location_id = subsets["location"][0]
+        safe_location_id = sanitize_string(location_id)
         where_conditions = [f"location_id = '{safe_location_id}'"]
 
         # Parse datetime as ISO 8601 interval (standard OGC format)
@@ -201,7 +201,7 @@ async def get_primary_timeseries_coverage(
             except Exception:
                 pass
 
-        coverage = create_coveragejson_timeseries(data, primary_location_id, loc_coords)
+        coverage = create_coveragejson_timeseries(data, location_id, loc_coords)
         return JSONResponse(
             content=coverage, media_type="application/prs.coverage+json"
         )
@@ -219,8 +219,8 @@ async def get_secondary_timeseries_coverage(
         [],
         description='OGC subset parameters (e.g., location("id"), time("start:end"))',  # noqa: E501
     ),
-    location: str | None = Query(
-        None, description="Location ID (alternative to subset)"
+    location_id: str | None = Query(
+        None, description="Location ID"
     ),
     datetime_param: str | None = Query(
         None,
@@ -252,8 +252,8 @@ async def get_secondary_timeseries_coverage(
         # Build subset list for non-temporal parameters
         subset_list = list(subset)
 
-        if location:
-            subset_list.append(f'location("{location}")')
+        if location_id:
+            subset_list.append(f'location("{location_id}")')
         if parameter:
             subset_list.append(f'parameter("{parameter}")')
         if configuration:
@@ -264,11 +264,11 @@ async def get_secondary_timeseries_coverage(
 
         # Extract location (required)
         if "location" not in subsets:
-            raise HTTPException(status_code=400, detail="location subset is required")
+            raise HTTPException(status_code=400, detail="location_id is required")
 
-        primary_location_id = subsets["location"][0]
-        safe_primary_location_id = sanitize_string(primary_location_id)
-        where_conditions = [f"lc.primary_location_id = '{safe_primary_location_id}'"]
+        location_id = subsets["location"][0]
+        safe_location_id = sanitize_string(location_id)
+        where_conditions = [f"lc.primary_location_id = '{safe_location_id}'"]
 
         # Parse datetime as ISO 8601 interval (standard OGC format)
         if datetime_param:
@@ -407,7 +407,7 @@ async def get_secondary_timeseries_coverage(
         print(f"Secondary formatting time: {format_time:.3f} seconds")
 
         # Always return CoverageJSON for Coverages endpoint
-        coverage = create_coveragejson_timeseries(data, primary_location_id, None)
+        coverage = create_coveragejson_timeseries(data, location_id, None)
         return JSONResponse(
             content=coverage, media_type="application/prs.coverage+json"
         )
