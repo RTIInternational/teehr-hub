@@ -63,7 +63,7 @@ RUN ARCH=$(uname -m) && \
     fi
 
 # change spark UID and GID to 1000
-RUN usermod -u 1000 185 && groupmod -g 1000 185
+RUN usermod -u 1000 spark && groupmod -g 1000 spark
 
 # Switch back to spark user
 USER 1000
