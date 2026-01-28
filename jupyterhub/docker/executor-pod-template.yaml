@@ -2,15 +2,15 @@ apiVersion: v1
 kind: Pod
 spec:
   securityContext:
-    runAsUser: 185
-    runAsGroup: 185
-    fsGroup: 1000
-    supplementalGroups: [1000]
+    runAsUser: 1000
+    runAsGroup: 1000
+    # fsGroup: 1000
+    # supplementalGroups: [1000]
   containers:
   - name: spark-kubernetes-executor
     securityContext:
-      runAsUser: 185
-      runAsGroup: 185
+      runAsUser: 1000
+      runAsGroup: 1000
       allowPrivilegeEscalation: false
     volumeMounts:
     - name: data-nfs

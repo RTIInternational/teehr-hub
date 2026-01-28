@@ -62,5 +62,8 @@ RUN ARCH=$(uname -m) && \
         python3.12 -m pip install --no-cache-dir "git+https://github.com/RTIInternational/teehr.git@${TEEHR_VERSION}"; \
     fi
 
+# change spark UID and GID to 1000
+RUN usermod -u 1000 185 && groupmod -g 1000 185
+
 # Switch back to spark user
-USER 185
+USER 1000
