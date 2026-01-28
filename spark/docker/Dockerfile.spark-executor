@@ -65,5 +65,8 @@ RUN ARCH=$(uname -m) && \
 # change spark UID and GID to 1000
 RUN usermod -u 1000 spark && groupmod -g 1000 spark
 
+# Ensure work directory is owned by spark user
+RUN chown -R spark:spark /opt/spark/work-dir /home/spark
+
 # Switch back to spark user
 USER 1000
