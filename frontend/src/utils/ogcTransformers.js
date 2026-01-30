@@ -187,72 +187,74 @@ export const flattenGeoJsonFeatures = (geojson) => {
 };
 
 /**
- * Transform CoverageJSON to the format expected by PlotlyChart
+ * Transform API response to the format expected by PlotlyChart
  * 
- * PlotlyChart expects:
+ * API now returns simple JSON array:
  * [{ 
- *   timeseries: [{ value_time, value }], 
- *   configuration_name, 
- *   variable_name, 
+ *   series_type,
+ *   primary_location_id,
+ *   reference_time,
+ *   configuration_name,
+ *   variable_name,
  *   unit_name,
- *   reference_time 
+ *   member,
+ *   timeseries: [{ value_time, value }]
  * }]
  * 
- * CoverageJSON from TEEHR API has:
- * - parameters[name].description.en = "variable_name - configuration_name"
- * - parameters[name].observedProperty.label.en = variable_name
- * - parameters[name].unit.symbol = unit_name
- * - parameters[name].referenceTime = reference_time (for forecasts)
- * - parameters[name].configurationName = configuration_name
- * - parameters[name].variableName = variable_name
+ * PlotlyChart expects the same format, so this is now a pass-through
+ * with backwards compatibility for old CoverageJSON format.
  * 
- * @param {Object} coverageJson - CoverageJSON response
+ * @param {Array|Object} data - API response (array or old CoverageJSON)
  * @returns {Array} - Array in PlotlyChart-expected format
  */
-export const coverageJsonToPlotlyFormat = (coverageJson) => {
-  if (!coverageJson || coverageJson.type !== 'Coverage') {
-    return [];
+export const coverageJsonToPlotlyFormat = (data) => {
+  // Handle new simple JSON array format (just return as-is)
+  if (Array.isArray(data)) {
+    return data;
   }
+  
+  // Backwards compatibility: Handle old CoverageJSON format if needed
+  if (data && data.type === 'Coverage') {
+    const times = data.domain?.axes?.t?.values || [];
+    const ranges = data.ranges || {};
+    const parameters = data.parameters || {};
+    const result = [];
 
-  const times = coverageJson.domain?.axes?.t?.values || [];
-  const ranges = coverageJson.ranges || {};
-  const parameters = coverageJson.parameters || {};
-  const result = [];
-
-  for (const [paramId, rangeData] of Object.entries(ranges)) {
-    const values = rangeData.values || [];
-    const paramInfo = parameters[paramId] || {};
-    
-    // Build timeseries array
-    const timeseries = times.map((time, idx) => ({
-      value_time: time,
-      value: values[idx],
-    })).filter(d => d.value !== null && d.value !== undefined);
-
-    if (timeseries.length > 0) {
-      // Use explicit fields if available, otherwise parse from description
-      let configName = paramInfo.configurationName;
-      let variableName = paramInfo.variableName || paramInfo.observedProperty?.label?.en || paramId;
+    for (const [paramId, rangeData] of Object.entries(ranges)) {
+      const values = rangeData.values || [];
+      const paramInfo = parameters[paramId] || {};
       
-      if (!configName) {
-        // Fallback: Parse configuration from description (format: "variable - configuration")
-        const description = paramInfo.description?.en || paramId;
-        const parts = description.split(' - ');
-        configName = parts.length > 1 ? parts.slice(1).join(' - ') : description;
+      const timeseries = times.map((time, idx) => ({
+        value_time: time,
+        value: values[idx],
+      })).filter(d => d.value !== null && d.value !== undefined);
+
+      if (timeseries.length > 0) {
+        let configName = paramInfo.configurationName;
+        let variableName = paramInfo.variableName || paramInfo.observedProperty?.label?.en || paramId;
+        
+        if (!configName) {
+          const description = paramInfo.description?.en || paramId;
+          const parts = description.split(' - ');
+          configName = parts.length > 1 ? parts.slice(1).join(' - ') : description;
+        }
+        
+        result.push({
+          timeseries,
+          configuration_name: configName,
+          variable_name: variableName,
+          unit_name: paramInfo.unit?.symbol || paramInfo.unit?.label?.en || '',
+          reference_time: paramInfo.referenceTime || null,
+          series_type: data['x-teehr-series-type'] || 'primary',
+        });
       }
-      
-      result.push({
-        timeseries,
-        configuration_name: configName,
-        variable_name: variableName,
-        unit_name: paramInfo.unit?.symbol || paramInfo.unit?.label?.en || '',
-        reference_time: paramInfo.referenceTime || null,
-        series_type: coverageJson['x-teehr-series-type'] || 'primary',
-      });
     }
+    return result;
   }
-
-  return result;
+  
+  // Invalid format
+  console.warn('Invalid timeseries response format:', data);
+  return [];
 };
 
 export default {

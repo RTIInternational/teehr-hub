@@ -3,45 +3,13 @@ Utility functions for OGC API compliance.
 """
 
 import re
+import json
+import time
 from datetime import UTC, datetime
+import pandas as pd
+import geopandas as gpd
 
-
-def parse_subset_parameter(subset_params: list[str]) -> dict[str, tuple]:
-    """Parse OGC API subset parameters for non-temporal dimensions.
-
-    Supports single-value subset syntax:
-    - subset=location("usgs-01347000")
-    - subset=parameter("streamflow")
-    - subset=configuration("nwm30")
-
-    For temporal parameters, use the standard OGC datetime parameter
-    with ISO 8601 intervals (e.g., datetime=2020-01-01/2020-12-31).
-
-    Returns:
-        dict: {dimension_name: (value, None)}
-    """
-    subsets = {}
-
-    def strip_quotes(s):
-        """Strip surrounding quotes from a string."""
-        s = s.strip()
-        if (s.startswith('"') and s.endswith('"')) or (
-            s.startswith("'") and s.endswith("'")
-        ):
-            return s[1:-1]
-        return s
-
-    for subset in subset_params:
-        # Parse: dimensionName(value)
-        match = re.match(r"(\w+)\((.*)\)", subset)
-        if not match:
-            continue
-
-        dimension, values = match.groups()
-        value = strip_quotes(values)
-        subsets[dimension] = (value, None)
-
-    return subsets
+from ..config import config
 
 
 def parse_datetime_parameter(datetime_param: str | None) -> tuple:
@@ -107,7 +75,7 @@ def parse_coords_parameter(coords: str | None) -> dict | None:
 
 
 def create_ogc_geojson_response(
-    geojson: dict,
+    df: pd.DataFrame,
     request_url: str,
     number_matched: int | None = None,
     collection_id: str | None = None,
@@ -117,13 +85,45 @@ def create_ogc_geojson_response(
     """Add OGC-compliant metadata and links to a GeoJSON response.
 
     Args:
-        geojson: Base GeoJSON FeatureCollection
+        df: Input DataFrame with geometry column
         request_url: URL of the current request
         number_matched: Total number of features matching query
         collection_id: Collection identifier for link generation
         limit: Current page size for pagination links
         offset: Current offset for pagination links
     """
+    # Process geometry in chunks for large datasets
+    format_start = time.time()
+    
+    if df.empty:
+        geojson = {"type": "FeatureCollection", "features": []}
+    else:
+        chunk_size = config.CHUNK_SIZE
+        if len(df) > chunk_size:
+            print(f"Large dataset detected, processing in chunks of {chunk_size}")  # noqa: E501
+            geometry_series = []
+            for i in range(0, len(df), chunk_size):
+                chunk = df["geometry"].iloc[i: i + chunk_size]
+                chunk_geom = gpd.GeoSeries.from_wkb(chunk.apply(bytes))
+                geometry_series.append(chunk_geom)
+            df["geometry"] = pd.concat(geometry_series, ignore_index=True)
+        else:
+            df["geometry"] = gpd.GeoSeries.from_wkb(
+                df["geometry"].apply(bytes)
+            )
+
+        gdf = gpd.GeoDataFrame(df, crs="EPSG:4326", geometry="geometry")
+        geojson = json.loads(gdf.to_json())
+
+    # Set feature id from properties if available
+    for feature in geojson.get("features", []):
+        if "id" in feature.get("properties", {}):
+            feature["id"] = feature["properties"].get("id")
+        if "location_id" in feature.get("properties", {}):
+            feature["id"] = feature["properties"].get("location_id")
+        if "primary_location_id" in feature.get("properties", {}):
+            feature["id"] = feature["properties"].get("primary_location_id")
+
     # Add timestamp
     geojson["timeStamp"] = datetime.now(UTC).isoformat()
 
@@ -163,6 +163,8 @@ def create_ogc_geojson_response(
         )
 
     # Add pagination links if applicable
+    # Pagination happens here because the attributes may have been 
+    # pivoted from rows to columns.
     if limit is not None and offset is not None:
         # Next link (if we returned a full page)
         if number_returned == limit:
@@ -198,145 +200,7 @@ def create_ogc_geojson_response(
 
     geojson["links"] = links
 
+    format_time = time.time() - format_start
+    print(f"Formatting to GeoJSON time: {format_time:.3f} seconds")
+    
     return geojson
-
-
-def create_coveragejson_timeseries(
-    timeseries_data: list, location_id: str, location_coords: tuple | None = None
-) -> dict:
-    """Convert timeseries data to CoverageJSON format (OGC EDR standard).
-
-    Args:
-        timeseries_data: List of timeseries objects from database
-        location_id: Location identifier
-        location_coords: Optional (lon, lat) tuple for the location
-
-    Returns:
-        CoverageJSON Coverage object
-    """
-    if not timeseries_data:
-        return {
-            "type": "Coverage",
-            "domain": {"type": "Domain", "axes": {"t": {"values": []}}},
-            "parameters": {},
-            "ranges": {},
-        }
-
-    # Group by parameter/variable AND reference_time (for forecasts) AND member
-    # This preserves separate traces for each forecast issue time and ensemble member
-    parameters_data = {}
-    for series in timeseries_data:
-        variable_name = series.get("variable_name", "unknown")
-        reference_time = series.get("reference_time")
-        configuration = series.get("configuration_name", "")
-        member = series.get("member")
-        
-        # Ensure reference_time is a string (handle Timestamp objects)
-        if reference_time is not None and reference_time != "null":
-            if hasattr(reference_time, 'strftime'):
-                reference_time = reference_time.strftime("%Y-%m-%d %H:%M:%S")
-            else:
-                reference_time = str(reference_time)
-        elif reference_time == "null":
-            reference_time = None
-            
-        # Ensure member is a string
-        if member is not None and member != "null":
-            member = str(member)
-        elif member == "null":
-            member = None
-        
-        # Create unique key for each series (variable + reference_time + member)
-        key_parts = [variable_name]
-        label_parts = [variable_name]
-        
-        if reference_time is not None:
-            key_parts.append(str(reference_time))
-            label_parts.append(f"ref: {reference_time}")
-            
-        if member is not None:
-            key_parts.append(str(member))
-            label_parts.append(f"member: {member}")
-            
-        param_key = "_".join(key_parts)
-        param_label = variable_name if len(label_parts) == 1 else f"{variable_name} ({', '.join(label_parts[1:])})"
-            
-        if param_key not in parameters_data:
-            parameters_data[param_key] = {
-                "unit": series.get("unit_name", ""),
-                "configuration": configuration,
-                "variable_name": variable_name,
-                "reference_time": reference_time,
-                "member": member,
-                "label": param_label,
-                "times": [],
-                "values": [],
-            }
-
-        # Add timeseries points
-        for point in series.get("timeseries", []):
-            parameters_data[param_key]["times"].append(point["value_time"])
-            parameters_data[param_key]["values"].append(point["value"])
-
-    # Build CoverageJSON structure
-    # Get all unique times across all parameters
-    all_times = sorted(
-        {
-            time
-            for param_data in parameters_data.values()
-            for time in param_data["times"]
-        }
-    )
-
-    # Build domain
-    domain = {"type": "Domain", "axes": {"t": {"values": all_times}}}
-
-    # Add spatial coordinates if available
-    if location_coords:
-        domain["axes"]["x"] = {"values": [location_coords[0]]}
-        domain["axes"]["y"] = {"values": [location_coords[1]]}
-
-    # Build parameters
-    parameters = {}
-    ranges = {}
-
-    for param_key, param_data in parameters_data.items():
-        parameters[param_key] = {
-            "type": "Parameter",
-            "description": {"en": f"{param_data['label']} - {param_data['configuration']}"},
-            "unit": {"label": {"en": param_data["unit"]}, "symbol": param_data["unit"]},
-            "observedProperty": {
-                "id": param_data["variable_name"],
-                "label": {"en": param_data["variable_name"]}
-            },
-            # Include all grouping fields for frontend consumption
-            "primaryLocationId": location_id,
-            "referenceTime": param_data.get("reference_time"),
-            "configurationName": param_data.get("configuration"),
-            "variableName": param_data.get("variable_name"),
-            "unitName": param_data.get("unit"),
-            "member": param_data.get("member"),
-        }
-
-        # Build ranges - align values with domain times
-        time_value_map = dict(
-            zip(param_data["times"], param_data["values"], strict=False)
-        )
-        aligned_values = [time_value_map.get(t, None) for t in all_times]
-
-        ranges[param_key] = {
-            "type": "NdArray",
-            "dataType": "float",
-            "axisNames": ["t"],
-            "shape": [len(all_times)],
-            "values": aligned_values,
-        }
-
-    return {
-        "type": "Coverage",
-        "domain": domain,
-        "parameters": parameters,
-        "ranges": ranges,
-        # Include location at Coverage level as well
-        "primaryLocationId": location_id,
-    }

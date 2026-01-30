@@ -1,7 +1,7 @@
 import { useCallback } from 'react';
 import { useRetrospectiveDashboard, ActionTypes } from '../context/RetrospectiveDashboardContext.jsx';
 import { apiService } from '../services/api';
-import { extractTableProperties, coverageJsonToPlotlyFormat } from '../utils/ogcTransformers';
+import { extractTableProperties } from '../utils/ogcTransformers';
 
 // Custom hooks for retrospective dashboard data fetching
 export const useRetrospectiveDataFetching = () => {
@@ -102,32 +102,27 @@ export const useRetrospectiveDataFetching = () => {
           throw new Error('Missing required parameters: primary_location_id, configuration, and variable are required');
         }
   
-        // Load primary data (USGS observations) - does NOT need configuration
-        // Primary timeseries = observed USGS data
+        // Load primary data (USGS observations)
         const primaryFilters = {
           variable,
           start_date,
           end_date
         };
-        // API returns CoverageJSON - transform to PlotlyChart format
-        const primaryCoverage = await apiService.getPrimaryTimeseries(primary_location_id, primaryFilters);
-        const primaryData = coverageJsonToPlotlyFormat(primaryCoverage);
+        const primaryData = await apiService.getPrimaryTimeseries(primary_location_id, primaryFilters);
         dispatch({ type: ActionTypes.SET_PRIMARY_TIMESERIES, payload: primaryData });
   
-        // Load secondary data (NWM retrospective simulation) - NEEDS configuration
-        // Secondary timeseries = simulated data (no reference_time for retrospective)
+        // Load secondary data (NWM retrospective simulation)
         const secondaryFilters = {
           configuration,
           variable,
           start_date,
           end_date
         };
-        // API returns CoverageJSON - transform to PlotlyChart format
-        const secondaryCoverage = await apiService.getSecondaryTimeseries(primary_location_id, secondaryFilters);
-        const secondaryData = coverageJsonToPlotlyFormat(secondaryCoverage);
+        const secondaryData = await apiService.getSecondaryTimeseries(primary_location_id, secondaryFilters);
         dispatch({ type: ActionTypes.SET_SECONDARY_TIMESERIES, payload: secondaryData });
         
       } catch (error) {
+        console.error('Error loading timeseries:', error);
         dispatch({ type: ActionTypes.SET_ERROR, payload: `Failed to load timeseries: ${error.message}` });
       }
     }, [dispatch]);

@@ -101,10 +101,10 @@ export const apiService = {
     return apiCall(endpoint);
   },
   
-  // Get primary timeseries (OGC API - Coverages)
+  // Get primary timeseries (simple JSON array format)
   getPrimaryTimeseries: (primaryLocationId, filters = {}) => {
     const params = new URLSearchParams();
-    params.append('location', primaryLocationId);
+    params.append('location_id', primaryLocationId);
     
     // Use ISO 8601 datetime interval
     const datetime = formatDatetimeInterval(filters.start_date, filters.end_date);
@@ -113,13 +113,13 @@ export const apiService = {
     if (filters.variable) params.append('parameter', filters.variable);
     if (filters.configuration) params.append('configuration', filters.configuration);
     
-    return apiCall(`/collections/primary_timeseries/coverage?${params.toString()}`);
+    return apiCall(`/collections/primary_timeseries/items?${params.toString()}`);
   },
   
-  // Get secondary timeseries (OGC API - Coverages)
+  // Get secondary timeseries (simple JSON array format)
   getSecondaryTimeseries: (primaryLocationId, filters = {}) => {
     const params = new URLSearchParams();
-    params.append('location', primaryLocationId);
+    params.append('location_id', primaryLocationId);
     
     // Use ISO 8601 datetime interval for value_time
     const datetime = formatDatetimeInterval(filters.start_date, filters.end_date);
@@ -135,7 +135,7 @@ export const apiService = {
     if (filters.configuration) params.append('configuration', filters.configuration);
     if (filters.variable) params.append('parameter', filters.variable);
     
-    return apiCall(`/collections/secondary_timeseries/coverage?${params.toString()}`);
+    return apiCall(`/collections/secondary_timeseries/items?${params.toString()}`);
   },
 
   // Get available collections (OGC API - Common)

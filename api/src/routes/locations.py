@@ -113,20 +113,6 @@ async def get_locations_items(
         query_time = time.time() - query_start
         print(f"Query execution time: {query_time:.3f} seconds")
 
-        if df.empty:
-            empty_response = create_ogc_geojson_response(
-                {"type": "FeatureCollection", "features": []},
-                str(request.url),
-                collection_id="locations",
-            )
-            return JSONResponse(
-                content=empty_response,
-                headers={
-                    "Content-Type": "application/geo+json",
-                    "Content-Crs": "<http://www.opengis.net/def/crs/OGC/1.3/CRS84>",  # noqa: E501
-                },
-            )
-
         # Pivot attributes if requested, otherwise df is already paginated
         if include_attributes:
             # First, separate location columns from attribute columns
@@ -156,31 +142,8 @@ async def get_locations_items(
 
         print(f"Processing {len(df)} location records")
 
-        # Process geometry in chunks for large datasets
-        chunk_size = config.CHUNK_SIZE
-        if len(df) > chunk_size:
-            print(f"Large dataset detected, processing in chunks of {chunk_size}")  # noqa: E501
-            geometry_series = []
-            for i in range(0, len(df), chunk_size):
-                chunk = df["geometry"].iloc[i: i + chunk_size]
-                chunk_geom = gpd.GeoSeries.from_wkb(chunk.apply(bytes))
-                geometry_series.append(chunk_geom)
-            df["geometry"] = pd.concat(geometry_series, ignore_index=True)
-        else:
-            df["geometry"] = gpd.GeoSeries.from_wkb(
-                df["geometry"].apply(bytes)
-            )
-
-        gdf = gpd.GeoDataFrame(df, crs="EPSG:4326", geometry="geometry")
-        geojson = json.loads(gdf.to_json())
-
-        # Move id from properties to feature id
-        for feature in geojson.get("features", []):
-            if "id" in feature.get("properties", {}):
-                feature["id"] = feature["properties"].pop("id")
-
         geojson = create_ogc_geojson_response(
-            geojson,
+            df,
             str(request.url),
             collection_id="locations",
             limit=limit,

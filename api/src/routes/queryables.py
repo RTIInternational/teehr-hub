@@ -37,7 +37,7 @@ COLLECTION_CONFIGS = {
     },
     "primary_timeseries": {
         "table": "primary_timeseries",
-        "type": "coverage",
+        "type": "feature",
         "description": "Observed timeseries data at monitoring locations",
         "static_properties": {
             "location_id": {
@@ -58,7 +58,7 @@ COLLECTION_CONFIGS = {
     },
     "secondary_timeseries": {
         "table": "secondary_timeseries",
-        "type": "coverage",
+        "type": "feature",
         "description": "Forecast/simulated timeseries data",
         "static_properties": {
             "location_id": {
@@ -81,6 +81,112 @@ COLLECTION_CONFIGS = {
             "configuration_name": {"title": "Configuration", "type": "string"},
             "member": {"title": "Ensemble Member", "type": "string"},
             "unit_name": {"title": "Unit", "type": "string"},
+        },
+    },
+    "location_crosswalks": {
+        "table": "location_crosswalks",
+        "type": "feature",
+        "description": "Crosswalk mapping between primary and secondary location identifiers",
+        "static_properties": {
+            "primary_location_id": {
+                "title": "Primary Location ID",
+                "type": "string",
+            },
+            "secondary_location_id": {
+                "title": "Secondary Location ID",
+                "type": "string",
+            },
+        },
+    },
+    "configurations": {
+        "table": "configurations",
+        "type": "feature",
+        "description": "Configuration definitions for data sources",
+        "static_properties": {
+            "name": {
+                "title": "Configuration Name",
+                "type": "string",
+                "x-ogc-role": "id",
+            },
+            "type": {
+                "title": "Type",
+                "type": "string",
+            },
+            "description": {
+                "title": "Description",
+                "type": "string",
+            },
+        },
+    },
+    "units": {
+        "table": "units",
+        "type": "feature",
+        "description": "Unit definitions for measurements",
+        "static_properties": {
+            "name": {
+                "title": "Unit Name",
+                "type": "string",
+                "x-ogc-role": "id",
+            },
+            "long_name": {
+                "title": "Long Name",
+                "type": "string",
+            },
+        },
+    },
+    "variables": {
+        "table": "variables",
+        "type": "feature",
+        "description": "Variable definitions for measured quantities",
+        "static_properties": {
+            "name": {
+                "title": "Variable Name",
+                "type": "string",
+                "x-ogc-role": "id",
+            },
+            "long_name": {
+                "title": "Long Name",
+                "type": "string",
+            },
+        },
+    },
+    "attributes": {
+        "table": "attributes",
+        "type": "feature",
+        "description": "Attribute definitions for location attribute types",
+        "static_properties": {
+            "name": {
+                "title": "Attribute Name",
+                "type": "string",
+                "x-ogc-role": "id",
+            },
+            "description": {
+                "title": "Description",
+                "type": "string",
+            },
+            "type": {
+                "title": "Type",
+                "type": "string",
+            },
+        },
+    },
+    "location_attributes": {
+        "table": "location_attributes",
+        "type": "feature",
+        "description": "Attribute values associated with locations",
+        "static_properties": {
+            "location_id": {
+                "title": "Location ID",
+                "type": "string",
+            },
+            "attribute_name": {
+                "title": "Attribute Name",
+                "type": "string",
+            },
+            "value": {
+                "title": "Value",
+                "type": "string",
+            },
         },
     },
 }
@@ -122,10 +228,11 @@ def get_metrics_table_queryables(table_name: str) -> dict:
         properties = {}
 
         # Add geometry (all metrics tables have it)
-        properties["geometry"] = {
-            "$ref": "https://geojson.org/schema/Point.json",
-            "x-ogc-role": "primary-geometry",
-        }
+        if "geometry" in group_by:
+            properties["geometry"] = {
+                "$ref": "https://geojson.org/schema/Point.json",
+                "x-ogc-role": "primary-geometry",
+            }
 
         # Add group_by fields
         for field in group_by:

@@ -195,7 +195,7 @@ async def get_collections():
                     type="application/json",
                 ),
                 Link(
-                    href="/collections/primary_timeseries/coverage",
+                    href="/collections/primary_timeseries/items",
                     rel="coverage",
                     type="application/prs.coverage+json",
                 ),
@@ -221,7 +221,7 @@ async def get_collections():
                     type="application/json",
                 ),
                 Link(
-                    href="/collections/secondary_timeseries/coverage",
+                    href="/collections/secondary_timeseries/items",
                     rel="coverage",
                     type="application/prs.coverage+json",
                 ),

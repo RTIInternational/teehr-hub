@@ -1,7 +1,7 @@
 import { useCallback } from 'react';
 import { useForecastDashboard, ActionTypes } from '../context/ForecastDashboardContext.jsx';
 import { apiService } from '../services/api';
-import { extractTableProperties, coverageJsonToPlotlyFormat } from '../utils/ogcTransformers';
+import { extractTableProperties } from '../utils/ogcTransformers';
 
 // Custom hooks for forecast dashboard data fetching
 export const useForecastDataFetching = () => {
@@ -72,7 +72,7 @@ export const useForecastDataFetching = () => {
     }
   }, [dispatch]);
   
-  // Load timeseries data (returns CoverageJSON)
+  // Load timeseries data
   const loadTimeseries = useCallback(async (filters = {}) => {
     try {
       // Clear existing timeseries data first
@@ -85,19 +85,16 @@ export const useForecastDataFetching = () => {
         throw new Error('Missing required parameters: primary_location_id, configuration, and variable are required');
       }
 
-      // Load primary data (USGS observations) - does NOT need configuration
-      // Primary timeseries = observed USGS data
+      // Load primary data (USGS observations)
       const primaryFilters = {
         variable,
         start_date,
         end_date
       };
-      const primaryCoverage = await apiService.getPrimaryTimeseries(primary_location_id, primaryFilters);
-      const primaryData = coverageJsonToPlotlyFormat(primaryCoverage);
+      const primaryData = await apiService.getPrimaryTimeseries(primary_location_id, primaryFilters);
       dispatch({ type: ActionTypes.SET_PRIMARY_TIMESERIES, payload: primaryData });
 
-      // Load secondary data (NWM forecast) - NEEDS configuration and reference_time
-      // Secondary timeseries = forecast data with reference_time for issue time
+      // Load secondary data (NWM forecast)
       const secondaryFilters = {
         configuration,
         variable,
@@ -106,8 +103,7 @@ export const useForecastDataFetching = () => {
         reference_start_date,
         reference_end_date
       };
-      const secondaryCoverage = await apiService.getSecondaryTimeseries(primary_location_id, secondaryFilters);
-      const secondaryData = coverageJsonToPlotlyFormat(secondaryCoverage);
+      const secondaryData = await apiService.getSecondaryTimeseries(primary_location_id, secondaryFilters);
       dispatch({ type: ActionTypes.SET_SECONDARY_TIMESERIES, payload: secondaryData });
       
     } catch (error) {
