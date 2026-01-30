@@ -213,44 +213,7 @@ export const coverageJsonToPlotlyFormat = (data) => {
     return data;
   }
   
-  // Backwards compatibility: Handle old CoverageJSON format if needed
-  if (data && data.type === 'Coverage') {
-    const times = data.domain?.axes?.t?.values || [];
-    const ranges = data.ranges || {};
-    const parameters = data.parameters || {};
-    const result = [];
 
-    for (const [paramId, rangeData] of Object.entries(ranges)) {
-      const values = rangeData.values || [];
-      const paramInfo = parameters[paramId] || {};
-      
-      const timeseries = times.map((time, idx) => ({
-        value_time: time,
-        value: values[idx],
-      })).filter(d => d.value !== null && d.value !== undefined);
-
-      if (timeseries.length > 0) {
-        let configName = paramInfo.configurationName;
-        let variableName = paramInfo.variableName || paramInfo.observedProperty?.label?.en || paramId;
-        
-        if (!configName) {
-          const description = paramInfo.description?.en || paramId;
-          const parts = description.split(' - ');
-          configName = parts.length > 1 ? parts.slice(1).join(' - ') : description;
-        }
-        
-        result.push({
-          timeseries,
-          configuration_name: configName,
-          variable_name: variableName,
-          unit_name: paramInfo.unit?.symbol || paramInfo.unit?.label?.en || '',
-          reference_time: paramInfo.referenceTime || null,
-          series_type: data['x-teehr-series-type'] || 'primary',
-        });
-      }
-    }
-    return result;
-  }
   
   // Invalid format
   console.warn('Invalid timeseries response format:', data);
