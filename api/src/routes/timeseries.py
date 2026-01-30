@@ -1,5 +1,5 @@
 """
-Timeseries endpoints (OGC API - Coverages).
+Timeseries endpoints (OGC API - GeoJSON and TEEHR TS).
 """
 
 import time
@@ -180,7 +180,7 @@ async def get_primary_timeseries_items(
     except Exception as e:
         print(f"Primary timeseries error: {str(e)}")
         raise HTTPException(
-            status_code=500, detail=f"Failed to load coverage: {str(e)}"
+            status_code=500, detail=f"Failed to load primary timeseries: {str(e)}"
         ) from e
 
 
@@ -388,5 +388,5 @@ async def get_secondary_timeseries_items(
     except Exception as e:
         print(f"Secondary timeseries error: {str(e)}")
         raise HTTPException(
-            status_code=500, detail=f"Failed to load coverage: {str(e)}"
+            status_code=500, detail=f"Failed to load secondary timeseries: {str(e)}"
         ) from e
