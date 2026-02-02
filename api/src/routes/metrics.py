@@ -26,13 +26,12 @@ async def get_collection_items(
     location_id: str | None = Query(
         None, alias="location_id", description="Filter by location ID"
     ),
-    configuration: str | None = Query(
-        None, description="Filter by configuration"
+    configuration_name: str | None = Query(
+        None, description="Filter by configuration name"
     ),
-    parameter: str | None = Query(
+    variable_name: str | None = Query(
         None,
-        alias="parameter",
-        description="Filter by parameter/variable name"
+        description="Filter by variable name"
     ),
     bbox: str | None = Query(
         None, description="Bounding box filter (minLon,minLat,maxLon,maxLat)"
@@ -62,13 +61,13 @@ async def get_collection_items(
         else:
             where_conditions = ["primary_location_id LIKE 'usgs-%'"]
 
-        if configuration:
-            sanitized_configuration = sanitize_string(configuration)
+        if configuration_name:
+            sanitized_configuration = sanitize_string(configuration_name)
             where_conditions.append(
                 f"configuration_name = '{sanitized_configuration}'"
             )
-        if parameter:
-            sanitized_variable = sanitize_string(parameter)
+        if variable_name:
+            sanitized_variable = sanitize_string(variable_name)
             where_conditions.append(f"variable_name = '{sanitized_variable}'")
 
         where_clause = " AND ".join(where_conditions)

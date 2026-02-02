@@ -87,8 +87,8 @@ export const apiService = {
     const params = new URLSearchParams();
     const table = filters.table || 'sim_metrics_by_location';
     
-    if (filters.configuration) params.append('configuration', filters.configuration);
-    if (filters.variable) params.append('parameter', filters.variable);
+    if (filters.configuration) params.append('configuration_name', filters.configuration);
+    if (filters.variable) params.append('variable_name', filters.variable);
     if (filters.primary_location_id) params.append('location_id', filters.primary_location_id);
     if (filters.limit) params.append('limit', filters.limit);
     if (filters.offset) params.append('offset', filters.offset);
@@ -104,14 +104,14 @@ export const apiService = {
   // Get primary timeseries (simple JSON array format)
   getPrimaryTimeseries: (primaryLocationId, filters = {}) => {
     const params = new URLSearchParams();
-    params.append('location_id', primaryLocationId);
+    params.append('primary_location_id', primaryLocationId);
     
     // Use ISO 8601 datetime interval
     const datetime = formatDatetimeInterval(filters.start_date, filters.end_date);
     if (datetime) params.append('datetime', datetime);
     
-    if (filters.variable) params.append('parameter', filters.variable);
-    if (filters.configuration) params.append('configuration', filters.configuration);
+    if (filters.variable) params.append('variable_name', filters.variable);
+    if (filters.configuration) params.append('configuration_name', filters.configuration);
     
     return apiCall(`/collections/primary_timeseries/items?${params.toString()}`);
   },
@@ -119,7 +119,7 @@ export const apiService = {
   // Get secondary timeseries (simple JSON array format)
   getSecondaryTimeseries: (primaryLocationId, filters = {}) => {
     const params = new URLSearchParams();
-    params.append('location_id', primaryLocationId);
+    params.append('primary_location_id', primaryLocationId);
     
     // Use ISO 8601 datetime interval for value_time
     const datetime = formatDatetimeInterval(filters.start_date, filters.end_date);
@@ -132,8 +132,8 @@ export const apiService = {
     );
     if (refDatetime) params.append('reference_time', refDatetime);
     
-    if (filters.configuration) params.append('configuration', filters.configuration);
-    if (filters.variable) params.append('parameter', filters.variable);
+    if (filters.configuration) params.append('configuration_name', filters.configuration);
+    if (filters.variable) params.append('variable_name', filters.variable);
     
     return apiCall(`/collections/secondary_timeseries/items?${params.toString()}`);
   },

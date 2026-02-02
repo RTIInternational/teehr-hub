@@ -69,7 +69,7 @@ def execute_query(
     """
     logger.info(
         f"Executing query (attempt {retry_count + 1}/{MAX_RETRIES + 1}): "
-        f"{query[:200]}..."
+        f"{query}"
     )
 
     # Only add LIMIT clause if max_rows is explicitly specified

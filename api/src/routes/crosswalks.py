@@ -15,11 +15,11 @@ router = APIRouter()
 @router.get("/collections/location_crosswalks/items")
 async def get_crosswalk_items(
     request: Request,
-    primary_location_id: str | None = Query(
-        None, description="Filter by primary location ID"
+    primary_location_id: list[str] | None = Query(
+        None, description="Filter by primary location ID (can be specified multiple times)"
     ),
-    secondary_location_id: str | None = Query(
-        None, description="Filter by secondary location ID"
+    secondary_location_id: list[str] | None = Query(
+        None, description="Filter by secondary location ID (can be specified multiple times)"
     ),
     limit: int | None = Query(
         100, ge=1, le=10000, description="Maximum number of items to return"
@@ -37,12 +37,12 @@ async def get_crosswalk_items(
         where_conditions = []
 
         if primary_location_id:
-            safe_primary = sanitize_string(primary_location_id)
-            where_conditions.append(f"primary_location_id = '{safe_primary}'")
+            safe_primary_ids = [f"'{sanitize_string(loc_id)}'" for loc_id in primary_location_id]
+            where_conditions.append(f"primary_location_id IN ({', '.join(safe_primary_ids)})")
 
         if secondary_location_id:
-            safe_secondary = sanitize_string(secondary_location_id)
-            where_conditions.append(f"secondary_location_id = '{safe_secondary}'")
+            safe_secondary_ids = [f"'{sanitize_string(loc_id)}'" for loc_id in secondary_location_id]
+            where_conditions.append(f"secondary_location_id IN ({', '.join(safe_secondary_ids)})")
 
         where_clause = " AND ".join(where_conditions) if where_conditions else "1=1"
 

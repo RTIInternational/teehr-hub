@@ -19,16 +19,16 @@ router = APIRouter()
 @router.get("/collections/primary_timeseries/items")
 async def get_primary_timeseries_items(
     request: Request,
-    location_id: str = Query(
-        ..., description="Location ID"
+    primary_location_id: list[str] = Query(
+        ..., description="Primary location ID(s) - can be specified multiple times"
     ),
-    datetime_param: str | None = Query(
+    datetime_range: str | None = Query(
         None,
         alias="datetime",
         description="ISO 8601 datetime interval (e.g., 2020-01-01/2020-12-31)",
     ),
-    parameter: str | None = Query(None, description="Variable name filter"),
-    configuration: str | None = Query(None, description="Configuration name filter"),
+    variable_name: str | None = Query(None, description="Variable name filter"),
+    configuration_name: str | None = Query(None, description="Configuration name filter"),
     f: str | None = Query("json", description="Output format: json or geojson"),
 ):
     """Get primary timeseries (observations) for a location.
@@ -36,16 +36,16 @@ async def get_primary_timeseries_items(
     Returns array of timeseries objects with streamflow data.
     """
     try:
-        print(f"Primary timeseries called with: location_id={location_id}, datetime={datetime_param}, parameter={parameter}, configuration={configuration}")
-        safe_location_id = sanitize_string(location_id)
-        where_conditions = [f"location_id = '{safe_location_id}'"]
+        print(f"Primary timeseries called with: primary_location_id={primary_location_id}, datetime={datetime_range}, variable_name={variable_name}, configuration_name={configuration_name}")
+        safe_location_ids = [f"'{sanitize_string(loc)}'" for loc in primary_location_id]
+        where_conditions = [f"location_id IN ({', '.join(safe_location_ids)})"]
 
         # Parse datetime as ISO 8601 interval (standard OGC format)
-        if datetime_param:
-            if "/" in datetime_param:
-                start_str, end_str = datetime_param.split("/", 1)
+        if datetime_range:
+            if "/" in datetime_range:
+                start_str, end_str = datetime_range.split("/", 1)
             else:
-                start_str = end_str = datetime_param
+                start_str = end_str = datetime_range
 
             if start_str and start_str != "..":
                 start_date = datetime.fromisoformat(start_str.replace("Z", "+00:00"))
@@ -58,13 +58,13 @@ async def get_primary_timeseries_items(
                     f"value_time <= TIMESTAMP '{end_date.strftime('%Y-%m-%d %H:%M:%S')}'"  # noqa: E501
                 )
         # Filter by variable/parameter
-        if parameter:
-            safe_parameter = sanitize_string(parameter)
-            where_conditions.append(f"variable_name = '{safe_parameter}'")
+        if variable_name:
+            safe_variable = sanitize_string(variable_name)
+            where_conditions.append(f"variable_name = '{safe_variable}'")
 
         # Filter by configuration
-        if configuration:
-            safe_configuration = sanitize_string(configuration)
+        if configuration_name:
+            safe_configuration = sanitize_string(configuration_name)
             where_conditions.append(f"configuration_name = '{safe_configuration}'")
         where_clause = " AND ".join(where_conditions)
 
@@ -187,8 +187,9 @@ async def get_primary_timeseries_items(
 @router.get("/collections/secondary_timeseries/items")
 async def get_secondary_timeseries_items(
     request: Request,
-    location_id: str = Query(..., description="Location ID"),
-    datetime_param: str | None = Query(
+    primary_location_id: list[str] | None = Query(None, description="Primary location ID(s) - can be specified multiple times"),
+    secondary_location_id: list[str] | None = Query(None, description="Secondary location ID(s) - can be specified multiple times"),
+    datetime_range: str | None = Query(
         None,
         alias="datetime",
         description="ISO 8601 datetime interval (e.g., 2020-01-01/2020-12-31)",
@@ -197,8 +198,8 @@ async def get_secondary_timeseries_items(
         None,
         description="ISO 8601 reference time interval (e.g., 2020-01-01/2020-12-31)",  # noqa: E501
     ),
-    parameter: str | None = Query(None, description="Variable name filter"),
-    configuration: str | None = Query(None, description="Configuration name filter"),
+    variable_name: str | None = Query(None, description="Variable name filter"),
+    configuration_name: str | None = Query(None, description="Configuration name filter"),
     f: str | None = Query("json", description="Output format: json or geojson"),
 ):
     """Get secondary timeseries (model outputs/forecasts) for a location.
@@ -206,23 +207,41 @@ async def get_secondary_timeseries_items(
     Supports filtering by:
     - datetime: ISO 8601 interval for value_time (e.g., 2020-01-01/2020-12-31)
     - reference_time: ISO 8601 interval for reference_time (e.g., 2025-11-01/..)
-    - parameter: Variable name (e.g., streamflow_hourly_inst)
-    - configuration: Configuration name (e.g., nwm30_medium_range)
+    - variable_name: Variable name (e.g., streamflow_hourly_inst)
+    - configuration_name: Configuration name (e.g., nwm30_medium_range)
 
     Returns array of timeseries objects, one per unique combination of
     reference_time, configuration, variable, and member.
     """
     try:
-        print(f"Secondary timeseries called with: location_id={location_id}, datetime={datetime_param}, reference_time={reference_time}, parameter={parameter}, configuration={configuration}")
-        safe_location_id = sanitize_string(location_id)
-        where_conditions = [f"lc.primary_location_id = '{safe_location_id}'"]
+        print(f"Secondary timeseries called with: primary_location_id={primary_location_id}, secondary_location_id={secondary_location_id}, datetime={datetime_range}, reference_time={reference_time}, variable_name={variable_name}, configuration_name={configuration_name}")
+        
+        where_conditions = []
+        
+        # Handle location filtering - either primary or secondary
+        if primary_location_id and secondary_location_id:
+            raise HTTPException(
+                status_code=400,
+                detail="Cannot filter by both primary_location_id and secondary_location_id. Use one or the other."
+            )
+        elif primary_location_id:
+            safe_location_ids = [f"'{sanitize_string(loc)}'" for loc in primary_location_id]
+            where_conditions.append(f"lc.primary_location_id IN ({', '.join(safe_location_ids)})")
+        elif secondary_location_id:
+            safe_location_ids = [f"'{sanitize_string(loc)}'" for loc in secondary_location_id]
+            where_conditions.append(f"lc.secondary_location_id IN ({', '.join(safe_location_ids)})")
+        else:
+            raise HTTPException(
+                status_code=400,
+                detail="Must provide either primary_location_id or secondary_location_id"
+            )
 
         # Parse datetime as ISO 8601 interval (standard OGC format)
-        if datetime_param:
-            if "/" in datetime_param:
-                start_str, end_str = datetime_param.split("/", 1)
+        if datetime_range:
+            if "/" in datetime_range:
+                start_str, end_str = datetime_range.split("/", 1)
             else:
-                start_str = end_str = datetime_param
+                start_str = end_str = datetime_range
 
             if start_str and start_str != "..":
                 start_date = datetime.fromisoformat(start_str.replace("Z", "+00:00"))
@@ -253,13 +272,13 @@ async def get_secondary_timeseries_items(
                     f"st.reference_time <= TIMESTAMP '{ref_end.strftime('%Y-%m-%d %H:%M:%S')}'"  # noqa: E501
                 )
         # Filter by variable/parameter
-        if parameter:
-            safe_parameter = sanitize_string(parameter)
-            where_conditions.append(f"st.variable_name = '{safe_parameter}'")
+        if variable_name:
+            safe_variable = sanitize_string(variable_name)
+            where_conditions.append(f"st.variable_name = '{safe_variable}'")
 
         # Filter by configuration
-        if configuration:
-            safe_configuration = sanitize_string(configuration)
+        if configuration_name:
+            safe_configuration = sanitize_string(configuration_name)
             where_conditions.append(f"st.configuration_name = '{safe_configuration}'")
         where_clause = " AND ".join(where_conditions)
 
@@ -269,7 +288,7 @@ async def get_secondary_timeseries_items(
             SELECT
                 st.value_time, st.value, st.configuration_name, st.variable_name,
                 st.unit_name, st.member, st.reference_time,
-                lc.primary_location_id,
+                lc.primary_location_id, lc.secondary_location_id,
                 l.geometry
             FROM {trino_catalog}.{trino_schema}.secondary_timeseries st
             JOIN {trino_catalog}.{trino_schema}.location_crosswalks lc
@@ -284,7 +303,7 @@ async def get_secondary_timeseries_items(
             SELECT
                 st.value_time, st.value, st.configuration_name, st.variable_name,
                 st.unit_name, st.member, st.reference_time,
-                lc.primary_location_id, 'secondary' as series_type
+                lc.primary_location_id, 'secondary' as series_type, lc.secondary_location_id
             FROM {trino_catalog}.{trino_schema}.secondary_timeseries st
             JOIN {trino_catalog}.{trino_schema}.location_crosswalks lc
             ON st.location_id = lc.secondary_location_id
@@ -341,6 +360,7 @@ async def get_secondary_timeseries_items(
             [
                 "series_type",
                 "primary_location_id",
+                "secondary_location_id",
                 "reference_time",
                 "configuration_name",
                 "variable_name",
@@ -355,6 +375,7 @@ async def get_secondary_timeseries_items(
         for (
             series_type,
             primary_location_id,
+            secondary_location_id,
             reference_time,
             configuration_name,
             variable_name,
@@ -369,7 +390,7 @@ async def get_secondary_timeseries_items(
             timeseries_data = {
                 "series_type": series_type,
                 "primary_location_id": primary_location_id,
-                "reference_time": ref_time_value,
+                "secondary_location_id": secondary_location_id,
                 "configuration_name": configuration_name,
                 "variable_name": variable_name,
                 "unit_name": unit_name,
