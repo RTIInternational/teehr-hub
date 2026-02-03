@@ -1,5 +1,78 @@
-# Terraform Approach
-This `README.md` will walk you through standing up the `teehr-hub`` in an AWS account.
+# TEEHR Cloud
+TEEHR Cloud is a coordinated set of services built around the Tools for Exploratory Evaluation in Hydrologic Research (TEEHR) to support large scale data analytics for the purpose of evaluating hydrologic model performance.
+
+TEEHR Cloud utilizes Kubernetes to orchestrate the services that make up the system.  The primary components are:
+- JupyterHub
+- Prefect
+- Apache Iceberg
+- Apache Spark
+- Trino
+- FastAPI
+- React
+
+
+## Local Development
+For local development developers can run a local instance of the cluster using KinD.  You will need to have the following installed:
+
+KinD https://kind.sigs.k8s.io/
+```bash
+% kind version
+kind v0.27.0 go1.24.0 darwin/arm64
+```
+
+Garden https://docs.garden.io/getting-started/quickstart
+```bash
+% garden version
+garden version: 0.13.54
+```
+
+kubctl https://kubernetes.io/docs/tasks/tools/
+```bash
+% kubectl version
+Client Version: v1.32.3
+Kustomize Version: v5.5.0
+Server Version: v1.32.2
+```
+
+After you have KinD, Gardem and kubctl installed you should be able to create a kind cluster by running the following from the repo root.
+```bash
+./kind/create_kind_cluster.sh 
+```
+
+If the kind cluster creation is successful, you can then run the following:
+```bash
+garden deploy
+```
+
+This should create all the services in the cluster.  To test, open a browser and go to `https://hub.teehr.local.app.garden`.  Note you may need to edit your `/etc/hosts` file to have this address point to localhost.  You likely need the following entries in your `/etc/hosts` file.
+
+```bash
+% cat /etc/hosts
+
+...
+
+# Add for TEEHR-HUB development
+127.0.0.1       hub.teehr.local.app.garden
+127.0.0.1       minio.teehr.local.app.garden
+127.0.0.1       dashboards.teehr.local.app.garden
+127.0.0.1       api.teehr.local.app.garden
+127.0.0.1       panel.teehr.local.app.garden
+```
+
+We use a self-sign certificate for local development so you will have to accept it in your browser for each URL.  Specifically, you will need to do so for the API before the dashboards will work by going to `api.teehr.local.app.garden` and accepting the self-signed cert.
+
+### Load Test Data to Warehouse
+Coming soon
+
+### Code Syncing
+When working on the API or the frontend it is convenient to have code syncing.  Code syncing can be done in `garden` by running:
+```bash
+garden deploy --sync
+```
+
+## Remote Deployment
+
+This section will walk you through standing up the `teehr-hub`` in an AWS account.
 The instructions should generally work with other providers, but some steps will certainly be different.
 
 NOTE: you must clean up complete from other approaches before running this.
@@ -33,103 +106,4 @@ kubectl config set-context $(kubectl config current-context) --namespace teehr-h
 k9s
 ```
 
-Apply Helmcharts
-Add repo
-```bash
-cd helm-chart
-helm repo add dask https://helm.dask.org/
-helm repo add autoscaler https://kubernetes.github.io/autoscaler
-cd ..
-```
-
-This next step requires that you have a `.env` file the contains the
-`GH_OAUTH_CLIENT_ID` and `GH_OAUTH_CLIENT_SECRET` values needed to use GitHub auth.
-A sample `.env-sample` is provided.
-```bash
-cd helm-chart
-source .env
-envsubst < config.yaml > secret-config.yaml
-helm upgrade \
-  --cleanup-on-fail \
-  --install teehr-hub dask/daskhub \
-  --namespace teehr-hub \
-  --create-namespace \
-  --version 2024.1.0 \
-  --values secret-config.yaml
-rm secret-config.yaml
-helm upgrade \
-  --cleanup-on-fail \
-  --install teehr-ca autoscaler/cluster-autoscaler \
-  --namespace teehr-hub \
-  --set autoDiscovery.clusterName=teehr-hub \
-  --set awsRegion=us-east-2
-cd ..
-```
-
-Get NFS DNS
-```bash
-cd terraform/ && terraform output nfs_server_dns && cd ..
-```
-
-Update NFS DNS in manifests, then run
-```bash
-cd terraform/
-export NFS_SERVER_DNS="$(terraform output -raw nfs_server_dns)"
-cd ..
-cd kubernetes
-envsubst < nfs.yaml | kubectl apply -n teehr-hub -f -
-envsubst < nfs-data-creator.yaml | kubectl delete -n teehr-hub -f -
-envsubst < nfs-data-creator.yaml | kubectl apply -n teehr-hub -f -
-cd ..
-```
-
-Get DNS CNAME
-```bash
-kubectl --namespace=teehr-hub get svc proxy-public
-```
-MANUAL: Set alias in DNS provider
-
-Delete pods and let it recreate
-```bash
-kubectl delete pods -l component=autohttps -n teehr-hub
-```
-
-
-## Uninstalling
-Teehrhub
-```bash
-cd helm-chart
-helm list --all-namespaces
-helm uninstall teehr-hub --namespace=teehr-hub
-helm uninstall teehr-ca --namespace=teehr-hub
-cd ..
-```
-
-NFS
-```bash
-cd terraform/
-export NFS_SERVER_DNS="$(terraform output -raw nfs_server_dns)"
-cd ..
-cd kubernetes
-envsubst < nfs.yaml | kubectl delete  -n teehr-hub -f -
-envsubst < nfs-data-creator.yaml | kubectl delete -n teehr-hub -f -
-cd ..
-```
-
-Cluster
-```bash
-cd terraform
-terraform destroy -var-file=teehr-hub.tfvars
-cd ..
-```
-
-
-Update helm
-```
-cd helm-chart
-helm repo update dask
-helm repo update autoscaler
-cd ..
-```
-
-garden version: 0.13.54
+After the cluster is setup in an AWS account, you can deploy using the GitHub Actions.
