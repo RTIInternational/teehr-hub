@@ -86,9 +86,9 @@ Open your browser and go to http://localhost:4200.  Navigate to `Deployments`.
 
 2) Click on `ingest-nwm-medium-range-streamflow-forecasts`. In the upper right corner select Run > Custom Run.  Change the end_dt to a date approximately 9 days prior to today and Submit.  Monitor the run through the browser UI.  When done, proceed to the next one.
 
-3) Click on `update-forecast-metrics-table`. In the upper right corner select Run > Quick Run. Run with the default parameters.
+3) Click on `update-joined-forecast-table`. In the upper right corner select Run > Quick Run. Run with the default parameters.
 
-4) Click on `update-joined-forecast-table`. In the upper right corner select Run > Quick Run. Run with the default parameters.
+4) Click on `update-forecast-metrics-table`. In the upper right corner select Run > Quick Run. Run with the default parameters.
 
 Now go to `https://dashboards.teehr.local.app.garden`.  You should be able to go to both the retrospective and forecast dashboards and see some data.
 
