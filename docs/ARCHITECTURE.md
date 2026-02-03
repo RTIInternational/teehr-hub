@@ -9,6 +9,10 @@ AWS Services
 - S3
     - Store raw data
     - Store iceberg warehouse
+- VPC
+    - S3 VPC Gateway Endpoint
+        - Enables cost-free data transfer from S3 (e.g., s3://noaa-nwm-retrospective-3-0-pds/)
+        - Routes S3 traffic through AWS internal network instead of internet gateway
 - EKS
     - JupyterHub with TEEHR
     - Spark executors
