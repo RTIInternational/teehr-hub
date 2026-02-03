@@ -28,6 +28,24 @@ module "vpc" {
   }
 }
 
+# S3 VPC Gateway Endpoint
+# This endpoint allows S3 traffic to stay within the AWS network,
+# avoiding data transfer charges when accessing S3 buckets like
+# s3://noaa-nwm-retrospective-3-0-pds/ from within the VPC
+resource "aws_vpc_endpoint" "s3" {
+  vpc_id       = module.vpc.vpc_id
+  service_name = "com.amazonaws.${var.region}.s3"
+  
+  route_table_ids = module.vpc.private_route_table_ids
+
+  tags = merge(
+    local.tags,
+    {
+      Name = "${local.cluster_name}-s3-endpoint"
+    }
+  )
+}
+
 # module "vpc_cni_irsa" {
 #   source  = "terraform-aws-modules/iam/aws//modules/iam-role-for-service-accounts-eks"
 #   version = "~> 5.0"
