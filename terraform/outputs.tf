@@ -15,3 +15,8 @@ output "github_actions_role_name" {
   value       = aws_iam_role.github_actions_garden_deploy.name
   description = "Name of the GitHub Actions role for Garden deployments"
 }
+
+output "s3_vpc_endpoint_id" {
+  value       = aws_vpc_endpoint.s3.id
+  description = "ID of the S3 VPC Gateway Endpoint for cost-free S3 access"
+}
