@@ -12,7 +12,7 @@ TEEHR Cloud utilizes Kubernetes to orchestrate the services that make up the sys
 
 
 ## Local Development
-For local development developers can run a local instance of the cluster using KinD.  You will need to have the following installed:
+For local development developers can run a local instance of the cluster using KinD.  You will need to have the following installed.  The versions shown are known to work for our developers.  Subsequent minor and bug fix releases should also work but your milage may vary.
 
 KinD https://kind.sigs.k8s.io/
 ```bash
@@ -34,23 +34,36 @@ Kustomize Version: v5.5.0
 Server Version: v1.32.2
 ```
 
-After you have KinD, Gardem and kubctl installed you should be able to create a kind cluster by running the following from the repo root.
+Optional, but recommended, k9s https://k9scli.io/
+```bash
+ % k9s version
+ ____  __ ________       
+|    |/  /   __   \______
+|       /\____    /  ___/
+|    \   \  /    /\___  \
+|____|\__ \/____//____  /
+         \/           \/ 
+
+Version:    v0.50.2
+Commit:     bc22b8705304b86c2f4c417a088accdfed13fdf8
+Date:       2025-04-10T15:32:12Z
+```
+
+After you have the dependencies above installed you should be able to create a kind cluster by running the following from the repo root.
 ```bash
 ./kind/create_kind_cluster.sh 
 ```
 
-If the kind cluster creation is successful, you can then run the following:
+If the kind cluster creation is successful, you can then run the following to deploy the application to the local cluster:
 ```bash
 garden deploy
 ```
 
-This should create all the services in the cluster.  To test, open a browser and go to `https://hub.teehr.local.app.garden`.  Note you may need to edit your `/etc/hosts` file to have this address point to localhost.  You likely need the following entries in your `/etc/hosts` file.
+This should create all the services in the cluster.  To test, open a browser and go to `https://api.teehr.local.app.garden`. Two notes:
+1) We use a self-sign certificate for local development so you will have to accept it in your browser. Specifically, you will need to do so for the API before the dashboards will work by going to `api.teehr.local.app.garden` and accepting the self-signed cert.
+2) Note you may need to edit your `/etc/hosts` file to have this address point to localhost.  You likely need the following entries in your `/etc/hosts` file.
 
 ```bash
-% cat /etc/hosts
-
-...
-
 # Add for TEEHR-HUB development
 127.0.0.1       hub.teehr.local.app.garden
 127.0.0.1       minio.teehr.local.app.garden
@@ -58,10 +71,6 @@ This should create all the services in the cluster.  To test, open a browser and
 127.0.0.1       api.teehr.local.app.garden
 127.0.0.1       panel.teehr.local.app.garden
 ```
-
-We use a self-sign certificate for local development so you will have to accept it in your browser for each URL.  Specifically, you will need to do so for the API before the dashboards will work by going to `api.teehr.local.app.garden` and accepting the self-signed cert.
-
-Optional, but recommended.  Install `k9s` `https://k9scli.io/`
 
 ### Load Test Data to Warehouse
 Loading data is a little fractured depending on what data you are loading.  For the purpose of developing there are 2 different types of data that can be loaded. Regardless, you first need to create an Iceberg warehouse in the KinD cluster, then load some data data.
@@ -91,6 +100,8 @@ Open your browser and go to http://localhost:4200.  Navigate to `Deployments`.
 4) Click on `update-forecast-metrics-table`. In the upper right corner select Run > Quick Run. Run with the default parameters.
 
 Now go to `https://dashboards.teehr.local.app.garden`.  You should be able to go to both the retrospective and forecast dashboards and see some data.
+
+Now the fun of adding new features and bug fixes starts.
 
 ### Code Syncing
 When working on the API or the frontend it is convenient to have code syncing.  Code syncing can be done in `garden` by running:
