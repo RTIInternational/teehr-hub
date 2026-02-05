@@ -1,20 +1,16 @@
 from typing import List
-from datetime import datetime, timedelta
-from pathlib import Path
 
-import xarray as xr
 from prefect import task, get_run_logger
 from prefect.cache_policies import NO_CACHE
 
 from teehr.fetching.utils import write_timeseries_parquet_file
-import teehr
 
 import requests
 import pandas as pd
 
 
 @task(cache_policy=NO_CACHE)
-def generate_NWPS_endpoints(
+def generate_nwps_endpoints(
     gage_ids: List[str],
     root_url: str,
 ) -> List[dict]:
@@ -27,7 +23,7 @@ def generate_NWPS_endpoints(
         metadata_endpoint = f"{root_url}/nwps/v1/gauges/{id}"
         fcst_endpoint = f"{root_url}/nwps/v1/gauges/{id}/stageflow/forecast"
         endpoint = {
-            "usgs_id": id,
+            "RFC_lid": id,
             "metadata": metadata_endpoint,
             "forecast": fcst_endpoint
         }
@@ -38,7 +34,7 @@ def generate_NWPS_endpoints(
 
 
 @task()
-def fetch_NWPS_RFC_fcst_to_cache(
+def fetch_nwps_rfc_fcst_to_cache(
     endpoint: dict,
     output_cache_dirs: dict,
     field_mapping: dict,
@@ -49,20 +45,24 @@ def fetch_NWPS_RFC_fcst_to_cache(
 ):
     """Fetch NWPS RFC forecast data and write to parquet cache."""
     logger = get_run_logger()
-    usgs_id = endpoint["usgs_id"]
+    RFC_lid = endpoint["RFC_lid"]
 
     # Fetch forecast data
     fcst_url = endpoint["forecast"]
-    response = requests.get(fcst_url)
-    if response.status_code != 200:
-        logger.warning(f"Failed to fetch NWPS RFC forecast data for USGS ID: {usgs_id}")
+    try:
+        response = requests.get(fcst_url)
+        response.raise_for_status()
+        fcst_data = response.json()
+    except requests.exceptions.RequestException as e:
+        logger.warning(
+            f"Failed to fetch NWPS RFC forecast data for RFC LID: {RFC_lid} "
+            f"- Error: {str(e)}")
         return
-    fcst_data = response.json()
 
     # extract data to dataframe
     df = pd.DataFrame(fcst_data['data'])
     if df.empty:
-        logger.warning(f"No forecast data available for USGS ID: {usgs_id}")
+        logger.warning(f"No forecast data available for RFC LID: {RFC_lid}")
         return
 
     # trim to required fields
@@ -74,7 +74,7 @@ def fetch_NWPS_RFC_fcst_to_cache(
     df["value"] = df["value"] * 28.3168
 
     # Add prefix to location ID (nwpsrfc)
-    df["location_id"] = location_id_prefix + "-" + usgs_id
+    df["location_id"] = location_id_prefix + "-" + RFC_lid
 
     # determine timestep to inform variable_name
     df['value_time'] = pd.to_datetime(df['value_time'])
@@ -89,12 +89,14 @@ def fetch_NWPS_RFC_fcst_to_cache(
             variable_name = variable_name[1]
         else:
             logger.warning(
-                f"Unexpected timestep of {timestep_hours} hours for USGS ID: {usgs_id}."
+                f"Unexpected timestep of {timestep_hours} hours "
+                f"for RFC LID: {RFC_lid}."
             )
             return
     else:
         logger.warning(
-            f"Multiple timesteps detected for USGS ID: {usgs_id}. Cannot determine variable name."
+            f"Multiple timesteps detected for RFC LID: {RFC_lid}."
+            "Cannot determine variable name."
             f"Timesteps detected: {time_diffs}"
         )
         return
@@ -125,7 +127,7 @@ def fetch_NWPS_RFC_fcst_to_cache(
     ]]
 
     # write to the cache as parquet with unique filename
-    parquet_filename = f"nwpsrfc_forecast_{usgs_id}.parquet"
+    parquet_filename = f"nwpsrfc_forecast_{RFC_lid}.parquet"
     cache_filepath = output_cache_dirs[variable_name] / parquet_filename
     logger.info(
         f"Caching fetched data to: {cache_filepath}"
