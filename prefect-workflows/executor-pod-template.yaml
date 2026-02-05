@@ -12,6 +12,12 @@ spec:
       runAsUser: 185
       runAsGroup: 185
       allowPrivilegeEscalation: false
+    lifecycle:
+      preStop:
+        exec:
+          # Give Spark time to decommission before pod terminates
+          # This allows shuffles and RDD blocks to migrate to other executors
+          command: ["/bin/sh", "-c", "sleep 15"]
     volumeMounts:
     - name: data-nfs
       mountPath: /data

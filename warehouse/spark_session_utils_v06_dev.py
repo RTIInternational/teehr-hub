@@ -416,6 +416,14 @@ def _set_spark_cluster_configuration(
 
     conf.set("spark.kubernetes.executor.deleteOnTermination", "true")
 
+    # Enable Spark decommissioning for graceful spot instance handling
+    conf.set("spark.decommission.enabled", "true")
+    conf.set("spark.storage.decommission.enabled", "true")
+    conf.set("spark.storage.decommission.rddBlocks.enabled", "true")
+    conf.set("spark.storage.decommission.shuffleBlocks.enabled", "true")
+    # Grace period for executors to decommission before being terminated
+    conf.set("spark.kubernetes.executor.decommission.gracePeriodSeconds", "30")
+
     # Authentication - use service account token if available
     token_file = const.SERVICE_ACCOUNT_TOKEN_PATH
     ca_file = const.CA_CERTIFICATE_PATH
