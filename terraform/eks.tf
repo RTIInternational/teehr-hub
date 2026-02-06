@@ -256,9 +256,9 @@ module "eks" {
       }
     })
 
-    spark-spot-r5-4xlarge = merge(local.eks_node_group_defaults, {
-      name            = "spark-spot-r5-4xlarge"
-      iam_role_name   = "${local.cluster_name}-spark-spot-r5-4xlarge"
+    spark-r5-4xlarge-spot = merge(local.eks_node_group_defaults, {
+      name            = "spark-r5-4xlarge-spot"
+      iam_role_name   = "${local.cluster_name}-spark-r5-4xlarge-spot"
 
       capacity_type   = "SPOT"
 
@@ -268,7 +268,7 @@ module "eks" {
 
       instance_types  = ["r5.4xlarge", "r5a.4xlarge", "r5n.4xlarge"]
       labels = {
-        "teehr-hub/nodegroup-name"         = "spark-spot-r5-4xlarge"
+        "teehr-hub/nodegroup-name"         = "spark-r5-4xlarge-spot"
         "teehr-hub/capacity-type"          = "spot"
         "node.kubernetes.io/instance-type" = "r5.4xlarge"
       }
@@ -291,7 +291,7 @@ module "eks" {
         "k8s.io/cluster-autoscaler/node-template/label/node.kubernetes.io/instance-type" = "r5.4xlarge"
         "k8s.io/cluster-autoscaler/node-template/taint/teehr-hub/dedicated"             = "worker:NoSchedule"
         "k8s.io/cluster-autoscaler/node-template/taint/teehr-hub_dedicated"             = "worker:NoSchedule"
-        "teehr-hub/nodegroup-name"                                                       = "spark-spot-r5-4xlarge"
+        "teehr-hub/nodegroup-name"                                                       = "spark-r5-4xlarge-spot"
       }
     })
 
