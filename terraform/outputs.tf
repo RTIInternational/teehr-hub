@@ -20,3 +20,13 @@ output "s3_vpc_endpoint_id" {
   value       = aws_vpc_endpoint.s3.id
   description = "ID of the S3 VPC Gateway Endpoint for cost-free S3 access"
 }
+
+output "iceberg_s3_warehouse_readonly_role_arn" {
+  value       = aws_iam_role.iceberg_s3_warehouse_readonly_irsa.arn
+  description = "ARN of the read-only IAM role for Spark and Jupyter service accounts to access S3 iceberg warehouse"
+}
+
+output "iceberg_s3_warehouse_rw_role_arn" {
+  value       = aws_iam_role.iceberg_s3_warehouse_irsa.arn
+  description = "ARN of the read-write IAM role for Spark and Jupyter service accounts to access S3 iceberg warehouse"
+}
