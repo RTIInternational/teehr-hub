@@ -11,6 +11,7 @@ from utils.datastream_utils import (
     load_to_warehouse
 )
 from utils.nwps_rfc_utils import (
+    query_last_reference_times,
     generate_nwps_endpoints,
     fetch_nwps_rfc_fcst_to_cache
 )
@@ -81,11 +82,17 @@ def ingest_nwps_rfc_forecasts(
         remove_dir_if_exists(output_cache_dir)
         cache_directories[variable_name] = output_cache_dir
 
+    # query last reference times for all gages at once
+    last_reference_times = query_last_reference_times(
+        stripped_ids=stripped_ids,
+        ev=ev
+    )
+
     # assemble API endpoints
     nwps_endpoints = generate_nwps_endpoints(
         gage_ids=stripped_ids,
         root_url=ROOT_NWPS_URL,
-        ev=ev
+        last_reference_times=last_reference_times
     )
 
     # fetch data to cache

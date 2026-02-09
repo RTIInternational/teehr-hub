@@ -10,10 +10,49 @@ import pandas as pd
 
 
 @task(cache_policy=NO_CACHE)
+def query_last_reference_times(
+    stripped_ids: List[str],
+    ev: object,
+) -> dict:
+    """Query the most recent reference time for all gages at once."""
+    logger = get_run_logger()
+
+    # reformat stripped_ids for query
+    formatted_ids = [f'nwpsrfc-{id}' for id in stripped_ids]
+
+    # build filter condition
+    id_list = ','.join([f"'{id}'" for id in formatted_ids])
+    filter_condition = f"location_id IN ({id_list})"
+
+    # Query once for all locations
+    result_df = ev.secondary_timeseries.to_sdf().filter(
+        filter_condition
+    ).groupby("location_id").agg(
+        {"reference_time": "max"}
+    ).withColumnRenamed(
+        "max(reference_time)",
+        "reference_time"
+    ).toPandas()
+
+    # Build dict mapping stripped_id -> last_reference_time
+    ref_times_dict = {}
+    for idx, row in result_df.iterrows():
+        # Strip the 'nwpsrfc-' prefix to get back to stripped_id
+        stripped_id = row['location_id'].replace('nwpsrfc-', '')
+        ref_times_dict[stripped_id] = pd.to_datetime(
+            row['reference_time'],
+            utc=True
+            )
+
+    logger.info(f"Queried reference times for {len(ref_times_dict)} gages.")
+    return ref_times_dict
+
+
+@task(cache_policy=NO_CACHE)
 def generate_nwps_endpoints(
     gage_ids: List[str],
     root_url: str,
-    ev: object,
+    last_reference_times: dict,
 ) -> List[dict]:
     """Generate API endpoints for NWPS RFC forecasts."""
     logger = get_run_logger()
@@ -21,37 +60,18 @@ def generate_nwps_endpoints(
 
     endpoints = []
     for id in gage_ids:
-        max_ref_time = query_last_reference_time(gage_id=id, ev=ev)
         metadata_endpoint = f"{root_url}/nwps/v1/gauges/{id}"
         fcst_endpoint = f"{root_url}/nwps/v1/gauges/{id}/stageflow/forecast"
         endpoint = {
             "RFC_lid": id,
             "metadata": metadata_endpoint,
             "forecast": fcst_endpoint,
-            "last_reference_time": max_ref_time
+            "last_reference_time": last_reference_times.get(id)
         }
         endpoints.append(endpoint)
 
     logger.info(f"Generated {len(endpoints)} NWPS RFC API endpoints.")
     return endpoints
-
-
-@task(cache_policy=NO_CACHE)
-def query_last_reference_time(
-    gage_id: str,
-    ev: object,
-) -> pd.Timestamp:
-    """Query the most recent reference time for a given gage."""
-    formatted_id = 'nwpsrfc-' + gage_id
-    max_reference_time = ev.secondary_timeseries.to_sdf().filter(
-        f"location_id == '{formatted_id}'"
-    ).groupby().agg(
-        {"reference_time": "max"}
-    ).collect()[0][0]
-
-    max_reference_time = pd.to_datetime(max_reference_time, utc=True)
-
-    return max_reference_time
 
 
 @task()
