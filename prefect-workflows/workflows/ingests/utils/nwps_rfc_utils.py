@@ -13,6 +13,7 @@ import pandas as pd
 def generate_nwps_endpoints(
     gage_ids: List[str],
     root_url: str,
+    ev: object,
 ) -> List[dict]:
     """Generate API endpoints for NWPS RFC forecasts."""
     logger = get_run_logger()
@@ -20,17 +21,37 @@ def generate_nwps_endpoints(
 
     endpoints = []
     for id in gage_ids:
+        max_ref_time = query_last_reference_time(gage_id=id, ev=ev)
         metadata_endpoint = f"{root_url}/nwps/v1/gauges/{id}"
         fcst_endpoint = f"{root_url}/nwps/v1/gauges/{id}/stageflow/forecast"
         endpoint = {
             "RFC_lid": id,
             "metadata": metadata_endpoint,
-            "forecast": fcst_endpoint
+            "forecast": fcst_endpoint,
+            "last_reference_time": max_ref_time
         }
         endpoints.append(endpoint)
 
     logger.info(f"Generated {len(endpoints)} NWPS RFC API endpoints.")
     return endpoints
+
+
+@task(cache_policy=NO_CACHE)
+def query_last_reference_time(
+    gage_id: str,
+    ev: object,
+) -> pd.Timestamp:
+    """Query the most recent reference time for a given gage."""
+    formatted_id = 'nwpsrfc-' + gage_id
+    max_reference_time = ev.secondary_timeseries.to_sdf().filter(
+        f"location_id == '{formatted_id}'"
+    ).groupby().agg(
+        {"reference_time": "max"}
+    ).collect()[0][0]
+
+    max_reference_time = pd.to_datetime(max_reference_time, utc=True)
+
+    return max_reference_time
 
 
 @task()
@@ -103,10 +124,23 @@ def fetch_nwps_rfc_fcst_to_cache(
 
     # assume reference_time is one timestep before first forecast value time
     reference_time = df["value_time"].min()
+    reference_time = pd.Timestamp(reference_time)
     if variable_name == "streamflow_hourly_inst":
         reference_time = reference_time - pd.Timedelta(hours=1)
     else:
         reference_time = reference_time - pd.Timedelta(hours=6)
+
+    # Add check to skip if reference_time is not newer than last cached 
+    # reference_time
+    last_reference_time = endpoint["last_reference_time"]
+    if (last_reference_time is not None and
+       reference_time <= last_reference_time):
+        logger.info(
+            f"Skipping fetch for RFC LID: {RFC_lid} - "
+            f"Reference time {reference_time} is not newer than last cached "
+            f"reference time {last_reference_time}."
+        )
+        return
 
     # Assemble dataframe
     unit_name = units_mapping[variable_name]
@@ -126,9 +160,14 @@ def fetch_nwps_rfc_fcst_to_cache(
         "member"
     ]]
 
+    # create cache directory if it doesn't exist
+    output_cache_dir = output_cache_dirs[variable_name]
+    if not output_cache_dir.exists():
+        output_cache_dir.mkdir(parents=True, exist_ok=True)
+
     # write to the cache as parquet with unique filename
     parquet_filename = f"nwpsrfc_forecast_{RFC_lid}.parquet"
-    cache_filepath = output_cache_dirs[variable_name] / parquet_filename
+    cache_filepath = output_cache_dir / parquet_filename
     logger.info(
         f"Caching fetched data to: {cache_filepath}"
     )

@@ -56,8 +56,6 @@ def ingest_nwps_rfc_forecasts(
     ev = initialize_evaluation(dir_path=dir_path)
 
     # get existing location ids from warehouse
-    # > NWPS can only query by USGS/RFC-ID, so we need to map to those
-    # > oddly, the nwm segment is mapped in the metadata just not queriable
     secondary_id_list = [
         row[0] for row in ev.location_crosswalks.to_sdf().select(
             "secondary_location_id"
@@ -81,13 +79,13 @@ def ingest_nwps_rfc_forecasts(
             variable_name
         )
         remove_dir_if_exists(output_cache_dir)
-        output_cache_dir.mkdir(parents=True, exist_ok=True)
         cache_directories[variable_name] = output_cache_dir
 
     # assemble API endpoints
     nwps_endpoints = generate_nwps_endpoints(
         gage_ids=stripped_ids,
         root_url=ROOT_NWPS_URL,
+        ev=ev
     )
 
     # fetch data to cache
@@ -108,21 +106,27 @@ def ingest_nwps_rfc_forecasts(
     logger.info("Completed fetching NWPS RFC forecast data to cache.")
 
     for output_cache_dir in cache_directories.values():
-        logger.info(
-            f"Adding cached data to evaluation from: {output_cache_dir}"
+        if output_cache_dir.exists():
+            logger.info(
+                f"Adding cached data to evaluation from: {output_cache_dir}"
+                )
+            # coalesce cache files
+            coalesced_cache_dir = output_cache_dir / "coalesced"
+            coalesce_cache_files(
+                ev=ev,
+                num_cache_files=num_cache_files,
+                output_cache_dir=output_cache_dir,
+                coalesced_cache_dir=coalesced_cache_dir,
             )
-        # coalesce cache files
-        coalesced_cache_dir = output_cache_dir / "coalesced"
-        coalesce_cache_files(
-            ev=ev,
-            num_cache_files=num_cache_files,
-            output_cache_dir=output_cache_dir,
-            coalesced_cache_dir=coalesced_cache_dir,
-        )
 
-        # load output
-        load_to_warehouse(
-            ev=ev,
-            in_path=coalesced_cache_dir,
-            table_name="secondary_timeseries"
-        )
+            # load output
+            load_to_warehouse(
+                ev=ev,
+                in_path=coalesced_cache_dir,
+                table_name="secondary_timeseries"
+            )
+        else:
+            logger.info(
+                "No cache directory found for variable."
+                f"skipping load: {output_cache_dir}"
+                )
