@@ -1,6 +1,7 @@
 apiVersion: v1
 kind: Pod
 spec:
+  terminationGracePeriodSeconds: 60
   securityContext:
     runAsUser: 1000
     runAsGroup: 1000
@@ -15,9 +16,9 @@ spec:
     lifecycle:
       preStop:
         exec:
-          # Give Spark time to decommission before pod terminates
-          # This allows shuffles and RDD blocks to migrate to other executors
-          command: ["/bin/sh", "-c", "sleep 15"]
+          # Allow Spark to decommission gracefully - SIGTERM triggers Spark's 
+          # built-in decommissioning which migrates shuffle data and RDD blocks
+          command: ["/bin/sh", "-c", "sleep 30"]
     volumeMounts:
     - name: data-nfs
       mountPath: /data
