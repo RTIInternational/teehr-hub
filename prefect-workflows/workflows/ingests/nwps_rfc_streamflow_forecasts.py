@@ -4,16 +4,18 @@ from typing import Union
 import logging
 
 from prefect import flow, get_run_logger
+from prefect.futures import wait
 
 from workflows.utils.common_utils import initialize_evaluation
 from utils.datastream_utils import (
-    coalesce_cache_files,
     load_to_warehouse
 )
 from utils.nwps_rfc_utils import (
     query_last_reference_times,
     generate_nwps_endpoints,
-    fetch_nwps_rfc_fcst_to_cache
+    fetch_nwps_rfc_fcst_to_cache,
+    has_cache_data,
+    coalesce_cache_files,
 )
 from teehr.utils.utils import remove_dir_if_exists
 
@@ -30,7 +32,6 @@ FIELD_MAPPING = {
     "validTime": "value_time",
     "secondary": "value",
 }
-LOCATION_ID_PREFIX = "nwpsrfc"
 VARIABLE_NAMES = ["streamflow_hourly_inst",
                   "streamflow_6hr_inst"]
 CONFIGURATION_NAME = "nwpsrfc_streamflow_forecast"
@@ -38,6 +39,8 @@ UNITS_MAPPING = {
     "streamflow_hourly_inst": "m^3/s",
     "streamflow_6hr_inst": "m^3/s"
 }
+
+CHUNK_SIZE = 10  # Number of endpoints to fetch per task
 
 
 @flow(
@@ -47,7 +50,8 @@ UNITS_MAPPING = {
 )
 def ingest_nwps_rfc_forecasts(
     dir_path: Union[str, Path],
-    num_cache_files: int = 5
+    num_cache_files: int = 5,
+    chunk_size: int = CHUNK_SIZE,
 ) -> None:
     """RFC streamflow forecast ingestion workflow."""
     logger = get_run_logger()
@@ -70,17 +74,13 @@ def ingest_nwps_rfc_forecasts(
         if prefix == 'nwpsrfc' and id_val not in stripped_ids:
             stripped_ids.append(id_val)
 
-    # set up cache directories
-    cache_directories = {}
-    for variable_name in VARIABLE_NAMES:
-        output_cache_dir = Path(
-            ev.cache_dir,
-            "fetching",
-            "nwps_rfc",
-            variable_name
-        )
-        remove_dir_if_exists(output_cache_dir)
-        cache_directories[variable_name] = output_cache_dir
+    # set up single cache directory
+    output_cache_dir = Path(
+        ev.cache_dir,
+        "fetching",
+        "nwps_rfc"
+    )
+    remove_dir_if_exists(output_cache_dir)
 
     # query last reference times for all gages at once
     last_reference_times = query_last_reference_times(
@@ -95,45 +95,60 @@ def ingest_nwps_rfc_forecasts(
         last_reference_times=last_reference_times
     )
 
-    # fetch data to cache
-    for endpoint in nwps_endpoints:
-        logger.info(
-            f"Fetching RFC forecast data for RFC LID: {endpoint['RFC_lid']}"
-            )
-        fetch_nwps_rfc_fcst_to_cache(
-            endpoint=endpoint,
-            output_cache_dirs=cache_directories,
+    # Break endpoints into chunks
+    endpoint_chunks = [
+        nwps_endpoints[i:i + CHUNK_SIZE]
+        for i in range(0, len(nwps_endpoints), CHUNK_SIZE)
+    ]
+
+    # fetch data to cache using parallel tasks
+    logger.info(
+        f"Fetching {len(nwps_endpoints)} NWPS RFC forecasts "
+        f"in {len(endpoint_chunks)} chunks"
+        )
+
+    endpoint_futures = []
+    for i, chunk in enumerate(endpoint_chunks):
+        future = fetch_nwps_rfc_fcst_to_cache.submit(
+            nwps_endpoints=chunk,
+            output_cache_dir=Path(output_cache_dir, f"part_{i}"),
             field_mapping=FIELD_MAPPING,
             units_mapping=UNITS_MAPPING,
-            variable_name=VARIABLE_NAMES,
+            variable_names=VARIABLE_NAMES,
             configuration_name=CONFIGURATION_NAME,
             location_id_prefix=LOCATION_ID_PREFIX
         )
-
-    logger.info("Completed fetching NWPS RFC forecast data to cache.")
-
-    for output_cache_dir in cache_directories.values():
-        if output_cache_dir.exists():
-            logger.info(
-                f"Adding cached data to evaluation from: {output_cache_dir}"
-                )
-            # coalesce cache files
-            coalesced_cache_dir = output_cache_dir / "coalesced"
-            coalesce_cache_files(
-                ev=ev,
-                num_cache_files=num_cache_files,
-                output_cache_dir=output_cache_dir,
-                coalesced_cache_dir=coalesced_cache_dir,
+        logger.info(
+            f"✅ Submitted chunk {i+1}/{len(endpoint_chunks)} for fetching"
             )
+        endpoint_futures.append(future)
 
-            # load output
-            load_to_warehouse(
-                ev=ev,
-                in_path=coalesced_cache_dir,
-                table_name="secondary_timeseries"
-            )
-        else:
-            logger.info(
-                "No cache directory found for variable."
-                f"skipping load: {output_cache_dir}"
-                )
+    wait(endpoint_futures)
+    logger.info("✅ Completed fetching NWPS RFC forecast data to cache")
+
+    if has_cache_data(output_cache_dir):
+        logger.info(
+            f"Adding cached data to evaluation from: {output_cache_dir}"
+        )
+        # coalesce cache files
+        coalesced_cache_dir = output_cache_dir / "coalesced"
+        coalesce_cache_files(
+            ev=ev,
+            num_cache_files=num_cache_files,
+            output_cache_dir=output_cache_dir,
+            coalesced_cache_dir=coalesced_cache_dir,
+        )
+
+        # load output
+        load_to_warehouse(
+            ev=ev,
+            in_path=coalesced_cache_dir,
+            table_name="secondary_timeseries"
+        )
+        logger.info("✅ Completed loading NWPS RFC data into the warehouse")
+    else:
+        logger.info(
+            "No cache data found in cache directory. Skipping load."
+        )
+
+    ev.spark.stop()
