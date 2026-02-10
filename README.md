@@ -58,7 +58,6 @@ If the kind cluster creation is successful, you can then run the following to de
 ```bash
 garden deploy
 ```
-
 This should create all the services in the cluster.  To test, open a browser and go to `https://api.teehr.local.app.garden`. Two notes:
 1) We use a self-sign certificate for local development so you will have to accept it in your browser. Specifically, you will need to do so for the API before the dashboards will work by going to `api.teehr.local.app.garden` and accepting the self-signed cert.
 2) Note you may need to edit your `/etc/hosts` file to have this address point to localhost.  You likely need the following entries in your `/etc/hosts` file.
@@ -71,6 +70,33 @@ This should create all the services in the cluster.  To test, open a browser and
 127.0.0.1       api.teehr.local.app.garden
 127.0.0.1       panel.teehr.local.app.garden
 ```
+### Using External Docker Images in JupyterHub locally
+
+The JupyterHub deployment supports two types of image configurations:
+
+**Built-in Images** (e.g., TEEHR Evaluation System) are automatically built and managed by Garden using build actions. **External Images** (e.g., HEFS-FEWS Evaluation System) are built outside this project and must be manually loaded into the Kind cluster when locally tested.
+
+#### Loading External Images into Kind
+
+When using external images in JupyterHub profiles, load them into the Kind cluster:
+
+```bash
+# Build your image locally (or pull from a registry)
+docker build -t hefs-hub:0.3.0 /path/to/external-project
+
+# Load the image into the Kind cluster
+kind load docker-image hefs-hub:0.3.0 --name kind
+
+# Verify the image is loaded
+docker exec -it kind-control-plane crictl images | grep hefs-hub
+```
+
+**Key Configuration Points for such images:**
+- Set `image_pull_policy: IfNotPresent` (or `Never`) in `kubespawner_override` to prevent Kubernetes from attempting to pull from Docker Hub
+- Use static image names (e.g., `"hefs-hub:0.3.0"`) without registry prefix
+- External images must include the `jupyterhub` package in their Python environment to provide the `jupyterhub-singleuser` command
+
+When you rebuild an external image, reload it into Kind and restart any running pods using that image.
 
 ### Load Test Data to Warehouse
 Loading data is a little fractured depending on what data you are loading.  For the purpose of developing there are 2 different types of data that can be loaded. Regardless, you first need to create an Iceberg warehouse in the KinD cluster, then load some data data.
