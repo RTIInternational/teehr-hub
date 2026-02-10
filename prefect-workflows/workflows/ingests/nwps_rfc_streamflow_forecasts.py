@@ -40,7 +40,7 @@ UNITS_MAPPING = {
     "streamflow_6hr_inst": "m^3/s"
 }
 
-CHUNK_SIZE = 10  # Number of endpoints to fetch per task
+CHUNK_SIZE = 20  # Number of endpoints to fetch per task
 
 
 @flow(
