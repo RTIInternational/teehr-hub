@@ -8,14 +8,14 @@ from prefect.futures import wait
 
 from workflows.utils.common_utils import initialize_evaluation
 from utils.datastream_utils import (
+    coalesce_cache_files,
     load_to_warehouse
 )
 from utils.nwps_rfc_utils import (
     query_last_reference_times,
     generate_nwps_endpoints,
     fetch_nwps_rfc_fcst_to_cache,
-    has_cache_data,
-    coalesce_cache_files,
+    has_cache_data
 )
 from teehr.utils.utils import remove_dir_if_exists
 
@@ -40,8 +40,6 @@ UNITS_MAPPING = {
     "streamflow_6hr_inst": "m^3/s"
 }
 
-CHUNK_SIZE = 20  # Number of endpoints to fetch per task
-
 
 @flow(
     flow_run_name="ingest-nwps-rfc-forecasts",
@@ -50,8 +48,7 @@ CHUNK_SIZE = 20  # Number of endpoints to fetch per task
 )
 def ingest_nwps_rfc_forecasts(
     dir_path: Union[str, Path],
-    num_cache_files: int = 5,
-    chunk_size: int = CHUNK_SIZE,
+    num_cache_files: int = 5
 ) -> None:
     """RFC streamflow forecast ingestion workflow."""
     logger = get_run_logger()
@@ -95,32 +92,20 @@ def ingest_nwps_rfc_forecasts(
         last_reference_times=last_reference_times
     )
 
-    # Break endpoints into chunks
-    endpoint_chunks = [
-        nwps_endpoints[i:i + CHUNK_SIZE]
-        for i in range(0, len(nwps_endpoints), CHUNK_SIZE)
-    ]
-
-    # fetch data to cache using parallel tasks
-    logger.info(
-        f"Fetching {len(nwps_endpoints)} NWPS RFC forecasts "
-        f"in {len(endpoint_chunks)} chunks"
-        )
+    # fetch data to cache using parallel tasks (one per endpoint)
+    logger.info(f"Fetching {len(nwps_endpoints)} NWPS RFC forecasts")
 
     endpoint_futures = []
-    for i, chunk in enumerate(endpoint_chunks):
+    for endpoint in nwps_endpoints:
         future = fetch_nwps_rfc_fcst_to_cache.submit(
-            nwps_endpoints=chunk,
-            output_cache_dir=Path(output_cache_dir, f"part_{i}"),
+            endpoint=endpoint,
+            output_cache_dir=output_cache_dir,
             field_mapping=FIELD_MAPPING,
             units_mapping=UNITS_MAPPING,
             variable_names=VARIABLE_NAMES,
             configuration_name=CONFIGURATION_NAME,
             location_id_prefix=LOCATION_ID_PREFIX
         )
-        logger.info(
-            f"✅ Submitted chunk {i+1}/{len(endpoint_chunks)} for fetching"
-            )
         endpoint_futures.append(future)
 
     wait(endpoint_futures)
@@ -148,7 +133,7 @@ def ingest_nwps_rfc_forecasts(
         logger.info("✅ Completed loading NWPS RFC data into the warehouse")
     else:
         logger.info(
-            "No cache data found in cache directory. Skipping load."
+            "No cache data found in cache. Skipping load."
         )
 
     ev.spark.stop()
