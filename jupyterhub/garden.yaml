@@ -141,18 +141,18 @@ spec:
         kubespawner_override:
           node_selector:
             teehr-hub/nodegroup-name: nb-r5-xlarge
-      - display_name: "HEFS-FEWS Evaluation System (4 vCPU/32GB memory)"
+      - display_name: "HEFS-FEWS Evaluation System (local)"
         default: False
-        description: "A r5.xlarge EC2 instance $0.252/hour"
+        description: "A node on the local KIND cluster"
         profile_options:
           image:
             display_name: Image
             choices:
-              v0-2-1:
-                display_name: Version 0.2.x
+              v0-3-0:
+                display_name: Version 0.3.x
                 default: true
                 kubespawner_override:
-                  image: "hefs-hub:0.2.0"
+                  image: "hefs-hub:0.3.0"
         kubespawner_override:
           image_pull_policy: IfNotPresent
           node_selector:
