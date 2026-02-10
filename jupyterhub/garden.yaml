@@ -1,3 +1,12 @@
+# Deploy the Jupyter user service account
+kind: Deploy
+type: kubernetes
+name: jupyter-serviceaccount
+spec:
+  files:
+    - manifests/jupyter-serviceaccount.yaml
+---
+
 # Local environment deployment
 kind: Deploy
 type: helm
@@ -6,6 +15,7 @@ environments:
   - local
 dependencies:
   - deploy.secrets
+  - deploy.jupyter-serviceaccount
   - build.teehr-jupyter-driver-image-edge
   - build.teehr-spark-executor-image
 
@@ -39,7 +49,7 @@ spec:
       extraConfig:
         spark-config: |
           # Allow users to create Spark sessions
-          c.KubeSpawner.service_account = 'default'
+          c.KubeSpawner.service_account = 'jupyter'
           c.KubeSpawner.automount_service_account_token = True
         # secret-to-env: |
         #   from kubernetes import client
@@ -170,6 +180,7 @@ environments:
   - remote
 dependencies:
   - deploy.secrets
+  - deploy.jupyter-serviceaccount
   - build.teehr-jupyter-driver-image-edge
   - build.teehr-spark-executor-image
   - build.teehr-jupyter-driver-image-stable
@@ -216,7 +227,7 @@ spec:
       extraConfig:
         spark-config: |
           # Allow users to create Spark sessions
-          c.KubeSpawner.service_account = 'default'
+          c.KubeSpawner.service_account = 'jupyter'
           c.KubeSpawner.automount_service_account_token = True
 
     singleuser:
