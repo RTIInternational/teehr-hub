@@ -187,7 +187,7 @@ def fetch_nwps_rfc_fcst_to_cache(
     ]]
 
     # write to the cache as parquet with unique filename
-    parquet_filename = f"nwpsrfc_forecast_{RFC_lid}.parquet"
+    parquet_filename = f"nwpsrfc_forecast_{RFC_lid}_{reference_time}.parquet"
     cache_filepath = cache_dir_path / parquet_filename
     logger.info(
         f"Caching fetched data to: {cache_filepath}"
