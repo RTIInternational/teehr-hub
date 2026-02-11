@@ -56,7 +56,7 @@ const MapLegend = ({ metric, getMetricLabel }) => {
                 marginRight: '6px'
               }}
             ></div>
-            <small>{scale.labels[i]} ({scale.stops[i]})</small>
+            <small>{scale.stops[i]}</small>
           </div>
         ))}
       </div>
