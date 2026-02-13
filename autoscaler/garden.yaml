@@ -26,3 +26,12 @@ spec:
       # 	skip-nodes-with-local-storage: false
       # 	balance-similar-node-groups: true
       # 	expander: least-waste
+---
+kind: Deploy
+type: kubernetes
+name: node-termination-handler
+description: AWS Node Termination Handler to gracefully handle spot instance interruptions
+spec:
+  files: ["./manifests/node-termination-handler.yaml"]
+environments:
+  - remote

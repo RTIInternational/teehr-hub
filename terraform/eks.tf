@@ -33,7 +33,7 @@ module "eks" {
 
   name                   = var.cluster_name
   kubernetes_version     = var.cluster_version
-  
+
   endpoint_public_access = true
   authentication_mode    = "API_AND_CONFIG_MAP"
 
@@ -260,15 +260,15 @@ module "eks" {
       name            = "spark-r5-4xlarge-spot"
       iam_role_name   = "${local.cluster_name}-spark-r5-4xlarge-spot"
 
+      capacity_type   = "SPOT"
+
       min_size        = 0
       max_size        = 400
       desired_size    = 0
 
-      capacity_type   = "SPOT"
-      instance_types  = ["r5.4xlarge"]
+      instance_types  = ["r5.4xlarge", "r5a.4xlarge", "r5n.4xlarge"]
       labels = {
         "teehr-hub/nodegroup-name"         = "spark-r5-4xlarge-spot"
-        "node.kubernetes.io/instance-type" = "r5.4xlarge"
       }
       taints = {
         dedicated = {
@@ -286,7 +286,6 @@ module "eks" {
         "k8s.io/cluster-autoscaler/enabled"                                                 = "true"
         "k8s.io/cluster-autoscaler/${local.cluster_name}"                                   = "owned"
         "k8s.io/cluster-autoscaler/node-template/label/teehr-hub/node-purpose/node-purpose" = "worker"
-        "k8s.io/cluster-autoscaler/node-template/label/node.kubernetes.io/instance-type"    = "r5.4xlarge"
         "k8s.io/cluster-autoscaler/node-template/taint/teehr-hub/dedicated"                 = "worker:NoSchedule"
         "k8s.io/cluster-autoscaler/node-template/taint/teehr-hub_dedicated"                 = "worker:NoSchedule"
         "teehr-hub/nodegroup-name"                                                          = "spark-r5-4xlarge-spot"
