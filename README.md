@@ -109,6 +109,34 @@ When working on the API or the frontend it is convenient to have code syncing.  
 garden deploy --sync
 ```
 
+### Using External Docker Images in JupyterHub locally
+
+The JupyterHub deployment supports two types of image configurations:
+
+**Built-in Images** (e.g., TEEHR Evaluation System) are automatically built and managed by Garden using build actions. **External Images** (e.g., HEFS-FEWS Evaluation System) are built outside this project and must be manually loaded into the Kind cluster when locally tested.
+
+#### Loading External Images into Kind
+
+When using external images in JupyterHub profiles, load them into the Kind cluster:
+
+```bash
+# Build your image locally (or pull from a registry)
+docker build -t hefs-hub:0.3.0 /path/to/external-project
+
+# Load the image into the Kind cluster
+kind load docker-image hefs-hub:0.3.0 --name kind
+
+# Verify the image is loaded
+docker exec -it kind-control-plane crictl images | grep hefs-hub
+```
+
+**Key Configuration Points for such images:**
+- Set `image_pull_policy: IfNotPresent` (or `Never`) in `kubespawner_override` to prevent Kubernetes from attempting to pull from Docker Hub
+- Use static image names (e.g., `"hefs-hub:0.3.0"`) without registry prefix
+- External images must include the `jupyterhub` package in their Python environment to provide the `jupyterhub-singleuser` command
+
+When you rebuild an external image, reload it into Kind and restart any running pods using that image.
+
 ## Remote Deployment
 
 This section will walk you through standing up the `teehr-hub`` in an AWS account.
