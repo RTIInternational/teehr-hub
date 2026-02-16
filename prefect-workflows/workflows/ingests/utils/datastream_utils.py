@@ -3,7 +3,10 @@ from typing import List
 from datetime import datetime, timedelta
 from pathlib import Path
 
-import xarray as xr
+import pyarrow as pa
+import pyarrow.compute as pc
+import pyarrow.parquet as pq
+import s3fs
 from prefect import task, get_run_logger
 from prefect.cache_policies import NO_CACHE
 import botocore
@@ -11,6 +14,8 @@ from botocore.exceptions import ClientError
 
 from teehr.fetching.utils import write_timeseries_parquet_file
 import teehr
+
+S3_FS = s3fs.S3FileSystem(anon=True)
 
 
 @task(cache_policy=NO_CACHE)
@@ -136,7 +141,7 @@ def generate_single_filepath(
 ) -> str:
     """Generate the S3 filepath for a given troute output file."""
     # Note. The vpu_prefix['Prefix'] includes the trailing slash
-    filename = f"troute_output_{yrmoday}{file_valid_time}00.nc"
+    filename = f"troute_output_{yrmoday}{file_valid_time}00.parquet"
     filepath = f"{vpu_prefix['Prefix']}ngen-run/outputs/troute/{filename}"
     s3_filepath = f"s3://{bucket_name}/{filepath}"
     return s3_filepath
@@ -145,9 +150,8 @@ def generate_single_filepath(
 @task()
 def fetch_troute_output_to_cache(
     filepath_info: dict,
-    warehouse_ngen_ids: List[str],
-    field_mapping: dict,
-    units_mapping: dict,
+    warehouse_ngen_ids: List[int],
+    unit_name: str,
     variable_name: str,
     configuration_name: str,
     location_id_prefix: str,
@@ -157,52 +161,64 @@ def fetch_troute_output_to_cache(
     """Fetch troute output from S3 and return as a pandas DataFrame."""
     logger = get_run_logger()
     s3_filepath = filepath_info["filepath"]
-    ref_time = filepath_info["ref_time"]
+    reference_time = filepath_info["ref_time"]
     member = filepath_info["member"]
     logger.info(f"Processing file: {s3_filepath}")
     try:
-        # Open the dataset with xarray, specifying the engine
-        ds = xr.open_dataset(
+        # Load as a pyarrow table.
+        filters = [("feature_id", "in", warehouse_ngen_ids)]
+        table = pq.read_table(
             s3_filepath,
-            engine="h5netcdf",
-            backend_kwargs={"storage_options": {'anon': True}}
+            filesystem=S3_FS,
+            filters=filters
         )
         logger.info("Successfully opened file")
     except Exception as e:
         logger.warning(f"Error reading file {e}")
         return None
 
-    # Subset the xarray dataset to only include locations in the warehouse
-    mask = ds['feature_id'].isin(warehouse_ngen_ids)
-    ds = ds.where(mask, drop=True)
-    # Subset the xarray dataset to only include fields that we need
-    field_list = [field for field in field_mapping if field in ds]
-    # Convert to pandas DataFrame and rename columns
-    df = ds[field_list].to_dataframe()
-    df.reset_index(inplace=True)
-    df.rename(columns=field_mapping, inplace=True)
-    unit_name = units_mapping[ds.flow.units]
-    # Add prefix to location ID (nrds22)
-    df["location_id"] = location_id_prefix + "-" + df.location_id.astype(str)
+    n_rows = table.num_rows
+    logger.info(f"Number of rows in file: {n_rows}")
 
-    if df.empty:
+    units_name = [unit_name] * n_rows
+    variable_name = [variable_name] * n_rows
+    configuration_name = [configuration_name] * n_rows
+    reference_time = [reference_time] * n_rows
+    member = [None] * n_rows
+
+    teehr_table = pa.table(
+        data={
+            "location_id": table["feature_id"],
+            "value_time": table["time"],
+            "value": table["flow"],
+            "unit_name": units_name,
+            "variable_name": variable_name,
+            "configuration_name": configuration_name,
+            "reference_time": reference_time,
+            "member": member
+        }
+    )
+
+    # Add prefix to location ID.
+    new_col = pc.binary_join_element_wise(
+        location_id_prefix,
+        pc.cast(teehr_table.column("location_id"), pa.string()),
+        ""
+    )
+    teehr_table = teehr_table.set_column(
+        teehr_table.schema.get_field_index("location_id"),
+        "location_id",
+        new_col
+    )
+
+    if teehr_table.num_rows == 0:
         logger.warning(
             f"No data found in file: {s3_filepath}"
         )
         return None
 
-    constant_field_values = {
-        "unit_name": unit_name,
-        "variable_name": variable_name,
-        "configuration_name": configuration_name,
-        "reference_time": ref_time,
-        "member": member
-    }
-    for key in constant_field_values.keys():
-        df[key] = constant_field_values[key]
-
     # Write to the cache with a unique filename
-    parquet_filename = Path(s3_filepath).name.replace(".nc", ".parquet")
+    parquet_filename = Path(s3_filepath).name
     filepath_prefix = Path(s3_filepath).relative_to(f"s3:/{bucket_name}/outputs/").parent.as_posix()
     unique_filename = f"{filepath_prefix.replace('/', '_')}_{parquet_filename}"
     cache_filepath = output_cache_dir / unique_filename
@@ -211,7 +227,7 @@ def fetch_troute_output_to_cache(
     )
     write_timeseries_parquet_file(
         filepath=cache_filepath,
-        data=df,
+        data=teehr_table,
         timeseries_type="secondary",
         overwrite_output=False
     )
