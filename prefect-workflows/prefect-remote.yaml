@@ -141,7 +141,7 @@ deployments:
     parameters: {
       "dir_path": *dir_path,
       "forecast_configuration": "short_range",
-      "datastream_name": "lstm"
+      "datastream_name": "lstm_0"
     }
     work_pool: *work_pool
     schedule:
@@ -156,7 +156,7 @@ deployments:
     parameters: {
       "dir_path": *dir_path,
       "forecast_configuration": "medium_range",
-      "datastream_name": "lstm"
+      "datastream_name": "lstm_0"
     }
     work_pool: *work_pool
     schedule:
