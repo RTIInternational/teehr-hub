@@ -27,14 +27,14 @@ def initialize_evaluation(
         executor_instances=executor_instances,
         executor_cores=executor_cores,
         executor_memory=executor_memory,
+        update_configs={
+            "spark.local.dir": "/data/tmp/spark-temp"
+        }
     )
     ev = teehr.Evaluation(
         spark=spark,
         dir_path=dir_path,
-        create_dir=False,
-        update_configs={
-            "spark.local.dir": "/data/tmp/spark-temp"
-        }
+        create_dir=False
     )
     ev.set_active_catalog("remote")
     return ev
