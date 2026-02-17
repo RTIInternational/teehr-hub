@@ -172,7 +172,8 @@ deployments:
     work_pool: *work_pool
     job_variables:
       cpu_request: "8"
-      memory_request: 64Gi
+      memory_request: 32Gi
+      memory_limits: 32Gi
     schedule:
       cron: "0 9,21 * * *"
       active: true
