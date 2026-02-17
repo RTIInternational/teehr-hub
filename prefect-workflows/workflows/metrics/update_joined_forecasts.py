@@ -15,7 +15,9 @@ FORECAST_CONFIGURATION_NAMES = [
     "nrds_v22_cfenom_medium_range",
     "nrds_v22_cfenom_short_range",
     "nrds_v22_lstm_short_range",
-    "nrds_v22_lstm_medium_range"
+    "nrds_v22_lstm_medium_range",
+    "nrds_v22_lstm0_short_range",
+    "nrds_v22_lstm0_medium_range"
 ]
 JOINED_FORECAST_TABLE_NAME = "fcst_joined_timeseries"
 
