@@ -169,6 +169,11 @@ deployments:
     description: Create the joined forecast timeseries table
     entrypoint: workflows/metrics/update_joined_forecasts.py:update_joined_forecast_table
     parameters: {"dir_path": *dir_path}
+    job_variables:
+      cpu_request: "8"
+      cpu_limits: "8"
+      memory_request: 32Gi
+      memory_limits: 32Gi
     work_pool: *work_pool
     schedule:
       cron: "0 9,21 * * *"
@@ -180,6 +185,11 @@ deployments:
     description: Create the forecast metrics table
     entrypoint: workflows/metrics/update_forecast_metrics.py:update_forecast_metrics_table
     parameters: {"dir_path": *dir_path}
+    job_variables:
+      cpu_request: "8"
+      cpu_limits: "8"
+      memory_request: 32Gi
+      memory_limits: 32Gi
     work_pool: *work_pool
     schedule:
       cron: "0 10,22 * * *"
