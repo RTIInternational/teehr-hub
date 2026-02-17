@@ -219,8 +219,13 @@ def fetch_troute_output_to_cache(
 
     # Write to the cache with a unique filename
     parquet_filename = Path(s3_filepath).name
-    filepath_prefix = Path(s3_filepath).relative_to(f"s3:/{bucket_name}/outputs/").parent.as_posix()
-    unique_filename = f"{filepath_prefix.replace('/', '_')}_{parquet_filename}"
+    filepath_prefix = Path(s3_filepath).relative_to(f"s3:/{bucket_name}/outputs/").parents[1].as_posix()
+    unique_filename = f"{
+        filepath_prefix
+        .replace('/', '_')
+        .replace('.', '_')
+        .replace('-', '_')
+    }_{parquet_filename}"
     cache_filepath = output_cache_dir / unique_filename
     logger.info(
         f"Caching fetched data to: {cache_filepath}"
