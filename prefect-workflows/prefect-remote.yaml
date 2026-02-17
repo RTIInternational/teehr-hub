@@ -170,6 +170,9 @@ deployments:
     entrypoint: workflows/metrics/update_joined_forecasts.py:update_joined_forecast_table
     parameters: {"dir_path": *dir_path}
     work_pool: *work_pool
+    job_variables:
+      cpu_request: "8"
+      memory_request: 32Gi
     schedule:
       cron: "0 9,21 * * *"
       active: true
