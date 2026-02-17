@@ -17,7 +17,8 @@ def initialize_evaluation(
     start_spark_cluster: bool = False,
     executor_instances: int = 4,
     executor_cores: int = 4,
-    executor_memory: str = "4g"
+    executor_memory: str = "4g",
+    update_configs: Dict[str, str] = None
 ) -> teehr.Evaluation:
     """Initialize a Teehr Evaluation object."""
     logger = get_run_logger()
@@ -27,9 +28,7 @@ def initialize_evaluation(
         executor_instances=executor_instances,
         executor_cores=executor_cores,
         executor_memory=executor_memory,
-        update_configs={
-            "spark.local.dir": "/data/tmp/spark-temp"
-        }
+        update_configs=update_configs
     )
     ev = teehr.Evaluation(
         spark=spark,

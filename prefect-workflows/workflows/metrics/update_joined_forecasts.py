@@ -1,4 +1,5 @@
 from pathlib import Path
+import shutil
 from typing import Union, List
 import logging
 
@@ -46,7 +47,10 @@ def update_joined_forecast_table(
         start_spark_cluster=False,
         executor_instances=4,
         executor_cores=4,
-        executor_memory="16g"
+        executor_memory="16g",
+        update_configs={
+            "spark.local.dir": "/data/tmp/spark-temp"
+        }
     )
 
     logger.info("Joining forecast timeseries...")
@@ -67,3 +71,5 @@ def update_joined_forecast_table(
         f"Joined forecast timeseries table written to warehouse as"
         f" {JOINED_FORECAST_TABLE_NAME}."
     )
+    # Cleanup Spark temp data
+    shutil.rmtree("/data/tmp/spark-temp", ignore_errors=True)
