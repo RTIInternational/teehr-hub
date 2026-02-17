@@ -201,7 +201,7 @@ def fetch_troute_output_to_cache(
 
     # Add prefix to location ID.
     new_col = pc.binary_join_element_wise(
-        location_id_prefix,
+        location_id_prefix + "-",
         pc.cast(teehr_table.column("location_id"), pa.string()),
         ""
     )
