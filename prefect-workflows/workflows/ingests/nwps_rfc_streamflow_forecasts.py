@@ -55,7 +55,18 @@ def ingest_nwps_rfc_forecasts(
 
     logger.info(f"Processing RFC forecasts issued by: {CURRENT_DT}")
 
-    ev = initialize_evaluation(dir_path=dir_path)
+    ev = initialize_evaluation(
+        dir_path=dir_path,
+        executor_instances=4,
+        executor_cores=7,
+        executor_memory="50g",
+        update_configs={
+            "spark.kubernetes.executor.node.selector.teehr-hub/nodegroup-name": "spark-r5-4xlarge-spot",
+            "spark.decommission.enabled": "true",
+            "spark.executor.decommission.signal": "SIGTERM",
+            "spark.storage.decommission.enabled": "true",
+        }
+    )
 
     # get existing location ids from warehouse
     secondary_id_list = [
