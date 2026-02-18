@@ -23,12 +23,21 @@ def initialize_evaluation(
     """Initialize a Teehr Evaluation object."""
     logger = get_run_logger()
     logger.info("Initializing Teehr Evaluation")
+
+    # Ensure Spark executors use the prefect-job service account
+    # which has read-write S3 access (the default 'spark' SA is read-only).
+    default_configs = {
+        "spark.kubernetes.authenticate.executor.serviceAccountName": "prefect-job"
+    }
+    if update_configs:
+        default_configs.update(update_configs)
+
     spark = create_spark_session(
         start_spark_cluster=start_spark_cluster,
         executor_instances=executor_instances,
         executor_cores=executor_cores,
         executor_memory=executor_memory,
-        update_configs=update_configs
+        update_configs=default_configs
     )
     ev = teehr.Evaluation(
         spark=spark,
