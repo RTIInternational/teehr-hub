@@ -44,7 +44,13 @@ def update_forecast_metrics_table(
         start_spark_cluster=True,
         executor_instances=4,
         executor_cores=3,
-        executor_memory="16g"
+        executor_memory="16g",
+        update_configs={
+            "spark.kubernetes.executor.node.selector.teehr-hub/nodegroup-name": "spark-r5-4xlarge-spot",
+            "spark.decommission.enabled": "true",
+            "spark.executor.decommission.signal": "SIGTERM",
+            "spark.storage.decommission.enabled": "true",
+        }
     )
 
     logger.info("Calculating forecast metrics by lead time bins...")
