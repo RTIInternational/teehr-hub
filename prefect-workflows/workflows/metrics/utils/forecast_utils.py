@@ -144,7 +144,7 @@ def join_forecast_timeseries(
     if forecast_configuration_names:
         # Convert list to SQL IN clause format
         config_list = "', '".join(forecast_configuration_names)
-        where_clause = f"WHERE sf.configuration_name IN ('{config_list}')"
+        where_clause = f"WHERE configuration_name IN ('{config_list}')"
         logger.info(
             f"Filtering to configurations: {forecast_configuration_names}"
         )
