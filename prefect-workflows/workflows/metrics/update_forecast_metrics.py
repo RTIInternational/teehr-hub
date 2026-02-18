@@ -42,7 +42,7 @@ def update_forecast_metrics_table(
     ev = initialize_evaluation(
         dir_path=dir_path,
         start_spark_cluster=True,
-        executor_instances=4,
+        executor_instances=8,
         executor_cores=3,
         executor_memory="16g",
         update_configs={
