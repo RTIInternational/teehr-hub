@@ -47,10 +47,7 @@ def update_joined_forecast_table(
         start_spark_cluster=True,
         executor_instances=8,
         executor_cores=7,
-        executor_memory="50g",
-        update_configs={
-            "spark.local.dir": "/data/tmp/spark-temp"
-        }
+        executor_memory="50g"
     )
 
     logger.info("Joining forecast timeseries...")
