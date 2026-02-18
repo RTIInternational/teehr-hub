@@ -144,38 +144,35 @@ def join_forecast_timeseries(
     if forecast_configuration_names:
         # Convert list to SQL IN clause format
         config_list = "', '".join(forecast_configuration_names)
-        where_clause = f"WHERE sf.configuration_name IN ('{config_list}')"
+        where_clause = f"WHERE configuration_name IN ('{config_list}')"
         logger.info(
             f"Filtering to configurations: {forecast_configuration_names}"
         )
 
-    joined_sdf = ev.sql(f"""
-        SELECT
-            sf.reference_time
-            , sf.value_time as value_time
+    joined_sdf = ev.spark.sql(f"""
+        WITH filtered_secondary AS (
+            SELECT * FROM iceberg.teehr.secondary_timeseries
+            {where_clause}
+        )
+        SELECT /*+ BROADCAST(cf) */
+            fs.reference_time
+            , fs.value_time
             , pf.location_id as primary_location_id
-            , sf.location_id as secondary_location_id
+            , fs.location_id as secondary_location_id
             , pf.value as primary_value
-            , sf.value as secondary_value
-            , sf.configuration_name
-            , sf.unit_name
-            , sf.variable_name
-            , sf.member
-        FROM secondary_timeseries sf
-        JOIN location_crosswalks cf
-            on cf.secondary_location_id = sf.location_id
-        JOIN primary_timeseries pf
-            on cf.primary_location_id = pf.location_id
-            and sf.value_time = pf.value_time
-            and sf.unit_name = pf.unit_name
-            and sf.variable_name = pf.variable_name
-        {where_clause}
-        """,
-        create_temp_views=[
-            "secondary_timeseries",
-            "location_crosswalks",
-            "primary_timeseries"
-        ]
-    )
+            , fs.value as secondary_value
+            , fs.configuration_name
+            , fs.unit_name
+            , fs.variable_name
+            , fs.member
+        FROM filtered_secondary fs
+        JOIN iceberg.teehr.location_crosswalks cf
+            ON cf.secondary_location_id = fs.location_id
+        JOIN iceberg.teehr.primary_timeseries pf
+            ON cf.primary_location_id = pf.location_id
+            AND fs.value_time = pf.value_time
+            AND fs.unit_name = pf.unit_name
+            AND fs.variable_name = pf.variable_name
+    """)
     logger.info("Joined timeseries table created.")
     return joined_sdf
