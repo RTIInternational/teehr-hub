@@ -157,6 +157,11 @@ spec:
           image_pull_policy: IfNotPresent
           node_selector:
             teehr-hub/nodegroup-name: nb-r5-xlarge
+    prePuller:
+      hook:
+        enabled: false
+      continuous:
+        enabled: false
 
     scheduling:
       userScheduler:
