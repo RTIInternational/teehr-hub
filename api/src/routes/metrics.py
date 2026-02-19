@@ -2,15 +2,10 @@
 Metrics collection endpoints (OGC API Features).
 """
 
-import json
 import time
 
-import geopandas as gpd
-import pandas as pd
 from fastapi import APIRouter, HTTPException, Query, Request
 from fastapi.responses import JSONResponse
-
-from ..config import config
 from ..database import (
     execute_query, sanitize_string, trino_catalog, trino_schema
 )
