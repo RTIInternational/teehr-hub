@@ -5,7 +5,6 @@ Timeseries endpoints (OGC API - GeoJSON and TEEHR TS).
 import time
 from datetime import datetime
 
-import geopandas as gpd
 import pandas as pd
 from fastapi import APIRouter, HTTPException, Query, Request
 from fastapi.responses import JSONResponse
