@@ -11,7 +11,7 @@ from fastapi import APIRouter, HTTPException, Query, Request
 from fastapi.responses import JSONResponse
 
 from ..config import config
-from ..database import execute_query, trino_catalog, trino_schema
+from ..database import execute_query, sanitize_string, trino_catalog, trino_schema
 from .utils import create_ogc_geojson_response
 
 router = APIRouter()
@@ -44,7 +44,8 @@ async def get_locations_items(
     """
     try:
         # Build prefix filter if provided
-        prefix_filter = f"l.id LIKE '{prefix}-%'" if prefix else "1=1"
+        safe_prefix = sanitize_string(prefix)
+        prefix_filter = f"l.id LIKE '{safe_prefix}-%'" if safe_prefix else "1=1"
 
         if include_attributes:
             # Query locations with their attributes (one row per attribute)
