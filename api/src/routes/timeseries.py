@@ -129,7 +129,7 @@ async def get_primary_timeseries_items(
             geojson = create_ogc_geojson_response(
                 df,
                 str(request.url),
-                collection_id="secondary_timeseries",
+                collection_id="primary_timeseries",
             )
 
             return JSONResponse(
