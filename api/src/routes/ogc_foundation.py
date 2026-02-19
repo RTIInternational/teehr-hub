@@ -70,11 +70,6 @@ async def conformance():
             "http://www.opengis.net/spec/ogcapi-features-1/1.0/conf/core",
             "http://www.opengis.net/spec/ogcapi-features-1/1.0/conf/geojson",
             "http://www.opengis.net/spec/ogcapi-features-3/1.0/conf/queryables",
-            # OGC API - Coverages
-            "http://www.opengis.net/spec/ogcapi-coverages-1/1.0/conf/core",
-            "http://www.opengis.net/spec/ogcapi-coverages-1/1.0/conf/coverage-subset",
-            # OGC API - EDR
-            "http://www.opengis.net/spec/ogcapi-edr-1/1.0/conf/core",
         ]
     )
 
