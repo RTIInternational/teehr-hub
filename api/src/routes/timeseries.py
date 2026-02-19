@@ -402,8 +402,6 @@ async def get_secondary_timeseries_items(
         format_time = time.time() - format_start
         print(f"Secondary formatting time: {format_time:.3f} seconds")
 
-        print(data)
-
         return JSONResponse(content=data, media_type="application/json")
 
     except Exception as e:
