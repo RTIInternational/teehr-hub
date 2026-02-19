@@ -155,3 +155,11 @@ deployments:
     entrypoint: workflows/metrics/update_forecast_metrics.py:update_forecast_metrics_table
     parameters: {"dir_path": *dir_path}
     work_pool: *work_pool
+
+  - name: routine-table-maintenance
+    version:
+    tags: []
+    description: Run routine Iceberg table maintenance (expire snapshots, remove orphan files, compact data files, rewrite manifests)
+    entrypoint: workflows/maintenance/routine_table_maintenance.py:routine_table_maintenance
+    parameters: {"dir_path": *dir_path}
+    work_pool: *work_pool
