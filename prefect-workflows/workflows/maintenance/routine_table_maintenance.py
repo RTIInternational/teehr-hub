@@ -4,6 +4,7 @@ import logging
 from datetime import timedelta, datetime
 
 from prefect import flow, task, get_run_logger
+from prefect.cache_policies import NO_CACHE
 from pyspark.sql import SparkSession
 
 from workflows.utils.common_utils import initialize_evaluation
@@ -24,7 +25,8 @@ REWRITE_TABLE_CONFIGS = {
     task_run_name="expire-snapshots-{table_name}",
     timeout_seconds=10 * 60,
     retries=2,
-    retry_delay_seconds=30
+    retry_delay_seconds=30,
+    cache_policy=NO_CACHE
 )
 def expire_snapshots(
     spark: SparkSession,
@@ -48,7 +50,8 @@ def expire_snapshots(
     task_run_name="remove-orphan-files-{table_name}",
     timeout_seconds=10 * 60,
     retries=2,
-    retry_delay_seconds=30
+    retry_delay_seconds=30,
+    cache_policy=NO_CACHE
 )
 def remove_orphan_files(
     spark: SparkSession,
@@ -70,7 +73,8 @@ def remove_orphan_files(
     task_run_name="rewrite-data-files-{table_name}",
     timeout_seconds=45 * 60,
     retries=1,
-    retry_delay_seconds=60
+    retry_delay_seconds=60,
+    cache_policy=NO_CACHE
 )
 def rewrite_data_files(
     spark: SparkSession,
@@ -94,7 +98,8 @@ def rewrite_data_files(
     task_run_name="rewrite-manifests-{table_name}",
     timeout_seconds=10 * 60,
     retries=2,
-    retry_delay_seconds=30
+    retry_delay_seconds=30,
+    cache_policy=NO_CACHE
 )
 def rewrite_manifests(
     spark: SparkSession,
