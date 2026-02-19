@@ -184,3 +184,14 @@ deployments:
     schedule:
       cron: "0 10,22 * * *"
       active: true
+
+  - name: routine-table-maintenance
+    version:
+    tags: []
+    description: Run routine Iceberg table maintenance (expire snapshots, remove orphan files, compact data files, rewrite manifests)
+    entrypoint: workflows/maintenance/routine_table_maintenance.py:routine_table_maintenance
+    parameters: {"dir_path": *dir_path}
+    work_pool: *work_pool
+    schedule:
+      cron: "0 4 * * 0"
+      active: true
