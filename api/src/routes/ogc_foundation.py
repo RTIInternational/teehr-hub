@@ -196,8 +196,8 @@ async def get_collections():
                 ),
                 Link(
                     href="/collections/primary_timeseries/items",
-                    rel="coverage",
-                    type="application/prs.coverage+json",
+                    rel="items",
+                    type="application/json",
                 ),
                 Link(
                     href="/collections/primary_timeseries/queryables",
@@ -222,8 +222,8 @@ async def get_collections():
                 ),
                 Link(
                     href="/collections/secondary_timeseries/items",
-                    rel="coverage",
-                    type="application/prs.coverage+json",
+                    rel="items",
+                    type="application/json",
                 ),
                 Link(
                     href="/collections/secondary_timeseries/queryables",
