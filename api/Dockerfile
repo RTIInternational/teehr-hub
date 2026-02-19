@@ -24,6 +24,9 @@ RUN ARCH=$(uname -m) && \
 # Copy pyproject.toml first for dependency installation
 COPY pyproject.toml ./
 
+# Copy application code
+COPY src/ ./src/
+
 # Install dependencies from pyproject.toml
 # Set GDAL config for ARM64 geospatial builds
 RUN ARCH=$(uname -m) && \
@@ -31,9 +34,6 @@ RUN ARCH=$(uname -m) && \
         export GDAL_CONFIG=/usr/bin/gdal-config; \
     fi && \
     pip install --no-cache-dir .
-
-# Copy application code
-COPY src/ ./src/
 
 # Expose port
 EXPOSE 8000
