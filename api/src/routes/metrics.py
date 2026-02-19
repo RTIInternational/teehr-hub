@@ -33,9 +33,6 @@ async def get_collection_items(
         None,
         description="Filter by variable name"
     ),
-    bbox: str | None = Query(
-        None, description="Bounding box filter (minLon,minLat,maxLon,maxLat)"
-    ),
     limit: int | None = Query(
         100, ge=1, le=10000, description="Maximum number of items to return"
     ),
