@@ -2,11 +2,8 @@
 Locations collection endpoints (OGC API Features).
 """
 
-import json
 import time
 
-import geopandas as gpd
-import pandas as pd
 from fastapi import APIRouter, HTTPException, Query, Request
 from fastapi.responses import JSONResponse
 
