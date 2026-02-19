@@ -2,7 +2,6 @@
 Utility functions for OGC API compliance.
 """
 
-import re
 import json
 import time
 from datetime import UTC, datetime
