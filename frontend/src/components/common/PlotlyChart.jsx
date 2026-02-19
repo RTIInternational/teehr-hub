@@ -12,7 +12,6 @@ const PlotlyChart = ({ primaryData, secondaryData, selectedLocation, filters, he
 
     // Primary trace (observations)
     if (primaryData?.length > 0) {
-      console.log('Primary data:', primaryData);
       // Take the first series for primary data
       const primarySeries = primaryData[0];
       if (primarySeries?.timeseries?.length > 0) {
@@ -34,7 +33,6 @@ const PlotlyChart = ({ primaryData, secondaryData, selectedLocation, filters, he
 
     // Secondary trace(s) - create a trace for each series
     if (secondaryData?.length > 0) {
-      console.log('Secondary data:', secondaryData);
       const traceMap = new Map();
       const colors = ['#dc3545', '#28a745', '#ffc107', '#17a2b8', '#6f42c1', '#fd7e14', '#20c997'];
       let colorIndex = 0;
