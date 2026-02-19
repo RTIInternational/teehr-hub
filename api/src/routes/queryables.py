@@ -236,6 +236,10 @@ def get_metrics_table_queryables(table_name: str) -> dict:
 
         # Add group_by fields
         for field in group_by:
+            # geometry is handled separately as a GeoJSON primary geometry;
+            # avoid overwriting its schema with a generic string schema.
+            if field == "geometry":
+                continue
             properties[field] = {
                 "title": field.replace("_", " ").title(),
                 "type": "string",
