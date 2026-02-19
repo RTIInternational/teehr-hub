@@ -332,10 +332,14 @@ async def get_queryable_values(collection_id: str, property_name: str):
         conn = get_trino_connection()
         cur = conn.cursor()
 
+        # Determine catalog and schema from the configured Trino connection
+        catalog = getattr(conn, "catalog", "iceberg")
+        schema = getattr(conn, "schema", "teehr")
+
         # Query distinct values
         query = f"""
             SELECT DISTINCT {sanitized_property}
-            FROM iceberg.teehr.{sanitized_collection}
+            FROM {catalog}.{schema}.{sanitized_collection}
             WHERE {sanitized_property} IS NOT NULL
             ORDER BY {sanitized_property}
         """
