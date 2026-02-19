@@ -391,6 +391,7 @@ async def get_secondary_timeseries_items(
                 "series_type": series_type,
                 "primary_location_id": primary_location_id,
                 "secondary_location_id": secondary_location_id,
+                "reference_time": ref_time_value,
                 "configuration_name": configuration_name,
                 "variable_name": variable_name,
                 "unit_name": unit_name,
