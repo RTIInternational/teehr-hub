@@ -27,7 +27,7 @@ spec:
           command:
             - /bin/sh
             - -c
-            - "mkdir -p /mnt/teehr-hub && chown 1000:1000 /mnt/teehr-hub && chmod 775 /mnt/teehr-hub && mount && ls -la /mnt/"
+            - "mkdir -p /mnt/teehr-hub && chown 1000:1000 /mnt/teehr-hub && chmod -R g+w /mnt/teehr-hub && mount && ls -la /mnt/"
           volumeMounts:
             # Mount the the base of the filesystem (which must be "/" on EFS as
             # it will hang if trying to mount a path that isn't created

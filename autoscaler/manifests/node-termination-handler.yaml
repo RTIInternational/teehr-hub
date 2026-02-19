@@ -1,0 +1,142 @@
+# AWS Node Termination Handler
+# Handles EC2 spot instance interruption notices and scheduled maintenance events
+# Gracefully drains nodes before termination to minimize disruption
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: aws-node-termination-handler
+  namespace: kube-system
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: aws-node-termination-handler
+rules:
+- apiGroups: [""]
+  resources: ["nodes"]
+  verbs: ["get", "list", "watch", "patch", "update"]
+- apiGroups: [""]
+  resources: ["pods"]
+  verbs: ["get", "list", "watch"]
+- apiGroups: [""]
+  resources: ["pods/eviction"]
+  verbs: ["create"]
+- apiGroups: ["extensions", "apps"]
+  resources: ["daemonsets"]
+  verbs: ["get", "list", "watch"]
+- apiGroups: [""]
+  resources: ["events"]
+  verbs: ["create", "patch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: aws-node-termination-handler
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: aws-node-termination-handler
+subjects:
+- kind: ServiceAccount
+  name: aws-node-termination-handler
+  namespace: kube-system
+---
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: aws-node-termination-handler
+  namespace: kube-system
+  labels:
+    app: aws-node-termination-handler
+spec:
+  selector:
+    matchLabels:
+      app: aws-node-termination-handler
+  updateStrategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 1
+  template:
+    metadata:
+      labels:
+        app: aws-node-termination-handler
+    spec:
+      serviceAccountName: aws-node-termination-handler
+      hostNetwork: true
+      dnsPolicy: ClusterFirstWithHostNet
+      priorityClassName: system-node-critical
+      affinity:
+        nodeAffinity:
+          # Only run on nodes that can be interrupted (spot instances)
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: eks.amazonaws.com/capacityType
+                operator: In
+                values:
+                - SPOT
+      tolerations:
+      # Tolerate all taints to run on any spot node
+      - operator: Exists
+      containers:
+      - name: aws-node-termination-handler
+        image: public.ecr.aws/aws-ec2/aws-node-termination-handler:v1.22.0
+        imagePullPolicy: IfNotPresent
+        securityContext:
+          readOnlyRootFilesystem: true
+          runAsNonRoot: true
+          runAsUser: 1000
+          allowPrivilegeEscalation: false
+        env:
+        - name: NODE_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: spec.nodeName
+        - name: POD_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.name
+        - name: NAMESPACE
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.namespace
+        # Enable spot interruption draining
+        - name: ENABLE_SPOT_INTERRUPTION_DRAINING
+          value: "true"
+        # Disable scheduled event draining (optional)
+        - name: ENABLE_SCHEDULED_EVENT_DRAINING
+          value: "false"
+        # How long to wait before starting to drain (to give apps time to handle signal)
+        - name: NODE_TERMINATION_GRACE_PERIOD
+          value: "120"
+        # Pod termination grace period
+        - name: POD_TERMINATION_GRACE_PERIOD
+          value: "90"
+        # Emit Kubernetes events
+        - name: EMIT_KUBERNETES_EVENTS
+          value: "true"
+        # Log level
+        - name: LOG_LEVEL
+          value: "info"
+        # Enable proactive node draining (recommended for Spark)
+        - name: ENABLE_PROACTIVE_NODE_DRAIN
+          value: "true"
+        # Webhook URL (optional - can be used for alerting)
+        # - name: WEBHOOK_URL
+        #   value: "https://your-webhook-url.com"
+        resources:
+          requests:
+            cpu: 50m
+            memory: 64Mi
+          limits:
+            cpu: 100m
+            memory: 128Mi
+        volumeMounts:
+        - name: uptime
+          mountPath: /proc/uptime
+          readOnly: true
+      volumes:
+      - name: uptime
+        hostPath:
+          path: /proc/uptime
+          type: File

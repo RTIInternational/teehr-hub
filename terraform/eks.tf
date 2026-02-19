@@ -33,7 +33,7 @@ module "eks" {
 
   name                   = var.cluster_name
   kubernetes_version     = var.cluster_version
-  
+
   endpoint_public_access = true
   authentication_mode    = "API_AND_CONFIG_MAP"
 
@@ -253,6 +253,42 @@ module "eks" {
         "k8s.io/cluster-autoscaler/node-template/taint/teehr-hub/dedicated"                 = "worker:NoSchedule"
         "k8s.io/cluster-autoscaler/node-template/taint/teehr-hub_dedicated"                 = "worker:NoSchedule"
         "teehr-hub/nodegroup-name"                                                          = "spark-r5-4xlarge"
+      }
+    })
+
+    spark-r5-4xlarge-spot = merge(local.eks_node_group_defaults, {
+      name            = "spark-r5-4xlarge-spot"
+      iam_role_name   = "${local.cluster_name}-spark-r5-4xlarge-spot"
+
+      capacity_type   = "SPOT"
+
+      min_size        = 0
+      max_size        = 400
+      desired_size    = 0
+
+      instance_types  = ["r5.4xlarge", "r5a.4xlarge", "r5n.4xlarge"]
+      labels = {
+        "teehr-hub/nodegroup-name"         = "spark-r5-4xlarge-spot"
+      }
+      taints = {
+        dedicated = {
+          key    = "teehr-hub/dedicated"
+          value  = "worker"
+          effect = "NO_SCHEDULE"
+        }
+        dedicated_alt = {
+          key    = "teehr-hub_dedicated"
+          value  = "worker"
+          effect = "NO_SCHEDULE"
+        }
+      }
+      tags = {
+        "k8s.io/cluster-autoscaler/enabled"                                                 = "true"
+        "k8s.io/cluster-autoscaler/${local.cluster_name}"                                   = "owned"
+        "k8s.io/cluster-autoscaler/node-template/label/teehr-hub/node-purpose/node-purpose" = "worker"
+        "k8s.io/cluster-autoscaler/node-template/taint/teehr-hub/dedicated"                 = "worker:NoSchedule"
+        "k8s.io/cluster-autoscaler/node-template/taint/teehr-hub_dedicated"                 = "worker:NoSchedule"
+        "teehr-hub/nodegroup-name"                                                          = "spark-r5-4xlarge-spot"
       }
     })
 
