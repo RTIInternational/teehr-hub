@@ -15,10 +15,11 @@ ORPHAN_FILE_RETENTION_DAYS = 2
 SNAPSHOT_RETENTION_DAYS = 7
 NUM_SNAPSHOTS_TO_KEEP = 10
 
-REWRITE_TABLE_CONFIGS = {
-    "primary_timeseries": "zorder(configuration_name, location_id, value_time)",
-    "secondary_timeseries": "zorder(configuration_name, location_id, value_time, reference_time)",
-}
+REWRITE_TABLE_SORT_ORDER = {
+    "primary_timeseries": "zorder(value_time)",
+    "secondary_timeseries": "zorder(value_time, reference_time)",
+}  # Only significant if strategy is "sort"
+REWRITE_TABLE_STRATEGY = "binpack"  # Can be 'sort' or 'binpack'
 
 
 @task(
@@ -79,18 +80,32 @@ def remove_orphan_files(
 def rewrite_data_files(
     spark: SparkSession,
     table_name: str,
-    sort_order: str
+    sort_order: str,
+    strategy: str,
 ) -> None:
     """Compact small data files and apply z-order sorting."""
     logger = get_run_logger()
     logger.info(f"Rewriting data files on {table_name} with {sort_order}")
-    query = f"""
-        CALL iceberg.system.rewrite_data_files(
-            table => 'teehr.{table_name}',
-            strategy => 'sort',
-            sort_order => '{sort_order}',
-            options => map('target-file-size-bytes', '536870912') -- 512 MB
-    );"""
+    if strategy == "sort":
+        logger.info(f"Using sort strategy with sort order: {sort_order}")
+        query = f"""
+            CALL iceberg.system.rewrite_data_files(
+                table => 'teehr.{table_name}',
+                strategy => '{strategy}',
+                sort_order => '{sort_order}',
+                options => map('target-file-size-bytes', '536870912') -- 512 MB
+        );"""
+    elif strategy == "binpack":
+        logger.info(f"Using binpack strategy for {table_name}")
+        query = f"""
+            CALL iceberg.system.rewrite_data_files(
+                table => 'teehr.{table_name}',
+                strategy => '{strategy}',
+                options => map('target-file-size-bytes', '536870912') -- 512 MB
+        );"""
+    else:
+        logger.warning(f"Unknown rewrite strategy {strategy} for {table_name}. Skipping rewrite.")
+        return
     spark.sql(query).show()
 
 
@@ -124,10 +139,10 @@ def routine_table_maintenance(
 ) -> None:
     """Routine table maintenance workflow.
 
-    expire_snapshots - Delete unreferenced files first so subsequent steps skip stale data.
-    remove_orphan_files - Cleans up left over files from failed jobs or expired snapshots.
-    rewrite_data_files - Consolidates small files with zorder for better read performance.
-    rewrite_manifests - Merges small manifest files to speed up query planning.
+    1. expire_snapshots - Delete unreferenced files first so subsequent steps skip stale data.
+    2. remove_orphan_files - Cleans up left over files from failed jobs or expired snapshots.
+    3. rewrite_data_files - Consolidates small files with zorder for better read performance.
+    4. rewrite_manifests - Merges small manifest files to speed up query planning.
     """
     logger = get_run_logger()
 
@@ -145,13 +160,7 @@ def routine_table_maintenance(
         start_spark_cluster=True,
         executor_instances=20,
         executor_cores=3,
-        executor_memory="16g",
-        update_configs={
-            "spark.kubernetes.executor.node.selector.teehr-hub/nodegroup-name": "spark-r5-4xlarge-spot",
-            "spark.decommission.enabled": "true",
-            "spark.executor.decommission.signal": "SIGTERM",
-            "spark.storage.decommission.enabled": "true",
-        }
+        executor_memory="16g"
     )
     table_names = ev.list_tables()["name"].tolist()
 
@@ -168,11 +177,12 @@ def routine_table_maintenance(
             table_name=table_name,
             expiry_date=orphan_file_expiry_date
         )
-        if table_name in REWRITE_TABLE_CONFIGS:
+        if table_name in REWRITE_TABLE_SORT_ORDER:
             rewrite_data_files(
                 spark=ev.spark,
                 table_name=table_name,
-                sort_order=REWRITE_TABLE_CONFIGS[table_name]
+                sort_order=REWRITE_TABLE_SORT_ORDER[table_name],
+                strategy=REWRITE_TABLE_STRATEGY
             )
         rewrite_manifests(
             spark=ev.spark,
