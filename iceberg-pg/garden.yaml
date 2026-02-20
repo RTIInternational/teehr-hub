@@ -1,0 +1,12 @@
+kind: Deploy
+type: kubernetes
+name: iceberg-database
+description: K8s Deploy Iceberg Catalog Database
+dependencies:
+  - deploy.secrets
+environments:
+  - local
+  - remote
+spec:
+  files: 
+  - ./manifests/iceberg-pg.yaml

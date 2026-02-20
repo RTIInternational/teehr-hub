@@ -6,18 +6,6 @@ metadata:
   annotations:
     eks.amazonaws.com/role-arn: arn:aws:iam::935462133478:role/teehr-hub-iceberg-s3-warehouse-irsa
 ---
-apiVersion: v1
-kind: PersistentVolumeClaim
-metadata:
-  name: iceberg-rest-catalog-pvc
-  namespace: teehr-hub
-spec:
-  accessModes:
-    - ReadWriteOnce
-  resources:
-    requests:
-      storage: 5Gi
----    
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -36,30 +24,10 @@ spec:
         app: iceberg-rest
     spec:
       serviceAccountName: iceberg-rest
-      securityContext:
-        fsGroup: 1000
-      # Fix permissions on the mounted volume
-      initContainers:
-      - name: fix-permissions
-        image: alpine:3.18
-        command: 
-        - sh
-        - -c
-        - |
-          chown -R 1000:1000 /data
-          chmod -R 755 /data
-        volumeMounts:
-        - name: catalog-storage
-          mountPath: /data
-        securityContext:
-          runAsUser: 0
       containers:
       - image: tabulario/iceberg-rest
         imagePullPolicy: IfNotPresent
         name: iceberg-rest
-        securityContext:
-          runAsUser: 1000
-          runAsGroup: 1000
         env:
         ${if environment.name == "local"}
         - name: AWS_ACCESS_KEY_ID
@@ -86,18 +54,21 @@ spec:
         - name: CATALOG_CATALOG__IMPL
           value: org.apache.iceberg.jdbc.JdbcCatalog
         - name: CATALOG_URI
-          value: jdbc:sqlite:/data/iceberg_catalog.db
+          value: jdbc:postgresql://iceberg-pg:5432/iceberg
         - name: CATALOG_JDBC_USER
-          value: iceberg
+          valueFrom:
+            secretKeyRef:
+              name: iceberg-db-secrets
+              key: username
         - name: CATALOG_JDBC_PASSWORD
-          value: iceberg
+          valueFrom:
+            secretKeyRef:
+              name: iceberg-db-secrets
+              key: password
         ports:
         - name: http
           containerPort: 8181
           protocol: TCP
-        volumeMounts:
-        - name: catalog-storage
-          mountPath: /data
         # livenessProbe:
         #   httpGet:
         #     path: /healthz
@@ -107,10 +78,6 @@ spec:
         #     path: /healthz
         #     port: http
         resources: {}
-      volumes:
-      - name: catalog-storage
-        persistentVolumeClaim:
-          claimName: iceberg-rest-catalog-pvc
 
 ---
 apiVersion: v1

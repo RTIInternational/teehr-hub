@@ -22,10 +22,10 @@ async def get_crosswalk_items(
         None, description="Filter by secondary location ID (can be specified multiple times)"
     ),
     limit: int | None = Query(
-        100, ge=1, le=10000, description="Maximum number of items to return"
+        None, ge=1, le=10000, description="Maximum number of items to return (omit to return all)"
     ),
     offset: int | None = Query(
-        0, ge=0, description="Starting index for pagination"
+        None, ge=0, description="Starting index for pagination"
     ),
 ):
     """Get location crosswalk mappings.
@@ -46,6 +46,12 @@ async def get_crosswalk_items(
 
         where_clause = " AND ".join(where_conditions) if where_conditions else "1=1"
 
+        pagination = ""
+        if offset is not None:
+            pagination += f" OFFSET {offset}"
+        if limit is not None:
+            pagination += f" LIMIT {limit}"
+
         query = f"""
             SELECT
                 primary_location_id,
@@ -53,8 +59,7 @@ async def get_crosswalk_items(
             FROM {trino_catalog}.{trino_schema}.location_crosswalks
             WHERE {where_clause}
             ORDER BY primary_location_id, secondary_location_id
-            OFFSET {offset}
-            LIMIT {limit}
+            {pagination}
         """
 
         query_start = time.time()
@@ -99,12 +104,12 @@ async def get_crosswalk_items(
         }
 
         # Add pagination links
-        if len(items) == limit:
+        if limit is not None and len(items) == limit:
             from urllib.parse import parse_qs, urlencode, urlparse, urlunparse
 
             parsed = urlparse(str(request.url))
             query_params = parse_qs(parsed.query)
-            query_params["offset"] = [str(offset + limit)]
+            query_params["offset"] = [str((offset or 0) + limit)]
             query_params["limit"] = [str(limit)]
             next_query = urlencode({k: v[0] for k, v in query_params.items()})
             next_url = urlunparse(parsed._replace(query=next_query))

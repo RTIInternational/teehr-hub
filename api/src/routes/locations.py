@@ -27,10 +27,10 @@ async def get_locations_items(
         False, description="Include pivoted location attributes as properties"
     ),
     limit: int | None = Query(
-        100, ge=1, le=10000, description="Maximum number of items to return"
+        None, ge=1, le=10000, description="Maximum number of items to return (omit to return all)"
     ),
     offset: int | None = Query(
-        0, ge=0, description="Starting index for pagination"
+        None, ge=0, description="Starting index for pagination"
     ),
 ):
     """Get location features (OGC API Features endpoint).
@@ -100,11 +100,15 @@ async def get_locations_items(
         if spatial_filters:
             base_query += " AND " + " AND ".join(spatial_filters)
 
-        # Add ordering
+        # Add ordering and pagination
         if include_attributes:
             base_query += " ORDER BY l.id"
         else:
-            base_query += f" ORDER BY id OFFSET {offset} LIMIT {limit}"
+            base_query += " ORDER BY id"
+            if offset is not None:
+                base_query += f" OFFSET {offset}"
+            if limit is not None:
+                base_query += f" LIMIT {limit}"
 
         query_start = time.time()
         df = execute_query(base_query)
@@ -136,7 +140,9 @@ async def get_locations_items(
                 df = locations_df
 
             # Apply pagination after pivot (since we grouped rows)
-            df = df.iloc[offset: offset + limit]
+            start = offset or 0
+            end = start + limit if limit is not None else None
+            df = df.iloc[start:end]
 
         print(f"Processing {len(df)} location records")
 
