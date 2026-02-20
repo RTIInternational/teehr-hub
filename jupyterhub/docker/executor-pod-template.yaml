@@ -39,4 +39,4 @@ spec:
     operator: "Equal"
     value: "worker"
   nodeSelector:
-    teehr-hub/nodegroup-name: spark-r5-4xlarge
+    teehr-hub/nodegroup-name: spark-r5-4xlarge-spot

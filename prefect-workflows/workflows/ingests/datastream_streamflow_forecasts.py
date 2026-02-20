@@ -4,7 +4,6 @@ from typing import Union
 import logging
 
 from prefect import flow, get_run_logger
-from prefect.futures import wait
 import pandas as pd
 import botocore.session
 from botocore import UNSIGNED

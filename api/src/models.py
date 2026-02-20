@@ -2,10 +2,11 @@
 Database models and enums for the TEEHR API.
 """
 
-from enum import Enum
-from pydantic import BaseModel
-from typing import Optional, List, Dict, Any
 from datetime import datetime
+from enum import Enum
+from typing import Any
+
+from pydantic import BaseModel
 
 
 class MetricsTable(str, Enum):
@@ -53,3 +54,49 @@ class HealthResponse(BaseModel):
     status: str
     timestamp: datetime
     version: str
+
+
+# OGC API Models
+
+class Link(BaseModel):
+    """OGC API Link object."""
+    href: str
+    rel: str
+    type: str | None = None
+    title: str | None = None
+    hreflang: str | None = None
+
+
+class ConformanceResponse(BaseModel):
+    """OGC API Conformance declaration."""
+    conformsTo: list[str]
+
+
+class Extent(BaseModel):
+    """OGC API Extent object."""
+    spatial: dict[str, Any] | None = None
+    temporal: dict[str, Any] | None = None
+
+
+class Collection(BaseModel):
+    """OGC API Collection metadata."""
+    id: str
+    title: str
+    description: str
+    links: list[Link]
+    extent: Extent | None = None
+    itemType: str | None = None
+    crs: list[str] | None = None
+
+
+class CollectionsResponse(BaseModel):
+    """OGC API Collections list."""
+    links: list[Link]
+    collections: list[Collection]
+
+
+class LandingPage(BaseModel):
+    """OGC API Landing page."""
+    title: str
+    description: str
+    links: list[Link]

@@ -1,0 +1,23 @@
+{
+    "[python]": {
+        "editor.formatOnSave": true,
+        "editor.defaultFormatter": "charliermarsh.ruff",
+        "editor.codeActionsOnSave": {
+            "source.fixAll.ruff": "always",
+            "source.organizeImports.ruff": "always"
+        }
+    },
+    
+    // Use Ruff for linting
+    "ruff.configurationPreference": "filesystemFirst",
+    "ruff.lint.enable": true,
+    
+    // Disable Flake8 extension - Ruff handles this
+    "flake8.enabled": false,
+    
+    // Disable isort extension - Ruff handles import sorting
+    "isort.check": false,
+    
+    // Disable Pylance type checking (optional - Ruff handles linting)
+    "python.analysis.typeCheckingMode": "off"
+}
