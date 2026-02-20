@@ -20,10 +20,10 @@ async def get_configuration_items(
     name: str | None = Query(None, description="Filter by configuration name"),
     type: str | None = Query(None, description="Filter by type (primary, secondary)"),
     limit: int | None = Query(
-        100, ge=1, le=10000, description="Maximum number of items to return"
+        None, ge=1, le=10000, description="Maximum number of items to return (omit to return all)"
     ),
     offset: int | None = Query(
-        0, ge=0, description="Starting index for pagination"
+        None, ge=0, description="Starting index for pagination"
     ),
 ):
     """Get configuration definitions.
@@ -44,6 +44,12 @@ async def get_configuration_items(
 
         where_clause = " AND ".join(where_conditions) if where_conditions else "1=1"
 
+        pagination = ""
+        if offset is not None:
+            pagination += f" OFFSET {offset}"
+        if limit is not None:
+            pagination += f" LIMIT {limit}"
+
         query = f"""
             SELECT
                 name,
@@ -52,8 +58,7 @@ async def get_configuration_items(
             FROM {trino_catalog}.{trino_schema}.configurations
             WHERE {where_clause}
             ORDER BY name
-            OFFSET {offset}
-            LIMIT {limit}
+            {pagination}
         """
 
         query_start = time.time()
@@ -90,10 +95,10 @@ async def get_unit_items(
     request: Request,
     name: str | None = Query(None, description="Filter by unit name"),
     limit: int | None = Query(
-        100, ge=1, le=10000, description="Maximum number of items to return"
+        None, ge=1, le=10000, description="Maximum number of items to return (omit to return all)"
     ),
     offset: int | None = Query(
-        0, ge=0, description="Starting index for pagination"
+        None, ge=0, description="Starting index for pagination"
     ),
 ):
     """Get unit definitions.
@@ -110,13 +115,18 @@ async def get_unit_items(
 
         where_clause = " AND ".join(where_conditions) if where_conditions else "1=1"
 
+        pagination = ""
+        if offset is not None:
+            pagination += f" OFFSET {offset}"
+        if limit is not None:
+            pagination += f" LIMIT {limit}"
+
         query = f"""
             SELECT *
             FROM {trino_catalog}.{trino_schema}.units
             WHERE {where_clause}
             ORDER BY name
-            OFFSET {offset}
-            LIMIT {limit}
+            {pagination}
         """
 
         query_start = time.time()
@@ -153,10 +163,10 @@ async def get_variable_items(
     request: Request,
     name: str | None = Query(None, description="Filter by variable name"),
     limit: int | None = Query(
-        100, ge=1, le=10000, description="Maximum number of items to return"
+        None, ge=1, le=10000, description="Maximum number of items to return (omit to return all)"
     ),
     offset: int | None = Query(
-        0, ge=0, description="Starting index for pagination"
+        None, ge=0, description="Starting index for pagination"
     ),
 ):
     """Get variable definitions.
@@ -173,13 +183,18 @@ async def get_variable_items(
 
         where_clause = " AND ".join(where_conditions) if where_conditions else "1=1"
 
+        pagination = ""
+        if offset is not None:
+            pagination += f" OFFSET {offset}"
+        if limit is not None:
+            pagination += f" LIMIT {limit}"
+
         query = f"""
             SELECT *
             FROM {trino_catalog}.{trino_schema}.variables
             WHERE {where_clause}
             ORDER BY name
-            OFFSET {offset}
-            LIMIT {limit}
+            {pagination}
         """
 
         query_start = time.time()
@@ -216,10 +231,10 @@ async def get_attribute_items(
     request: Request,
     name: str | None = Query(None, description="Filter by attribute name"),
     limit: int | None = Query(
-        100, ge=1, le=10000, description="Maximum number of items to return"
+        None, ge=1, le=10000, description="Maximum number of items to return (omit to return all)"
     ),
     offset: int | None = Query(
-        0, ge=0, description="Starting index for pagination"
+        None, ge=0, description="Starting index for pagination"
     ),
 ):
     """Get attribute definitions.
@@ -236,13 +251,18 @@ async def get_attribute_items(
 
         where_clause = " AND ".join(where_conditions) if where_conditions else "1=1"
 
+        pagination = ""
+        if offset is not None:
+            pagination += f" OFFSET {offset}"
+        if limit is not None:
+            pagination += f" LIMIT {limit}"
+
         query = f"""
             SELECT *
             FROM {trino_catalog}.{trino_schema}.attributes
             WHERE {where_clause}
             ORDER BY name
-            OFFSET {offset}
-            LIMIT {limit}
+            {pagination}
         """
 
         query_start = time.time()
@@ -285,10 +305,10 @@ async def get_location_attribute_items(
     ),
     attribute_name: str | None = Query(None, description="Filter by attribute name"),
     limit: int | None = Query(
-        100, ge=1, le=10000, description="Maximum number of items to return"
+        None, ge=1, le=10000, description="Maximum number of items to return (omit to return all)"
     ),
     offset: int | None = Query(
-        0, ge=0, description="Starting index for pagination"
+        None, ge=0, description="Starting index for pagination"
     ),
 ):
     """Get location attribute values.
@@ -321,6 +341,12 @@ async def get_location_attribute_items(
 
         where_clause = " AND ".join(where_conditions) if where_conditions else "1=1"
 
+        pagination = ""
+        if offset is not None:
+            pagination += f" OFFSET {offset}"
+        if limit is not None:
+            pagination += f" LIMIT {limit}"
+
         query = f"""
             SELECT
                 location_id,
@@ -329,8 +355,7 @@ async def get_location_attribute_items(
             FROM {trino_catalog}.{trino_schema}.location_attributes
             WHERE {where_clause}
             ORDER BY location_id, attribute_name
-            OFFSET {offset}
-            LIMIT {limit}
+            {pagination}
         """
 
         query_start = time.time()
@@ -354,12 +379,12 @@ async def get_location_attribute_items(
         }
 
         # Add pagination links
-        if len(items) == limit:
+        if limit is not None and len(items) == limit:
             from urllib.parse import parse_qs, urlencode, urlparse, urlunparse
 
             parsed = urlparse(str(request.url))
             query_params = parse_qs(parsed.query)
-            query_params["offset"] = [str(offset + limit)]
+            query_params["offset"] = [str((offset or 0) + limit)]
             query_params["limit"] = [str(limit)]
             next_query = urlencode({k: v[0] for k, v in query_params.items()})
             next_url = urlunparse(parsed._replace(query=next_query))

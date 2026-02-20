@@ -29,10 +29,10 @@ async def get_collection_items(
         description="Filter by variable name"
     ),
     limit: int | None = Query(
-        100, ge=1, le=10000, description="Maximum number of items to return"
+        None, ge=1, le=10000, description="Maximum number of items to return (omit to return all)"
     ),
     offset: int | None = Query(
-        0,
+        None,
         ge=0,
         description="Starting index for pagination"
     ),
@@ -64,13 +64,18 @@ async def get_collection_items(
 
         where_clause = " AND ".join(where_conditions)
 
+        pagination = ""
+        if offset is not None:
+            pagination += f" OFFSET {offset}"
+        if limit is not None:
+            pagination += f" LIMIT {limit}"
+
         query = f"""
             SELECT *
             FROM {trino_catalog}.{trino_schema}.{sanitized_table}
             WHERE {where_clause}
             ORDER BY primary_location_id
-            OFFSET {offset}
-            LIMIT {limit}
+            {pagination}
         """
 
         query_start = time.time()
