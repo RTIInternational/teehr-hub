@@ -51,4 +51,17 @@ spec:
               mountPath: /var/lib/postgresql/data
       volumes:
         - name: pgdata
-          emptyDir: {}
+          persistentVolumeClaim:
+            claimName: prefect-pg-data
+
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: prefect-pg-data
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 10Gi
