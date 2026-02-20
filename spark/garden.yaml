@@ -9,3 +9,4 @@ spec:
     # - manifests/spark-namespace.yaml
     - manifests/spark-roles.yaml
     - manifests/jupyter-spark-rbac.yaml
+    - manifests/prefect-spark-rbac.yaml
