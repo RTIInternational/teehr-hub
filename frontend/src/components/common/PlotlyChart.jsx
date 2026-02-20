@@ -10,7 +10,7 @@ const PlotlyChart = ({ primaryData, secondaryData, selectedLocation, filters, he
 
     const traces = [];
 
-    // Primary trace
+    // Primary trace (observations)
     if (primaryData?.length > 0) {
       // Take the first series for primary data
       const primarySeries = primaryData[0];
@@ -18,7 +18,7 @@ const PlotlyChart = ({ primaryData, secondaryData, selectedLocation, filters, he
         traces.push({
           x: primarySeries.timeseries.map(d => d.value_time),
           y: primarySeries.timeseries.map(d => d.value),
-          name: primarySeries.configuration_name || filters.configuration,
+          name: 'Observed (' + (primarySeries.configuration_name || 'USGS') + ')',
           type: 'scatter',
           mode: 'lines',
           line: { color: '#0d6efd', width: 2 },
@@ -42,10 +42,26 @@ const PlotlyChart = ({ primaryData, secondaryData, selectedLocation, filters, he
           const key = `${series.configuration_name}|${series.variable_name}|${series.reference_time}`;
           
           if (!traceMap.has(key)) {
+            // Include reference_time in legend name for forecasts (multiple reference_times)
+            let traceName = series.configuration_name;
+            if (series.reference_time && series.reference_time !== 'null') {
+              // Format reference_time for display (e.g., "2024-01-15T00:00" -> "01/15 00:00")
+              try {
+                const refDate = new Date(series.reference_time);
+                const month = String(refDate.getMonth() + 1).padStart(2, '0');
+                const day = String(refDate.getDate()).padStart(2, '0');
+                const hours = String(refDate.getHours()).padStart(2, '0');
+                const mins = String(refDate.getMinutes()).padStart(2, '0');
+                traceName = `${series.configuration_name} (${month}/${day} ${hours}:${mins})`;
+              } catch {
+                traceName = `${series.configuration_name} (${series.reference_time})`;
+              }
+            }
+            
             const trace = {
               x: series.timeseries.map(d => d.value_time),
               y: series.timeseries.map(d => d.value),
-              name: series.configuration_name,
+              name: traceName,
               type: 'scatter',
               mode: 'lines',
               line: { 

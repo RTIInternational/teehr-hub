@@ -1,6 +1,10 @@
 /* eslint-disable react-refresh/only-export-components */
 import { createContext, useContext, useReducer } from 'react';
 
+// Static date defaults for retrospective - uses 2020 data
+const DEFAULT_START_DATE = '2020-01-01T00:00';
+const DEFAULT_END_DATE = '2020-12-31T23:59';
+
 // Initial state for retrospective dashboard
 const initialRetrospectiveState = {
   // Data
@@ -16,12 +20,12 @@ const initialRetrospectiveState = {
     metricName: 'relative_bias'
   },
   
-  // Timeseries filters (retrospective-specific defaults)
+  // Timeseries filters (retrospective-specific defaults - year 2020)
   timeseriesFilters: {
     configuration: null,
     variable: null,
-    start_date: '2000-01-01T00:00',
-    end_date: '2000-12-31T23:59',
+    start_date: DEFAULT_START_DATE,
+    end_date: DEFAULT_END_DATE,
     reference_start_date: null,
     reference_end_date: null
   },

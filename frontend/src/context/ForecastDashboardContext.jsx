@@ -1,10 +1,15 @@
 /* eslint-disable react-refresh/only-export-components */
 import { createContext, useContext, useReducer } from 'react';
 
-// Calculate dynamic dates
+// Dynamic date helpers - returns dates for 10 days ago through today
 const getTenDaysAgo = () => {
   const date = new Date();
   date.setDate(date.getDate() - 10);
+  return date.toISOString().slice(0, 16); // Format: YYYY-MM-DDTHH:MM
+};
+
+const getToday = () => {
+  const date = new Date();
   return date.toISOString().slice(0, 16); // Format: YYYY-MM-DDTHH:MM
 };
 
@@ -28,9 +33,9 @@ const initialForecastState = {
     configuration: null,
     variable: null,
     start_date: getTenDaysAgo(),
-    end_date: null,
+    end_date: getToday(),
     reference_start_date: getTenDaysAgo(),
-    reference_end_date: null
+    reference_end_date: getToday()
   },
   
   // Selected location

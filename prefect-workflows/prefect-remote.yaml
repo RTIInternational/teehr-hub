@@ -141,7 +141,7 @@ deployments:
     parameters: {
       "dir_path": *dir_path,
       "forecast_configuration": "short_range",
-      "datastream_name": "lstm"
+      "datastream_name": "lstm_0"
     }
     work_pool: *work_pool
     schedule:
@@ -156,11 +156,24 @@ deployments:
     parameters: {
       "dir_path": *dir_path,
       "forecast_configuration": "medium_range",
-      "datastream_name": "lstm"
+      "datastream_name": "lstm_0"
     }
     work_pool: *work_pool
     schedule:
       cron: "0 12 * * *"
+      active: true
+
+  - name: ingest-nwps-rfc-streamflow-forecasts
+    version:
+    tags: []
+    description: Ingest NWPS RFC streamflow forecasts from NOAA servers
+    entrypoint: workflows/ingests/nwps_rfc_streamflow_forecasts.py:ingest_nwps_rfc_forecasts
+    parameters: {
+      "dir_path": *dir_path
+    }
+    work_pool: *work_pool
+    schedule:
+      cron: "15 * * * *"
       active: true
 
   - name: update-joined-forecast-table

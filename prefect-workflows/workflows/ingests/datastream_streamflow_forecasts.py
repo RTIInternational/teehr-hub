@@ -4,7 +4,6 @@ from typing import Union
 import logging
 
 from prefect import flow, get_run_logger
-from prefect.futures import wait
 import pandas as pd
 import botocore.session
 from botocore import UNSIGNED
@@ -35,18 +34,13 @@ MEDIUM_RANGE_TZ_HOURS = ["00", "06", "12", "18"]
 MEDIUM_RANGE_MEMBERS = ["1"]
 
 FORMAT_PATTERN = "%Y-%m-%d_%H:%M:%S"
-UNITS_MAPPING = {"m3 s-1": "m^3/s"}
+UNIT_NAME = "m^3/s"
 LOCATION_ID_PREFIX = "nrds22"
 VARIABLE_NAME = "streamflow_hourly_inst"
 
 FORECAST_CONFIGURATION = "short_range"
 HYDROFABRIC_VERSION = "v2.2_hydrofabric"
 DATASTREAM_NAME = "cfe_nom"
-FIELD_MAPPING = {
-    "time": "value_time",
-    "feature_id": "location_id",
-    "flow": "value"
-}
 
 # Set up access for public S3 bucket
 session = botocore.session.get_session()
@@ -100,7 +94,7 @@ def ingest_datastream_forecasts(
         prefix = sec_id.split("-")[0]
         id_val = sec_id.split("-")[1]
         if prefix == "nrds22":
-            stripped_ids.append(id_val)
+            stripped_ids.append(int(id_val))
 
     # Get tz hours and members based on forecast configuration
     if forecast_configuration == "short_range":
@@ -151,8 +145,7 @@ def ingest_datastream_forecasts(
             output_cache_dir=output_cache_dir,
             bucket_name=BUCKET_NAME,
             warehouse_ngen_ids=stripped_ids,
-            field_mapping=FIELD_MAPPING,
-            units_mapping=UNITS_MAPPING,
+            unit_name=UNIT_NAME,
             variable_name=VARIABLE_NAME,
             configuration_name=configuration_name,
             location_id_prefix=LOCATION_ID_PREFIX,
@@ -169,8 +162,7 @@ def ingest_datastream_forecasts(
     #         output_cache_dir=output_cache_dir,
     #         bucket_name=BUCKET_NAME,
     #         warehouse_ngen_ids=stripped_ids,
-    #         field_mapping=FIELD_MAPPING,
-    #         units_mapping=UNITS_MAPPING,
+    #         unit_name=UNIT_NAME,
     #         variable_name=VARIABLE_NAME,
     #         configuration_name=configuration_name,
     #         location_id_prefix=LOCATION_ID_PREFIX,
