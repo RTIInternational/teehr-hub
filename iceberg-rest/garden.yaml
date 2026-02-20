@@ -7,6 +7,7 @@ spec:
     - ./manifests/iceberg-rest.yaml
 dependencies:
   - deploy.secrets
+  - deploy.iceberg-database
 environments:
   - local
   - remote
