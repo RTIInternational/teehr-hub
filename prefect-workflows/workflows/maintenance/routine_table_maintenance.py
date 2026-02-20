@@ -160,7 +160,11 @@ def routine_table_maintenance(
         start_spark_cluster=True,
         executor_instances=20,
         executor_cores=3,
-        executor_memory="16g"
+        executor_memory="16g",
+        update_configs={
+            "spark.hadoop.fs.s3.impl": "org.apache.hadoop.fs.s3a.S3AFileSystem",
+            "spark.hadoop.fs.AbstractFileSystem.s3.impl": "org.apache.hadoop.fs.s3a.S3A"
+        }
     )
     table_names = ev.list_tables()["name"].tolist()
 
