@@ -1,4 +1,5 @@
 from pathlib import Path
+import shutil
 from typing import Union, List
 import logging
 
@@ -15,7 +16,9 @@ FORECAST_CONFIGURATION_NAMES = [
     "nrds_v22_cfenom_medium_range",
     "nrds_v22_cfenom_short_range",
     "nrds_v22_lstm_short_range",
-    "nrds_v22_lstm_medium_range"
+    "nrds_v22_lstm_medium_range",
+    "nrds_v22_lstm0_short_range",
+    "nrds_v22_lstm0_medium_range"
 ]
 JOINED_FORECAST_TABLE_NAME = "fcst_joined_timeseries"
 
@@ -41,10 +44,16 @@ def update_joined_forecast_table(
     logger = get_run_logger()
     ev = initialize_evaluation(
         dir_path=dir_path,
-        start_spark_cluster=False,
-        executor_instances=4,
-        executor_cores=4,
-        executor_memory="16g"
+        start_spark_cluster=True,
+        executor_instances=8,
+        executor_cores=7,
+        executor_memory="50g",
+        update_configs={
+            "spark.kubernetes.executor.node.selector.teehr-hub/nodegroup-name": "spark-r5-4xlarge-spot",
+            "spark.decommission.enabled": "true",
+            "spark.executor.decommission.signal": "SIGTERM",
+            "spark.storage.decommission.enabled": "true",
+        }
     )
 
     logger.info("Joining forecast timeseries...")
@@ -65,3 +74,5 @@ def update_joined_forecast_table(
         f"Joined forecast timeseries table written to warehouse as"
         f" {JOINED_FORECAST_TABLE_NAME}."
     )
+    # Cleanup Spark temp data
+    shutil.rmtree("/data/tmp/spark-temp", ignore_errors=True)
