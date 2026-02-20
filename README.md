@@ -73,7 +73,7 @@ This should create all the services in the cluster.  To test, open a browser and
 ```
 
 ### Load Test Data to Warehouse
-Loading data is a little fractured depending on what data you are loading.  For the purpose of developing there are 2 different types of data that can be loaded. Regardless, you first need to create an Iceberg warehouse in the KinD cluster, then load some data data.
+Loading data is a little fractured depending on what data you are loading.  For the purpose of developing there are 2 different types of data that can be loaded. Regardless, you first need to create an Iceberg warehouse in the KinD cluster, then load some data.
 
 1) To create the Iceberg warehouse and load some historic simulation data, start by going to the JupyterHub environment `hub.teehr.local.app.garden` and logging in with username: `user` and password: `password`.
 
