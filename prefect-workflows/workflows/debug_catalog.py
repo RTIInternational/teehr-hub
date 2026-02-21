@@ -109,6 +109,72 @@ def debug_catalog_config():
     except Exception as e:
         logger.warning(f"Could not get table metadata: {e}")
 
+    # NEW: Simulate what _enforce_foreign_keys does
+    logger.info("\n=== Simulating Foreign Key Enforcement (the actual failing code path) ===")
+    try:
+        import teehr
+        ev2 = teehr.Evaluation(
+            spark=spark,
+            dir_path="/data/temp_debug2",
+            create_dir=True
+        )
+        ev2.set_active_catalog("remote")
+
+        # Step 1: Create a temp view like _enforce_foreign_keys does
+        logger.info("Step 1: Getting units SDF via ev.units.to_sdf()")
+        units_sdf_for_view = ev2.units.to_sdf()
+        logger.info(f"  Schema: {units_sdf_for_view.schema}")
+        logger.info(f"  Columns: {units_sdf_for_view.columns}")
+
+        # Step 2: Create temp view
+        logger.info("Step 2: Creating temp view 'units'")
+        units_sdf_for_view.createOrReplaceTempView("units")
+
+        # Step 3: Check the temp view schema
+        logger.info("Step 3: Checking temp view schema")
+        temp_view_df = spark.sql("SELECT * FROM units")
+        logger.info(f"  Temp view columns: {temp_view_df.columns}")
+        logger.info(f"  Temp view schema: {temp_view_df.schema}")
+
+        # Step 4: Try the actual foreign key SQL pattern
+        logger.info("Step 4: Testing the exact SQL pattern used in _enforce_foreign_keys")
+
+        # Create a mock temp_table with unit_name
+        from pyspark.sql import Row
+        mock_data = [Row(unit_name="m^3/s", value=1.0)]
+        mock_df = spark.createDataFrame(mock_data)
+        mock_df.createOrReplaceTempView("temp_table")
+
+        fk_sql = """
+            SELECT t.* from temp_table t
+            LEFT ANTI JOIN units d
+            ON t.unit_name = d.name
+        """
+        logger.info(f"  Running SQL: {fk_sql}")
+
+        result_sdf = spark.sql(fk_sql)
+        logger.info(f"  Result columns: {result_sdf.columns}")
+        logger.info(f"  Result count: {result_sdf.count()}")
+        logger.info("  SUCCESS - Foreign key SQL pattern works!")
+
+        # Step 5: Now test via ev.sql() which is what the actual code uses
+        logger.info("Step 5: Testing via ev.sql() method")
+        spark.catalog.dropTempView("units")  # Clear the temp view first
+
+        # This is what _enforce_foreign_keys actually calls
+        result_via_ev_sql = ev2.sql(
+            query=fk_sql,
+            create_temp_views=["units"]
+        )
+        logger.info(f"  Result via ev.sql() columns: {result_via_ev_sql.columns}")
+        logger.info(f"  Result via ev.sql() count: {result_via_ev_sql.count()}")
+        logger.info("  SUCCESS - ev.sql() pattern works!")
+
+    except Exception as e:
+        logger.error(f"ERROR in foreign key simulation: {e}")
+        import traceback
+        logger.error(traceback.format_exc())
+
     logger.info("\n=== Debug Complete ===")
     return "Debug complete"
 
