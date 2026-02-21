@@ -216,5 +216,3 @@ deployments:
     entrypoint: workflows/debug_catalog.py:debug_catalog_config
     parameters: {}
     work_pool: *work_pool
-    schedule:
-      active: false
