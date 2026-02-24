@@ -109,10 +109,13 @@ async def get_locations_items(
         else:
             base_query += " ORDER BY id"
 
-        if offset is not None:
-            base_query += f" OFFSET {offset}"
-        if limit is not None:
-            base_query += f" LIMIT {limit}"
+        # Apply SQL-level OFFSET/LIMIT only when not including attributes.
+        # When include_attributes=True, pagination is handled after pivoting.
+        if not include_attributes:
+            if offset is not None:
+                base_query += f" OFFSET {offset}"
+            if limit is not None:
+                base_query += f" LIMIT {limit}"
 
         query_start = time.time()
         df = execute_query(base_query)
