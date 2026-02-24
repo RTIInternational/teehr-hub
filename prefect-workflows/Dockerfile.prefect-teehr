@@ -29,6 +29,9 @@ RUN ARCH=$(uname -m) && \
         echo "Skipping GDAL installation for x86_64 (not needed)"; \
     fi
 
+# Install Dask distributed for NWM fetching
+RUN pip install dask[distributed]=="2025.7.0" kerchunk=="0.2.7"
+
 # Install TEEHR with GDAL compatibility for ARM64
 RUN ARCH=$(uname -m) && \
     if [ "$ARCH" = "aarch64" ]; then \
@@ -40,9 +43,6 @@ RUN ARCH=$(uname -m) && \
         echo "Installing TEEHR normally for x86_64..." && \
         pip install --no-cache-dir "git+https://github.com/RTIInternational/teehr.git@${TEEHR_VERSION}"; \
     fi
-
-# Install Dask distributed for NWM fetching
-RUN pip install dask[distributed]
 
 # Set JAVA_HOME statically based on build architecture
 ENV JAVA_HOME=/usr/lib/jvm/java-21-openjdk-${TARGETARCH}
@@ -58,7 +58,7 @@ COPY workflows/ /teehr/workflows/
 
 # Executor template needed for running spark
 RUN mkdir -p /opt/teehr && chown -R ${NB_USER}:${NB_USER} /opt/teehr
-    
+
 COPY executor-pod-template.yaml /opt/teehr/executor-pod-template.yaml
 
 COPY update_job_template.py /opt/teehr/update_job_template.py
