@@ -41,8 +41,11 @@ async def get_locations_items(
     """
     try:
         # Build prefix filter if provided
-        safe_prefix = sanitize_string(prefix)
-        prefix_filter = f"l.id LIKE '{safe_prefix}-%'" if safe_prefix else "1=1"
+        if prefix:
+            safe_prefix = sanitize_string(prefix)
+            prefix_filter = f"l.id LIKE '{safe_prefix}-%'"
+        else:
+            prefix_filter = "1=1"
 
         if include_attributes:
             # Query locations with their attributes (one row per attribute)
@@ -105,10 +108,11 @@ async def get_locations_items(
             base_query += " ORDER BY l.id"
         else:
             base_query += " ORDER BY id"
-            if offset is not None:
-                base_query += f" OFFSET {offset}"
-            if limit is not None:
-                base_query += f" LIMIT {limit}"
+
+        if offset is not None:
+            base_query += f" OFFSET {offset}"
+        if limit is not None:
+            base_query += f" LIMIT {limit}"
 
         query_start = time.time()
         df = execute_query(base_query)
