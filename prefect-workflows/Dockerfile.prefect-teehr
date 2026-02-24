@@ -2,6 +2,8 @@ FROM prefecthq/prefect:3.4.24-python3.12
 
 ARG TEEHR_VERSION
 
+RUN echo "hello"
+
 # Use Docker BuildKit's automatic architecture detection
 ARG TARGETARCH
 
