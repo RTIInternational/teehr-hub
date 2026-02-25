@@ -159,8 +159,8 @@ def routine_table_maintenance(
         dir_path=dir_path,
         start_spark_cluster=True,
         executor_instances=20,
-        executor_cores=3,
-        executor_memory="16g",
+        executor_cores=4,
+        executor_memory="32g",
         update_configs={
             "spark.hadoop.fs.s3.impl": "org.apache.hadoop.fs.s3a.S3AFileSystem",
             "spark.hadoop.fs.AbstractFileSystem.s3.impl": "org.apache.hadoop.fs.s3a.S3A"
