@@ -16,10 +16,10 @@ SNAPSHOT_RETENTION_DAYS = 7
 NUM_SNAPSHOTS_TO_KEEP = 10
 
 REWRITE_TABLE_SORT_ORDER = {
-    "primary_timeseries": "zorder(value_time)",
+    "primary_timeseries": "value_time ASC NULLS LAST",
     "secondary_timeseries": "zorder(value_time, reference_time)",
-}  # Only significant if strategy is "sort"
-REWRITE_TABLE_STRATEGY = "binpack"  # Can be 'sort' or 'binpack'
+}
+REWRITE_TABLE_STRATEGY = "sort"  # Can be 'sort' or 'binpack'
 
 
 @task(
@@ -85,7 +85,7 @@ def rewrite_data_files(
 ) -> None:
     """Compact small data files and apply z-order sorting."""
     logger = get_run_logger()
-    logger.info(f"Rewriting data files on {table_name} with {sort_order}")
+    logger.info(f"Rewriting data files on {table_name}")
     if strategy == "sort":
         logger.info(f"Using sort strategy with sort order: {sort_order}")
         query = f"""
@@ -159,8 +159,8 @@ def routine_table_maintenance(
         dir_path=dir_path,
         start_spark_cluster=True,
         executor_instances=20,
-        executor_cores=3,
-        executor_memory="16g",
+        executor_cores=4,
+        executor_memory="32g",
         update_configs={
             "spark.hadoop.fs.s3.impl": "org.apache.hadoop.fs.s3a.S3AFileSystem",
             "spark.hadoop.fs.AbstractFileSystem.s3.impl": "org.apache.hadoop.fs.s3a.S3A"
