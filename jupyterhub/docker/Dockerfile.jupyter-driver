@@ -1,5 +1,5 @@
 
-FROM pangeo/base-notebook:2025.07.31 
+FROM pangeo/base-notebook:2025.07.31
 
 ARG TEEHR_VERSION
 
@@ -31,7 +31,7 @@ RUN ARCH=$(uname -m) && \
 RUN mamba install -y nodejs awscli htop && \
     mamba clean -afy
 
-# Install geckodriver for ARM64 or use mamba for x86_64  
+# Install geckodriver for ARM64 or use mamba for x86_64
 RUN ARCH=$(uname -m) && \
     if [ "$ARCH" = "aarch64" ]; then \
         echo "Installing geckodriver for ARM64..." && \
@@ -55,7 +55,8 @@ RUN pip install --no-cache-dir \
     hvplot \
     kubernetes \
     nbconvert \
-    trino
+    trino \
+    plotly
 
 # Install TEEHR (set GDAL config for ARM64 builds)
 RUN ARCH=$(uname -m) && \
@@ -63,9 +64,9 @@ RUN ARCH=$(uname -m) && \
     export GDAL_CONFIG=/usr/bin/gdal-config; \
     fi && \
     pip install "git+https://github.com/RTIInternational/teehr.git@${TEEHR_VERSION}"
-    
+
 RUN mkdir -p /opt/teehr && chown -R ${NB_USER}:${NB_USER} /opt/teehr
-    
+
 COPY executor-pod-template.yaml /opt/teehr/executor-pod-template.yaml
 
 # Configure IPython system-wide
