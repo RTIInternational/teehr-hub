@@ -25,8 +25,8 @@ def initialize_evaluation(
     logger = get_run_logger()
     logger.info("Initializing Teehr Evaluation")
 
-    if dir_path is None:
-        dir_path = "/data" + tempfile.TemporaryDirectory().name
+    if dir_path == "None":
+        dir_path = tempfile.TemporaryDirectory(dir="/data").name
         logger.info(
             f"No directory path provided. Using temporary directory: {dir_path}"
         )

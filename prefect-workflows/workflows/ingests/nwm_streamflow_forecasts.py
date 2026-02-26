@@ -6,6 +6,7 @@ import logging
 from prefect import flow, get_run_logger
 import pandas as pd
 
+from teehr.utils.utils import remove_dir_if_exists
 from teehr.fetching.utils import format_nwm_configuration_metadata
 from workflows.utils.common_utils import initialize_evaluation
 
@@ -88,3 +89,5 @@ def ingest_nwm_streamflow_forecasts(
         variable_name=variable_name
     )
     ev.spark.stop()
+    if dir_path == "None":
+        remove_dir_if_exists(ev.dir_path)

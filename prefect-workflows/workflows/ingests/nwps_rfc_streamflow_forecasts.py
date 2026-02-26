@@ -139,3 +139,5 @@ def ingest_nwps_rfc_forecasts(
         )
 
     ev.spark.stop()
+    if dir_path == "None":
+        remove_dir_if_exists(ev.dir_path)

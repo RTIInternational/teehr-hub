@@ -185,3 +185,5 @@ def ingest_datastream_forecasts(
         in_path=coalesced_cache_dir,
         table_name="secondary_timeseries"
     )
+    if dir_path == "None":
+        remove_dir_if_exists(ev.dir_path)
