@@ -34,7 +34,7 @@ def initialize_evaluation(
     # which has read-write S3 access (the default 'spark' SA is read-only).
     default_configs = {
         "spark.kubernetes.authenticate.executor.serviceAccountName": "prefect-job",
-        "spark.local.dir": "/data/spark_temp/spill",
+        # "spark.local.dir": "/data/spark_temp/spill",
     }
     if update_configs:
         default_configs.update(update_configs)
