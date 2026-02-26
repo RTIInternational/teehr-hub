@@ -17,7 +17,7 @@ pull: null
 
 # the definitions section allows you to define reusable components for your deployments
 definitions:
-  dir_path: &dir_path "/data/temp_warehouse"
+  dir_path: &dir_path null
   log_level: &log_level INFO
   tags: &common_tags
     - k8s
