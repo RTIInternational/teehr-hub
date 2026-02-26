@@ -55,9 +55,9 @@ def ingest_nwm_streamflow_forecasts(
     ev = initialize_evaluation(
         dir_path=dir_path,
         start_spark_cluster=True,
-        executor_instances=4,
-        executor_cores=4,
-        executor_memory="32g"
+        executor_instances=8,
+        executor_cores=7,
+        executor_memory="50g"
     )
 
     # Format the NWM configuration name for TEEHR
