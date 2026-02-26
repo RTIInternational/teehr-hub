@@ -53,7 +53,7 @@ def ingest_nwm_streamflow_forecasts(
 
     ev = initialize_evaluation(
         dir_path=dir_path,
-        start_spark_cluster=True,
+        start_spark_cluster=False,
         executor_instances=8,
         executor_cores=7,
         executor_memory="50g"
