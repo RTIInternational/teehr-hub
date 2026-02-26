@@ -43,8 +43,7 @@ UNITS_MAPPING = {
 
 @flow(
     flow_run_name="ingest-nwps-rfc-forecasts",
-    timeout_seconds=60 * 60,
-    retries=2
+    timeout_seconds=60 * 60
 )
 def ingest_nwps_rfc_forecasts(
     dir_path: Union[str, Path],

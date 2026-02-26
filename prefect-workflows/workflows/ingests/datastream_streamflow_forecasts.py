@@ -52,8 +52,7 @@ s3 = session.create_client(
 
 @flow(
     flow_run_name="ingest-datastream-forecasts",
-    timeout_seconds=60 * 60,
-    retries=2
+    timeout_seconds=60 * 60
 )
 def ingest_datastream_forecasts(
     dir_path: Union[str, Path],

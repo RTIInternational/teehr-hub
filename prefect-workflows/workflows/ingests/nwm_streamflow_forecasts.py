@@ -23,8 +23,7 @@ LOOKBACK_DAYS = 1
 
 @flow(
     flow_run_name="ingest-nwm-streamflow-forecasts",
-    timeout_seconds=60 * 60,
-    retries=2
+    timeout_seconds=60 * 60
 )
 def ingest_nwm_streamflow_forecasts(
     dir_path: Union[str, Path],
