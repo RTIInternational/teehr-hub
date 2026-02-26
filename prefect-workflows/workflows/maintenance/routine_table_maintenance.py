@@ -19,7 +19,7 @@ REWRITE_TABLE_SORT_ORDER = {
     "primary_timeseries": "value_time ASC NULLS LAST",
     "secondary_timeseries": "zorder(value_time, reference_time)",
 }
-REWRITE_TABLE_STRATEGY = "sort"  # Can be 'sort' or 'binpack'
+REWRITE_TABLE_STRATEGY = "binpack"  # Can be 'sort' or 'binpack'
 
 
 @task(
