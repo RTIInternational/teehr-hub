@@ -48,13 +48,7 @@ def update_joined_forecast_table(
         start_spark_cluster=True,
         executor_instances=8,
         executor_cores=7,
-        executor_memory="50g",
-        update_configs={
-            "spark.kubernetes.executor.node.selector.teehr-hub/nodegroup-name": "spark-r5-4xlarge-spot",
-            "spark.decommission.enabled": "true",
-            "spark.executor.decommission.signal": "SIGTERM",
-            "spark.storage.decommission.enabled": "true",
-        }
+        executor_memory="50g"
     )
 
     logger.info("Joining forecast timeseries...")
