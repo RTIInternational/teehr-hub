@@ -53,8 +53,8 @@ def ingest_nwm_streamflow_forecasts(
 
     ev = initialize_evaluation(
         dir_path=dir_path,
-        start_spark_cluster=False,
-        executor_instances=8,
+        start_spark_cluster=True,
+        executor_instances=4,
         executor_cores=7,
         executor_memory="50g"
     )
@@ -94,5 +94,3 @@ def ingest_nwm_streamflow_forecasts(
         variable_name=variable_name
     )
     ev.spark.stop()
-    if dir_path == "None":
-        remove_dir_if_exists(ev.dir_path)

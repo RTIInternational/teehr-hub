@@ -69,5 +69,3 @@ def update_joined_forecast_table(
         f"Joined forecast timeseries table written to warehouse as"
         f" {JOINED_FORECAST_TABLE_NAME}."
     )
-    # Cleanup Spark temp data
-    shutil.rmtree("/data/tmp/spark-temp", ignore_errors=True)

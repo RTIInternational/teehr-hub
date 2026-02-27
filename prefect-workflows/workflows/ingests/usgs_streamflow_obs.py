@@ -125,5 +125,3 @@ def ingest_usgs_streamflow_obs(
     )
     logger.info("✅ Completed loading USGS data into the warehouse")
     ev.spark.stop()
-    if dir_path == "None":
-        remove_dir_if_exists(ev.dir_path)

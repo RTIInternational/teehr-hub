@@ -4,9 +4,12 @@ import tempfile
 
 import teehr
 from teehr.evaluation.spark_session_utils import create_spark_session
+from teehr.evaluation.evaluation import RemoteReadOnlyEvaluation
 
 from prefect import task, get_run_logger
 from prefect.cache_policies import NO_CACHE
+
+SPARK_TEMP_DIR = "/data/spark_temp"
 
 
 @task(
@@ -25,16 +28,10 @@ def initialize_evaluation(
     logger = get_run_logger()
     logger.info("Initializing Teehr Evaluation")
 
-    if dir_path == "None":
-        dir_path = tempfile.TemporaryDirectory(dir="/data/spark_temp").name
-        logger.info(
-            f"No directory path provided. Using temporary directory: {dir_path}"
-        )
     # Ensure Spark executors use the prefect-job service account
     # which has read-write S3 access (the default 'spark' SA is read-only).
     default_configs = {
-        "spark.kubernetes.authenticate.executor.serviceAccountName": "prefect-job",
-        # "spark.local.dir": "/data/spark_temp/spill",
+        "spark.kubernetes.authenticate.executor.serviceAccountName": "prefect-job"
     }
     if update_configs:
         default_configs.update(update_configs)
@@ -46,13 +43,10 @@ def initialize_evaluation(
         executor_memory=executor_memory,
         update_configs=default_configs
     )
-    ev = teehr.Evaluation(
+    ev = RemoteReadOnlyEvaluation(
         spark=spark,
-        dir_path=dir_path,
-        create_dir=True
+        dir_path=SPARK_TEMP_DIR,
     )
-    # ev.clone_template()
-    ev.set_active_catalog("remote")
     return ev
 
 
