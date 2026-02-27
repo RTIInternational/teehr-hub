@@ -8,12 +8,12 @@ import teehr
 from teehr.evaluation.spark_session_utils import create_spark_session
 from teehr.evaluation.evaluation import RemoteReadOnlyEvaluation as RemoteRWEvaluation
 
-from prefect import task, get_run_logger
+from prefect import task, get_run_logger, flow
 from prefect.cache_policies import NO_CACHE
 
 
-@task(retries=2)
-def cleanup_temp_teehr_dir(path):
+@flow
+def cleanup_temp_teehr_dir_flow(path):
     """Clean up temporary directory used for the Evaluation."""
     logger = get_run_logger()
     logger.info(f"Cleaning up temporary directory at {path}...")
