@@ -116,7 +116,7 @@ deployments:
     work_pool: *work_pool
     schedule:
       cron: "30 10 * * *"
-      active: false  # TEMP
+      active: true
 
   - name: ingest-datastream-medium-range-cfe-forecasts
     version:
@@ -131,7 +131,7 @@ deployments:
     work_pool: *work_pool
     schedule:
       cron: "0 11 * * *"
-      active: false  # TEMP
+      active: true
 
   - name: ingest-datastream-short-range-lstm-forecasts
     version:
@@ -146,7 +146,7 @@ deployments:
     work_pool: *work_pool
     schedule:
       cron: "30 11 * * *"
-      active: false  # TEMP
+      active: true
 
   - name: ingest-datastream-medium-range-lstm-forecasts
     version:
@@ -161,7 +161,7 @@ deployments:
     work_pool: *work_pool
     schedule:
       cron: "0 12 * * *"
-      active: false  # TEMP
+      active: true
 
   - name: ingest-nwps-rfc-streamflow-forecasts
     version:
@@ -174,7 +174,7 @@ deployments:
     work_pool: *work_pool
     schedule:
       cron: "15 * * * *"
-      active: false  # TEMP
+      active: true
 
   - name: update-joined-forecast-table
     version:
@@ -185,7 +185,7 @@ deployments:
     work_pool: *work_pool
     schedule:
       cron: "0 9,21 * * *"
-      active: false  # TEMP
+      active: true
 
   - name: update-forecast-metrics-table
     version:
@@ -196,7 +196,7 @@ deployments:
     work_pool: *work_pool
     schedule:
       cron: "0 10,22 * * *"
-      active: false  # TEMP
+      active: true
 
   - name: routine-table-maintenance
     version:
@@ -207,4 +207,4 @@ deployments:
     work_pool: *work_pool
     schedule:
       cron: "0 4 * * 0"
-      active: false  # TEMP
+      active: true
