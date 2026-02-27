@@ -174,7 +174,7 @@ deployments:
     work_pool: *work_pool
     schedule:
       cron: "15 * * * *"
-      active: true
+      active: false  # TEMP
 
   - name: update-joined-forecast-table
     version:
@@ -185,7 +185,7 @@ deployments:
     work_pool: *work_pool
     schedule:
       cron: "0 9,21 * * *"
-      active: true
+      active: false  # TEMP
 
   - name: update-forecast-metrics-table
     version:
@@ -196,7 +196,7 @@ deployments:
     work_pool: *work_pool
     schedule:
       cron: "0 10,22 * * *"
-      active: true
+      active: false  # TEMP
 
   - name: routine-table-maintenance
     version:
@@ -207,4 +207,4 @@ deployments:
     work_pool: *work_pool
     schedule:
       cron: "0 4 * * 0"
-      active: true
+      active: false  # TEMP

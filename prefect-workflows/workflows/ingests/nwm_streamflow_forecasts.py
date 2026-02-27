@@ -51,13 +51,7 @@ def ingest_nwm_streamflow_forecasts(
     if isinstance(end_dt, str):
         end_dt = datetime.fromisoformat(end_dt)
 
-    ev = initialize_evaluation(
-        dir_path=dir_path,
-        start_spark_cluster=True,
-        executor_instances=4,
-        executor_cores=7,
-        executor_memory="50g"
-    )
+    ev = initialize_evaluation(dir_path=dir_path)
 
     # Format the NWM configuration name for TEEHR
     teehr_nwm_config = format_nwm_configuration_metadata(

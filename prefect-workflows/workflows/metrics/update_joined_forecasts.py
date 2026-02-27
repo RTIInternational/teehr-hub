@@ -45,10 +45,7 @@ def update_joined_forecast_table(
     logger = get_run_logger()
     ev = initialize_evaluation(
         dir_path=dir_path,
-        start_spark_cluster=True,
-        executor_instances=8,
-        executor_cores=7,
-        executor_memory="50g"
+        executor_instances=8
     )
 
     logger.info("Joining forecast timeseries...")
