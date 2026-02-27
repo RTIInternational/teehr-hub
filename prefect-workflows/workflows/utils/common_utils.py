@@ -9,15 +9,13 @@ from teehr.evaluation.evaluation import RemoteReadOnlyEvaluation as RemoteRWEval
 from prefect import task, get_run_logger
 from prefect.cache_policies import NO_CACHE
 
-SPARK_TEMP_DIR = "/data/spark_temp"
-
 
 @task(
     timeout_seconds=60 * 5,
     retries=2
 )
 def initialize_evaluation(
-    dir_path: Union[str, Path] = SPARK_TEMP_DIR,
+    dir_path: Union[str, Path],
     start_spark_cluster: bool = True,
     executor_instances: int = 4,
     executor_cores: int = 7,
