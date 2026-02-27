@@ -1,6 +1,7 @@
 from typing import Union, Dict
 from pathlib import Path
-import tempfile
+import os
+import shutil
 
 import teehr
 from teehr.evaluation.spark_session_utils import create_spark_session
@@ -9,6 +10,12 @@ from teehr.evaluation.evaluation import RemoteReadOnlyEvaluation as RemoteRWEval
 from prefect import task, get_run_logger
 from prefect.cache_policies import NO_CACHE
 
+
+@task(retries=2)
+def cleanup_temp_dir(path):
+    if os.path.exists(path):
+        shutil.rmtree(path)
+        print(f"Cleaned up {path}")
 
 @task(
     timeout_seconds=60 * 5,
