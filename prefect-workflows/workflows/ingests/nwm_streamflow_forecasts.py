@@ -8,7 +8,7 @@ import pandas as pd
 
 from teehr.utils.utils import remove_dir_if_exists
 from teehr.fetching.utils import format_nwm_configuration_metadata
-from workflows.utils.common_utils import initialize_evaluation
+from workflows.utils.common_utils import initialize_evaluation, cleanup_temp_teehr_dir
 
 # Start up a local Dask cluster
 from dask.distributed import Client
@@ -88,3 +88,4 @@ def ingest_nwm_streamflow_forecasts(
         variable_name=variable_name
     )
     ev.spark.stop()
+    cleanup_temp_teehr_dir(ev.dir_path)

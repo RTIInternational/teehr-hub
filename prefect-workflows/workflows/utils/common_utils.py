@@ -2,6 +2,7 @@ from typing import Union, Dict
 from pathlib import Path
 import os
 import shutil
+import time
 
 import teehr
 from teehr.evaluation.spark_session_utils import create_spark_session
@@ -12,10 +13,17 @@ from prefect.cache_policies import NO_CACHE
 
 
 @task(retries=2)
-def cleanup_temp_dir(path):
-    if os.path.exists(path):
-        shutil.rmtree(path)
-        print(f"Cleaned up {path}")
+def cleanup_temp_teehr_dir(path):
+    """Clean up temporary directory used for the Evaluation."""
+    logger = get_run_logger()
+    logger.info(f"Cleaning up temporary directory at {path}...")
+    time.sleep(10)  # Ensure Spark has released any locks on the directory
+    try:
+        if os.path.exists(path):
+            shutil.rmtree(path)
+            logger.info(f"Cleaned up {path}")
+    except Exception as e:
+        logger.error(f"Failed to clean up {path}: {e}")
 
 @task(
     timeout_seconds=60 * 5,

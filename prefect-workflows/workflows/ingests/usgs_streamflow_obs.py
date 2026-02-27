@@ -20,7 +20,7 @@ from teehr.fetching.const import (
 )
 from teehr.utils.utils import remove_dir_if_exists
 from utils import usgs_utils
-from workflows.utils.common_utils import initialize_evaluation, cleanup_temp_dir
+from workflows.utils.common_utils import initialize_evaluation, cleanup_temp_teehr_dir
 
 logging.getLogger("teehr").setLevel(logging.INFO)
 
@@ -125,5 +125,4 @@ def ingest_usgs_streamflow_obs(
     )
     logger.info("✅ Completed loading USGS data into the warehouse")
     ev.spark.stop()
-    # Run as a separate task
-    cleanup_temp_dir(ev.dir_path)
+    cleanup_temp_teehr_dir(ev.dir_path)
