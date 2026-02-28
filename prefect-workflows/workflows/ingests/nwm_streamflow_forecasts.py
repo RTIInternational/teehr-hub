@@ -88,4 +88,4 @@ def ingest_nwm_streamflow_forecasts(
     )
     ev.spark.stop()
 
-    cleanup_temp_teehr_dir_flow(path=ev.dir_path)
+    # cleanup_temp_teehr_dir_flow(path=ev.dir_path)
