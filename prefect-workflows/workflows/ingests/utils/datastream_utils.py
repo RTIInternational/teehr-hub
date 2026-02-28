@@ -47,7 +47,12 @@ def coalesce_cache_files(
     """Coalesce multiple parquet cache files into a single parquet file."""
     logger = get_run_logger()
     logger.info("Coalescing cache files for optimized loading")
-    sdf = ev.spark.read.parquet(str(output_cache_dir / "*.parquet"))
+    # Read the converted files to Spark DataFrame
+    schema_func = ev.table(table_name="secondary_timeseries").schema_func
+    sdf = ev.read.from_cache(
+        path=output_cache_dir,
+        table_schema_func=schema_func()
+    ).to_sdf()
     sdf.coalesce(num_cache_files).write.mode("overwrite").parquet(str(coalesced_cache_dir))
     return
 

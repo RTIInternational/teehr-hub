@@ -6,7 +6,7 @@ import time
 
 import teehr
 from teehr.evaluation.spark_session_utils import create_spark_session
-from teehr.evaluation.evaluation import RemoteReadOnlyEvaluation as RemoteRWEvaluation
+from teehr.evaluation.evaluation import RemoteReadWriteEvaluation
 
 from prefect import task, get_run_logger, flow
 from prefect.cache_policies import NO_CACHE
@@ -17,7 +17,7 @@ def cleanup_temp_teehr_dir_flow(path):
     """Clean up temporary directory used for the Evaluation."""
     logger = get_run_logger()
     logger.info(f"Cleaning up temporary directory at {path}...")
-    time.sleep(10)  # Ensure Spark has released any locks on the directory
+    time.sleep(5)  # Ensure Spark has released any locks on the directory
     try:
         if os.path.exists(path):
             shutil.rmtree(path)
@@ -56,7 +56,7 @@ def initialize_evaluation(
         executor_memory=executor_memory,
         update_configs=default_configs
     )
-    ev = RemoteRWEvaluation(
+    ev = RemoteReadWriteEvaluation(
         spark=spark,
         dir_path=dir_path,
     )
