@@ -116,19 +116,19 @@ def ingest_nwps_rfc_forecasts(
         logger.info(
             f"Adding cached data to evaluation from: {output_cache_dir}"
         )
-        # coalesce cache files
-        coalesced_cache_dir = output_cache_dir / "coalesced"
-        coalesce_cache_files(
-            ev=ev,
-            num_cache_files=num_cache_files,
-            output_cache_dir=output_cache_dir,
-            coalesced_cache_dir=coalesced_cache_dir,
-        )
+        # # coalesce cache files
+        # coalesced_cache_dir = output_cache_dir / "coalesced"
+        # coalesce_cache_files(
+        #     ev=ev,
+        #     num_cache_files=num_cache_files,
+        #     output_cache_dir=output_cache_dir,
+        #     coalesced_cache_dir=coalesced_cache_dir,
+        # )
 
         # load output
         load_to_warehouse(
             ev=ev,
-            in_path=coalesced_cache_dir,
+            in_path=output_cache_dir,
             table_name="secondary_timeseries"
         )
         logger.info("✅ Completed loading NWPS RFC data into the warehouse")
