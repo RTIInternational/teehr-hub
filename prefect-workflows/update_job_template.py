@@ -178,6 +178,7 @@ async def update_kubernetes_pool():
                     "kind": "Job",
                     "spec": {
                         "template": {
+                            "spec": {
                                 "containers": [
                                     {
                                         "env": "{{ env }}",
