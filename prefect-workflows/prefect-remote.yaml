@@ -32,6 +32,8 @@ definitions:
       service_account_name: prefect-job
       env:
         PREFECT_LOGGING_LEVEL: *log_level
+        PREFECT_HOME: /tmp/.prefect
+        PREFECT_LOCAL_STORAGE_PATH: /tmp/.prefect
         TEEHR_SPARK_IMAGE: "{{ $TEEHR_SPARK_IMAGE }}"
         TEEHR_NAMESPACE: "{{ $TEEHR_NAMESPACE }}"
         PREFECT_LOGGING_EXTRA_LOGGERS: teehr
