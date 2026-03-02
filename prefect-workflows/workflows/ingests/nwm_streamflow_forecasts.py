@@ -7,7 +7,7 @@ from prefect import flow, get_run_logger
 import pandas as pd
 
 from teehr.fetching.utils import format_nwm_configuration_metadata
-from workflows.utils.common_utils import initialize_evaluation, cleanup_temp_teehr_dir_flow
+from workflows.utils.common_utils import initialize_evaluation
 
 # Start up a local Dask cluster
 from dask.distributed import Client
@@ -87,5 +87,3 @@ def ingest_nwm_streamflow_forecasts(
         variable_name=variable_name
     )
     ev.spark.stop()
-
-    # cleanup_temp_teehr_dir_flow(path=ev.dir_path)

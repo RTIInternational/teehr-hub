@@ -12,19 +12,6 @@ from prefect import task, get_run_logger, flow
 from prefect.cache_policies import NO_CACHE
 
 
-@flow
-def cleanup_temp_teehr_dir_flow(path):
-    """Clean up temporary directory used for the Evaluation."""
-    logger = get_run_logger()
-    logger.info(f"Cleaning up temporary directory at {path}...")
-    time.sleep(5)  # Ensure Spark has released any locks on the directory
-    try:
-        if os.path.exists(path):
-            shutil.rmtree(path)
-            logger.info(f"Cleaned up {path}")
-    except Exception as e:
-        logger.error(f"Failed to clean up {path}: {e}")
-
 @task(
     timeout_seconds=60 * 5,
     retries=2

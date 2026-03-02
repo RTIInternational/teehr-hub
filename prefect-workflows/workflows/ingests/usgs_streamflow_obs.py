@@ -125,4 +125,3 @@ def ingest_usgs_streamflow_obs(
     )
     logger.info("✅ Completed loading USGS data into the warehouse")
     ev.spark.stop()
-    # cleanup_temp_teehr_dir(ev.dir_path)
