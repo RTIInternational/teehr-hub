@@ -45,7 +45,7 @@ def initialize_evaluation(
     )
     ev = RemoteReadWriteEvaluation(
         spark=spark,
-        dir_path=dir_path,
+        temp_dir_path=dir_path,
     )
     return ev
 
