@@ -178,12 +178,6 @@ async def update_kubernetes_pool():
                     "kind": "Job",
                     "spec": {
                         "template": {
-                            "spec": {
-                                "securityContext": {
-                                    "runAsUser": 1000,
-                                    "runAsGroup": 1000,
-                                    "fsGroup": 1000
-                                },
                                 "containers": [
                                     {
                                         "env": "{{ env }}",

@@ -74,7 +74,7 @@ deployments:
     work_pool: *work_pool
     schedule:
       cron: "0 8,20 * * *"
-      active: true
+      active: false
 
   - name: ingest-nwm-short-range-streamflow-forecasts
     version:
@@ -88,7 +88,7 @@ deployments:
     work_pool: *work_pool
     schedule:
       cron: "0 7,19 * * *"
-      active: true
+      active: false
 
   - name: ingest-nwm-medium-range-streamflow-forecasts
     version:
@@ -103,7 +103,7 @@ deployments:
     work_pool: *work_pool
     schedule:
       cron: "0 6,18 * * *"
-      active: true
+      active: false
 
   - name: ingest-datastream-short-range-cfe-forecasts
     version:
@@ -118,7 +118,7 @@ deployments:
     work_pool: *work_pool
     schedule:
       cron: "30 10 * * *"
-      active: true
+      active: false
 
   - name: ingest-datastream-medium-range-cfe-forecasts
     version:
@@ -133,7 +133,7 @@ deployments:
     work_pool: *work_pool
     schedule:
       cron: "0 11 * * *"
-      active: true
+      active: false
 
   - name: ingest-datastream-short-range-lstm-forecasts
     version:
@@ -148,7 +148,7 @@ deployments:
     work_pool: *work_pool
     schedule:
       cron: "30 11 * * *"
-      active: true
+      active: false
 
   - name: ingest-datastream-medium-range-lstm-forecasts
     version:
@@ -163,7 +163,7 @@ deployments:
     work_pool: *work_pool
     schedule:
       cron: "0 12 * * *"
-      active: true
+      active: false
 
   - name: ingest-nwps-rfc-streamflow-forecasts
     version:
@@ -176,7 +176,7 @@ deployments:
     work_pool: *work_pool
     schedule:
       cron: "15 * * * *"
-      active: true
+      active: false
 
   - name: update-joined-forecast-table
     version:
@@ -187,7 +187,7 @@ deployments:
     work_pool: *work_pool
     schedule:
       cron: "0 9,21 * * *"
-      active: true
+      active: false
 
   - name: update-forecast-metrics-table
     version:
@@ -198,7 +198,7 @@ deployments:
     work_pool: *work_pool
     schedule:
       cron: "0 10,22 * * *"
-      active: true
+      active: false
 
   - name: routine-table-maintenance
     version:
@@ -209,4 +209,13 @@ deployments:
     work_pool: *work_pool
     schedule:
       cron: "0 4 * * 0"
-      active: true
+      active: false
+
+  - name: debug-sleep
+    version:
+    tags: []
+    description: Debug pod that sleeps to allow shelling in as root for troubleshooting
+    entrypoint: workflows/debug_sleep.py:debug_sleep
+    parameters: {"sleep_seconds": 3600}
+    work_pool: *work_pool
+    schedule:
