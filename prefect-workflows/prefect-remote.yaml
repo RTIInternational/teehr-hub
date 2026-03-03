@@ -210,15 +210,3 @@ deployments:
     schedule:
       cron: "0 4 * * 0"
       active: true
-
-  - name: debug-sleep
-    version:
-    tags: []
-    description: Debug pod that sleeps to allow shelling in as root for troubleshooting
-    entrypoint: workflows/debug_sleep.py:debug_sleep
-    parameters: {
-      "sleep_seconds": 3600,
-      "dir_path": *dir_path
-      }
-    work_pool: *work_pool
-    schedule:
