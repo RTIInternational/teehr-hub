@@ -50,8 +50,8 @@ ENV PATH=$PATH:/usr/lib/jvm/java-21-openjdk-${TARGETARCH}/bin
 
 # Create a user for UID 1000 so Java/Spark can resolve a home directory
 # when the pod runs with securityContext runAsUser: 1000
-RUN groupadd -g 1000 teehr && \
-    useradd -u 1000 -g 1000 -m -d /home/teehr -s /bin/bash teehr
+RUN groupadd -g 1000 prefect && \
+    useradd -u 1000 -g 1000 -m -d /home/prefect prefect
 
 RUN mkdir -p /teehr && mkdir -p /teehr/workflows
 
@@ -62,7 +62,7 @@ COPY prefect-remote.yaml /teehr/prefect-remote.yaml
 COPY workflows/ /teehr/workflows/
 
 # Executor template needed for running spark
-RUN mkdir -p /opt/teehr && chown -R teehr:teehr /opt/teehr
+RUN mkdir -p /opt/teehr && chown -R prefect:prefect /opt/teehr
 
 COPY executor-pod-template.yaml /opt/teehr/executor-pod-template.yaml
 
