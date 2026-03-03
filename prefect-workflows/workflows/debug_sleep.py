@@ -8,7 +8,7 @@ from workflows.utils.common_utils import initialize_evaluation
 
 
 @flow
-def debug_sleep(dir_path: Union[str, Path], sleep_seconds: int = 1800):
+def debug_sleep(dir_path: Union[str, Path], sleep_seconds: int = 10):
     """Sleep to keep the pod alive for debugging."""
     logger = get_run_logger()
     ev = initialize_evaluation(
