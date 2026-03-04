@@ -32,8 +32,7 @@ CHUNK_SIZE = 100  # Number of sites to fetch per api call
 
 @flow(
     flow_run_name="ingest-usgs-streamflow-obs",
-    timeout_seconds=60 * 60,
-    retries=2
+    timeout_seconds=60 * 60
 )
 def ingest_usgs_streamflow_obs(
     dir_path: Union[str, Path],

@@ -52,8 +52,7 @@ s3 = session.create_client(
 
 @flow(
     flow_run_name="ingest-datastream-forecasts",
-    timeout_seconds=60 * 60,
-    retries=2
+    timeout_seconds=60 * 60
 )
 def ingest_datastream_forecasts(
     dir_path: Union[str, Path],
@@ -170,18 +169,18 @@ def ingest_datastream_forecasts(
     #     futures.append(future)
     # wait(futures)
 
-    # Coalesce cache files for optimized loading
-    coalesced_cache_dir = output_cache_dir / "coalesced"
-    coalesce_cache_files(
-        ev=ev,
-        num_cache_files=num_cache_files,
-        output_cache_dir=output_cache_dir,
-        coalesced_cache_dir=coalesced_cache_dir
-    )
+    # # Coalesce cache files for optimized loading
+    # coalesced_cache_dir = output_cache_dir / "coalesced"
+    # coalesce_cache_files(
+    #     ev=ev,
+    #     num_cache_files=num_cache_files,
+    #     output_cache_dir=output_cache_dir,
+    #     coalesced_cache_dir=coalesced_cache_dir
+    # )
 
     # Load output
     load_to_warehouse(
         ev=ev,
-        in_path=coalesced_cache_dir,
+        in_path=output_cache_dir,
         table_name="secondary_timeseries"
     )

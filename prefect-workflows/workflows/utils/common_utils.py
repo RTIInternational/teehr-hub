@@ -1,10 +1,14 @@
 from typing import Union, Dict
 from pathlib import Path
+import os
+import shutil
+import time
 
 import teehr
 from teehr.evaluation.spark_session_utils import create_spark_session
+from teehr.evaluation.evaluation import RemoteReadWriteEvaluation
 
-from prefect import task, get_run_logger
+from prefect import task, get_run_logger, flow
 from prefect.cache_policies import NO_CACHE
 
 
@@ -14,10 +18,10 @@ from prefect.cache_policies import NO_CACHE
 )
 def initialize_evaluation(
     dir_path: Union[str, Path],
-    start_spark_cluster: bool = False,
+    start_spark_cluster: bool = True,
     executor_instances: int = 4,
-    executor_cores: int = 4,
-    executor_memory: str = "4g",
+    executor_cores: int = 7,
+    executor_memory: str = "50g",
     update_configs: Dict[str, str] = None
 ) -> teehr.Evaluation:
     """Initialize a Teehr Evaluation object."""
@@ -39,12 +43,10 @@ def initialize_evaluation(
         executor_memory=executor_memory,
         update_configs=default_configs
     )
-    ev = teehr.Evaluation(
+    ev = RemoteReadWriteEvaluation(
         spark=spark,
-        dir_path=dir_path,
-        create_dir=False
+        temp_dir_path=dir_path,
     )
-    ev.set_active_catalog("remote")
     return ev
 
 

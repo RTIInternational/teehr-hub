@@ -19,7 +19,7 @@ REWRITE_TABLE_SORT_ORDER = {
     "primary_timeseries": "value_time ASC NULLS LAST",
     "secondary_timeseries": "zorder(value_time, reference_time)",
 }
-REWRITE_TABLE_STRATEGY = "sort"  # Can be 'sort' or 'binpack'
+REWRITE_TABLE_STRATEGY = "binpack"  # Can be 'sort' or 'binpack'
 
 
 @task(
@@ -93,7 +93,7 @@ def rewrite_data_files(
                 table => 'teehr.{table_name}',
                 strategy => '{strategy}',
                 sort_order => '{sort_order}',
-                options => map('target-file-size-bytes', '536870912') -- 512 MB
+                options => map('target-file-size-bytes', '134217728') -- 128 MB
         );"""
     elif strategy == "binpack":
         logger.info(f"Using binpack strategy for {table_name}")
@@ -101,7 +101,7 @@ def rewrite_data_files(
             CALL iceberg.system.rewrite_data_files(
                 table => 'teehr.{table_name}',
                 strategy => '{strategy}',
-                options => map('target-file-size-bytes', '536870912') -- 512 MB
+                options => map('target-file-size-bytes', '134217728') -- 128 MB
         );"""
     else:
         logger.warning(f"Unknown rewrite strategy {strategy} for {table_name}. Skipping rewrite.")
