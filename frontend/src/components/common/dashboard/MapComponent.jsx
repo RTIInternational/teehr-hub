@@ -411,7 +411,7 @@ const getMetricColorExpression = (metric) => {
   
   const colorScales = {
     'relative_bias': {
-      colors: ['#d73027', '#fc8d59', '#91bfdb', '#4575b4', '#91bfdb', '#fc8d59', '#d73027'],
+      colors: ['#4575b4', '#91bfdb', '#e0f3f8', '#f7f7f7', '#fee090', '#fc8d59', '#d73027'],
       stops: [-1, -0.5, -0.1, 0, 0.1, 0.5, 1]
     },
     'nash_sutcliffe_efficiency': {
