@@ -286,69 +286,86 @@ spec:
               }
             }
       profileList:
-      - display_name: "TEEHR Evaluation System (4 vCPU/32GB memory)"
-        default: True
-        description: "A r5.xlarge EC2 instance $0.252/hour"
-        profile_options: &profile_options
-          image:
-            display_name: Image
-            choices:
-              # previous-tag:
-              #   display_name: Version ${var.previousTeehrVersion}
-              #   kubespawner_override:
-              #     image: ${actions.build.teehr-jupyter-driver-image-previous.outputs.deploymentImageId}
-              current-tag:
-                display_name: Version ${var.stableTeehrVersion}
-                default: true
+      # CIROH Projects - dynamically generated from var.cirohProjects
+      $concat:
+        - $for:
+            $each: var.cirohProjects
+            $return:
+              - display_name: "${item.value.name} Project"
+                default: ${item.value.default}
+                description: "Choose this profile for work related to the ${item.value.name} Project."
+                profile_options:
+                  image:
+                    display_name: Image
+                    choices:
+                      current-tag-xlarge:
+                        display_name: XL Node (Version ${var.stableTeehrVersion})
+                        default: true
+                        kubespawner_override:
+                          image: ${actions.build.teehr-jupyter-driver-image-stable.outputs.deploymentImageId}
+                          mem_limit: 32G
+                          mem_guarantee: 19G
+                          cpu_limit: 4
+                          cpu_guarantee: 3
+                          node_selector:
+                            teehr-hub/nodegroup-name: nb-r5-xlarge${item.value.suffix}
+                      current-tag-4xlarge:
+                        display_name: 4XL Node (Version ${var.stableTeehrVersion})
+                        default: false
+                        kubespawner_override:
+                          image: ${actions.build.teehr-jupyter-driver-image-stable.outputs.deploymentImageId}
+                          mem_limit: 32G
+                          mem_guarantee: 19G
+                          cpu_limit: 4
+                          cpu_guarantee: 3
+                          node_selector:
+                            teehr-hub/nodegroup-name: nb-r5-4xlarge${item.value.suffix}
+                      dev-xlarge:
+                        display_name: XL Node (Bleeding Edge ${slice(var.devTeehrVersion, 0, 6)})
+                        kubespawner_override:
+                          image: ${actions.build.teehr-jupyter-driver-image-edge.outputs.deploymentImageId}
+                          mem_limit: 128G
+                          mem_guarantee: 76G
+                          cpu_limit: 16
+                          cpu_guarantee: 12
+                          node_selector:
+                            teehr-hub/nodegroup-name: nb-r5-4xlarge${item.value.suffix}
+                      dev-4xlarge:
+                        display_name: 4XL Node (Bleeding Edge ${slice(var.devTeehrVersion, 0, 6)})
+                        kubespawner_override:
+                          image: ${actions.build.teehr-jupyter-driver-image-edge.outputs.deploymentImageId}
+                          mem_limit: 128G
+                          mem_guarantee: 76G
+                          cpu_limit: 16
+                          cpu_guarantee: 12
+                          node_selector:
+                            teehr-hub/nodegroup-name: nb-r5-4xlarge${item.value.suffix}
+                      hefs-v0-1-0:
+                        display_name: XL (HEFS-FEWS v0.1.x)
+                        default: true
+                        kubespawner_override:
+                          image: "935462133478.dkr.ecr.us-east-2.amazonaws.com/hefs-fews-hub:v0.1.0"
+                          mem_limit: 32G
+                          mem_guarantee: 19G
+                          cpu_limit: 4
+                          cpu_guarantee: 3
+                          node_selector:
+                            teehr-hub/nodegroup-name: nb-r5-4xlarge${item.value.suffix}
+                      hefs-v0-3-0:
+                        display_name: XL (HEFS-FEWS v0.3.x)
+                        default: false
+                        kubespawner_override:
+                          image: "935462133478.dkr.ecr.us-east-2.amazonaws.com/hefs-fews-hub:v0.3.0"
+                          mem_limit: 32G
+                          mem_guarantee: 19G
+                          cpu_limit: 4
+                          cpu_guarantee: 3
+                          node_selector:
+                            teehr-hub/nodegroup-name: nb-r5-4xlarge${item.value.suffix}
                 kubespawner_override:
-                  image: ${actions.build.teehr-jupyter-driver-image-stable.outputs.deploymentImageId}
-              dev:
-                display_name: Bleeding Edge ${slice(var.devTeehrVersion, 0, 6)}
-                kubespawner_override:
-                  image: ${actions.build.teehr-jupyter-driver-image-edge.outputs.deploymentImageId}
-        kubespawner_override:
-          mem_limit: 32G
-          mem_guarantee: 19G
-          cpu_limit: 4
-          cpu_guarantee: 3
-          node_selector:
-            teehr-hub/nodegroup-name: nb-r5-xlarge
-
-      - display_name: "TEEHR Evaluation System (16 vCPU/128GB memory)"
-        description: "A r5.4xlarge EC2 instance @ $1.008/hour"
-        profile_options: *profile_options
-        kubespawner_override:
-          mem_limit: 128G
-          mem_guarantee: 76G
-          cpu_limit: 16
-          cpu_guarantee: 12
-          node_selector:
-            teehr-hub/nodegroup-name: nb-r5-4xlarge
-
-      - display_name: "HEFS-FEWS Evaluation System (4 vCPU/32GB memory)"
-        default: False
-        description: "A r5.xlarge EC2 instance $0.252/hour"
-        profile_options:
-          image:
-            display_name: Image
-            choices:
-              v0-1-0:
-                display_name: Version 0.1.x
-                default: true
-                kubespawner_override:
-                  image: "935462133478.dkr.ecr.us-east-2.amazonaws.com/hefs-fews-hub:v0.1.0"
-              v0-3-0:
-                display_name: Version 0.3.x
-                default: true
-                kubespawner_override:
-                  image: "935462133478.dkr.ecr.us-east-2.amazonaws.com/hefs-fews-hub:v0.3.0"
-        kubespawner_override:
-          mem_limit: 32G
-          mem_guarantee: 19G
-          cpu_limit: 4
-          cpu_guarantee: 3
-          node_selector:
-            teehr-hub/nodegroup-name: nb-r5-xlarge
+                  environment:
+                    - name: TEEHR_PROJECT_ID
+                      value: ${item.value.id}
 
     scheduling:
       userScheduler:
