@@ -40,4 +40,11 @@ variable "project_name" {
   EOT
 }
 
-
+variable "project_ids" {
+  type        = list(string)
+  default     = []
+  description = <<-EOT
+  List of CIROH project IDs. For each project ID, dedicated node groups will be created
+  (nb-r5-xlarge-{id}, nb-r5-4xlarge-{id}, spark-r5-4xlarge-spot-{id}) for tracking usage.
+  EOT
+}
