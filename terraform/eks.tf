@@ -30,7 +30,7 @@ locals {
   project_nb_r5_xlarge_node_groups = {
     for project_id in var.project_ids : "nb-r5-xlarge-${lower(project_id)}" => merge(local.eks_node_group_defaults, {
       name          = "nb-r5-xlarge-${lower(project_id)}"
-      iam_role_name = "${local.cluster_name}-nb-r5-xlarge-${lower(project_id)}"
+      iam_role_name = "${local.cluster_name}-nb-xl-${lower(project_id)}"
 
       min_size     = 0
       max_size     = 400
@@ -73,7 +73,7 @@ locals {
   project_nb_r5_4xlarge_node_groups = {
     for project_id in var.project_ids : "nb-r5-4xlarge-${lower(project_id)}" => merge(local.eks_node_group_defaults, {
       name          = "nb-r5-4xlarge-${lower(project_id)}"
-      iam_role_name = "${local.cluster_name}-nb-r5-4xlarge-${lower(project_id)}"
+      iam_role_name = "${local.cluster_name}-nb-4xl-${lower(project_id)}"
 
       min_size     = 0
       max_size     = 400
@@ -116,7 +116,7 @@ locals {
   project_spark_r5_4xlarge_spot_node_groups = {
     for project_id in var.project_ids : "spark-r5-4xlarge-spot-${lower(project_id)}" => merge(local.eks_node_group_defaults, {
       name          = "spark-r5-4xlarge-spot-${lower(project_id)}"
-      iam_role_name = "${local.cluster_name}-spark-r5-4xlarge-spot-${lower(project_id)}"
+      iam_role_name = "${local.cluster_name}-sp-4xl-s-${lower(project_id)}"
 
       capacity_type = "SPOT"
 
