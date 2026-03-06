@@ -37,7 +37,9 @@ data "aws_iam_policy_document" "iceberg_s3_warehouse_readonly" {
     ]
     resources = [
       aws_s3_bucket.teehr_iceberg_warehouse.arn,
-      "${aws_s3_bucket.teehr_iceberg_warehouse.arn}/*"
+      "${aws_s3_bucket.teehr_iceberg_warehouse.arn}/*",
+      "arn:aws:s3:::ciroh-rti-hefs-data",
+      "arn:aws:s3:::ciroh-rti-hefs-data/*"
     ]
   }
 }
