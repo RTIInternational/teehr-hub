@@ -29,8 +29,13 @@ spec:
     proxy:
       service:
         type: ClusterIP
+      # chp:
+      #   nodeSelector:
+      #     teehr-hub/nodegroup-name: core-a
 
     hub:
+      # nodeSelector:
+      #   teehr-hub/nodegroup-name: core-a
       # baseUrl: /jupyter
 
       config:
@@ -51,35 +56,6 @@ spec:
           # Allow users to create Spark sessions
           c.KubeSpawner.service_account = 'jupyter'
           c.KubeSpawner.automount_service_account_token = True
-        # secret-to-env: |
-        #   from kubernetes import client
-        #   def modify_pod_hook(spawner, pod):
-        #       pod.spec.containers[0].env.append(
-        #           client.V1EnvVar(
-        #               name='AWS_ACCESS_KEY_ID',
-        #               value_from=client.V1EnvVarSource(
-        #                   secret_key_ref=client.V1SecretKeySelector(
-        #                       name='minio-secrets',
-        #                       key='accesskey'
-        #                   )
-        #               )
-        #           )
-        #       )
-        #       pod.spec.containers[0].env.append(
-        #           client.V1EnvVar(
-        #               name='AWS_SECRET_ACCESS_KEY',
-        #               value_from=client.V1EnvVarSource(
-        #                   secret_key_ref=client.V1SecretKeySelector(
-        #                       name='minio-secrets',
-        #                       key='secretkey'
-        #                   )
-        #               )
-        #           )
-        #       )
-        #       return pod
-        #   c.KubeSpawner.modify_pod_hook = modify_pod_hook
-        # baseurl: |
-        #   c.JupyterHub.base_url = '/jupyter'
 
     singleuser:
       image:
@@ -201,8 +177,13 @@ spec:
     proxy:
       service:
         type: ClusterIP
+      chp:
+        nodeSelector:
+          teehr-hub/nodegroup-name: core-a
 
     hub:
+      nodeSelector:
+        teehr-hub/nodegroup-name: core-a
       config:
         GitHubOAuthenticator:
           oauth_callback_url: https://hub.teehr.rtiamanzi.org/hub/oauth_callback
@@ -286,86 +267,300 @@ spec:
               }
             }
       profileList:
-      # CIROH Projects - dynamically generated from var.cirohProjects
-      $concat:
-        - $for:
-            $each: var.cirohProjects
-            $return:
-              - display_name: "${item.value.name} Project"
-                default: ${item.value.default}
-                description: "Choose this profile for work related to the ${item.value.name} Project."
-                profile_options:
-                  image:
-                    display_name: Image
-                    choices:
-                      current-tag-xlarge:
-                        display_name: XL Node (Version ${var.stableTeehrVersion})
-                        default: true
-                        kubespawner_override:
-                          image: ${actions.build.teehr-jupyter-driver-image-stable.outputs.deploymentImageId}
-                          mem_limit: 32G
-                          mem_guarantee: 19G
-                          cpu_limit: 4
-                          cpu_guarantee: 3
-                          node_selector:
-                            teehr-hub/nodegroup-name: nb-r5-xlarge${item.value.suffix}
-                      current-tag-4xlarge:
-                        display_name: 4XL Node (Version ${var.stableTeehrVersion})
-                        default: false
-                        kubespawner_override:
-                          image: ${actions.build.teehr-jupyter-driver-image-stable.outputs.deploymentImageId}
-                          mem_limit: 32G
-                          mem_guarantee: 19G
-                          cpu_limit: 4
-                          cpu_guarantee: 3
-                          node_selector:
-                            teehr-hub/nodegroup-name: nb-r5-4xlarge${item.value.suffix}
-                      dev-xlarge:
-                        display_name: XL Node (Bleeding Edge ${slice(var.devTeehrVersion, 0, 6)})
-                        kubespawner_override:
-                          image: ${actions.build.teehr-jupyter-driver-image-edge.outputs.deploymentImageId}
-                          mem_limit: 128G
-                          mem_guarantee: 76G
-                          cpu_limit: 16
-                          cpu_guarantee: 12
-                          node_selector:
-                            teehr-hub/nodegroup-name: nb-r5-4xlarge${item.value.suffix}
-                      dev-4xlarge:
-                        display_name: 4XL Node (Bleeding Edge ${slice(var.devTeehrVersion, 0, 6)})
-                        kubespawner_override:
-                          image: ${actions.build.teehr-jupyter-driver-image-edge.outputs.deploymentImageId}
-                          mem_limit: 128G
-                          mem_guarantee: 76G
-                          cpu_limit: 16
-                          cpu_guarantee: 12
-                          node_selector:
-                            teehr-hub/nodegroup-name: nb-r5-4xlarge${item.value.suffix}
-                      hefs-v0-1-0:
-                        display_name: XL (HEFS-FEWS v0.1.x)
-                        default: true
-                        kubespawner_override:
-                          image: "935462133478.dkr.ecr.us-east-2.amazonaws.com/hefs-fews-hub:v0.1.0"
-                          mem_limit: 32G
-                          mem_guarantee: 19G
-                          cpu_limit: 4
-                          cpu_guarantee: 3
-                          node_selector:
-                            teehr-hub/nodegroup-name: nb-r5-4xlarge${item.value.suffix}
-                      hefs-v0-3-0:
-                        display_name: XL (HEFS-FEWS v0.3.x)
-                        default: false
-                        kubespawner_override:
-                          image: "935462133478.dkr.ecr.us-east-2.amazonaws.com/hefs-fews-hub:v0.3.0"
-                          mem_limit: 32G
-                          mem_guarantee: 19G
-                          cpu_limit: 4
-                          cpu_guarantee: 3
-                          node_selector:
-                            teehr-hub/nodegroup-name: nb-r5-4xlarge${item.value.suffix}
+      # TEEHR Project (default - uses base node groups)
+      - display_name: "TEEHR Project"
+        default: true
+        description: "Choose this profile for work related to the TEEHR Project."
+        profile_options:
+          image:
+            display_name: Image
+            choices:
+              current-tag-xlarge:
+                display_name: XL Node (Version ${var.stableTeehrVersion})
+                default: true
                 kubespawner_override:
-                  environment:
-                    - name: TEEHR_PROJECT_ID
-                      value: ${item.value.id}
+                  image: ${actions.build.teehr-jupyter-driver-image-stable.outputs.deploymentImageId}
+                  mem_limit: 32G
+                  mem_guarantee: 19G
+                  cpu_limit: 4
+                  cpu_guarantee: 3
+                  node_selector:
+                    teehr-hub/nodegroup-name: nb-r5-xlarge
+              current-tag-4xlarge:
+                display_name: 4XL Node (Version ${var.stableTeehrVersion})
+                default: false
+                kubespawner_override:
+                  image: ${actions.build.teehr-jupyter-driver-image-stable.outputs.deploymentImageId}
+                  mem_limit: 32G
+                  mem_guarantee: 19G
+                  cpu_limit: 4
+                  cpu_guarantee: 3
+                  node_selector:
+                    teehr-hub/nodegroup-name: nb-r5-4xlarge
+              dev-xlarge:
+                display_name: XL Node (Bleeding Edge ${slice(var.devTeehrVersion, 0, 6)})
+                kubespawner_override:
+                  image: ${actions.build.teehr-jupyter-driver-image-edge.outputs.deploymentImageId}
+                  mem_limit: 128G
+                  mem_guarantee: 76G
+                  cpu_limit: 16
+                  cpu_guarantee: 12
+                  node_selector:
+                    teehr-hub/nodegroup-name: nb-r5-4xlarge
+              dev-4xlarge:
+                display_name: 4XL Node (Bleeding Edge ${slice(var.devTeehrVersion, 0, 6)})
+                kubespawner_override:
+                  image: ${actions.build.teehr-jupyter-driver-image-edge.outputs.deploymentImageId}
+                  mem_limit: 128G
+                  mem_guarantee: 76G
+                  cpu_limit: 16
+                  cpu_guarantee: 12
+                  node_selector:
+                    teehr-hub/nodegroup-name: nb-r5-4xlarge
+        kubespawner_override:
+          environment:
+            - name: TEEHR_PROJECT_ID
+              value: TEEHR
+
+      # MMM Project
+      - display_name: "MMM Project"
+        default: false
+        description: "Choose this profile for work related to the MMM Project."
+        profile_options:
+          image:
+            display_name: Image
+            choices:
+              current-tag-xlarge:
+                display_name: XL Node (Version ${var.stableTeehrVersion})
+                default: true
+                kubespawner_override:
+                  image: ${actions.build.teehr-jupyter-driver-image-stable.outputs.deploymentImageId}
+                  mem_limit: 32G
+                  mem_guarantee: 19G
+                  cpu_limit: 4
+                  cpu_guarantee: 3
+                  node_selector:
+                    teehr-hub/nodegroup-name: nb-r5-xlarge-mmm
+              current-tag-4xlarge:
+                display_name: 4XL Node (Version ${var.stableTeehrVersion})
+                default: false
+                kubespawner_override:
+                  image: ${actions.build.teehr-jupyter-driver-image-stable.outputs.deploymentImageId}
+                  mem_limit: 32G
+                  mem_guarantee: 19G
+                  cpu_limit: 4
+                  cpu_guarantee: 3
+                  node_selector:
+                    teehr-hub/nodegroup-name: nb-r5-4xlarge-mmm
+              dev-xlarge:
+                display_name: XL Node (Bleeding Edge ${slice(var.devTeehrVersion, 0, 6)})
+                kubespawner_override:
+                  image: ${actions.build.teehr-jupyter-driver-image-edge.outputs.deploymentImageId}
+                  mem_limit: 128G
+                  mem_guarantee: 76G
+                  cpu_limit: 16
+                  cpu_guarantee: 12
+                  node_selector:
+                    teehr-hub/nodegroup-name: nb-r5-4xlarge-mmm
+              dev-4xlarge:
+                display_name: 4XL Node (Bleeding Edge ${slice(var.devTeehrVersion, 0, 6)})
+                kubespawner_override:
+                  image: ${actions.build.teehr-jupyter-driver-image-edge.outputs.deploymentImageId}
+                  mem_limit: 128G
+                  mem_guarantee: 76G
+                  cpu_limit: 16
+                  cpu_guarantee: 12
+                  node_selector:
+                    teehr-hub/nodegroup-name: nb-r5-4xlarge-mmm
+        kubespawner_override:
+          environment:
+            - name: TEEHR_PROJECT_ID
+              value: MMM
+
+      # Testbed Project
+      - display_name: "Testbed Project"
+        default: false
+        description: "Choose this profile for work related to the Testbed Project."
+        profile_options:
+          image:
+            display_name: Image
+            choices:
+              current-tag-xlarge:
+                display_name: XL Node (Version ${var.stableTeehrVersion})
+                default: true
+                kubespawner_override:
+                  image: ${actions.build.teehr-jupyter-driver-image-stable.outputs.deploymentImageId}
+                  mem_limit: 32G
+                  mem_guarantee: 19G
+                  cpu_limit: 4
+                  cpu_guarantee: 3
+                  node_selector:
+                    teehr-hub/nodegroup-name: nb-r5-xlarge-testbed
+              current-tag-4xlarge:
+                display_name: 4XL Node (Version ${var.stableTeehrVersion})
+                default: false
+                kubespawner_override:
+                  image: ${actions.build.teehr-jupyter-driver-image-stable.outputs.deploymentImageId}
+                  mem_limit: 32G
+                  mem_guarantee: 19G
+                  cpu_limit: 4
+                  cpu_guarantee: 3
+                  node_selector:
+                    teehr-hub/nodegroup-name: nb-r5-4xlarge-testbed
+              dev-xlarge:
+                display_name: XL Node (Bleeding Edge ${slice(var.devTeehrVersion, 0, 6)})
+                kubespawner_override:
+                  image: ${actions.build.teehr-jupyter-driver-image-edge.outputs.deploymentImageId}
+                  mem_limit: 128G
+                  mem_guarantee: 76G
+                  cpu_limit: 16
+                  cpu_guarantee: 12
+                  node_selector:
+                    teehr-hub/nodegroup-name: nb-r5-4xlarge-testbed
+              dev-4xlarge:
+                display_name: 4XL Node (Bleeding Edge ${slice(var.devTeehrVersion, 0, 6)})
+                kubespawner_override:
+                  image: ${actions.build.teehr-jupyter-driver-image-edge.outputs.deploymentImageId}
+                  mem_limit: 128G
+                  mem_guarantee: 76G
+                  cpu_limit: 16
+                  cpu_guarantee: 12
+                  node_selector:
+                    teehr-hub/nodegroup-name: nb-r5-4xlarge-testbed
+        kubespawner_override:
+          environment:
+            - name: TEEHR_PROJECT_ID
+              value: Testbed
+
+      # ResOps Project
+      - display_name: "ResOps Project"
+        default: false
+        description: "Choose this profile for work related to the ResOps Project."
+        profile_options:
+          image:
+            display_name: Image
+            choices:
+              current-tag-xlarge:
+                display_name: XL Node (Version ${var.stableTeehrVersion})
+                default: true
+                kubespawner_override:
+                  image: ${actions.build.teehr-jupyter-driver-image-stable.outputs.deploymentImageId}
+                  mem_limit: 32G
+                  mem_guarantee: 19G
+                  cpu_limit: 4
+                  cpu_guarantee: 3
+                  node_selector:
+                    teehr-hub/nodegroup-name: nb-r5-xlarge-resops
+              current-tag-4xlarge:
+                display_name: 4XL Node (Version ${var.stableTeehrVersion})
+                default: false
+                kubespawner_override:
+                  image: ${actions.build.teehr-jupyter-driver-image-stable.outputs.deploymentImageId}
+                  mem_limit: 32G
+                  mem_guarantee: 19G
+                  cpu_limit: 4
+                  cpu_guarantee: 3
+                  node_selector:
+                    teehr-hub/nodegroup-name: nb-r5-4xlarge-resops
+              dev-xlarge:
+                display_name: XL Node (Bleeding Edge ${slice(var.devTeehrVersion, 0, 6)})
+                kubespawner_override:
+                  image: ${actions.build.teehr-jupyter-driver-image-edge.outputs.deploymentImageId}
+                  mem_limit: 128G
+                  mem_guarantee: 76G
+                  cpu_limit: 16
+                  cpu_guarantee: 12
+                  node_selector:
+                    teehr-hub/nodegroup-name: nb-r5-4xlarge-resops
+              dev-4xlarge:
+                display_name: 4XL Node (Bleeding Edge ${slice(var.devTeehrVersion, 0, 6)})
+                kubespawner_override:
+                  image: ${actions.build.teehr-jupyter-driver-image-edge.outputs.deploymentImageId}
+                  mem_limit: 128G
+                  mem_guarantee: 76G
+                  cpu_limit: 16
+                  cpu_guarantee: 12
+                  node_selector:
+                    teehr-hub/nodegroup-name: nb-r5-4xlarge-resops
+        kubespawner_override:
+          environment:
+            - name: TEEHR_PROJECT_ID
+              value: ResOps
+
+      # FIRO Project
+      - display_name: "FIRO Project"
+        default: false
+        description: "Choose this profile for work related to the FIRO Project."
+        profile_options:
+          image:
+            display_name: Image
+            choices:
+              current-tag-xlarge:
+                display_name: XL Node (Version ${var.stableTeehrVersion})
+                default: true
+                kubespawner_override:
+                  image: ${actions.build.teehr-jupyter-driver-image-stable.outputs.deploymentImageId}
+                  mem_limit: 32G
+                  mem_guarantee: 19G
+                  cpu_limit: 4
+                  cpu_guarantee: 3
+                  node_selector:
+                    teehr-hub/nodegroup-name: nb-r5-xlarge-firo
+              current-tag-4xlarge:
+                display_name: 4XL Node (Version ${var.stableTeehrVersion})
+                default: false
+                kubespawner_override:
+                  image: ${actions.build.teehr-jupyter-driver-image-stable.outputs.deploymentImageId}
+                  mem_limit: 32G
+                  mem_guarantee: 19G
+                  cpu_limit: 4
+                  cpu_guarantee: 3
+                  node_selector:
+                    teehr-hub/nodegroup-name: nb-r5-4xlarge-firo
+              dev-xlarge:
+                display_name: XL Node (Bleeding Edge ${slice(var.devTeehrVersion, 0, 6)})
+                kubespawner_override:
+                  image: ${actions.build.teehr-jupyter-driver-image-edge.outputs.deploymentImageId}
+                  mem_limit: 128G
+                  mem_guarantee: 76G
+                  cpu_limit: 16
+                  cpu_guarantee: 12
+                  node_selector:
+                    teehr-hub/nodegroup-name: nb-r5-4xlarge-firo
+              dev-4xlarge:
+                display_name: 4XL Node (Bleeding Edge ${slice(var.devTeehrVersion, 0, 6)})
+                kubespawner_override:
+                  image: ${actions.build.teehr-jupyter-driver-image-edge.outputs.deploymentImageId}
+                  mem_limit: 128G
+                  mem_guarantee: 76G
+                  cpu_limit: 16
+                  cpu_guarantee: 12
+                  node_selector:
+                    teehr-hub/nodegroup-name: nb-r5-4xlarge-firo
+              hefs-v0-1-0:
+                display_name: XL (HEFS-FEWS v0.1.x)
+                kubespawner_override:
+                  image: "935462133478.dkr.ecr.us-east-2.amazonaws.com/hefs-fews-hub:v0.1.0"
+                  mem_limit: 32G
+                  mem_guarantee: 19G
+                  cpu_limit: 4
+                  cpu_guarantee: 3
+                  node_selector:
+                    teehr-hub/nodegroup-name: nb-r5-xlarge-firo
+              hefs-v0-3-0:
+                display_name: XL (HEFS-FEWS v0.3.x)
+                kubespawner_override:
+                  image: "935462133478.dkr.ecr.us-east-2.amazonaws.com/hefs-fews-hub:v0.3.0"
+                  mem_limit: 32G
+                  mem_guarantee: 19G
+                  cpu_limit: 4
+                  cpu_guarantee: 3
+                  node_selector:
+                    teehr-hub/nodegroup-name: nb-r5-xlarge-firo
+        kubespawner_override:
+          environment:
+            - name: TEEHR_PROJECT_ID
+              value: FIRO
 
     scheduling:
       userScheduler:

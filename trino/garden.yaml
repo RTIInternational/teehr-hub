@@ -14,6 +14,12 @@ spec:
     version: 1.41.0
   
   values:
+    # coordinator:
+    #   nodeSelector:
+    #     teehr-hub/nodegroup-name: core-a
+    # worker:
+    #   nodeSelector:
+    #     teehr-hub/nodegroup-name: core-a
     catalogs:
       iceberg: |-
         connector.name=iceberg
@@ -73,6 +79,8 @@ spec:
       workers: 2
 
     coordinator:
+      nodeSelector:
+        teehr-hub/nodegroup-name: core-a
       resources:
         requests:
           cpu: 1
@@ -82,6 +90,8 @@ spec:
           memory: 8Gi
 
     worker:
+      nodeSelector:
+        teehr-hub/nodegroup-name: core-a
       resources:
         requests:
           cpu: 1
