@@ -319,8 +319,7 @@ spec:
                     teehr-hub/nodegroup-name: nb-r5-4xlarge
         kubespawner_override:
           environment:
-            - name: TEEHR_PROJECT_ID
-              value: TEEHR
+            TEEHR_PROJECT_ID: "TEEHR"
 
       # MMM Project
       - display_name: "MMM Project"
@@ -374,8 +373,7 @@ spec:
                     teehr-hub/nodegroup-name: nb-r5-4xlarge-mmm
         kubespawner_override:
           environment:
-            - name: TEEHR_PROJECT_ID
-              value: MMM
+            TEEHR_PROJECT_ID: "MMM"
 
       # Testbed Project
       - display_name: "Testbed Project"
@@ -429,8 +427,7 @@ spec:
                     teehr-hub/nodegroup-name: nb-r5-4xlarge-testbed
         kubespawner_override:
           environment:
-            - name: TEEHR_PROJECT_ID
-              value: Testbed
+            TEEHR_PROJECT_ID: "Testbed"
 
       # ResOps Project
       - display_name: "ResOps Project"
@@ -484,8 +481,7 @@ spec:
                     teehr-hub/nodegroup-name: nb-r5-4xlarge-resops
         kubespawner_override:
           environment:
-            - name: TEEHR_PROJECT_ID
-              value: ResOps
+            TEEHR_PROJECT_ID: "ResOps"
 
       # FIRO Project
       - display_name: "FIRO Project"
@@ -559,8 +555,7 @@ spec:
                     teehr-hub/nodegroup-name: nb-r5-xlarge-firo
         kubespawner_override:
           environment:
-            - name: TEEHR_PROJECT_ID
-              value: FIRO
+            TEEHR_PROJECT_ID: "FIRO"
 
     scheduling:
       userScheduler:
