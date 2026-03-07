@@ -58,5 +58,5 @@ spec:
       config:
         workPool: kubernetes-pool
       replicaCount: 1
-      nodeSelector:
-        teehr-hub/nodegroup-name: core-a
+      # nodeSelector:
+      #   teehr-hub/nodegroup-name: core-a
