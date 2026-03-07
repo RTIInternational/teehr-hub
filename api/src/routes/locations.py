@@ -20,6 +20,9 @@ async def get_locations_items(
     bbox: str | None = Query(
         None, description="Bounding box (minLon,minLat,maxLon,maxLat)"
     ),
+    id: list[str] | None = Query(
+        None, description="Filter by location ID(s) - can be specified multiple times"
+    ),
     prefix: str | None = Query(
         None, description="Location ID prefix to filter by (e.g., 'usgs', 'nwm')"
     ),
@@ -37,15 +40,23 @@ async def get_locations_items(
 
     By default returns just location id, name, and geometry.
     Set include_attributes=true to include all location attributes as properties.
+    Use id to filter by one or more location IDs (repeat the parameter for multiple).
     Use prefix to filter by location ID prefix (e.g., 'usgs', 'nwm').
+    If both id and prefix are provided, both filters are applied.
     """
     try:
-        # Build prefix filter if provided
+        # Build WHERE conditions
+        where_conditions = []
+
+        if id:
+            safe_ids = [f"'{sanitize_string(loc)}'" for loc in id]
+            where_conditions.append(f"l.id IN ({', '.join(safe_ids)})")
+
         if prefix:
             safe_prefix = sanitize_string(prefix)
-            prefix_filter = f"l.id LIKE '{safe_prefix}-%'"
-        else:
-            prefix_filter = "1=1"
+            where_conditions.append(f"l.id LIKE '{safe_prefix}-%'")
+
+        where_clause = " AND ".join(where_conditions) if where_conditions else "1=1"
 
         if include_attributes:
             # Query locations with their attributes (one row per attribute)
@@ -59,7 +70,7 @@ async def get_locations_items(
                 FROM {trino_catalog}.{trino_schema}.locations l
                 LEFT JOIN {trino_catalog}.{trino_schema}.location_attributes la
                     ON l.id = la.location_id
-                WHERE {prefix_filter}
+                WHERE {where_clause}
             """
         else:
             # Simple query without attributes
@@ -69,7 +80,7 @@ async def get_locations_items(
                     l.name,
                     l.geometry
                 FROM {trino_catalog}.{trino_schema}.locations l
-                WHERE {prefix_filter}
+                WHERE {where_clause}
             """
 
         spatial_filters = []
