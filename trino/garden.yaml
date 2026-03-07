@@ -79,8 +79,8 @@ spec:
       workers: 2
 
     coordinator:
-      nodeSelector:
-        teehr-hub/nodegroup-name: core-a
+      # nodeSelector:
+      #   teehr-hub/nodegroup-name: core-a
       resources:
         requests:
           cpu: 1
@@ -90,8 +90,8 @@ spec:
           memory: 8Gi
 
     worker:
-      nodeSelector:
-        teehr-hub/nodegroup-name: core-a
+      # nodeSelector:
+      #   teehr-hub/nodegroup-name: core-a
       resources:
         requests:
           cpu: 1
