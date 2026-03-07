@@ -13,4 +13,4 @@ project_name = "teehr"
 # CIROH project IDs for dedicated node groups
 # Each project ID will create: nb-r5-xlarge-{id}, nb-r5-4xlarge-{id}, spark-r5-4xlarge-spot-{id}
 # Example: project_ids = ["MMM", "ABC", "XYZ"]
-project_ids = ["MMM", "Testbed", "FIRO", "ResOps", "FFF"]
+project_ids = ["MMM", "Testbed", "FIRO", "ResOps"]
