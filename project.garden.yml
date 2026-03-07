@@ -34,7 +34,8 @@ environments:
       stableTeehrVersion: v0.5.3
       previousTeehrVersion: v0.5.0
       # CIROH projects for JupyterHub profile generation
-      # Each project gets dedicated node groups: nb-r5-xlarge-{suffix}, nb-r5-4xlarge-{suffix}, spark-r5-4xlarge-spot-{suffix}
+      # Each project gets dedicated node groups (group must exist in the cluster).
+      # nb-r5-xlarge-{suffix}, nb-r5-4xlarge-{suffix}, spark-r5-4xlarge-spot-{suffix}
       # Use empty suffix "" for the default TEEHR project (uses base node groups)
       cirohProjects:
         - name: "TEEHR"
