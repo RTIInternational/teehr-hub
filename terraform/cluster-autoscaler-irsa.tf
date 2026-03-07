@@ -23,8 +23,8 @@ data "aws_iam_policy_document" "cluster_autoscaler_trust_policy" {
 # Create the IAM policy document for Cluster Autoscaler
 data "aws_iam_policy_document" "cluster_autoscaler" {
   statement {
-    effect    = "Allow"
-    actions   = [
+    effect = "Allow"
+    actions = [
       "autoscaling:DescribeAutoScalingGroups",
       "autoscaling:DescribeAutoScalingInstances",
       "autoscaling:DescribeLaunchConfigurations",
