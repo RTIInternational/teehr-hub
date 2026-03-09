@@ -12,7 +12,7 @@ resource "aws_efs_file_system" "datadir" {
 resource "aws_efs_mount_target" "datadir" {
   file_system_id  = aws_efs_file_system.datadir.id
   subnet_id       = module.vpc.private_subnets[0]
-  security_groups = [ aws_security_group.efs-sg.id ]
+  security_groups = [aws_security_group.efs-sg.id]
 }
 
 resource "aws_security_group" "efs-sg" {

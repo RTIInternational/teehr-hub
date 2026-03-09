@@ -9,8 +9,8 @@ resource "aws_iam_group_policy" "teehr_hub_admins_assume_role" {
     Version = "2012-10-17"
     Statement = [
       {
-        Effect = "Allow"
-        Action = "sts:AssumeRole"
+        Effect   = "Allow"
+        Action   = "sts:AssumeRole"
         Resource = aws_iam_role.teehr_hub_admin.arn
       }
     ]
@@ -40,9 +40,9 @@ resource "aws_iam_role" "teehr_hub_admin" {
 
 # GitHub Actions OIDC Provider
 resource "aws_iam_openid_connect_provider" "github_actions" {
-  url             = "https://token.actions.githubusercontent.com"
-  client_id_list  = ["sts.amazonaws.com"]
-  
+  url            = "https://token.actions.githubusercontent.com"
+  client_id_list = ["sts.amazonaws.com"]
+
   tags = {
     "teehr-hub/purpose" = "github-actions-oidc"
   }
@@ -53,7 +53,7 @@ resource "aws_iam_openid_connect_provider" "github_actions" {
 # IAM role for GitHub Actions to deploy with Garden
 resource "aws_iam_role" "github_actions_garden_deploy" {
   name = "${local.cluster_name}-github-actions-garden-deploy"
-  
+
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
     Statement = [
@@ -74,9 +74,9 @@ resource "aws_iam_role" "github_actions_garden_deploy" {
       }
     ]
   })
-  
+
   tags = {
-    "teehr-hub/role" = "github-actions-garden-deploy"
+    "teehr-hub/role"    = "github-actions-garden-deploy"
     "teehr-hub/purpose" = "cicd"
   }
 }
@@ -85,7 +85,7 @@ resource "aws_iam_role" "github_actions_garden_deploy" {
 resource "aws_iam_role_policy" "github_actions_garden_deploy" {
   name = "github-actions-garden-deploy-policy"
   role = aws_iam_role.github_actions_garden_deploy.id
-  
+
   policy = jsonencode({
     Version = "2012-10-17"
     Statement = [
@@ -98,8 +98,8 @@ resource "aws_iam_role_policy" "github_actions_garden_deploy" {
         Resource = "*"
       },
       {
-        Effect = "Allow"
-        Action = "sts:AssumeRole"
+        Effect   = "Allow"
+        Action   = "sts:AssumeRole"
         Resource = aws_iam_role.teehr_hub_admin.arn
       }
     ]

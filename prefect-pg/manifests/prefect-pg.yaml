@@ -25,6 +25,8 @@ spec:
       labels:
         app: prefect-pg
     spec:
+      # nodeSelector:
+      #   teehr-hub/nodegroup-name: core-a
       containers:
         - name: postgres
           image: postgres:15
