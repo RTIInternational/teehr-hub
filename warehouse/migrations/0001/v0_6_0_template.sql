@@ -1,37 +1,37 @@
-CREATE TABLE IF NOT EXISTS units (
+CREATE TABLE units (
     name STRING,
     long_name STRING
 ) USING iceberg;
 
-CREATE TABLE IF NOT EXISTS configurations (
+CREATE TABLE configurations (
     name STRING,
     type STRING,
     description STRING
 ) USING iceberg;
 
-CREATE TABLE IF NOT EXISTS variables (
+CREATE TABLE variables (
     name STRING,
     long_name STRING
 ) USING iceberg;
 
-CREATE TABLE IF NOT EXISTS attributes (
+CREATE TABLE attributes (
     name STRING,
     description STRING,
     type STRING
 ) USING iceberg;
 
-CREATE TABLE IF NOT EXISTS locations (
+CREATE TABLE locations (
     id STRING,
     name STRING,
     geometry BINARY
 ) USING iceberg;
 
-CREATE TABLE IF NOT EXISTS location_crosswalks (
+CREATE TABLE location_crosswalks (
     primary_location_id STRING,
     secondary_location_id STRING
 ) USING iceberg;
 
-CREATE TABLE IF NOT EXISTS primary_timeseries (
+CREATE TABLE primary_timeseries (
     reference_time TIMESTAMP,
     value_time TIMESTAMP,
     configuration_name STRING,
@@ -41,7 +41,7 @@ CREATE TABLE IF NOT EXISTS primary_timeseries (
     location_id STRING
 ) USING iceberg;
 
-CREATE TABLE IF NOT EXISTS secondary_timeseries (
+CREATE TABLE secondary_timeseries (
     reference_time TIMESTAMP,
     value_time TIMESTAMP,
     configuration_name STRING,
@@ -52,13 +52,12 @@ CREATE TABLE IF NOT EXISTS secondary_timeseries (
     member STRING
 ) USING iceberg;
 
-CREATE TABLE IF NOT EXISTS location_attributes(
+CREATE TABLE location_attributes(
     location_id STRING,
     attribute_name STRING,
     value STRING
 ) USING iceberg;
 
--- Should these be if not exists?
 INSERT INTO units VALUES
     ("m^3/s", "Cubic Meters Per Second"),
     ("ft^3/s", "Cubic Feet Per Second"),
