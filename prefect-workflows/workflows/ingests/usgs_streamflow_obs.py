@@ -25,7 +25,6 @@ from workflows.utils.common_utils import initialize_evaluation
 logging.getLogger("teehr").setLevel(logging.INFO)
 
 
-CURRENT_DT = datetime.now(UTC).replace(tzinfo=None)
 LOOKBACK_DAYS = 1
 CHUNK_SIZE = 100  # Number of sites to fetch per api call
 
@@ -36,7 +35,7 @@ CHUNK_SIZE = 100  # Number of sites to fetch per api call
 )
 def ingest_usgs_streamflow_obs(
     dir_path: Union[str, Path],
-    end_dt: Union[str, datetime, pd.Timestamp] = CURRENT_DT,
+    end_dt: Union[str, datetime, pd.Timestamp, None] = None,
     num_lookback_days: Union[int, None] = LOOKBACK_DAYS,
     service: USGSServiceEnum = "iv",
     chunk_by: Union[USGSChunkByEnum, None] = "location_id",
@@ -59,7 +58,9 @@ def ingest_usgs_streamflow_obs(
     """
     logger = get_run_logger()
 
-    if isinstance(end_dt, str):
+    if end_dt is None:
+        end_dt = datetime.now(UTC).replace(tzinfo=None)
+    elif isinstance(end_dt, str):
         # Assumes UTC
         end_dt = datetime.fromisoformat(end_dt)
 

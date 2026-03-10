@@ -22,8 +22,6 @@ from teehr.utils.utils import remove_dir_if_exists
 
 logging.getLogger("teehr").setLevel(logging.INFO)
 
-CURRENT_DT = datetime.now(UTC)
-
 LOCATION_ID_PREFIX = "nwpsrfc"
 
 ROOT_NWPS_URL = 'https://api.water.noaa.gov'
@@ -52,7 +50,9 @@ def ingest_nwps_rfc_forecasts(
     """RFC streamflow forecast ingestion workflow."""
     logger = get_run_logger()
 
-    logger.info(f"Processing RFC forecasts issued by: {CURRENT_DT}")
+    # Evaluated at flow run time, not deployment time
+    current_dt = datetime.now(UTC)
+    logger.info(f"Processing RFC forecasts issued by: {current_dt}")
 
     ev = initialize_evaluation(
         dir_path=dir_path

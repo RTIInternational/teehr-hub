@@ -22,7 +22,6 @@ from teehr.utils.utils import remove_dir_if_exists
 logging.getLogger("teehr").setLevel(logging.INFO)
 
 
-CURRENT_DT = datetime.now(UTC)
 LOOKBACK_DAYS = 1
 
 BUCKET_NAME = 'ciroh-community-ngen-datastream'
@@ -56,7 +55,7 @@ s3 = session.create_client(
 )
 def ingest_datastream_forecasts(
     dir_path: Union[str, Path],
-    end_dt: Union[str, datetime, pd.Timestamp] = CURRENT_DT,
+    end_dt: Union[str, datetime, pd.Timestamp, None] = None,
     num_lookback_days: int = LOOKBACK_DAYS,
     forecast_configuration: str = FORECAST_CONFIGURATION,
     hydrofabric_version: str = HYDROFABRIC_VERSION,
@@ -75,7 +74,9 @@ def ingest_datastream_forecasts(
     """
     logger = get_run_logger()
 
-    if isinstance(end_dt, str):
+    if end_dt is None:
+        end_dt = datetime.now(UTC)
+    elif isinstance(end_dt, str):
         end_dt = datetime.fromisoformat(end_dt)
 
     start_dt = end_dt - timedelta(days=num_lookback_days)
