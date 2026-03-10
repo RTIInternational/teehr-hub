@@ -1,0 +1,18 @@
+[build-system]
+requires = ["setuptools>=68.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "spark-analytics-driver"
+version = "0.1.0"
+description = "Spark analytics driver for teehr-hub async API"
+requires-python = ">=3.11"
+
+# teehr and pyspark are already installed in the base image
+# Only declare trino as it may need updating
+dependencies = [
+    "trino>=0.327.0",
+]
+
+[tool.setuptools.packages.find]
+include = ["spark_analytics_driver*"]

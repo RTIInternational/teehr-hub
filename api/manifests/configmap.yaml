@@ -12,3 +12,13 @@ data:
   TRINO_CATALOG: "iceberg"
   TRINO_SCHEMA: "teehr"
   CORS_ORIGINS: "${var.allowedOrigins}"
+  # Analytics job configuration
+  API_JOB_NAMESPACE: "${environment.namespace}"
+  API_JOB_SERVICE_ACCOUNT: "prefect-job"
+  API_JOB_IMAGE: "${actions.build.spark-analytics-driver.outputs.deploymentImageId}"
+  TEEHR_SPARK_IMAGE: "${actions.build.teehr-spark-executor-image.outputs.deploymentImageId}"
+  TEEHR_NAMESPACE: "${environment.namespace}"
+  AWS_REGION: "us-east-2"
+  REMOTE_CATALOG_REST_URI: "${var.iceberg.catalogUri}"
+  REMOTE_CATALOG_TYPE: "${var.iceberg.catalogType}"
+  REMOTE_WAREHOUSE_S3_PATH: "${var.iceberg.catalogWarehouse}"

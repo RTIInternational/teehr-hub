@@ -16,6 +16,7 @@ spec:
         app: teehr-api
         component: backend
     spec:
+      serviceAccountName: teehr-api
       # nodeSelector:
       #   teehr-hub/nodegroup-name: core-a
       containers:
@@ -56,6 +57,52 @@ spec:
             configMapKeyRef:
               name: teehr-api-config
               key: CORS_ORIGINS
+        # Analytics job configuration
+        - name: API_JOB_NAMESPACE
+          valueFrom:
+            configMapKeyRef:
+              name: teehr-api-config
+              key: API_JOB_NAMESPACE
+        - name: API_JOB_SERVICE_ACCOUNT
+          valueFrom:
+            configMapKeyRef:
+              name: teehr-api-config
+              key: API_JOB_SERVICE_ACCOUNT
+        - name: API_JOB_IMAGE
+          valueFrom:
+            configMapKeyRef:
+              name: teehr-api-config
+              key: API_JOB_IMAGE
+        - name: TEEHR_SPARK_IMAGE
+          valueFrom:
+            configMapKeyRef:
+              name: teehr-api-config
+              key: TEEHR_SPARK_IMAGE
+        - name: TEEHR_NAMESPACE
+          valueFrom:
+            configMapKeyRef:
+              name: teehr-api-config
+              key: TEEHR_NAMESPACE
+        - name: AWS_REGION
+          valueFrom:
+            configMapKeyRef:
+              name: teehr-api-config
+              key: AWS_REGION
+        - name: REMOTE_CATALOG_REST_URI
+          valueFrom:
+            configMapKeyRef:
+              name: teehr-api-config
+              key: REMOTE_CATALOG_REST_URI
+        - name: REMOTE_CATALOG_TYPE
+          valueFrom:
+            configMapKeyRef:
+              name: teehr-api-config
+              key: REMOTE_CATALOG_TYPE
+        - name: REMOTE_WAREHOUSE_S3_PATH
+          valueFrom:
+            configMapKeyRef:
+              name: teehr-api-config
+              key: REMOTE_WAREHOUSE_S3_PATH
         livenessProbe:
           httpGet:
             path: /health

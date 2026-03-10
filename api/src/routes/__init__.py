@@ -5,6 +5,7 @@ Main router combining all sub-routers.
 from fastapi import APIRouter
 
 from . import (
+    analytics,
     crosswalks,
     locations,
     metrics,
@@ -25,6 +26,7 @@ router.include_router(reference_data.router, tags=["Reference Data"])
 router.include_router(timeseries.router, tags=["Timeseries"])
 router.include_router(metrics.router, tags=["Metrics"])
 router.include_router(queryables.router, tags=["Queryables"])
+router.include_router(analytics.router, prefix="/analytics", tags=["Analytics"])
 
 # Export for backward compatibility
 __all__ = ["router"]

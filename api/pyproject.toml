@@ -24,6 +24,7 @@ dependencies = [
     "pyproj==3.6.1",
     "fiona>=1.9.6",
     "geopandas>=1.0.0,<2.0.0",
+    "kubernetes>=28.0.0",
 ]
 
 [project.optional-dependencies]

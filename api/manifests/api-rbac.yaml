@@ -1,0 +1,47 @@
+# RBAC for TEEHR API to submit analytics Kubernetes Jobs
+#
+# This grants the API deployment permission to create and manage
+# Kubernetes Jobs for running Spark analytics workloads.
+---
+# ServiceAccount for the API deployment
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: teehr-api
+  labels:
+    app: teehr-api
+---
+# Role granting Job management permissions
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: teehr-api-job-manager
+  labels:
+    app: teehr-api
+rules:
+  # Jobs management
+  - apiGroups: ["batch"]
+    resources: ["jobs"]
+    verbs: ["create", "get", "list", "watch", "delete"]
+  # Pod access for status and logs
+  - apiGroups: [""]
+    resources: ["pods"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: [""]
+    resources: ["pods/log"]
+    verbs: ["get"]
+---
+# Bind the role to the API service account
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: teehr-api-job-manager-binding
+  labels:
+    app: teehr-api
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: teehr-api-job-manager
+subjects:
+  - kind: ServiceAccount
+    name: teehr-api

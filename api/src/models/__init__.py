@@ -1,10 +1,13 @@
 """
-Database models and enums for the TEEHR API.
+Models package for the TEEHR API.
+
+Re-exports all models for backward compatibility.
 """
 
+# Re-export existing OGC models (from original models.py location)
 from datetime import datetime
 from enum import Enum
-from typing import Any
+from typing import Any, List, Optional
 
 from pydantic import BaseModel
 
@@ -14,39 +17,6 @@ class MetricsTable(str, Enum):
     SIM_METRICS_BY_LOCATION = "sim_metrics_by_location"
     FCST_METRICS_BY_LOCATION = "fcst_metrics_by_location"
     FCST_METRICS_BY_LEAD_TIME_BINS = "fcst_metrics_by_lead_time_bins"
-
-
-# class LocationResponse(BaseModel):
-#     """Response model for location data."""
-#     location_id: str
-#     geometry: Dict[str, Any]
-#     properties: Optional[Dict[str, Any]] = None
-
-
-# class MetricResponse(BaseModel):
-#     """Response model for metric data."""
-#     location_id: str
-#     configuration: str
-#     variable: str
-#     metric_name: str
-#     metric_value: float
-#     reference_time: Optional[datetime] = None
-#     value_time: Optional[datetime] = None
-
-
-# class TimeseriesPoint(BaseModel):
-#     """Single point in a timeseries."""
-#     value_time: datetime
-#     value: float
-
-
-# class TimeseriesResponse(BaseModel):
-#     """Response model for timeseries data."""
-#     location_id: str
-#     configuration: Optional[str] = None
-#     variable: str
-#     unit: Optional[str] = None
-#     timeseries: List[TimeseriesPoint]
 
 
 class HealthResponse(BaseModel):
@@ -100,3 +70,47 @@ class LandingPage(BaseModel):
     title: str
     description: str
     links: list[Link]
+
+
+# Export analytics models
+from .analytics import (
+    FilterOperatorEnum,
+    MetricNameEnum,
+    TransformEnum,
+    CalculatedFieldEnum,
+    SourceTableEnum,
+    RunStatusEnum,
+    APIFilter,
+    MetricRequest,
+    CalculatedFieldConfig,
+    AnalyticsRunRequest,
+    AnalyticsRunResponse,
+    AnalyticsRunStatusResponse,
+    AnalyticsResultsResponse,
+)
+
+__all__ = [
+    # OGC models
+    "MetricsTable",
+    "HealthResponse",
+    "Link",
+    "ConformanceResponse",
+    "Extent",
+    "Collection",
+    "CollectionsResponse",
+    "LandingPage",
+    # Analytics models
+    "FilterOperatorEnum",
+    "MetricNameEnum",
+    "TransformEnum",
+    "CalculatedFieldEnum",
+    "SourceTableEnum",
+    "RunStatusEnum",
+    "APIFilter",
+    "MetricRequest",
+    "CalculatedFieldConfig",
+    "AnalyticsRunRequest",
+    "AnalyticsRunResponse",
+    "AnalyticsRunStatusResponse",
+    "AnalyticsResultsResponse",
+]

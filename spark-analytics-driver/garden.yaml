@@ -1,0 +1,18 @@
+kind: Build
+type: container
+name: spark-analytics-driver
+description: Build Spark analytics driver image for async API jobs
+
+dependencies:
+  - build.teehr-prefect-image
+
+environments:
+  - local
+  - remote
+
+spec:
+  dockerfile: Dockerfile
+  localId: spark-analytics-driver
+  publishId: spark-analytics-driver:${var.devTeehrVersion}
+  buildArgs:
+    BASE_IMAGE: ${actions.build.teehr-prefect-image.outputs.deploymentImageId}

@@ -20,10 +20,13 @@ environments:
 
 dependencies:
   - build.teehr-api
+  - build.spark-analytics-driver
+  - build.teehr-spark-executor-image
   - deploy.secrets
 
 spec:
   files:
+    - manifests/api-rbac.yaml
     - manifests/deployment.yaml
     - manifests/service.yaml
     - manifests/configmap.yaml
