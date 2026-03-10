@@ -64,7 +64,7 @@ locals {
         "k8s.io/cluster-autoscaler/node-template/taint/hub.jupyter.org/dedicated"        = "user:NoSchedule"
         "k8s.io/cluster-autoscaler/node-template/taint/hub.jupyter.org_dedicated"        = "user:NoSchedule"
         "teehr-hub/nodegroup-name"                                                       = "nb-r5-xlarge-${lower(project_id)}"
-        "teehr-hub/ciroh/project-id"                                                     = upper(project_id)
+        "Project"                                                                        = "TEEHR-${upper(project_id)}"
       }
     })
   }
@@ -107,7 +107,7 @@ locals {
         "k8s.io/cluster-autoscaler/node-template/taint/hub.jupyter.org/dedicated"        = "user:NoSchedule"
         "k8s.io/cluster-autoscaler/node-template/taint/hub.jupyter.org_dedicated"        = "user:NoSchedule"
         "teehr-hub/nodegroup-name"                                                       = "nb-r5-4xlarge-${lower(project_id)}"
-        "teehr-hub/ciroh/project-id"                                                     = upper(project_id)
+        "Project"                                                                        = "TEEHR-${upper(project_id)}"
       }
     })
   }
@@ -147,7 +147,7 @@ locals {
         "k8s.io/cluster-autoscaler/node-template/taint/teehr-hub/dedicated"                 = "worker:NoSchedule"
         "k8s.io/cluster-autoscaler/node-template/taint/teehr-hub_dedicated"                 = "worker:NoSchedule"
         "teehr-hub/nodegroup-name"                                                          = "spark-r5-4xlarge-spot-${lower(project_id)}"
-        "teehr-hub/ciroh/project-id"                                                        = upper(project_id)
+        "Project"                                                                           = "TEEHR-${upper(project_id)}"
       }
     })
   }
@@ -273,7 +273,7 @@ module "eks" {
         "k8s.io/cluster-autoscaler/node-template/label/k8s.dask.org/node-purpose"        = "core"
         "k8s.io/cluster-autoscaler/node-template/label/node.kubernetes.io/instance-type" = "r5.xlarge"
         "teehr-hub/nodegroup-name"                                                       = "core-a"
-        "teehr-hub/ciroh/project-id"                                                     = "teehr"
+        "Project"                                                                        = "TEEHR"
       }
     })
 
@@ -313,7 +313,7 @@ module "eks" {
         "k8s.io/cluster-autoscaler/node-template/taint/hub.jupyter.org/dedicated"        = "user:NoSchedule"
         "k8s.io/cluster-autoscaler/node-template/taint/hub.jupyter.org_dedicated"        = "user:NoSchedule"
         "teehr-hub/nodegroup-name"                                                       = "nb-r5-xlarge"
-        "teehr-hub/ciroh/project-id"                                                     = "teehr"
+        "Project"                                                                        = "TEEHR"
       }
     })
 
@@ -353,7 +353,7 @@ module "eks" {
         "k8s.io/cluster-autoscaler/node-template/taint/hub.jupyter.org/dedicated"        = "user:NoSchedule"
         "k8s.io/cluster-autoscaler/node-template/taint/hub.jupyter.org_dedicated"        = "user:NoSchedule"
         "teehr-hub/nodegroup-name"                                                       = "nb-r5-4xlarge"
-        "teehr-hub/ciroh/project-id"                                                     = "teehr"
+        "Project"                                                                        = "TEEHR"
       }
     })
 
@@ -390,7 +390,7 @@ module "eks" {
         "k8s.io/cluster-autoscaler/node-template/taint/teehr-hub/dedicated"                 = "worker:NoSchedule"
         "k8s.io/cluster-autoscaler/node-template/taint/teehr-hub_dedicated"                 = "worker:NoSchedule"
         "teehr-hub/nodegroup-name"                                                          = "spark-r5-4xlarge"
-        "teehr-hub/ciroh/project-id"                                                        = "teehr"
+        "Project"                                                                          = "TEEHR"
       }
     })
 
@@ -427,6 +427,7 @@ module "eks" {
         "k8s.io/cluster-autoscaler/node-template/taint/teehr-hub/dedicated"                 = "worker:NoSchedule"
         "k8s.io/cluster-autoscaler/node-template/taint/teehr-hub_dedicated"                 = "worker:NoSchedule"
         "teehr-hub/nodegroup-name"                                                          = "spark-r5-4xlarge-spot"
+        "Project"                                                                           = "TEEHR"
       }
     })
 
