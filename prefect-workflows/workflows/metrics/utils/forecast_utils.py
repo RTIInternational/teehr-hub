@@ -66,8 +66,8 @@ def calculate_forecast_metrics_by_lead_time_bins(
 
     sdf = (
         ev
-        .metrics(table_name=joined_forecast_table_name).
-        add_calculated_fields([
+        .table(joined_forecast_table_name)
+        .add_calculated_fields([
             rcf.ForecastLeadTimeBins(
                 bin_size="6 hours"
             )
@@ -105,7 +105,12 @@ def calculate_forecast_metrics_by_location(
 
     sdf = (
         ev
-        .metrics(table_name=joined_forecast_table_name)
+        .table(joined_forecast_table_name)
+        .add_calculated_fields([
+            rcf.ForecastLeadTimeBins(
+                bin_size="6 hours"
+            )
+        ])
         .query(
             include_metrics=FORECAST_METRICS,
             group_by=FORECAST_BY_LOCATION_GROUPBY
