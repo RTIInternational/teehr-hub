@@ -16,10 +16,10 @@ SNAPSHOT_RETENTION_DAYS = 7
 NUM_SNAPSHOTS_TO_KEEP = 10
 
 REWRITE_TABLE_SORT_ORDER = {
-    "primary_timeseries": "value_time ASC NULLS LAST",
-    "secondary_timeseries": "zorder(value_time, reference_time)",
+    "primary_timeseries": "value_time ASC NULLS LAST, location_id ASC NULLS LAST",
+    "secondary_timeseries": "value_time ASC NULLS LAST, reference_time ASC NULLS LAST, location_id ASC NULLS LAST",
 }
-REWRITE_TABLE_STRATEGY = "binpack"  # Can be 'sort' or 'binpack'
+REWRITE_TABLE_STRATEGY = "sort"  # Can be 'sort' or 'binpack'
 
 
 @task(
