@@ -22,10 +22,11 @@ spec:
         create: true
         annotations:
           eks.amazonaws.com/role-arn: arn:aws:iam::935462133478:role/ClusterAutoscalerIRSA
-      # extraArgs:
-      # 	skip-nodes-with-local-storage: false
-      # 	balance-similar-node-groups: true
-      # 	expander: least-waste
+    extraArgs:
+      scale-down-unneeded-time: 5m
+      skip-nodes-with-local-storage: "false"
+      balance-similar-node-groups: "true"
+      expander: least-waste
 ---
 kind: Deploy
 type: kubernetes

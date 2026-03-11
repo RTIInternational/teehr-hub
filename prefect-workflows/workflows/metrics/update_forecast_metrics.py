@@ -23,8 +23,7 @@ METRIC_COL_NAMES = [metric.output_field_name for metric in FORECAST_METRICS]
 
 @flow(
     flow_run_name="update-forecast-metrics-table",
-    timeout_seconds=60 * 60,
-    retries=2
+    timeout_seconds=60 * 60
 )
 def update_forecast_metrics_table(
     dir_path: Union[str, Path]
@@ -42,9 +41,7 @@ def update_forecast_metrics_table(
     ev = initialize_evaluation(
         dir_path=dir_path,
         start_spark_cluster=True,
-        executor_instances=8,
-        executor_cores=3,
-        executor_memory="16g"
+        executor_instances=8
     )
 
     logger.info("Calculating forecast metrics by lead time bins...")

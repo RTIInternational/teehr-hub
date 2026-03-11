@@ -16,7 +16,6 @@ client = Client()
 logging.getLogger("teehr").setLevel(logging.INFO)
 
 
-CURRENT_DT = datetime.now(UTC).replace(tzinfo=None)
 LOOKBACK_DAYS = 1
 
 
@@ -26,7 +25,7 @@ LOOKBACK_DAYS = 1
 )
 def ingest_nwm_streamflow_forecasts(
     dir_path: Union[str, Path],
-    end_dt: Union[str, datetime, pd.Timestamp] = CURRENT_DT,
+    end_dt: Union[str, datetime, pd.Timestamp, None] = None,
     num_lookback_days: Union[int, None] = LOOKBACK_DAYS,
     nwm_configuration: str = "short_range",
     nwm_version: str = "nwm30",
@@ -47,7 +46,9 @@ def ingest_nwm_streamflow_forecasts(
     """
     logger = get_run_logger()
 
-    if isinstance(end_dt, str):
+    if end_dt is None:
+        end_dt = datetime.now(UTC).replace(tzinfo=None)
+    elif isinstance(end_dt, str):
         end_dt = datetime.fromisoformat(end_dt)
 
     ev = initialize_evaluation(dir_path=dir_path)

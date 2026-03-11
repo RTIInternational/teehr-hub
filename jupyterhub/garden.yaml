@@ -266,6 +266,7 @@ spec:
                   "new_browser_tab": False
               }
             }
+      
       profileList:
       # TEEHR Project (default - uses base node groups)
       - display_name: "TEEHR Project"
@@ -322,9 +323,9 @@ spec:
             TEEHR_PROJECT_ID: "TEEHR"
 
       # MMM Project
-      - display_name: "MMM Project"
+      - display_name: "Multi-model Mosaic Project (MMM)"
         default: false
-        description: "Choose this profile for work related to the MMM Project."
+        description: "Choose this profile for work related to the Multi-model Mosaic Project."
         profile_options:
           image:
             display_name: Image
@@ -376,7 +377,7 @@ spec:
             TEEHR_PROJECT_ID: "MMM"
 
       # Testbed Project
-      - display_name: "Testbed Project"
+      - display_name: "Testbed Project (Testbed)"
         default: false
         description: "Choose this profile for work related to the Testbed Project."
         profile_options:
@@ -430,9 +431,9 @@ spec:
             TEEHR_PROJECT_ID: "Testbed"
 
       # ResOps Project
-      - display_name: "ResOps Project"
+      - display_name: "Reservoir Operations Project (ResOps)"
         default: false
-        description: "Choose this profile for work related to the ResOps Project."
+        description: "Choose this profile for work related to the Reservoir Operations Project."
         profile_options:
           image:
             display_name: Image
@@ -484,9 +485,9 @@ spec:
             TEEHR_PROJECT_ID: "ResOps"
 
       # FIRO Project
-      - display_name: "FIRO Project"
+      - display_name: "Cloud Operations and FIRO Projects (FIRO)"
         default: false
-        description: "Choose this profile for work related to the FIRO Project."
+        description: "Choose this profile for work related to the Cloud Operations and FIRO Projects."
         profile_options:
           image:
             display_name: Image
@@ -556,6 +557,80 @@ spec:
         kubespawner_override:
           environment:
             TEEHR_PROJECT_ID: "FIRO"
+
+      # FFF Project
+      - display_name: "Flash Flood Forecast Projects (FFF)"
+        default: false
+        description: "Choose this profile for work related to the Flash Flood Forecast Project."
+        profile_options:
+          image:
+            display_name: Image
+            choices:
+              current-tag-xlarge:
+                display_name: XL Node (Version ${var.stableTeehrVersion})
+                default: true
+                kubespawner_override:
+                  image: ${actions.build.teehr-jupyter-driver-image-stable.outputs.deploymentImageId}
+                  mem_limit: 32G
+                  mem_guarantee: 19G
+                  cpu_limit: 4
+                  cpu_guarantee: 3
+                  node_selector:
+                    teehr-hub/nodegroup-name: nb-r5-xlarge-fff
+              current-tag-4xlarge:
+                display_name: 4XL Node (Version ${var.stableTeehrVersion})
+                default: false
+                kubespawner_override:
+                  image: ${actions.build.teehr-jupyter-driver-image-stable.outputs.deploymentImageId}
+                  mem_limit: 32G
+                  mem_guarantee: 19G
+                  cpu_limit: 4
+                  cpu_guarantee: 3
+                  node_selector:
+                    teehr-hub/nodegroup-name: nb-r5-4xlarge-fff
+              dev-xlarge:
+                display_name: XL Node (Bleeding Edge ${slice(var.devTeehrVersion, 0, 6)})
+                kubespawner_override:
+                  image: ${actions.build.teehr-jupyter-driver-image-edge.outputs.deploymentImageId}
+                  mem_limit: 128G
+                  mem_guarantee: 76G
+                  cpu_limit: 16
+                  cpu_guarantee: 12
+                  node_selector:
+                    teehr-hub/nodegroup-name: nb-r5-4xlarge-fff
+              dev-4xlarge:
+                display_name: 4XL Node (Bleeding Edge ${slice(var.devTeehrVersion, 0, 6)})
+                kubespawner_override:
+                  image: ${actions.build.teehr-jupyter-driver-image-edge.outputs.deploymentImageId}
+                  mem_limit: 128G
+                  mem_guarantee: 76G
+                  cpu_limit: 16
+                  cpu_guarantee: 12
+                  node_selector:
+                    teehr-hub/nodegroup-name: nb-r5-4xlarge-fff
+              hefs-v0-1-0:
+                display_name: XL (HEFS-FEWS v0.1.x)
+                kubespawner_override:
+                  image: "935462133478.dkr.ecr.us-east-2.amazonaws.com/hefs-fews-hub:v0.1.0"
+                  mem_limit: 32G
+                  mem_guarantee: 19G
+                  cpu_limit: 4
+                  cpu_guarantee: 3
+                  node_selector:
+                    teehr-hub/nodegroup-name: nb-r5-xlarge-fff
+              hefs-v0-3-0:
+                display_name: XL (HEFS-FEWS v0.3.x)
+                kubespawner_override:
+                  image: "935462133478.dkr.ecr.us-east-2.amazonaws.com/hefs-fews-hub:v0.3.0"
+                  mem_limit: 32G
+                  mem_guarantee: 19G
+                  cpu_limit: 4
+                  cpu_guarantee: 3
+                  node_selector:
+                    teehr-hub/nodegroup-name: nb-r5-xlarge-fff
+        kubespawner_override:
+          environment:
+            TEEHR_PROJECT_ID: "FFF"
 
     scheduling:
       userScheduler:
