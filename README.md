@@ -97,7 +97,7 @@ Open your browser and go to http://localhost:4200.  Navigate to `Deployments`.
 
 3) Click on `update-joined-forecast-table`. In the upper right corner select Run > Custom Run. Toggle `start_spark_cluster` off, and Submit.
 
-4) Click on `update-forecast-metrics-table`. In the upper right corner select Run > Quick Run. Toggle `start_spark_cluster` off, and Submit.
+4) Click on `update-forecast-metrics-table`. In the upper right corner select Run > Custom Run. Toggle `start_spark_cluster` off, and Submit.
 
 Now go to `https://dashboards.teehr.local.app.garden`.  You should be able to go to both the retrospective and forecast dashboards and see some data.
 
