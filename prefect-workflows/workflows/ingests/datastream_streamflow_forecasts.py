@@ -113,7 +113,7 @@ def ingest_datastream_forecasts(
         )
         return
 
-    configuration_name = f"nrds_v22_{datastream_name.replace("_", "")}_{forecast_configuration}"
+    configuration_name = f"nrds_v22_{datastream_name.replace('_', '')}_{forecast_configuration}"
 
     # Set up cache directory
     output_cache_dir = Path(
