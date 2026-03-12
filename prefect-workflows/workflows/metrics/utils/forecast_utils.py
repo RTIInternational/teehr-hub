@@ -144,40 +144,19 @@ def join_forecast_timeseries(
     """
     logger = get_run_logger()
     logger.info("Creating joined forecast timeseries table...")
-    # Build the WHERE clause for configuration filtering
-    where_clause = ""
-    if forecast_configuration_names:
-        # Convert list to SQL IN clause format
-        config_list = "', '".join(forecast_configuration_names)
-        where_clause = f"WHERE configuration_name IN ('{config_list}')"
-        logger.info(
-            f"Filtering to configurations: {forecast_configuration_names}"
-        )
 
-    joined_sdf = ev.spark.sql(f"""
-        WITH filtered_secondary AS (
-            SELECT * FROM iceberg.teehr.secondary_timeseries
-            {where_clause}
-        )
-        SELECT /*+ BROADCAST(cf) */
-            fs.reference_time
-            , fs.value_time
-            , pf.location_id as primary_location_id
-            , fs.location_id as secondary_location_id
-            , pf.value as primary_value
-            , fs.value as secondary_value
-            , fs.configuration_name
-            , fs.unit_name
-            , fs.variable_name
-            , fs.member
-        FROM filtered_secondary fs
-        JOIN iceberg.teehr.location_crosswalks cf
-            ON cf.secondary_location_id = fs.location_id
-        JOIN iceberg.teehr.primary_timeseries pf
-            ON cf.primary_location_id = pf.location_id
-            AND fs.value_time = pf.value_time
-            AND fs.unit_name = pf.unit_name
-            AND fs.variable_name = pf.variable_name
-    """)
-    logger.info("Joined timeseries table created.")
+    secondary_filters = None
+    if forecast_configuration_names:
+        secondary_filters=[
+            {
+                "column": "configuration_name",
+                "operator": "in",
+                "value": forecast_configuration_names
+            }
+        ]
+    
+    joined_sdf = ev.joined_timeseries_view(
+        secondary_filters=secondary_filters
+    ).to_sdf()
+
     return joined_sdf

@@ -34,7 +34,7 @@ CHUNK_SIZE = 100  # Number of sites to fetch per api call
     timeout_seconds=60 * 60
 )
 def ingest_usgs_streamflow_obs(
-    dir_path: Union[str, Path],
+    temp_dir_path: Union[str, Path],
     end_dt: Union[str, datetime, pd.Timestamp, None] = None,
     num_lookback_days: Union[int, None] = LOOKBACK_DAYS,
     service: USGSServiceEnum = "iv",
@@ -45,6 +45,7 @@ def ingest_usgs_streamflow_obs(
     overwrite_output: Optional[bool] = True,
     write_mode: TableWriteEnum = "append",
     drop_duplicates: bool = True,
+    start_spark_cluster: bool = True,
 ) -> None:
     """USGS Streamflow Ingestion from NWIS.
 
@@ -64,7 +65,10 @@ def ingest_usgs_streamflow_obs(
         # Assumes UTC
         end_dt = datetime.fromisoformat(end_dt)
 
-    ev = initialize_evaluation(dir_path=dir_path)
+    ev = initialize_evaluation(
+        temp_dir_path=temp_dir_path,
+        start_spark_cluster=start_spark_cluster
+    )
 
     if (
         not ev.fetch._configuration_name_exists(USGS_CONFIGURATION_NAME)

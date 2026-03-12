@@ -30,9 +30,10 @@ JOINED_FORECAST_TABLE_NAME = "fcst_joined_timeseries"
     retries=2
 )
 def update_joined_forecast_table(
-    dir_path: Union[str, Path],
+    temp_dir_path: Union[str, Path],
     forecast_configuration_names: List[str] =
-        FORECAST_CONFIGURATION_NAMES
+        FORECAST_CONFIGURATION_NAMES,
+    start_spark_cluster: bool = True,
 ) -> None:
     """Create the joined forecast table
 
@@ -44,7 +45,8 @@ def update_joined_forecast_table(
     """
     logger = get_run_logger()
     ev = initialize_evaluation(
-        dir_path=dir_path,
+        temp_dir_path=temp_dir_path,
+        start_spark_cluster=start_spark_cluster,
         executor_instances=8
     )
 

@@ -33,7 +33,7 @@ def expire_snapshots(
     spark: SparkSession,
     table_name: str,
     expiry_date: str,
-    num_snapshots_to_keep: int
+    num_snapshots_to_keep: int,
 ) -> None:
     """Expire old snapshots to remove unreferenced data files."""
     logger = get_run_logger()
@@ -135,7 +135,8 @@ def rewrite_manifests(
     timeout_seconds=3 * 60 * 60,  # 3 hours
 )
 def routine_table_maintenance(
-    dir_path: Union[str, Path]
+    temp_dir_path: Union[str, Path],
+    start_spark_cluster: bool = True,
 ) -> None:
     """Routine table maintenance workflow.
 
@@ -156,8 +157,8 @@ def routine_table_maintenance(
     ).strftime("%Y-%m-%d %H:%M:%S.000")
 
     ev = initialize_evaluation(
-        dir_path=dir_path,
-        start_spark_cluster=True,
+        temp_dir_path=temp_dir_path,
+        start_spark_cluster=start_spark_cluster,
         executor_instances=20,
         executor_cores=4,
         executor_memory="32g",

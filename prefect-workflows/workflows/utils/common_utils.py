@@ -17,7 +17,7 @@ from prefect.cache_policies import NO_CACHE
     retries=2
 )
 def initialize_evaluation(
-    dir_path: Union[str, Path],
+    temp_dir_path: Union[str, Path],
     start_spark_cluster: bool = True,
     executor_instances: int = 4,
     executor_cores: int = 7,
@@ -46,7 +46,7 @@ def initialize_evaluation(
     )
     ev = RemoteReadWriteEvaluation(
         spark=spark,
-        temp_dir_path=dir_path,
+        temp_dir_path=temp_dir_path,
     )
     return ev
 

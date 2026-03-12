@@ -17,7 +17,7 @@ pull: null
 
 # the definitions section allows you to define reusable components for your deployments
 definitions:
-  dir_path: &dir_path "/data/temp-spark"
+  temp_dir_path: &temp_dir_path "/data/temp-spark"
   log_level: &log_level INFO
   tags: &common_tags
     - k8s
@@ -68,7 +68,7 @@ deployments:
     tags: []
     description: Ingest USGS streamflow data from NWIS
     entrypoint: workflows/ingests/usgs_streamflow_obs.py:ingest_usgs_streamflow_obs
-    parameters: {"dir_path": *dir_path}
+    parameters: {"temp_dir_path": *temp_dir_path}
     work_pool: *work_pool
     schedule:
       cron: "0 8,20 * * *"
@@ -80,7 +80,7 @@ deployments:
     description: Ingest NWM short range streamflow forecasts from GCS
     entrypoint: workflows/ingests/nwm_streamflow_forecasts.py:ingest_nwm_streamflow_forecasts
     parameters: {
-      "dir_path": *dir_path,
+      "temp_dir_path": *temp_dir_path,
       "nwm_configuration": "short_range"
     }
     work_pool: *work_pool
@@ -94,7 +94,7 @@ deployments:
     description: Ingest NWM medium range member 1 streamflow forecasts from GCS
     entrypoint: workflows/ingests/nwm_streamflow_forecasts.py:ingest_nwm_streamflow_forecasts
     parameters: {
-      "dir_path": *dir_path,
+      "temp_dir_path": *temp_dir_path,
       "nwm_configuration": "medium_range_mem1",
       "output_type": "channel_rt_1"
     }
@@ -109,7 +109,7 @@ deployments:
     description: Ingest DataStream streamflow forecasts from S3
     entrypoint: workflows/ingests/datastream_streamflow_forecasts.py:ingest_datastream_forecasts
     parameters: {
-      "dir_path": *dir_path,
+      "temp_dir_path": *temp_dir_path,
       "forecast_configuration": "short_range",
       "datastream_name": "cfe_nom"
     }
@@ -124,7 +124,7 @@ deployments:
     description: Ingest DataStream streamflow forecasts from S3
     entrypoint: workflows/ingests/datastream_streamflow_forecasts.py:ingest_datastream_forecasts
     parameters: {
-      "dir_path": *dir_path,
+      "temp_dir_path": *temp_dir_path,
       "forecast_configuration": "medium_range",
       "datastream_name": "cfe_nom"
     }
@@ -139,7 +139,7 @@ deployments:
     description: Ingest DataStream streamflow forecasts from S3
     entrypoint: workflows/ingests/datastream_streamflow_forecasts.py:ingest_datastream_forecasts
     parameters: {
-      "dir_path": *dir_path,
+      "temp_dir_path": *temp_dir_path,
       "forecast_configuration": "short_range",
       "datastream_name": "lstm_0"
     }
@@ -154,7 +154,7 @@ deployments:
     description: Ingest DataStream streamflow forecasts from S3
     entrypoint: workflows/ingests/datastream_streamflow_forecasts.py:ingest_datastream_forecasts
     parameters: {
-      "dir_path": *dir_path,
+      "temp_dir_path": *temp_dir_path,
       "forecast_configuration": "medium_range",
       "datastream_name": "lstm_0"
     }
@@ -169,7 +169,7 @@ deployments:
     description: Ingest NWPS RFC streamflow forecasts from NOAA servers
     entrypoint: workflows/ingests/nwps_rfc_streamflow_forecasts.py:ingest_nwps_rfc_forecasts
     parameters: {
-      "dir_path": *dir_path
+      "temp_dir_path": *temp_dir_path
     }
     work_pool: *work_pool
     schedule:
@@ -181,7 +181,7 @@ deployments:
     tags: []
     description: Create the joined forecast timeseries table
     entrypoint: workflows/metrics/update_joined_forecasts.py:update_joined_forecast_table
-    parameters: {"dir_path": *dir_path}
+    parameters: {"temp_dir_path": *temp_dir_path}
     work_pool: *work_pool
     schedule:
       cron: "0 9,21 * * *"
@@ -192,7 +192,7 @@ deployments:
     tags: []
     description: Create the forecast metrics table
     entrypoint: workflows/metrics/update_forecast_metrics.py:update_forecast_metrics_table
-    parameters: {"dir_path": *dir_path}
+    parameters: {"temp_dir_path": *temp_dir_path}
     work_pool: *work_pool
     schedule:
       cron: "0 10,22 * * *"
@@ -203,7 +203,7 @@ deployments:
     tags: []
     description: Run routine Iceberg table maintenance (expire snapshots, remove orphan files, compact data files, rewrite manifests)
     entrypoint: workflows/maintenance/routine_table_maintenance.py:routine_table_maintenance
-    parameters: {"dir_path": *dir_path}
+    parameters: {"temp_dir_path": *temp_dir_path}
     work_pool: *work_pool
     schedule:
       cron: "0 4 * * 0"

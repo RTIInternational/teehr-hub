@@ -44,8 +44,8 @@ UNITS_MAPPING = {
     timeout_seconds=60 * 60
 )
 def ingest_nwps_rfc_forecasts(
-    dir_path: Union[str, Path],
-    num_cache_files: int = 5
+    temp_dir_path: Union[str, Path],
+    start_spark_cluster: bool = True,
 ) -> None:
     """RFC streamflow forecast ingestion workflow."""
     logger = get_run_logger()
@@ -55,7 +55,8 @@ def ingest_nwps_rfc_forecasts(
     logger.info(f"Processing RFC forecasts issued by: {current_dt}")
 
     ev = initialize_evaluation(
-        dir_path=dir_path
+        temp_dir_path=temp_dir_path,
+        start_spark_cluster=start_spark_cluster
     )
 
     # get existing location ids from warehouse

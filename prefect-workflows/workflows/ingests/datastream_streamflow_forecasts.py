@@ -54,13 +54,13 @@ s3 = session.create_client(
     timeout_seconds=60 * 60
 )
 def ingest_datastream_forecasts(
-    dir_path: Union[str, Path],
+    temp_dir_path: Union[str, Path],
     end_dt: Union[str, datetime, pd.Timestamp, None] = None,
     num_lookback_days: int = LOOKBACK_DAYS,
     forecast_configuration: str = FORECAST_CONFIGURATION,
     hydrofabric_version: str = HYDROFABRIC_VERSION,
     datastream_name: str = DATASTREAM_NAME,
-    num_cache_files: int = 5,
+    start_spark_cluster: bool = True,
 ) -> None:
     """DataStream Forecasts Ingestion.
 
@@ -83,7 +83,10 @@ def ingest_datastream_forecasts(
     yrmoday = start_dt.strftime("%Y%m%d")
     logger.info(f"Processing DataStream forecasts for date: {yrmoday}")
 
-    ev = initialize_evaluation(dir_path=dir_path)
+    ev = initialize_evaluation(
+        temp_dir_path=temp_dir_path,
+        start_spark_cluster=start_spark_cluster
+    )
 
     # Get existing location IDs from warehouse
     secondary_id_list = [
@@ -110,7 +113,7 @@ def ingest_datastream_forecasts(
         )
         return
 
-    configuration_name = f"nrds_v22_{datastream_name.replace("_", "")}_{forecast_configuration}"
+    configuration_name = f"nrds_v22_{datastream_name.replace('_', '')}_{forecast_configuration}"
 
     # Set up cache directory
     output_cache_dir = Path(
