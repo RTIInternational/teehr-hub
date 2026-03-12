@@ -145,10 +145,8 @@ def join_forecast_timeseries(
     logger = get_run_logger()
     logger.info("Creating joined forecast timeseries table...")
 
-    # Build the WHERE clause for configuration filtering
     secondary_filters = None
     if forecast_configuration_names:
-        # Convert list to SQL IN clause format
         secondary_filters=[
             {
                 "column": "configuration_name",
