@@ -24,13 +24,14 @@ LOOKBACK_DAYS = 1
     timeout_seconds=60 * 60
 )
 def ingest_nwm_streamflow_forecasts(
-    dir_path: Union[str, Path],
+    temp_dir_path: Union[str, Path],
     end_dt: Union[str, datetime, pd.Timestamp, None] = None,
     num_lookback_days: Union[int, None] = LOOKBACK_DAYS,
     nwm_configuration: str = "short_range",
     nwm_version: str = "nwm30",
     output_type: str = "channel_rt",
-    variable_name: str = "streamflow"
+    variable_name: str = "streamflow",
+    start_spark_cluster: bool = True,
 ) -> None:
     """NWM Streamflow Forecasts Ingestion.
 
@@ -51,7 +52,10 @@ def ingest_nwm_streamflow_forecasts(
     elif isinstance(end_dt, str):
         end_dt = datetime.fromisoformat(end_dt)
 
-    ev = initialize_evaluation(dir_path=dir_path)
+    ev = initialize_evaluation(
+        temp_dir_path=temp_dir_path,
+        start_spark_cluster=start_spark_cluster
+    )
 
     # Format the NWM configuration name for TEEHR
     teehr_nwm_config = format_nwm_configuration_metadata(

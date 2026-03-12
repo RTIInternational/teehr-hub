@@ -26,7 +26,8 @@ METRIC_COL_NAMES = [metric.output_field_name for metric in FORECAST_METRICS]
     timeout_seconds=60 * 60
 )
 def update_forecast_metrics_table(
-    dir_path: Union[str, Path]
+    temp_dir_path: Union[str, Path],
+    start_spark_cluster: bool = True,
 ) -> None:
     """Create the forecast metrics table
 
@@ -39,8 +40,8 @@ def update_forecast_metrics_table(
     logger = get_run_logger()
 
     ev = initialize_evaluation(
-        dir_path=dir_path,
-        start_spark_cluster=True,
+        temp_dir_path=temp_dir_path,
+        start_spark_cluster=start_spark_cluster,
         executor_instances=8
     )
 
