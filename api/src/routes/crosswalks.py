@@ -22,7 +22,7 @@ async def get_crosswalk_items(
         None, description="Filter by secondary location ID (can be specified multiple times)"
     ),
     limit: int | None = Query(
-        None, ge=1, le=10000, description="Maximum number of items to return (omit to return all)"
+        None, ge=1, description="Maximum number of items to return (omit to return all)"
     ),
     offset: int | None = Query(
         None, ge=0, description="Starting index for pagination"
