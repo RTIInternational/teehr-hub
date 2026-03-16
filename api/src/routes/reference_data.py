@@ -20,7 +20,7 @@ async def get_configuration_items(
     name: str | None = Query(None, description="Filter by configuration name"),
     type: str | None = Query(None, description="Filter by type (primary, secondary)"),
     limit: int | None = Query(
-        None, ge=1, le=10000, description="Maximum number of items to return (omit to return all)"
+        None, ge=1, description="Maximum number of items to return (omit to return all)"
     ),
     offset: int | None = Query(
         None, ge=0, description="Starting index for pagination"
@@ -95,7 +95,7 @@ async def get_unit_items(
     request: Request,
     name: str | None = Query(None, description="Filter by unit name"),
     limit: int | None = Query(
-        None, ge=1, le=10000, description="Maximum number of items to return (omit to return all)"
+        None, ge=1, description="Maximum number of items to return (omit to return all)"
     ),
     offset: int | None = Query(
         None, ge=0, description="Starting index for pagination"
@@ -163,7 +163,7 @@ async def get_variable_items(
     request: Request,
     name: str | None = Query(None, description="Filter by variable name"),
     limit: int | None = Query(
-        None, ge=1, le=10000, description="Maximum number of items to return (omit to return all)"
+        None, ge=1, description="Maximum number of items to return (omit to return all)"
     ),
     offset: int | None = Query(
         None, ge=0, description="Starting index for pagination"
@@ -231,7 +231,7 @@ async def get_attribute_items(
     request: Request,
     name: str | None = Query(None, description="Filter by attribute name"),
     limit: int | None = Query(
-        None, ge=1, le=10000, description="Maximum number of items to return (omit to return all)"
+        None, ge=1, description="Maximum number of items to return (omit to return all)"
     ),
     offset: int | None = Query(
         None, ge=0, description="Starting index for pagination"
@@ -305,7 +305,7 @@ async def get_location_attribute_items(
     ),
     attribute_name: str | None = Query(None, description="Filter by attribute name"),
     limit: int | None = Query(
-        None, ge=1, le=10000, description="Maximum number of items to return (omit to return all)"
+        None, ge=1, description="Maximum number of items to return (omit to return all)"
     ),
     offset: int | None = Query(
         None, ge=0, description="Starting index for pagination"

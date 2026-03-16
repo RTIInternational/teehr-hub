@@ -28,6 +28,12 @@ async def get_primary_timeseries_items(
     ),
     variable_name: str | None = Query(None, description="Variable name filter"),
     configuration_name: str | None = Query(None, description="Configuration name filter"),
+    limit: int | None = Query(
+        None, ge=1, description="Maximum number of items to return (omit to return all)"
+    ),
+    offset: int | None = Query(
+        None, ge=0, description="Starting index for pagination"
+    ),
     f: str | None = Query("json", description="Output format: json or geojson"),
 ):
     """Get primary timeseries (observations) for a location.
@@ -99,6 +105,11 @@ async def get_primary_timeseries_items(
             WHERE {where_clause}
             ORDER BY value_time
             """
+
+        if offset is not None:
+            query += f" OFFSET {offset}"
+        if limit is not None:
+            query += f" LIMIT {limit}"
 
         query_start = time.time()
         df = execute_query(query)
@@ -199,6 +210,12 @@ async def get_secondary_timeseries_items(
     ),
     variable_name: str | None = Query(None, description="Variable name filter"),
     configuration_name: str | None = Query(None, description="Configuration name filter"),
+    limit: int | None = Query(
+        None, ge=1, description="Maximum number of items to return (omit to return all)"
+    ),
+    offset: int | None = Query(
+        None, ge=0, description="Starting index for pagination"
+    ),
     f: str | None = Query("json", description="Output format: json or geojson"),
 ):
     """Get secondary timeseries (model outputs/forecasts) for a location.
@@ -309,6 +326,11 @@ async def get_secondary_timeseries_items(
             WHERE {where_clause}
             ORDER BY st.value_time
             """
+
+        if offset is not None:
+            query += f" OFFSET {offset}"
+        if limit is not None:
+            query += f" LIMIT {limit}"
 
         query_start = time.time()
         df = execute_query(query)

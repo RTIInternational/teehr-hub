@@ -30,7 +30,7 @@ async def get_locations_items(
         False, description="Include pivoted location attributes as properties"
     ),
     limit: int | None = Query(
-        None, ge=1, le=10000, description="Maximum number of items to return (omit to return all)"
+        None, ge=1, description="Maximum number of items to return (omit to return all)"
     ),
     offset: int | None = Query(
         None, ge=0, description="Starting index for pagination"

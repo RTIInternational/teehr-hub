@@ -29,7 +29,7 @@ async def get_collection_items(
         description="Filter by variable name"
     ),
     limit: int | None = Query(
-        None, ge=1, le=10000, description="Maximum number of items to return (omit to return all)"
+        None, ge=1, description="Maximum number of items to return (omit to return all)"
     ),
     offset: int | None = Query(
         None,
