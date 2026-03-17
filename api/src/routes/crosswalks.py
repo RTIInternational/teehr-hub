@@ -21,6 +21,12 @@ async def get_crosswalk_items(
     secondary_location_id: list[str] | None = Query(
         None, description="Filter by secondary location ID (can be specified multiple times)"
     ),
+    primary_location_id_prefix: list[str] | None = Query(
+        None, description="Filter by primary location ID prefix (can be specified multiple times)"
+    ),
+    secondary_location_id_prefix: list[str] | None = Query(
+        None, description="Filter by secondary location ID prefix (can be specified multiple times)"
+    ),
     limit: int | None = Query(
         None, ge=1, description="Maximum number of items to return (omit to return all)"
     ),
@@ -32,6 +38,7 @@ async def get_crosswalk_items(
 
     Returns mappings between primary (e.g., USGS) and secondary (e.g., NWM)
     location identifiers. This is a non-spatial collection (no geometry).
+    Use primary_location_id_prefix or secondary_location_id_prefix to filter by ID prefix (can be specified multiple times).
     """
     try:
         where_conditions = []
@@ -43,6 +50,16 @@ async def get_crosswalk_items(
         if secondary_location_id:
             safe_secondary_ids = [f"'{sanitize_string(loc_id)}'" for loc_id in secondary_location_id]
             where_conditions.append(f"secondary_location_id IN ({', '.join(safe_secondary_ids)})")
+
+        if primary_location_id_prefix:
+            safe_primary_prefixes = [sanitize_string(p) for p in primary_location_id_prefix]
+            like_clauses = " OR ".join(f"primary_location_id LIKE '{p}-%'" for p in safe_primary_prefixes)
+            where_conditions.append(f"({like_clauses})")
+
+        if secondary_location_id_prefix:
+            safe_secondary_prefixes = [sanitize_string(p) for p in secondary_location_id_prefix]
+            like_clauses = " OR ".join(f"secondary_location_id LIKE '{p}-%'" for p in safe_secondary_prefixes)
+            where_conditions.append(f"({like_clauses})")
 
         where_clause = " AND ".join(where_conditions) if where_conditions else "1=1"
 
