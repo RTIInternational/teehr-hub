@@ -112,6 +112,7 @@ export const apiService = {
     
     if (filters.variable) params.append('variable_name', filters.variable);
     if (filters.configuration) params.append('configuration_name', filters.configuration);
+    params.append('f', 'timeseries'); // Request timeseries format
     
     return apiCall(`/collections/primary_timeseries/items?${params.toString()}`);
   },
@@ -134,6 +135,7 @@ export const apiService = {
     
     if (filters.configuration) params.append('configuration_name', filters.configuration);
     if (filters.variable) params.append('variable_name', filters.variable);
+    params.append('f', 'timeseries'); // Request timeseries format
     
     return apiCall(`/collections/secondary_timeseries/items?${params.toString()}`);
   },
