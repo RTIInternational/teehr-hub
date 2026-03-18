@@ -69,19 +69,31 @@ async def get_primary_timeseries_items(
         "json",
         description=(
             "Output format. 'json' (default) returns an OGC-style paging envelope "
-            "({items, numberReturned, links}); 'timeseries' returns a bare array of "
-            "grouped timeseries objects; 'geojson' returns an OGC GeoJSON FeatureCollection."
+            "({items, numberReturned, links}); 'timeseries' returns a formatted objects containing metadata "
+            "and grouped timeseries objects; 'geojson' returns an OGC GeoJSON FeatureCollection."
         ),
     ),
 ):
     """Get primary timeseries (observations) for a location.
 
-    Returns timeseries data. The exact JSON structure depends on the 'f' parameter: when
-    f=json (default), an OGC-style paging envelope is returned; when f=timeseries, a bare
-    array of grouped timeseries objects is returned.
+    Supports filtering by:
+        - primary_location_id
+        - datetime: ISO 8601 interval for value_time (e.g., 2020-01-01/2020-12-31)
+        - variable_name: Variable name (e.g., streamflow_hourly_inst)
+        - configuration_name: Configuration name (e.g., nwm30_medium_range)
+        - limit and offset for pagination
+
+        Output format. 'json' (default) returns an OGC-style paging envelope 
+        ({items, numberReturned, links}); 'timeseries' returns a formatted objects containing metadata
+        and grouped timeseries objects; 'geojson' returns an OGC GeoJSON FeatureCollection.
     """
     try:
-        print(f"Primary timeseries called with: primary_location_id={primary_location_id}, datetime={datetime_range}, variable_name={variable_name}, configuration_name={configuration_name}")
+        print(
+            f"Primary timeseries called with: primary_location_id={primary_location_id}, "
+            f"datetime={datetime_range}, "
+            f"variable_name={variable_name}, "
+            f"configuration_name={configuration_name}"
+        )
         safe_location_ids = [f"'{sanitize_string(loc)}'" for loc in primary_location_id]
         where_conditions = [f"location_id IN ({', '.join(safe_location_ids)})"]
 
@@ -292,21 +304,38 @@ async def get_secondary_timeseries_items(
     offset: int | None = Query(
         None, ge=0, description="Starting index for pagination"
     ),
-    f: str | None = Query("json", description="Output format: timeseries, json or geojson"),
+    f: str | None = Query(
+        "json",
+        description=(
+            "Output format. 'json' (default) returns an OGC-style paging envelope "
+            "({items, numberReturned, links}); 'timeseries' returns a formatted objects containing metadata "
+            "and grouped timeseries objects; 'geojson' returns an OGC GeoJSON FeatureCollection."
+        ),
+    ),
 ):
-    """Get secondary timeseries (model outputs/forecasts) for a location.
+    """Get secondary timeseries (model outputs/forecasts).
 
     Supports filtering by:
+    - primary_location_id or secondary_location_id (one or the other, not both)
     - datetime: ISO 8601 interval for value_time (e.g., 2020-01-01/2020-12-31)
     - reference_time: ISO 8601 interval for reference_time (e.g., 2025-11-01/..)
     - variable_name: Variable name (e.g., streamflow_hourly_inst)
     - configuration_name: Configuration name (e.g., nwm30_medium_range)
+    - limit and offset for pagination
 
-    Returns array of timeseries objects, one per unique combination of
-    reference_time, configuration, variable, and member.
+    Output format. 'json' (default) returns an OGC-style paging envelope 
+    ({items, numberReturned, links}); 'timeseries' returns a formatted objects containing metadata
+    and grouped timeseries objects; 'geojson' returns an OGC GeoJSON FeatureCollection.
     """
     try:
-        print(f"Secondary timeseries called with: primary_location_id={primary_location_id}, secondary_location_id={secondary_location_id}, datetime={datetime_range}, reference_time={reference_time}, variable_name={variable_name}, configuration_name={configuration_name}")
+        print(
+            f"Secondary timeseries called with: primary_location_id={primary_location_id}, "
+            f"secondary_location_id={secondary_location_id}, "
+            f"datetime={datetime_range}, "
+            f"reference_time={reference_time}, "
+            f"variable_name={variable_name}, "
+            f"configuration_name={configuration_name}"
+        )
         
         where_conditions = []
         
