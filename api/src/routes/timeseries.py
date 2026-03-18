@@ -15,6 +15,37 @@ from .utils import create_ogc_geojson_response
 router = APIRouter()
 
 
+def _empty_response(request: Request, collection_id: str, f: str | None) -> JSONResponse:
+    """Return a format-appropriate empty response."""
+    if f and f.lower() == "geojson":
+        import pandas as pd
+        geojson = create_ogc_geojson_response(
+            pd.DataFrame(),
+            str(request.url),
+            collection_id=collection_id,
+        )
+        return JSONResponse(
+            content=geojson,
+            headers={
+                "Content-Type": "application/geo+json",
+                "Content-Crs": "<http://www.opengis.net/def/crs/OGC/1.3/CRS84>",
+            },
+        )
+    if f and f.lower() == "timeseries":
+        return JSONResponse(content=[], media_type="application/json")
+    return JSONResponse(
+        content={
+            "items": [],
+            "numberReturned": 0,
+            "links": [
+                {"href": str(request.url), "rel": "self", "type": "application/json"},
+                {"href": f"/collections/{collection_id}", "rel": "collection", "type": "application/json"},
+            ],
+        },
+        media_type="application/json",
+    )
+
+
 @router.get("/collections/primary_timeseries/items")
 async def get_primary_timeseries_items(
     request: Request,
@@ -117,7 +148,7 @@ async def get_primary_timeseries_items(
         print(f"Query execution time: {query_time:.3f} seconds")
 
         if df.empty:
-            return JSONResponse(content=[], media_type="application/json")
+            return _empty_response(request, "primary_timeseries", f)
 
         print(f"Query returned {len(df)} primary timeseries records")
 
@@ -126,15 +157,17 @@ async def get_primary_timeseries_items(
             "%Y-%m-%d %H:%M:%S"
         )
 
+        # Convert reference_time to string, handle NaT as None
         if "reference_time" in df.columns:
-            mask = pd.notna(df["reference_time"])
-            if mask.any():
-                df.loc[mask, "reference_time"] = df.loc[
-                    mask, "reference_time"
-                ].dt.strftime("%Y-%m-%d %H:%M:%S")
-            df["reference_time"] = df["reference_time"].fillna("null")
+            df["reference_time"] = pd.to_datetime(df["reference_time"]).dt.strftime(
+                "%Y-%m-%d %H:%M:%S"
+            )
+            df["reference_time"] = df["reference_time"].replace("NaT", None)
         else:
-            df["reference_time"] = "null"
+            df["reference_time"] = None
+
+        # Replace NaN with None for JSON serialization
+        df["value"] = df["value"].where(pd.notna(df["value"]), None)
 
         if f and f.lower() == "geojson":
             geojson = create_ogc_geojson_response(
@@ -160,7 +193,8 @@ async def get_primary_timeseries_items(
                     "configuration_name",
                     "variable_name",
                     "unit_name",
-                ]
+                ],
+                dropna=False  # Don't drop rows with NaN - important for retrospective data
             )
 
             data = []
@@ -189,7 +223,7 @@ async def get_primary_timeseries_items(
             return JSONResponse(content=data, media_type="application/json")
 
         # If no format specified, return raw records with pagination metadata
-        items = df.to_dict(orient="records") if not df.empty else []
+        items = df.to_dict(orient="records")
 
         response = {
             "items": items,
@@ -371,8 +405,7 @@ async def get_secondary_timeseries_items(
         print(f"Secondary query execution time: {query_time:.3f} seconds")
 
         if df.empty:
-            print("Secondary query returned NO records - returning empty array")
-            return JSONResponse(content=[], media_type="application/json")
+            return _empty_response(request, "secondary_timeseries", f)
 
         print(f"Query returned {len(df)} secondary timeseries records")
 
@@ -460,7 +493,7 @@ async def get_secondary_timeseries_items(
             return JSONResponse(content=data, media_type="application/json")
         
         # If no format specified, return raw records with pagination metadata
-        items = df.to_dict(orient="records") if not df.empty else []
+        items = df.to_dict(orient="records")
 
         response = {
             "items": items,
