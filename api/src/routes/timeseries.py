@@ -18,7 +18,6 @@ router = APIRouter()
 def _empty_response(request: Request, collection_id: str, f: str | None) -> JSONResponse:
     """Return a format-appropriate empty response."""
     if f and f.lower() == "geojson":
-        import pandas as pd
         geojson = create_ogc_geojson_response(
             pd.DataFrame(),
             str(request.url),
