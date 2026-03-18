@@ -179,12 +179,12 @@ async def get_primary_timeseries_items(
             "%Y-%m-%d %H:%M:%S"
         )
 
-        # Convert reference_time to string, handle NaT as None
+        # Convert reference_time to string, ensuring missing values become None
         if "reference_time" in df.columns:
-            df["reference_time"] = pd.to_datetime(df["reference_time"]).dt.strftime(
-                "%Y-%m-%d %H:%M:%S"
-            )
-            df["reference_time"] = df["reference_time"].replace("NaT", None)
+            reference_dt = pd.to_datetime(df["reference_time"], errors="coerce")
+            non_null_mask = reference_dt.notna()
+            reference_str = reference_dt.dt.strftime("%Y-%m-%d %H:%M:%S")
+            df["reference_time"] = reference_str.where(non_null_mask, None)
         else:
             df["reference_time"] = None
 
@@ -557,7 +557,7 @@ async def get_secondary_timeseries_items(
             query_params = parse_qs(parsed.query)
             query_params["offset"] = [str((offset or 0) + limit)]
             query_params["limit"] = [str(limit)]
-            next_query = urlencode({k: v[0] for k, v in query_params.items()})
+            next_query = urlencode(query_params, doseq=True)
             next_url = urlunparse(parsed._replace(query=next_query))
             response["links"].append(
                 {"href": next_url, "rel": "next", "type": "application/json"}
