@@ -34,11 +34,20 @@ async def get_primary_timeseries_items(
     offset: int | None = Query(
         None, ge=0, description="Starting index for pagination"
     ),
-    f: str | None = Query("json", description="Output format: timeseries, json or geojson"),
+    f: str | None = Query(
+        "json",
+        description=(
+            "Output format. 'json' (default) returns an OGC-style paging envelope "
+            "({items, numberReturned, links}); 'timeseries' returns a bare array of "
+            "grouped timeseries objects; 'geojson' returns an OGC GeoJSON FeatureCollection."
+        ),
+    ),
 ):
     """Get primary timeseries (observations) for a location.
 
-    Returns array of timeseries objects.
+    Returns timeseries data. The exact JSON structure depends on the 'f' parameter: when
+    f=json (default), an OGC-style paging envelope is returned; when f=timeseries, a bare
+    array of grouped timeseries objects is returned.
     """
     try:
         print(f"Primary timeseries called with: primary_location_id={primary_location_id}, datetime={datetime_range}, variable_name={variable_name}, configuration_name={configuration_name}")
