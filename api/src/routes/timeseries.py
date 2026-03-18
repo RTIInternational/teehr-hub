@@ -456,12 +456,12 @@ async def get_secondary_timeseries_items(
             "%Y-%m-%d %H:%M:%S"
         )
 
-        # Convert reference_time to string, handle NaT as None
+        # Convert reference_time to string, ensuring missing values become None
         if "reference_time" in df.columns:
-            df["reference_time"] = pd.to_datetime(df["reference_time"]).dt.strftime(
-                "%Y-%m-%d %H:%M:%S"
-            )
-            df["reference_time"] = df["reference_time"].replace("NaT", None)
+            reference_dt = pd.to_datetime(df["reference_time"], errors="coerce")
+            non_null_mask = reference_dt.notna()
+            reference_str = reference_dt.dt.strftime("%Y-%m-%d %H:%M:%S")
+            df["reference_time"] = reference_str.where(non_null_mask, None)
         else:
             df["reference_time"] = None
 
