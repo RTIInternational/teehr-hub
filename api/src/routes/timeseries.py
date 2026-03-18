@@ -271,7 +271,7 @@ async def get_primary_timeseries_items(
             query_params = parse_qs(parsed.query)
             query_params["offset"] = [str((offset or 0) + limit)]
             query_params["limit"] = [str(limit)]
-            next_query = urlencode({k: v[0] for k, v in query_params.items()})
+            next_query = urlencode(query_params, doseq=True)
             next_url = urlunparse(parsed._replace(query=next_query))
             response["links"].append(
                 {"href": next_url, "rel": "next", "type": "application/json"}
