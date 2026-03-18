@@ -70,7 +70,7 @@ async def get_primary_timeseries_items(
         "json",
         description=(
             "Output format. 'json' (default) returns an OGC-style paging envelope "
-            "({items, numberReturned, links}); 'timeseries' returns a formatted objects containing metadata "
+            "({items, numberReturned, links}); 'timeseries' returns formatted objects containing metadata "
             "and grouped timeseries objects; 'geojson' returns an OGC GeoJSON FeatureCollection."
         ),
     ),
@@ -85,7 +85,7 @@ async def get_primary_timeseries_items(
         - limit and offset for pagination
 
         Output format. 'json' (default) returns an OGC-style paging envelope 
-        ({items, numberReturned, links}); 'timeseries' returns a formatted objects containing metadata
+        ({items, numberReturned, links}); 'timeseries' returns formatted objects containing metadata
         and grouped timeseries objects; 'geojson' returns an OGC GeoJSON FeatureCollection.
     """
     try:
@@ -312,7 +312,7 @@ async def get_secondary_timeseries_items(
         "json",
         description=(
             "Output format. 'json' (default) returns an OGC-style paging envelope "
-            "({items, numberReturned, links}); 'timeseries' returns a formatted objects containing metadata "
+            "({items, numberReturned, links}); 'timeseries' returns formatted objects containing metadata "
             "and grouped timeseries objects; 'geojson' returns an OGC GeoJSON FeatureCollection."
         ),
     ),
@@ -328,7 +328,7 @@ async def get_secondary_timeseries_items(
     - limit and offset for pagination
 
     Output format. 'json' (default) returns an OGC-style paging envelope 
-    ({items, numberReturned, links}); 'timeseries' returns a formatted objects containing metadata
+    ({items, numberReturned, links}); 'timeseries' returns formatted objects containing metadata
     and grouped timeseries objects; 'geojson' returns an OGC GeoJSON FeatureCollection.
     """
     try:
