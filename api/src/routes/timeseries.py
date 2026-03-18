@@ -31,8 +31,10 @@ def _empty_response(request: Request, collection_id: str, f: str | None) -> JSON
                 "Content-Crs": "<http://www.opengis.net/def/crs/OGC/1.3/CRS84>",
             },
         )
+
     if f and f.lower() == "timeseries":
         return JSONResponse(content=[], media_type="application/json")
+
     return JSONResponse(
         content={
             "items": [],
@@ -188,7 +190,7 @@ async def get_primary_timeseries_items(
             df["reference_time"] = None
 
         # Replace NaN with None for JSON serialization
-        df["value"] = df["value"].where(pd.notna(df["value"]), None)
+        df = df.astype(object).where(pd.notna(df), None)
 
         if f and f.lower() == "geojson":
             geojson = create_ogc_geojson_response(
@@ -227,10 +229,13 @@ async def get_primary_timeseries_items(
                 variable_name,
                 unit_name,
             ), group in grouped:
+                # Handle NaN values from groupby keys - convert to None for JSON
+                ref_time_value = None if pd.isna(reference_time) else reference_time
+
                 timeseries_data = {
                     "series_type": series_type,
                     "primary_location_id": primary_location_id,
-                    "reference_time": reference_time,
+                    "reference_time": ref_time_value,
                     "configuration_name": configuration_name,
                     "variable_name": variable_name,
                     "unit_name": unit_name,
@@ -243,7 +248,7 @@ async def get_primary_timeseries_items(
 
             return JSONResponse(content=data, media_type="application/json")
 
-        # If no format specified, return raw records with pagination metadata
+        # Default format: return raw records with pagination metadata
         items = df.to_dict(orient="records")
 
         response = {
@@ -462,8 +467,7 @@ async def get_secondary_timeseries_items(
             df["reference_time"] = None
 
         # Replace NaN with None for JSON serialization
-        df["member"] = df["member"].where(pd.notna(df["member"]), None)
-        df["value"] = df["value"].where(pd.notna(df["value"]), None)
+        df = df.astype(object).where(pd.notna(df), None)
 
         if f and f.lower() == "geojson":
             geojson = create_ogc_geojson_response(
@@ -530,7 +534,7 @@ async def get_secondary_timeseries_items(
 
             return JSONResponse(content=data, media_type="application/json")
         
-        # If no format specified, return raw records with pagination metadata
+        # Default format: return raw records with pagination metadata
         items = df.to_dict(orient="records")
 
         response = {
