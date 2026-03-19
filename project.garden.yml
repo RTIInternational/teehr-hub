@@ -10,7 +10,7 @@ environments:
     defaultNamespace: ${project.name}
     variables:
       hostname: teehr.local.app.garden
-      devTeehrVersion: 7fe5e6b83fbe7884b2cafc8d9225efcb47f17c33
+      devTeehrVersion: 3b4fa380421b210b79efc2d095333c1c7b15f836
       stableTeehrVersion: place-holder # Needed for sync to work for some reason.
       iceberg:
         inCluster: "true"
@@ -30,7 +30,7 @@ environments:
     defaultNamespace: ${project.name}
     variables:
       hostname: teehr.rtiamanzi.org
-      devTeehrVersion: 7fe5e6b83fbe7884b2cafc8d9225efcb47f17c33
+      devTeehrVersion: 3b4fa380421b210b79efc2d095333c1c7b15f836
       stableTeehrVersion: v0.5.3
       previousTeehrVersion: v0.5.0
       iceberg:
