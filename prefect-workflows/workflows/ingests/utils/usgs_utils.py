@@ -21,7 +21,7 @@ def get_usgs_location_ids(
     """Query the USGS location IDs from the warehouse."""
     logger = get_run_logger()
     logger.info("⏰ Querying USGS location IDs")
-    locations_df = ev.locations.query(
+    locations_df = ev.locations.filter(
         filters={
             "column": "id",
             "operator": "like",
