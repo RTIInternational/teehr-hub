@@ -72,20 +72,12 @@ def calculate_forecast_metrics_by_lead_time_bins(
                 bin_size="6 hours"
             )
         ])
-        .query(
-            include_metrics=FORECAST_METRICS,
+        .aggregate(
+            imetrics=FORECAST_METRICS,
             group_by=FORECAST_BY_LEAD_TIME_BIN_GROUPBY,
-        ).to_sdf()
+        ).add_geometry().to_sdf()
     )
-    sdf.createOrReplaceTempView("forecast_metrics")
 
-    sdf = ev.spark.sql("""
-        SELECT m.*, l.*
-        FROM forecast_metrics m
-        JOIN iceberg.teehr.locations l
-        ON l.id = m.primary_location_id
-    """)
-    sdf = sdf.drop("id")
     return sdf
 
 
@@ -111,21 +103,12 @@ def calculate_forecast_metrics_by_location(
                 bin_size="6 hours"
             )
         ])
-        .query(
-            include_metrics=FORECAST_METRICS,
+        .aggregate(
+            metrics=FORECAST_METRICS,
             group_by=FORECAST_BY_LOCATION_GROUPBY
-        ).to_sdf()
+        ).add_geometry().to_sdf()
     )
 
-    sdf.createOrReplaceTempView("forecast_metrics")
-
-    sdf = ev.spark.sql("""
-        SELECT m.*, l.*
-        FROM forecast_metrics m
-        JOIN iceberg.teehr.locations l
-        ON l.id = m.primary_location_id
-    """)
-    sdf = sdf.drop("id")
     return sdf
 
 
