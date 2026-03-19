@@ -73,7 +73,7 @@ def calculate_forecast_metrics_by_lead_time_bins(
             )
         ])
         .aggregate(
-            imetrics=FORECAST_METRICS,
+            metrics=FORECAST_METRICS,
             group_by=FORECAST_BY_LEAD_TIME_BIN_GROUPBY,
         ).add_geometry().to_sdf()
     )
@@ -137,7 +137,7 @@ def join_forecast_timeseries(
                 "value": forecast_configuration_names
             }
         ]
-    
+
     joined_sdf = ev.joined_timeseries_view(
         secondary_filters=secondary_filters
     ).to_sdf()
