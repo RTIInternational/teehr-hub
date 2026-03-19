@@ -277,7 +277,7 @@ spec:
             display_name: Image
             choices:
               current-tag-xlarge:
-                display_name: XL (r5-xlarge, 4 cores, 16 GB memory) (Version ${var.stableTeehrVersion})
+                display_name: Version ${var.stableTeehrVersion} - XL (4 cores, 16 GB memory) 
                 default: true
                 kubespawner_override:
                   image: ${actions.build.teehr-jupyter-driver-image-stable.outputs.deploymentImageId}
@@ -288,7 +288,7 @@ spec:
                   node_selector:
                     teehr-hub/nodegroup-name: nb-r5-xlarge
               current-tag-4xlarge:
-                display_name: 4XL (r5-4xlarge, 16 cores, 128 GB memory) (Version ${var.stableTeehrVersion})
+                display_name: Version ${var.stableTeehrVersion} - 4XL (16 cores, 128 GB memory) 
                 kubespawner_override:
                   image: ${actions.build.teehr-jupyter-driver-image-stable.outputs.deploymentImageId}
                   mem_limit: 128G
@@ -298,7 +298,7 @@ spec:
                   node_selector:
                     teehr-hub/nodegroup-name: nb-r5-4xlarge
               previous-tag-xlarge:
-                display_name: XL (r5-xlarge, 4 cores, 16 GB memory) (Version ${var.previousTeehrVersion})
+                display_name: Version ${var.previousTeehrVersion} - XL (4 cores, 32 GB memory) 
                 kubespawner_override:
                   image: ${actions.build.teehr-jupyter-driver-image-previous.outputs.deploymentImageId}
                   mem_limit: 32G
@@ -308,7 +308,7 @@ spec:
                   node_selector:
                     teehr-hub/nodegroup-name: nb-r5-xlarge
               previous-tag-4xlarge:
-                display_name: 4XL (r5-4xlarge, 16 cores, 128 GB memory) (Version ${var.previousTeehrVersion})
+                display_name: Version ${var.previousTeehrVersion} - 4XL (16 cores, 128 GB memory) 
                 kubespawner_override:
                   image: ${actions.build.teehr-jupyter-driver-image-previous.outputs.deploymentImageId}
                   mem_limit: 128G
@@ -318,7 +318,7 @@ spec:
                   node_selector:
                     teehr-hub/nodegroup-name: nb-r5-4xlarge
               dev-xlarge:
-                display_name: XL (r5-xlarge, 4 cores, 16 GB memory) (Bleeding Edge ${slice(var.devTeehrVersion, 0, 6)})
+                display_name: Bleeding Edge ${slice(var.devTeehrVersion, 0, 6)} - XL (4 cores, 32 GB memory) 
                 kubespawner_override:
                   image: ${actions.build.teehr-jupyter-driver-image-edge.outputs.deploymentImageId}
                   mem_limit: 32G
@@ -328,7 +328,7 @@ spec:
                   node_selector:
                     teehr-hub/nodegroup-name: nb-r5-xlarge
               dev-4xlarge:
-                display_name: 4XL (r5-4xlarge, 16 cores, 128 GB memory) (Bleeding Edge ${slice(var.devTeehrVersion, 0, 6)})
+                display_name: Bleeding Edge ${slice(var.devTeehrVersion, 0, 6)} - 4XL (16 cores, 128 GB memory) 
                 kubespawner_override:
                   image: ${actions.build.teehr-jupyter-driver-image-edge.outputs.deploymentImageId}
                   mem_limit: 128G
@@ -350,7 +350,7 @@ spec:
             display_name: Image
             choices:
               current-tag-xlarge:
-                display_name: XL (r5-xlarge, 4 cores, 16 GB memory) (Version ${var.stableTeehrVersion})
+                display_name: Version ${var.stableTeehrVersion} - XL (4 cores, 16 GB memory) 
                 default: true
                 kubespawner_override:
                   image: ${actions.build.teehr-jupyter-driver-image-stable.outputs.deploymentImageId}
@@ -361,7 +361,7 @@ spec:
                   node_selector:
                     teehr-hub/nodegroup-name: nb-r5-xlarge-mmm
               current-tag-4xlarge:
-                display_name: 4XL (r5-4xlarge, 16 cores, 128 GB memory) (Version ${var.stableTeehrVersion})
+                display_name: Version ${var.stableTeehrVersion} - 4XL (16 cores, 128 GB memory) 
                 kubespawner_override:
                   image: ${actions.build.teehr-jupyter-driver-image-stable.outputs.deploymentImageId}
                   mem_limit: 128G
@@ -371,7 +371,7 @@ spec:
                   node_selector:
                     teehr-hub/nodegroup-name: nb-r5-4xlarge-mmm
               previous-tag-xlarge:
-                display_name: XL (r5-xlarge, 4 cores, 16 GB memory) (Version ${var.previousTeehrVersion})
+                display_name: Version ${var.previousTeehrVersion} - XL (4 cores, 32 GB memory) 
                 kubespawner_override:
                   image: ${actions.build.teehr-jupyter-driver-image-previous.outputs.deploymentImageId}
                   mem_limit: 32G
@@ -381,7 +381,7 @@ spec:
                   node_selector:
                     teehr-hub/nodegroup-name: nb-r5-xlarge-mmm
               previous-tag-4xlarge:
-                display_name: 4XL (r5-4xlarge, 16 cores, 128 GB memory) (Version ${var.previousTeehrVersion})
+                display_name: Version ${var.previousTeehrVersion} - 4XL (16 cores, 128 GB memory) 
                 kubespawner_override:
                   image: ${actions.build.teehr-jupyter-driver-image-previous.outputs.deploymentImageId}
                   mem_limit: 128G
@@ -391,7 +391,7 @@ spec:
                   node_selector:
                     teehr-hub/nodegroup-name: nb-r5-4xlarge-mmm
               dev-xlarge:
-                display_name: XL (r5-xlarge, 4 cores, 16 GB memory) (Bleeding Edge ${slice(var.devTeehrVersion, 0, 6)})
+                display_name: Bleeding Edge ${slice(var.devTeehrVersion, 0, 6)} - XL (4 cores, 32 GB memory) 
                 kubespawner_override:
                   image: ${actions.build.teehr-jupyter-driver-image-edge.outputs.deploymentImageId}
                   mem_limit: 32G
@@ -401,7 +401,7 @@ spec:
                   node_selector:
                     teehr-hub/nodegroup-name: nb-r5-xlarge-mmm
               dev-4xlarge:
-                display_name: 4XL (r5-4xlarge, 16 cores, 128 GB memory) (Bleeding Edge ${slice(var.devTeehrVersion, 0, 6)})
+                display_name: Bleeding Edge ${slice(var.devTeehrVersion, 0, 6)} - 4XL (16 cores, 128 GB memory) 
                 kubespawner_override:
                   image: ${actions.build.teehr-jupyter-driver-image-edge.outputs.deploymentImageId}
                   mem_limit: 128G
@@ -423,7 +423,7 @@ spec:
             display_name: Image
             choices:
               current-tag-xlarge:
-                display_name: XL (r5-xlarge, 4 cores, 16 GB memory) (Version ${var.stableTeehrVersion})
+                display_name: Version ${var.stableTeehrVersion} - XL (4 cores, 16 GB memory) 
                 default: true
                 kubespawner_override:
                   image: ${actions.build.teehr-jupyter-driver-image-stable.outputs.deploymentImageId}
@@ -434,7 +434,7 @@ spec:
                   node_selector:
                     teehr-hub/nodegroup-name: nb-r5-xlarge-testbed
               current-tag-4xlarge:
-                display_name: 4XL (r5-4xlarge, 16 cores, 128 GB memory) (Version ${var.stableTeehrVersion})
+                display_name: Version ${var.stableTeehrVersion} - 4XL (16 cores, 128 GB memory) 
                 kubespawner_override:
                   image: ${actions.build.teehr-jupyter-driver-image-stable.outputs.deploymentImageId}
                   mem_limit: 128G
@@ -444,7 +444,7 @@ spec:
                   node_selector:
                     teehr-hub/nodegroup-name: nb-r5-4xlarge-testbed
               previous-tag-xlarge:
-                display_name: XL (r5-xlarge, 4 cores, 16 GB memory) (Version ${var.previousTeehrVersion})
+                display_name: Version ${var.previousTeehrVersion} - XL (4 cores, 32 GB memory) 
                 kubespawner_override:
                   image: ${actions.build.teehr-jupyter-driver-image-previous.outputs.deploymentImageId}
                   mem_limit: 32G
@@ -454,7 +454,7 @@ spec:
                   node_selector:
                     teehr-hub/nodegroup-name: nb-r5-xlarge-testbed
               previous-tag-4xlarge:
-                display_name: 4XL (r5-4xlarge, 16 cores, 128 GB memory) (Version ${var.previousTeehrVersion})
+                display_name: Version ${var.previousTeehrVersion} - 4XL (16 cores, 128 GB memory) 
                 kubespawner_override:
                   image: ${actions.build.teehr-jupyter-driver-image-previous.outputs.deploymentImageId}
                   mem_limit: 128G
@@ -464,7 +464,7 @@ spec:
                   node_selector:
                     teehr-hub/nodegroup-name: nb-r5-4xlarge-testbed
               dev-xlarge:
-                display_name: XL (r5-xlarge, 4 cores, 16 GB memory) (Bleeding Edge ${slice(var.devTeehrVersion, 0, 6)})
+                display_name: Bleeding Edge ${slice(var.devTeehrVersion, 0, 6)} - XL (4 cores, 32 GB memory) 
                 kubespawner_override:
                   image: ${actions.build.teehr-jupyter-driver-image-edge.outputs.deploymentImageId}
                   mem_limit: 32G
@@ -474,7 +474,7 @@ spec:
                   node_selector:
                     teehr-hub/nodegroup-name: nb-r5-xlarge-testbed
               dev-4xlarge:
-                display_name: 4XL (r5-4xlarge, 16 cores, 128 GB memory) (Bleeding Edge ${slice(var.devTeehrVersion, 0, 6)})
+                display_name: Bleeding Edge ${slice(var.devTeehrVersion, 0, 6)} - 4XL (16 cores, 128 GB memory) 
                 kubespawner_override:
                   image: ${actions.build.teehr-jupyter-driver-image-edge.outputs.deploymentImageId}
                   mem_limit: 128G
@@ -496,7 +496,7 @@ spec:
             display_name: Image
             choices:
               current-tag-xlarge:
-                display_name: XL (r5-xlarge, 4 cores, 16 GB memory) (Version ${var.stableTeehrVersion})
+                display_name: Version ${var.stableTeehrVersion} - XL (4 cores, 16 GB memory) 
                 default: true
                 kubespawner_override:
                   image: ${actions.build.teehr-jupyter-driver-image-stable.outputs.deploymentImageId}
@@ -507,7 +507,7 @@ spec:
                   node_selector:
                     teehr-hub/nodegroup-name: nb-r5-xlarge-resops
               current-tag-4xlarge:
-                display_name: 4XL (r5-4xlarge, 16 cores, 128 GB memory) (Version ${var.stableTeehrVersion})
+                display_name: Version ${var.stableTeehrVersion} - 4XL (16 cores, 128 GB memory) 
                 kubespawner_override:
                   image: ${actions.build.teehr-jupyter-driver-image-stable.outputs.deploymentImageId}
                   mem_limit: 128G
@@ -517,7 +517,7 @@ spec:
                   node_selector:
                     teehr-hub/nodegroup-name: nb-r5-4xlarge-resops
               previous-tag-xlarge:
-                display_name: XL (r5-xlarge, 4 cores, 16 GB memory) (Version ${var.previousTeehrVersion})
+                display_name: Version ${var.previousTeehrVersion} - XL (4 cores, 32 GB memory) 
                 kubespawner_override:
                   image: ${actions.build.teehr-jupyter-driver-image-previous.outputs.deploymentImageId}
                   mem_limit: 32G
@@ -527,7 +527,7 @@ spec:
                   node_selector:
                     teehr-hub/nodegroup-name: nb-r5-xlarge-resops
               previous-tag-4xlarge:
-                display_name: 4XL (r5-4xlarge, 16 cores, 128 GB memory) (Version ${var.previousTeehrVersion})
+                display_name: Version ${var.previousTeehrVersion} - 4XL (16 cores, 128 GB memory) 
                 kubespawner_override:
                   image: ${actions.build.teehr-jupyter-driver-image-previous.outputs.deploymentImageId}
                   mem_limit: 128G
@@ -537,7 +537,7 @@ spec:
                   node_selector:
                     teehr-hub/nodegroup-name: nb-r5-4xlarge-resops
               dev-xlarge:
-                display_name: XL (r5-xlarge, 4 cores, 16 GB memory) (Bleeding Edge ${slice(var.devTeehrVersion, 0, 6)})
+                display_name: Bleeding Edge ${slice(var.devTeehrVersion, 0, 6)} - XL (4 cores, 32 GB memory) 
                 kubespawner_override:
                   image: ${actions.build.teehr-jupyter-driver-image-edge.outputs.deploymentImageId}
                   mem_limit: 32G
@@ -547,7 +547,7 @@ spec:
                   node_selector:
                     teehr-hub/nodegroup-name: nb-r5-xlarge-resops
               dev-4xlarge:
-                display_name: 4XL (r5-4xlarge, 16 cores, 128 GB memory) (Bleeding Edge ${slice(var.devTeehrVersion, 0, 6)})
+                display_name: Bleeding Edge ${slice(var.devTeehrVersion, 0, 6)} - 4XL (16 cores, 128 GB memory) 
                 kubespawner_override:
                   image: ${actions.build.teehr-jupyter-driver-image-edge.outputs.deploymentImageId}
                   mem_limit: 128G
@@ -569,7 +569,7 @@ spec:
             display_name: Image
             choices:
               current-tag-xlarge:
-                display_name: XL (r5-xlarge, 4 cores, 16 GB memory) (Version ${var.stableTeehrVersion})
+                display_name: Version ${var.stableTeehrVersion} - XL (4 cores, 16 GB memory) 
                 default: true
                 kubespawner_override:
                   image: ${actions.build.teehr-jupyter-driver-image-stable.outputs.deploymentImageId}
@@ -580,7 +580,7 @@ spec:
                   node_selector:
                     teehr-hub/nodegroup-name: nb-r5-xlarge-firo
               current-tag-4xlarge:
-                display_name: 4XL (r5-4xlarge, 16 cores, 128 GB memory) (Version ${var.stableTeehrVersion})
+                display_name: Version ${var.stableTeehrVersion} - 4XL (16 cores, 128 GB memory) 
                 kubespawner_override:
                   image: ${actions.build.teehr-jupyter-driver-image-stable.outputs.deploymentImageId}
                   mem_limit: 128G
@@ -590,7 +590,7 @@ spec:
                   node_selector:
                     teehr-hub/nodegroup-name: nb-r5-4xlarge-firo
               previous-tag-xlarge:
-                display_name: XL (r5-xlarge, 4 cores, 16 GB memory) (Version ${var.previousTeehrVersion})
+                display_name: Version ${var.previousTeehrVersion} - XL (4 cores, 32 GB memory) 
                 kubespawner_override:
                   image: ${actions.build.teehr-jupyter-driver-image-previous.outputs.deploymentImageId}
                   mem_limit: 32G
@@ -600,7 +600,7 @@ spec:
                   node_selector:
                     teehr-hub/nodegroup-name: nb-r5-xlarge-firo
               previous-tag-4xlarge:
-                display_name: 4XL (r5-4xlarge, 16 cores, 128 GB memory) (Version ${var.previousTeehrVersion})
+                display_name: Version ${var.previousTeehrVersion} - 4XL (16 cores, 128 GB memory) 
                 kubespawner_override:
                   image: ${actions.build.teehr-jupyter-driver-image-previous.outputs.deploymentImageId}
                   mem_limit: 128G
@@ -610,7 +610,7 @@ spec:
                   node_selector:
                     teehr-hub/nodegroup-name: nb-r5-4xlarge-firo
               dev-xlarge:
-                display_name: XL (r5-xlarge, 4 cores, 16 GB memory) (Bleeding Edge ${slice(var.devTeehrVersion, 0, 6)})
+                display_name: Bleeding Edge ${slice(var.devTeehrVersion, 0, 6)} - XL (4 cores, 32 GB memory) 
                 kubespawner_override:
                   image: ${actions.build.teehr-jupyter-driver-image-edge.outputs.deploymentImageId}
                   mem_limit: 32G
@@ -620,7 +620,7 @@ spec:
                   node_selector:
                     teehr-hub/nodegroup-name: nb-r5-xlarge-firo
               dev-4xlarge:
-                display_name: 4XL (r5-4xlarge, 16 cores, 128 GB memory) (Bleeding Edge ${slice(var.devTeehrVersion, 0, 6)})
+                display_name: Bleeding Edge ${slice(var.devTeehrVersion, 0, 6)} - 4XL (16 cores, 128 GB memory) 
                 kubespawner_override:
                   image: ${actions.build.teehr-jupyter-driver-image-edge.outputs.deploymentImageId}
                   mem_limit: 128G
@@ -630,7 +630,7 @@ spec:
                   node_selector:
                     teehr-hub/nodegroup-name: nb-r5-4xlarge-firo
               hefs-v0-1-0:
-                display_name: XL (r5-xlarge, 4 cores, 16 GB memory) (HEFS-FEWS v0.1.x)
+                display_name: HEFS-FEWS v0.1.x - XL (4 cores, 16 GB memory)
                 kubespawner_override:
                   image: "935462133478.dkr.ecr.us-east-2.amazonaws.com/hefs-fews-hub:v0.1.0"
                   mem_limit: 32G
@@ -640,7 +640,7 @@ spec:
                   node_selector:
                     teehr-hub/nodegroup-name: nb-r5-xlarge-firo
               hefs-v0-3-0:
-                display_name: XL (r5-xlarge, 4 cores, 16 GB memory) (HEFS-FEWS v0.3.x)
+                display_name: HEFS-FEWS v0.3.x - XL (4 cores, 16 GB memory)
                 kubespawner_override:
                   image: "935462133478.dkr.ecr.us-east-2.amazonaws.com/hefs-fews-hub:v0.3.0"
                   mem_limit: 32G
@@ -662,7 +662,7 @@ spec:
             display_name: Image
             choices:
               current-tag-xlarge:
-                display_name: XL (r5-xlarge, 4 cores, 16 GB memory) (Version ${var.stableTeehrVersion})
+                display_name: Version ${var.stableTeehrVersion} - XL (4 cores, 16 GB memory) 
                 default: true
                 kubespawner_override:
                   image: ${actions.build.teehr-jupyter-driver-image-stable.outputs.deploymentImageId}
@@ -673,7 +673,7 @@ spec:
                   node_selector:
                     teehr-hub/nodegroup-name: nb-r5-xlarge-fff
               current-tag-4xlarge:
-                display_name: 4XL (r5-4xlarge, 16 cores, 128 GB memory) (Version ${var.stableTeehrVersion})
+                display_name: Version ${var.stableTeehrVersion} - 4XL (16 cores, 128 GB memory) 
                 kubespawner_override:
                   image: ${actions.build.teehr-jupyter-driver-image-stable.outputs.deploymentImageId}
                   mem_limit: 128G
@@ -683,7 +683,7 @@ spec:
                   node_selector:
                     teehr-hub/nodegroup-name: nb-r5-4xlarge-fff
               previous-tag-xlarge:
-                display_name: XL (r5-xlarge, 4 cores, 16 GB memory) (Version ${var.previousTeehrVersion})
+                display_name: Version ${var.previousTeehrVersion} - XL (4 cores, 32 GB memory) 
                 kubespawner_override:
                   image: ${actions.build.teehr-jupyter-driver-image-previous.outputs.deploymentImageId}
                   mem_limit: 32G
@@ -693,7 +693,7 @@ spec:
                   node_selector:
                     teehr-hub/nodegroup-name: nb-r5-xlarge-fff
               previous-tag-4xlarge:
-                display_name: 4XL (r5-4xlarge, 16 cores, 128 GB memory) (Version ${var.previousTeehrVersion})
+                display_name: Version ${var.previousTeehrVersion} - 4XL (16 cores, 128 GB memory) 
                 kubespawner_override:
                   image: ${actions.build.teehr-jupyter-driver-image-previous.outputs.deploymentImageId}
                   mem_limit: 128G
@@ -703,7 +703,7 @@ spec:
                   node_selector:
                     teehr-hub/nodegroup-name: nb-r5-4xlarge-fff
               dev-xlarge:
-                display_name: XL (r5-xlarge, 4 cores, 16 GB memory) (Bleeding Edge ${slice(var.devTeehrVersion, 0, 6)})
+                display_name: Bleeding Edge ${slice(var.devTeehrVersion, 0, 6)} - XL (4 cores, 32 GB memory) 
                 kubespawner_override:
                   image: ${actions.build.teehr-jupyter-driver-image-edge.outputs.deploymentImageId}
                   mem_limit: 32G
@@ -713,7 +713,7 @@ spec:
                   node_selector:
                     teehr-hub/nodegroup-name: nb-r5-xlarge-fff
               dev-4xlarge:
-                display_name: 4XL (r5-4xlarge, 16 cores, 128 GB memory) (Bleeding Edge ${slice(var.devTeehrVersion, 0, 6)})
+                display_name: Bleeding Edge ${slice(var.devTeehrVersion, 0, 6)} - 4XL (16 cores, 128 GB memory) 
                 kubespawner_override:
                   image: ${actions.build.teehr-jupyter-driver-image-edge.outputs.deploymentImageId}
                   mem_limit: 128G
