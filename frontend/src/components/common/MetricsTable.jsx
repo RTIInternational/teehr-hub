@@ -550,7 +550,6 @@ const MetricsTable = ({
                     onChange={(newSelected) => setFilters(prev => ({ ...prev, [index]: newSelected }))}
                     allSelectedText="All"
                     noneSelectedText="All"
-                    showSelectAll={false}
                   />
                 </div>
               );

@@ -12,8 +12,6 @@ const MultiSelectDropdown = ({
   placeholder = 'Select...',
   allSelectedText = 'All selected',
   noneSelectedText = 'None selected',
-  showSelectAll = true,
-  showClearAll = true,
   style = {}
 }) => {
   const [isOpen, setIsOpen] = useState(false);
@@ -89,28 +87,22 @@ const MultiSelectDropdown = ({
           }}
         >
           {/* Header with Select All / Clear All */}
-          {(showSelectAll || showClearAll) && (
-            <div className="px-3 py-2 border-bottom d-flex justify-content-between" style={{ backgroundColor: '#f8f9fa' }}>
-              {showSelectAll && (
-                <button
-                  type="button"
-                  className="btn btn-sm btn-link p-0 text-decoration-none"
-                  onClick={handleSelectAll}
-                >
-                  Select All
-                </button>
-              )}
-              {showClearAll && (
-                <button
-                  type="button"
-                  className="btn btn-sm btn-link p-0 text-decoration-none text-danger"
-                  onClick={handleClearAll}
-                >
-                  Clear All
-                </button>
-              )}
-            </div>
-          )}
+          <div className="px-3 py-2 border-bottom d-flex gap-3" style={{ backgroundColor: '#f8f9fa' }}>
+            <button
+              type="button"
+              className="btn btn-sm btn-link p-0 text-decoration-none"
+              onClick={handleSelectAll}
+            >
+              Select All
+            </button>
+            <button
+              type="button"
+              className="btn btn-sm btn-link p-0 text-decoration-none text-danger"
+              onClick={handleClearAll}
+            >
+              Clear All
+            </button>
+          </div>
 
           {/* Options List */}
           <div style={{ maxHeight: '250px', overflowY: 'auto' }}>
