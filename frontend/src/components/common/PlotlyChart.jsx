@@ -21,7 +21,7 @@ const PlotlyChart = ({ primaryData, secondaryData, selectedLocation, filters, he
           name: 'Observed (' + (primarySeries.configuration_name || 'USGS') + ')',
           type: 'scatter',
           mode: 'lines',
-          line: { color: '#0d6efd', width: 2 },
+          line: { color: '#000000', width: 2.5 },
           hovertemplate: 
             '<b>%{fullData.name}</b><br>' +
             'Date: %{x}<br>' +
