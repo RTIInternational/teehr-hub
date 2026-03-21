@@ -1,9 +1,10 @@
 /* eslint-disable react-refresh/only-export-components */
 import { createContext, useContext, useReducer } from 'react';
+import { RETROSPECTIVE_DASHBOARD_DEFAULTS, selectDefault } from '../config/dashboardDefaults';
 
 // Static date defaults for retrospective - uses 2020 data
-const DEFAULT_START_DATE = '2020-01-01T00:00';
-const DEFAULT_END_DATE = '2020-12-31T23:59';
+const DEFAULT_START_DATE = RETROSPECTIVE_DASHBOARD_DEFAULTS.defaultStartDate;
+const DEFAULT_END_DATE = RETROSPECTIVE_DASHBOARD_DEFAULTS.defaultEndDate;
 
 // Initial state for retrospective dashboard
 const initialRetrospectiveState = {
@@ -102,33 +103,35 @@ const retrospectiveDashboardReducer = (state, action) => {
       
     case ActionTypes.SET_CONFIGURATIONS:
       const configurations = Array.isArray(action.payload) ? action.payload : [];
+      const defaultConfig = selectDefault(RETROSPECTIVE_DASHBOARD_DEFAULTS.preferredConfiguration, configurations);
       return {
         ...state,
         configurations,
-        // Set defaults if first time loading
+        // Set defaults if first time loading - prefer configured default if available
         mapFilters: {
           ...state.mapFilters,
-          configuration: state.mapFilters.configuration || configurations[0]
+          configuration: state.mapFilters.configuration || defaultConfig
         },
         timeseriesFilters: {
           ...state.timeseriesFilters,
-          configuration: state.timeseriesFilters.configuration || configurations[0]
+          configuration: state.timeseriesFilters.configuration || defaultConfig
         }
       };
       
     case ActionTypes.SET_VARIABLES:
       const variables = Array.isArray(action.payload) ? action.payload : [];
+      const defaultVariable = selectDefault(RETROSPECTIVE_DASHBOARD_DEFAULTS.preferredVariable, variables);
       return {
         ...state,
         variables,
-        // Set defaults if first time loading
+        // Set defaults if first time loading - prefer configured default if available
         mapFilters: {
           ...state.mapFilters,
-          variable: state.mapFilters.variable || variables[0]
+          variable: state.mapFilters.variable || defaultVariable
         },
         timeseriesFilters: {
           ...state.timeseriesFilters,
-          variable: state.timeseriesFilters.variable || variables[0]
+          variable: state.timeseriesFilters.variable || defaultVariable
         }
       };
       

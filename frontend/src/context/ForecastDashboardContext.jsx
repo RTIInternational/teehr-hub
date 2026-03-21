@@ -1,5 +1,6 @@
 /* eslint-disable react-refresh/only-export-components */
 import { createContext, useContext, useReducer } from 'react';
+import { FORECAST_DASHBOARD_DEFAULTS, selectDefault } from '../config/dashboardDefaults';
 
 // Dynamic date helpers - returns dates for 10 days ago through today
 const getTenDaysAgo = () => {
@@ -110,33 +111,35 @@ const forecastDashboardReducer = (state, action) => {
       
     case ActionTypes.SET_CONFIGURATIONS:
       const configurations = Array.isArray(action.payload) ? action.payload : [];
+      const defaultConfig = selectDefault(FORECAST_DASHBOARD_DEFAULTS.preferredConfiguration, configurations);
       return {
         ...state,
         configurations,
-        // Set defaults if first time loading
+        // Set defaults if first time loading - prefer configured default if available
         mapFilters: {
           ...state.mapFilters,
-          configuration: state.mapFilters.configuration || configurations[0]
+          configuration: state.mapFilters.configuration || defaultConfig
         },
         timeseriesFilters: {
           ...state.timeseriesFilters,
-          configuration: state.timeseriesFilters.configuration || configurations[0]
+          configuration: state.timeseriesFilters.configuration || defaultConfig
         }
       };
       
     case ActionTypes.SET_VARIABLES:
       const variables = Array.isArray(action.payload) ? action.payload : [];
+      const defaultVariable = selectDefault(FORECAST_DASHBOARD_DEFAULTS.preferredVariable, variables);
       return {
         ...state,
         variables,
-        // Set defaults if first time loading
+        // Set defaults if first time loading - prefer configured default if available
         mapFilters: {
           ...state.mapFilters,
-          variable: state.mapFilters.variable || variables[0]
+          variable: state.mapFilters.variable || defaultVariable
         },
         timeseriesFilters: {
           ...state.timeseriesFilters,
-          variable: state.timeseriesFilters.variable || variables[0]
+          variable: state.timeseriesFilters.variable || defaultVariable
         }
       };
       
