@@ -64,11 +64,11 @@ const Dashboard = () => {
           className="dashboard-grid h-100" 
           style={{
             display: 'grid',
-            gridTemplateColumns: '60% 40%',
+            gridTemplateColumns: '3fr 2fr',
             gridTemplateRows: 'auto 12vh 1fr auto', // Changed last row to auto for flexible metrics height
             gap: '12px',
             padding: '12px',
-            height: '100vh',
+            height: '100%',
             overflow: 'hidden'
           }}
         >

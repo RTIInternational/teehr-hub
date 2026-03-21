@@ -10,7 +10,7 @@ environments:
     defaultNamespace: ${project.name}
     variables:
       hostname: teehr.local.app.garden
-      devTeehrVersion: ae0b7c63a470bf13b71d5746d72bb5445d140abd
+      devTeehrVersion: 92ebb1053f2b4ee8b194175fcabaec6f59aa7b32
       stableTeehrVersion: place-holder # Needed for sync to work for some reason.
       iceberg:
         inCluster: "true"
