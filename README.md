@@ -29,9 +29,9 @@ garden version: 0.13.54
 kubctl https://kubernetes.io/docs/tasks/tools/
 ```bash
 % kubectl version
-Client Version: v1.32.3
+Client Version: v1.33.0
 Kustomize Version: v5.5.0
-Server Version: v1.32.2
+Server Version: v1.33.0
 ```
 
 Optional, but recommended, k9s https://k9scli.io/

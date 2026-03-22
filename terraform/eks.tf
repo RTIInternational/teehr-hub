@@ -1,6 +1,6 @@
 locals {
   eks_node_group_defaults = {
-    ami_type        = "AL2_x86_64"
+    ami_type        = "AL2023_x86_64_STANDARD"
     use_name_prefix = true
     block_device_mappings = {
       xvda = {
