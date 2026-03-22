@@ -624,10 +624,13 @@ const MetricsTable = ({
                         }}
                       >
                         <span>{header}</span>
-                        <span className="sort-indicator">
-                          {sortConfig.column === index && (
-                            sortConfig.direction === 'asc' ? '▲' : '▼'
-                          )}
+                        <span className="sort-indicator" style={{ display: 'flex', flexDirection: 'column', fontSize: '10px', lineHeight: '8px', marginLeft: '4px' }}>
+                          <span style={{ 
+                            color: sortConfig.column === index && sortConfig.direction === 'asc' ? '#0d6efd' : '#ccc'
+                          }}>▲</span>
+                          <span style={{ 
+                            color: sortConfig.column === index && sortConfig.direction === 'desc' ? '#0d6efd' : '#ccc'
+                          }}>▼</span>
                         </span>
                       </div>
                     </th>

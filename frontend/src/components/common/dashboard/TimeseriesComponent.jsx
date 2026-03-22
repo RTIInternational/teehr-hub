@@ -1,6 +1,6 @@
 import { Card, Spinner, ButtonGroup, Button } from 'react-bootstrap';
 import { PlotlyChart } from '../../common';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 
 const TimeseriesComponent = ({ 
   state, 
@@ -10,6 +10,11 @@ const TimeseriesComponent = ({
 }) => {
   const [viewMode, setViewMode] = useState('filters');
   const hasData = state.timeseriesData.primary?.length > 0 || state.timeseriesData.secondary?.length > 0;
+
+  // Reset to filters view when location changes
+  useEffect(() => {
+    setViewMode('filters');
+  }, [state.selectedLocation]);
   const shouldShowPlot = hasData && !state.timeseriesLoading;
   
   return (

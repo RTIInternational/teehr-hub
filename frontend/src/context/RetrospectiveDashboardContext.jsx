@@ -23,7 +23,7 @@ const initialRetrospectiveState = {
   
   // Timeseries filters (retrospective-specific defaults - year 2020)
   timeseriesFilters: {
-    configuration: null,
+    configurations: [], // Array for multi-select
     variable: null,
     start_date: DEFAULT_START_DATE,
     end_date: DEFAULT_END_DATE,
@@ -114,7 +114,9 @@ const retrospectiveDashboardReducer = (state, action) => {
         },
         timeseriesFilters: {
           ...state.timeseriesFilters,
-          configuration: state.timeseriesFilters.configuration || defaultConfig
+          configurations: state.timeseriesFilters.configurations?.length > 0 
+            ? state.timeseriesFilters.configurations 
+            : (defaultConfig ? [defaultConfig] : [])
         }
       };
       
@@ -144,11 +146,24 @@ const retrospectiveDashboardReducer = (state, action) => {
       };
       
     case ActionTypes.UPDATE_MAP_FILTERS:
+      // Also sync configuration and variable to timeseries filters
+      const mapTimeseriesSync = {};
+      if (action.payload.configuration !== undefined) {
+        // Sync map configuration to timeseries configurations array
+        mapTimeseriesSync.configurations = action.payload.configuration ? [action.payload.configuration] : [];
+      }
+      if (action.payload.variable !== undefined) {
+        mapTimeseriesSync.variable = action.payload.variable;
+      }
       return {
         ...state,
         mapFilters: {
           ...state.mapFilters,
           ...action.payload
+        },
+        timeseriesFilters: {
+          ...state.timeseriesFilters,
+          ...mapTimeseriesSync
         }
       };
       

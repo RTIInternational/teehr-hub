@@ -1,4 +1,5 @@
 import { Form, Row, Col, Button } from 'react-bootstrap';
+import MultiSelectDropdown from '../MultiSelectDropdown';
 
 const TimeseriesControls = ({ 
   state, 
@@ -19,7 +20,7 @@ const TimeseriesControls = ({
     
     await loadTimeseries({
       primary_location_id: selectedLocation.primary_location_id,
-      configuration: timeseriesFilters.configuration,
+      configurations: timeseriesFilters.configurations,
       variable: timeseriesFilters.variable,
       start_date: timeseriesFilters.start_date,
       end_date: timeseriesFilters.end_date,
@@ -33,26 +34,26 @@ const TimeseriesControls = ({
     }
   };
 
+  // Get selected configurations or use map configuration as fallback
+  const selectedConfigurations = timeseriesFilters.configurations?.length > 0 
+    ? timeseriesFilters.configurations 
+    : (mapFilters.configuration ? [mapFilters.configuration] : []);
+
   return (
     <div className="h-100 d-flex flex-column">
       <Form className="flex-grow-1">
         <Row className="g-2 h-100">
-          {/* Configuration */}
+          {/* Configuration - Multi-select */}
           <Col md={6}>
             <Form.Group>
-              <Form.Label className="small fw-bold">Configuration</Form.Label>
-            <Form.Select
-              size="sm"
-              value={timeseriesFilters.configuration || mapFilters.configuration || ''}
-              onChange={(e) => handleFilterChange('configuration', e.target.value || null)}
-            >
-              <option value="">Select Configuration...</option>
-              {Array.isArray(state.configurations) && state.configurations.map((config) => (
-                <option key={config} value={config}>
-                  {config}
-                </option>
-              ))}
-            </Form.Select>
+              <Form.Label className="small fw-bold">Configurations</Form.Label>
+              <MultiSelectDropdown
+                options={Array.isArray(state.configurations) ? state.configurations : []}
+                selected={selectedConfigurations}
+                onChange={(selected) => handleFilterChange('configurations', selected)}
+                allSelectedText="All configurations"
+                noneSelectedText="Select configurations..."
+              />
           </Form.Group>
         </Col>
 
@@ -134,7 +135,7 @@ const TimeseriesControls = ({
               variant="primary" 
               size="sm" 
               onClick={handleLoadData}
-              disabled={!selectedLocation?.primary_location_id || !timeseriesFilters.configuration || !timeseriesFilters.variable}
+              disabled={!selectedLocation?.primary_location_id || !timeseriesFilters.configurations?.length || !timeseriesFilters.variable}
             >
               Load Timeseries Data
             </Button>
