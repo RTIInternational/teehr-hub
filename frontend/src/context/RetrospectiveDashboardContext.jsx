@@ -144,11 +144,23 @@ const retrospectiveDashboardReducer = (state, action) => {
       };
       
     case ActionTypes.UPDATE_MAP_FILTERS:
+      // Also sync configuration and variable to timeseries filters
+      const mapTimeseriesSync = {};
+      if (action.payload.configuration !== undefined) {
+        mapTimeseriesSync.configuration = action.payload.configuration;
+      }
+      if (action.payload.variable !== undefined) {
+        mapTimeseriesSync.variable = action.payload.variable;
+      }
       return {
         ...state,
         mapFilters: {
           ...state.mapFilters,
           ...action.payload
+        },
+        timeseriesFilters: {
+          ...state.timeseriesFilters,
+          ...mapTimeseriesSync
         }
       };
       

@@ -32,10 +32,56 @@ const PlotlyChart = ({ primaryData, secondaryData, selectedLocation, filters, he
     }
 
     // Secondary trace(s) - create a trace for each series
+    // Color by configuration_name with opacity varying by reference_time (latest = darkest)
     if (secondaryData?.length > 0) {
       const traceMap = new Map();
-      const colors = ['#dc3545', '#28a745', '#ffc107', '#17a2b8', '#6f42c1', '#fd7e14', '#20c997'];
+      const baseColors = [
+        { r: 220, g: 53, b: 69 },   // #dc3545 red
+        { r: 40, g: 167, b: 69 },   // #28a745 green
+        { r: 255, g: 193, b: 7 },   // #ffc107 yellow
+        { r: 23, g: 162, b: 184 },  // #17a2b8 cyan
+        { r: 111, g: 66, b: 193 },  // #6f42c1 purple
+        { r: 253, g: 126, b: 20 },  // #fd7e14 orange
+        { r: 32, g: 201, b: 151 }   // #20c997 teal
+      ];
+      
+      // First pass: group series by configuration_name and collect reference_times
+      const configGroups = new Map();
+      secondaryData.forEach(series => {
+        if (series?.timeseries?.length > 0) {
+          const configName = series.configuration_name;
+          if (!configGroups.has(configName)) {
+            configGroups.set(configName, new Set());
+          }
+          if (series.reference_time && series.reference_time !== 'null') {
+            configGroups.get(configName).add(series.reference_time);
+          }
+        }
+      });
+      
+      // Assign colors to each configuration and sort reference_times
+      const configColorMap = new Map();
+      const configRefTimesMap = new Map();
       let colorIndex = 0;
+      configGroups.forEach((refTimes, configName) => {
+        configColorMap.set(configName, baseColors[colorIndex % baseColors.length]);
+        // Sort reference_times oldest to newest
+        const sortedRefTimes = Array.from(refTimes).sort((a, b) => new Date(a) - new Date(b));
+        configRefTimesMap.set(configName, sortedRefTimes);
+        colorIndex++;
+      });
+      
+      // Helper to calculate opacity based on reference_time position
+      const getOpacity = (configName, refTime) => {
+        const sortedRefTimes = configRefTimesMap.get(configName);
+        if (!sortedRefTimes || sortedRefTimes.length <= 1) return 1.0;
+        const index = sortedRefTimes.indexOf(refTime);
+        if (index === -1) return 1.0;
+        // Map from 0.25 (oldest) to 1.0 (newest)
+        const minOpacity = 0.25;
+        const maxOpacity = 1.0;
+        return minOpacity + (index / (sortedRefTimes.length - 1)) * (maxOpacity - minOpacity);
+      };
       
       secondaryData.forEach(series => {
         if (series?.timeseries?.length > 0) {
@@ -58,6 +104,11 @@ const PlotlyChart = ({ primaryData, secondaryData, selectedLocation, filters, he
               }
             }
             
+            // Get base color for this configuration and calculate opacity
+            const baseColor = configColorMap.get(series.configuration_name) || baseColors[0];
+            const opacity = getOpacity(series.configuration_name, series.reference_time);
+            const rgbaColor = `rgba(${baseColor.r}, ${baseColor.g}, ${baseColor.b}, ${opacity})`;
+            
             const trace = {
               x: series.timeseries.map(d => d.value_time),
               y: series.timeseries.map(d => d.value),
@@ -65,7 +116,7 @@ const PlotlyChart = ({ primaryData, secondaryData, selectedLocation, filters, he
               type: 'scatter',
               mode: 'lines',
               line: { 
-                color: colors[colorIndex % colors.length], 
+                color: rgbaColor, 
                 width: 2 
               },
               hovertemplate: 
@@ -78,7 +129,6 @@ const PlotlyChart = ({ primaryData, secondaryData, selectedLocation, filters, he
             };
             traceMap.set(key, trace);
             traces.push(trace);
-            colorIndex++;
           }
         }
       });
