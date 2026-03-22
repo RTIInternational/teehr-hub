@@ -31,7 +31,7 @@ const initialForecastState = {
   
   // Timeseries filters (forecast-specific defaults)
   timeseriesFilters: {
-    configuration: null,
+    configurations: [], // Array for multi-select
     variable: null,
     start_date: getTenDaysAgo(),
     end_date: getToday(),
@@ -122,7 +122,9 @@ const forecastDashboardReducer = (state, action) => {
         },
         timeseriesFilters: {
           ...state.timeseriesFilters,
-          configuration: state.timeseriesFilters.configuration || defaultConfig
+          configurations: state.timeseriesFilters.configurations?.length > 0 
+            ? state.timeseriesFilters.configurations 
+            : (defaultConfig ? [defaultConfig] : [])
         }
       };
       
@@ -155,7 +157,8 @@ const forecastDashboardReducer = (state, action) => {
       // Also sync configuration and variable to timeseries filters
       const mapTimeseriesSync = {};
       if (action.payload.configuration !== undefined) {
-        mapTimeseriesSync.configuration = action.payload.configuration;
+        // Sync map configuration to timeseries configurations array
+        mapTimeseriesSync.configurations = action.payload.configuration ? [action.payload.configuration] : [];
       }
       if (action.payload.variable !== undefined) {
         mapTimeseriesSync.variable = action.payload.variable;
