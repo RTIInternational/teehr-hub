@@ -46,11 +46,6 @@ definitions:
         REMOTE_CATALOG_TYPE: "{{ $REMOTE_CATALOG_TYPE }}"
         REMOTE_WAREHOUSE_S3_PATH: "{{ $REMOTE_WAREHOUSE_S3_PATH }}"
         IN_CLUSTER: "{{ $IN_CLUSTER }}"
-        API_USGS_PAT:
-          valueFrom:
-            secretKeyRef:
-              name: prefect-workflow-secrets
-              key: usgs-api-key
       node_selector:
         teehr-hub/nodegroup-name: spark-r5-4xlarge
       tolerations:

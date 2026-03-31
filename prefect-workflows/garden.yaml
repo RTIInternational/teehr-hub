@@ -19,6 +19,7 @@ description: K8s Deploy Prefect Workflows
 dependencies:
   - deploy.prefect-server
   - deploy.prefect-worker
+  - deploy.load-secrets
   - build.teehr-prefect-image
   - build.teehr-spark-executor-image
 environments:
@@ -52,3 +53,16 @@ environments:
 spec:
   files:
   - ./manifests/prefect-job-sa.yaml
+---
+kind: Deploy
+type: kubernetes
+name: load-secrets
+description: K8s Load Prefect Secrets
+dependencies:
+  - deploy.prefect-server
+environments:
+  - local
+  - remote
+spec:
+  files:
+  - ./manifests/load-secrets.yaml

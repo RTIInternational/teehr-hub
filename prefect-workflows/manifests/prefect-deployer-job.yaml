@@ -45,11 +45,6 @@ spec:
           value: ${var.iceberg.catalogS3Endpoint}
         - name: REMOTE_CATALOG_S3_PATH_STYLE_ACCESS
           value: "${var.iceberg.catalogS3PathStyleAccess}"
-        - name: API_USGS_PAT
-          valueFrom:
-            secretKeyRef:
-              name: prefect-workflow-secrets
-              key: usgs-api-key
         ${endif}
 
         # Use env vars to configure Iceberg catalog for env.

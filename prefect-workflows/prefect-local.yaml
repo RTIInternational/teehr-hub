@@ -45,7 +45,6 @@ definitions:
         REMOTE_CATALOG_TYPE: "{{ $REMOTE_CATALOG_TYPE }}"
         REMOTE_WAREHOUSE_S3_PATH: "{{ $REMOTE_WAREHOUSE_S3_PATH }}"
         IN_CLUSTER: "{{ $IN_CLUSTER }}"
-        API_USGS_PAT: "{{ $API_USGS_PAT }}"
       node_selector:
         teehr-hub/nodegroup-name: spark-r5-4xlarge
       tolerations:
@@ -66,7 +65,7 @@ deployments:
     tags: []
     description: Ingest USGS streamflow data from NWIS
     entrypoint: workflows/ingests/usgs_streamflow_obs.py:ingest_usgs_streamflow_obs
-    parameters: {"temp_dir_path": *temp_dir_path}
+    parameters: {"temp_dir_path": *temp_dir_path, "start_spark_cluster": false}
     work_pool: *work_pool
 
   - name: ingest-nwm-short-range-streamflow-forecasts
@@ -76,7 +75,8 @@ deployments:
     entrypoint: workflows/ingests/nwm_streamflow_forecasts.py:ingest_nwm_streamflow_forecasts
     parameters: {
       "temp_dir_path": *temp_dir_path,
-      "nwm_configuration": "short_range"
+      "nwm_configuration": "short_range",
+      "start_spark_cluster": false
     }
     work_pool: *work_pool
 
@@ -88,7 +88,8 @@ deployments:
     parameters: {
       "temp_dir_path": *temp_dir_path,
       "nwm_configuration": "medium_range_mem1",
-      "output_type": "channel_rt_1"
+      "output_type": "channel_rt_1",
+      "start_spark_cluster": false
     }
     work_pool: *work_pool
     schedule:
@@ -101,7 +102,8 @@ deployments:
     parameters: {
       "temp_dir_path": *temp_dir_path,
       "forecast_configuration": "short_range",
-      "datastream_name": "cfe_nom"
+      "datastream_name": "cfe_nom",
+      "start_spark_cluster": false
     }
     work_pool: *work_pool
 
@@ -113,7 +115,8 @@ deployments:
     parameters: {
       "temp_dir_path": *temp_dir_path,
       "forecast_configuration": "medium_range",
-      "datastream_name": "cfe_nom"
+      "datastream_name": "cfe_nom",
+      "start_spark_cluster": false
     }
     work_pool: *work_pool
 
@@ -125,7 +128,8 @@ deployments:
     parameters: {
       "temp_dir_path": *temp_dir_path,
       "forecast_configuration": "short_range",
-      "datastream_name": "lstm_0"
+      "datastream_name": "lstm_0",
+      "start_spark_cluster": false
     }
     work_pool: *work_pool
 
@@ -137,7 +141,8 @@ deployments:
     parameters: {
       "temp_dir_path": *temp_dir_path,
       "forecast_configuration": "medium_range",
-      "datastream_name": "lstm_0"
+      "datastream_name": "lstm_0",
+      "start_spark_cluster": false
     }
     work_pool: *work_pool
 
@@ -147,7 +152,8 @@ deployments:
     description: Ingest NWPS RFC streamflow forecasts from NOAA servers
     entrypoint: workflows/ingests/nwps_rfc_streamflow_forecasts.py:ingest_nwps_rfc_forecasts
     parameters: {
-      "temp_dir_path": *temp_dir_path
+      "temp_dir_path": *temp_dir_path,
+      "start_spark_cluster": false
     }
     work_pool: *work_pool
 
@@ -156,7 +162,7 @@ deployments:
     tags: []
     description: Create the joined forecast timeseries table
     entrypoint: workflows/metrics/update_joined_forecasts.py:update_joined_forecast_table
-    parameters: {"temp_dir_path": *temp_dir_path}
+    parameters: {"temp_dir_path": *temp_dir_path, "start_spark_cluster": false}
     work_pool: *work_pool
 
   - name: update-forecast-metrics-table
@@ -164,7 +170,7 @@ deployments:
     tags: []
     description: Create the forecast metrics table
     entrypoint: workflows/metrics/update_forecast_metrics.py:update_forecast_metrics_table
-    parameters: {"temp_dir_path": *temp_dir_path}
+    parameters: {"temp_dir_path": *temp_dir_path, "start_spark_cluster": false}
     work_pool: *work_pool
 
   - name: routine-table-maintenance
@@ -172,5 +178,5 @@ deployments:
     tags: []
     description: Run routine Iceberg table maintenance (expire snapshots, remove orphan files, compact data files, rewrite manifests)
     entrypoint: workflows/maintenance/routine_table_maintenance.py:routine_table_maintenance
-    parameters: {"temp_dir_path": *temp_dir_path}
+    parameters: {"temp_dir_path": *temp_dir_path, "start_spark_cluster": false}
     work_pool: *work_pool
