@@ -129,7 +129,7 @@ async def get_locations_items(
         # Pivot attributes if requested, otherwise df is already paginated
         if include_attributes:
             # First, separate location columns from attribute columns
-            location_cols = ["id", "name", "geometry", "created_at", "updated_at", "properties"]  # Adjust as needed based on actual schema
+            location_cols = df.columns.difference(["attribute_name", "attribute_value"]) 
             locations_df = df[location_cols].drop_duplicates(subset=["id"])
 
             # Pivot attributes if they exist
