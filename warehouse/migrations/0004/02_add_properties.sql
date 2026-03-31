@@ -7,5 +7,5 @@ ALTER TABLE location_crosswalks ADD COLUMNS (
 );
 
 ALTER TABLE location_attributes ADD COLUMNS (
-    properties MAP<STRING, STRING> comment 'Additional properties for the location as key-value pairs'
+    properties MAP<STRING, STRING> comment 'Additional properties for the location attribute record as key-value pairs'
 );
