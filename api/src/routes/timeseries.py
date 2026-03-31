@@ -137,6 +137,8 @@ async def get_primary_timeseries_items(
                 pt.unit_name,
                 pt.value_time,
                 pt.value,
+                pt.created_at,
+                pt.updated_at,
                 l.geometry
             FROM {trino_catalog}.{trino_schema}.primary_timeseries pt
             JOIN {trino_catalog}.{trino_schema}.locations l ON pt.location_id = l.id
@@ -153,7 +155,9 @@ async def get_primary_timeseries_items(
                 variable_name,
                 unit_name,
                 value_time,
-                value
+                value,
+                created_at,
+                updated_at
             FROM {trino_catalog}.{trino_schema}.primary_timeseries
             WHERE {where_clause}
             ORDER BY value_time
@@ -179,14 +183,13 @@ async def get_primary_timeseries_items(
             "%Y-%m-%d %H:%M:%S"
         )
 
-        # Convert reference_time to string, ensuring missing values become None
-        if "reference_time" in df.columns:
-            reference_dt = pd.to_datetime(df["reference_time"], errors="coerce")
-            non_null_mask = reference_dt.notna()
-            reference_str = reference_dt.dt.strftime("%Y-%m-%d %H:%M:%S")
-            df["reference_time"] = reference_str.where(non_null_mask, None)
-        else:
-            df["reference_time"] = None
+        # Convert optional datetime columns to string, ensuring missing values become None
+        for col in ["reference_time", "created_at", "updated_at"]:
+            if col in df.columns:
+                dt = pd.to_datetime(df[col], errors="coerce")
+                non_null_mask = dt.notna()
+                dt_str = dt.dt.strftime("%Y-%m-%d %H:%M:%S")
+                df[col] = dt_str.where(non_null_mask, None)
 
         # Replace NaN with None for JSON serialization
         df = df.astype(object).where(pd.notna(df), None)
@@ -412,7 +415,7 @@ async def get_secondary_timeseries_items(
             query = f"""
             SELECT
                 st.value_time, st.value, st.configuration_name, st.variable_name,
-                st.unit_name, st.member, st.reference_time,
+                st.unit_name, st.member, st.reference_time, st.created_at, st.updated_at,
                 lc.primary_location_id, lc.secondary_location_id,
                 l.geometry
             FROM {trino_catalog}.{trino_schema}.secondary_timeseries st
@@ -427,7 +430,7 @@ async def get_secondary_timeseries_items(
             query = f"""
             SELECT
                 st.value_time, st.value, st.configuration_name, st.variable_name,
-                st.unit_name, st.member, st.reference_time,
+                st.unit_name, st.member, st.reference_time, st.created_at, st.updated_at,
                 lc.primary_location_id, 'secondary' as series_type, lc.secondary_location_id
             FROM {trino_catalog}.{trino_schema}.secondary_timeseries st
             JOIN {trino_catalog}.{trino_schema}.location_crosswalks lc
@@ -456,14 +459,13 @@ async def get_secondary_timeseries_items(
             "%Y-%m-%d %H:%M:%S"
         )
 
-        # Convert reference_time to string, ensuring missing values become None
-        if "reference_time" in df.columns:
-            reference_dt = pd.to_datetime(df["reference_time"], errors="coerce")
-            non_null_mask = reference_dt.notna()
-            reference_str = reference_dt.dt.strftime("%Y-%m-%d %H:%M:%S")
-            df["reference_time"] = reference_str.where(non_null_mask, None)
-        else:
-            df["reference_time"] = None
+        # Convert optional datetime columns to string, ensuring missing values become None
+        for col in ["reference_time", "created_at", "updated_at"]:
+            if col in df.columns:
+                dt = pd.to_datetime(df[col], errors="coerce")
+                non_null_mask = dt.notna()
+                dt_str = dt.dt.strftime("%Y-%m-%d %H:%M:%S")
+                df[col] = dt_str.where(non_null_mask, None)
 
         # Replace NaN with None for JSON serialization
         df = df.astype(object).where(pd.notna(df), None)
