@@ -62,7 +62,7 @@ async def get_locations_items(
             # Query locations with their attributes (one row per attribute)
             base_query = f"""
                 SELECT
-                    l.*
+                    l.*,
                     la.attribute_name,
                     la.value as attribute_value
                 FROM {trino_catalog}.{trino_schema}.locations l
