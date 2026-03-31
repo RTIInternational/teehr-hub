@@ -70,9 +70,7 @@ async def get_crosswalk_items(
             pagination += f" LIMIT {limit}"
 
         query = f"""
-            SELECT
-                primary_location_id,
-                secondary_location_id
+            SELECT *
             FROM {trino_catalog}.{trino_schema}.location_crosswalks
             WHERE {where_clause}
             ORDER BY primary_location_id, secondary_location_id
