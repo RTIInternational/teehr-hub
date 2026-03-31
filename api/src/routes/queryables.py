@@ -164,6 +164,10 @@ COLLECTION_CONFIGS = {
                 "title": "Description",
                 "type": "string",
             },
+            "properties": {
+                "title": "Additional Properties",
+                "type": "object",
+            },
             "created_at": {
                 "title": "Created At",
                 "type": "string",
