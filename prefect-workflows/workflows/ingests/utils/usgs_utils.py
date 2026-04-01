@@ -28,7 +28,7 @@ def get_usgs_location_ids(
             "value": "usgs-%"
         }
     ).to_pandas()
-    sites = locations_df["id"].str.removeprefix("usgs-").to_list()
+    sites = locations_df["id"].str.upper().to_list()
     logger.info(f"✅ Retrieved {len(sites)} USGS location IDs")
     return sites
 
