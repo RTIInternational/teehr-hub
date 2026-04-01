@@ -21,12 +21,21 @@ def get_usgs_location_ids(
     """Query the USGS location IDs from the warehouse."""
     logger = get_run_logger()
     logger.info("⏰ Querying USGS location IDs")
-    locations_df = ev.locations.filter(
-        filters={
-            "column": "id",
-            "operator": "like",
-            "value": "usgs-%"
-        }
+    locations_df = ev.location_attributes_view(
+            attr_list=["is_active"]
+    ).filter(
+        filters=[
+            {
+                "column": "id",
+                "operator": "like",
+                "value": "usgs-%"
+            },
+            {
+                "column": "is_active",
+                "operator": "eq",
+                "value": "True"
+            }
+        ]
     ).to_pandas()
     sites = locations_df["id"].str.upper().to_list()
     logger.info(f"✅ Retrieved {len(sites)} USGS location IDs")
