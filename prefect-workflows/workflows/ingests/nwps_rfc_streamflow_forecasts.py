@@ -56,7 +56,11 @@ def ingest_nwps_rfc_forecasts(
 
     ev = initialize_evaluation(
         temp_dir_path=temp_dir_path,
-        start_spark_cluster=start_spark_cluster
+        start_spark_cluster=start_spark_cluster,
+        update_configs={
+            "spark.sql.shuffle.partitions": "4",
+            "spark.sql.adaptive.enabled": "true"
+        }
     )
 
     # get existing location ids from warehouse
