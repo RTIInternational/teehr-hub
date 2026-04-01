@@ -2,7 +2,9 @@ from pathlib import Path
 from datetime import datetime, timedelta, UTC
 from typing import Union, Optional
 import logging
+import os
 
+from prefect.blocks.system import Secret
 from prefect import flow, get_run_logger
 from prefect.futures import wait
 import pandas as pd
@@ -58,6 +60,9 @@ def ingest_usgs_streamflow_obs(
       will be saved to the cache per location ID, eliminating overwrites.
     """
     logger = get_run_logger()
+
+    # Read the USGS API key from prefect and set as an env variable
+    os.environ["API_USGS_PAT"] = Secret.load("api-usgs-pat").get()
 
     if end_dt is None:
         end_dt = datetime.now(UTC).replace(tzinfo=None)
@@ -122,7 +127,7 @@ def ingest_usgs_streamflow_obs(
     # Todo: Coalesce cache files for better write performance?
 
     logger.info("⏰ Loading USGS data from the cache")
-    ev.load.from_cache(
+    ev._load.from_cache(
         in_path=Path(ev.fetch.usgs_cache_dir),
         write_mode=write_mode,
         drop_duplicates=drop_duplicates,

@@ -29,7 +29,7 @@ def load_to_warehouse(
     logger.info(
         f"Loading troute output from cache to {table_name}"
     )
-    ev.load.from_cache(
+    ev._load.from_cache(
         in_path=in_path,
         table_name=table_name
     )
