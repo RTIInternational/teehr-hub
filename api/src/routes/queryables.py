@@ -33,6 +33,20 @@ COLLECTION_CONFIGS = {
                 "$ref": "https://geojson.org/schema/Point.json",
                 "x-ogc-role": "primary-geometry",
             },
+            "properties": {
+                "title": "Additional Properties",
+                "type": "object",
+            },
+            "created_at": {
+                "title": "Created At",
+                "type": "string",
+                "format": "date-time",
+            },
+            "updated_at": {
+                "title": "Updated At",
+                "type": "string",
+                "format": "date-time",
+            },
         },
     },
     "primary_timeseries": {
@@ -54,6 +68,16 @@ COLLECTION_CONFIGS = {
             "variable_name": {"title": "Variable/Parameter", "type": "string"},
             "configuration_name": {"title": "Configuration", "type": "string"},
             "unit_name": {"title": "Unit", "type": "string"},
+            "created_at": {
+                "title": "Created At",
+                "type": "string",
+                "format": "date-time",
+            },
+            "updated_at": {
+                "title": "Updated At",
+                "type": "string",
+                "format": "date-time",
+            },
         },
     },
     "secondary_timeseries": {
@@ -81,6 +105,16 @@ COLLECTION_CONFIGS = {
             "configuration_name": {"title": "Configuration", "type": "string"},
             "member": {"title": "Ensemble Member", "type": "string"},
             "unit_name": {"title": "Unit", "type": "string"},
+            "created_at": {
+                "title": "Created At",
+                "type": "string",
+                "format": "date-time",
+            },
+            "updated_at": {
+                "title": "Updated At",
+                "type": "string",
+                "format": "date-time",
+            },
         },
     },
     "location_crosswalks": {
@@ -96,6 +130,20 @@ COLLECTION_CONFIGS = {
                 "title": "Secondary Location ID",
                 "type": "string",
             },
+            "properties": {
+                "title": "Additional Properties",
+                "type": "object",
+            },
+            "created_at": {
+                "title": "Created At",
+                "type": "string",
+                "format": "date-time",
+            },
+            "updated_at": {
+                "title": "Updated At",
+                "type": "string",
+                "format": "date-time",
+            },
         },
     },
     "configurations": {
@@ -108,13 +156,27 @@ COLLECTION_CONFIGS = {
                 "type": "string",
                 "x-ogc-role": "id",
             },
-            "type": {
+            "timeseries_type": {
                 "title": "Type",
                 "type": "string",
             },
             "description": {
                 "title": "Description",
                 "type": "string",
+            },
+            "properties": {
+                "title": "Additional Properties",
+                "type": "object",
+            },
+            "created_at": {
+                "title": "Created At",
+                "type": "string",
+                "format": "date-time",
+            },
+            "updated_at": {
+                "title": "Updated At",
+                "type": "string",
+                "format": "date-time",
             },
         },
     },
@@ -132,6 +194,16 @@ COLLECTION_CONFIGS = {
                 "title": "Long Name",
                 "type": "string",
             },
+            "created_at": {
+                "title": "Created At",
+                "type": "string",
+                "format": "date-time",
+            },
+            "updated_at": {
+                "title": "Updated At",
+                "type": "string",
+                "format": "date-time",
+            },
         },
     },
     "variables": {
@@ -147,6 +219,16 @@ COLLECTION_CONFIGS = {
             "long_name": {
                 "title": "Long Name",
                 "type": "string",
+            },
+            "created_at": {
+                "title": "Created At",
+                "type": "string",
+                "format": "date-time",
+            },
+            "updated_at": {
+                "title": "Updated At",
+                "type": "string",
+                "format": "date-time",
             },
         },
     },
@@ -168,6 +250,16 @@ COLLECTION_CONFIGS = {
                 "title": "Type",
                 "type": "string",
             },
+            "created_at": {
+                "title": "Created At",
+                "type": "string",
+                "format": "date-time",
+            },
+            "updated_at": {
+                "title": "Updated At",
+                "type": "string",
+                "format": "date-time",
+            },
         },
     },
     "location_attributes": {
@@ -186,6 +278,20 @@ COLLECTION_CONFIGS = {
             "value": {
                 "title": "Value",
                 "type": "string",
+            },
+            "properties": {
+                "title": "Additional Properties",
+                "type": "object",
+            },
+            "created_at": {
+                "title": "Created At",
+                "type": "string",
+                "format": "date-time",
+            },
+            "updated_at": {
+                "title": "Updated At",
+                "type": "string",
+                "format": "date-time",
             },
         },
     },

@@ -18,7 +18,7 @@ router = APIRouter()
 async def get_configuration_items(
     request: Request,
     name: str | None = Query(None, description="Filter by configuration name"),
-    type: str | None = Query(None, description="Filter by type (primary, secondary)"),
+    timeseries_type: str | None = Query(None, description="Filter by type (primary, secondary)"),
     limit: int | None = Query(
         None, ge=1, description="Maximum number of items to return (omit to return all)"
     ),
@@ -38,9 +38,9 @@ async def get_configuration_items(
             safe_name = sanitize_string(name)
             where_conditions.append(f"name = '{safe_name}'")
 
-        if type:
-            safe_type = sanitize_string(type)
-            where_conditions.append(f"type = '{safe_type}'")
+        if timeseries_type:
+            safe_timeseries_type = sanitize_string(timeseries_type)
+            where_conditions.append(f"timeseries_type = '{safe_timeseries_type}'")
 
         where_clause = " AND ".join(where_conditions) if where_conditions else "1=1"
 
@@ -51,10 +51,7 @@ async def get_configuration_items(
             pagination += f" LIMIT {limit}"
 
         query = f"""
-            SELECT
-                name,
-                type,
-                description
+            SELECT *
             FROM {trino_catalog}.{trino_schema}.configurations
             WHERE {where_clause}
             ORDER BY name
@@ -348,10 +345,7 @@ async def get_location_attribute_items(
             pagination += f" LIMIT {limit}"
 
         query = f"""
-            SELECT
-                location_id,
-                attribute_name,
-                value
+            SELECT *
             FROM {trino_catalog}.{trino_schema}.location_attributes
             WHERE {where_clause}
             ORDER BY location_id, attribute_name

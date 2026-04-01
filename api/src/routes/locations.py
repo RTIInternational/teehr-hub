@@ -62,9 +62,7 @@ async def get_locations_items(
             # Query locations with their attributes (one row per attribute)
             base_query = f"""
                 SELECT
-                    l.id,
-                    l.name,
-                    l.geometry,
+                    l.*,
                     la.attribute_name,
                     la.value as attribute_value
                 FROM {trino_catalog}.{trino_schema}.locations l
@@ -76,9 +74,7 @@ async def get_locations_items(
             # Simple query without attributes
             base_query = f"""
                 SELECT
-                    l.id,
-                    l.name,
-                    l.geometry
+                    l.*
                 FROM {trino_catalog}.{trino_schema}.locations l
                 WHERE {where_clause}
             """
@@ -115,10 +111,7 @@ async def get_locations_items(
             base_query += " AND " + " AND ".join(spatial_filters)
 
         # Add ordering and pagination
-        if include_attributes:
-            base_query += " ORDER BY l.id"
-        else:
-            base_query += " ORDER BY id"
+        base_query += " ORDER BY l.id"
 
         # Apply SQL-level OFFSET/LIMIT only when not including attributes.
         # When include_attributes=True, pagination is handled after pivoting.
@@ -136,7 +129,7 @@ async def get_locations_items(
         # Pivot attributes if requested, otherwise df is already paginated
         if include_attributes:
             # First, separate location columns from attribute columns
-            location_cols = ["id", "name", "geometry"]
+            location_cols = df.columns.difference(["attribute_name", "attribute_value"]) 
             locations_df = df[location_cols].drop_duplicates(subset=["id"])
 
             # Pivot attributes if they exist
