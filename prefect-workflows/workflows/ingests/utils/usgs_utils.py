@@ -26,18 +26,14 @@ def get_usgs_location_ids(
     ).filter(
         filters=[
             {
-                "column": "id",
+                "column": "location_id",
                 "operator": "like",
                 "value": "usgs-%"
             },
-            {
-                "column": "is_active",
-                "operator": "eq",
-                "value": "True"
-            }
+            "is_active = 'True'"
         ]
     ).to_pandas()
-    sites = locations_df["id"].str.upper().to_list()
+    sites = locations_df["location_id"].str.upper().to_list()
     logger.info(f"✅ Retrieved {len(sites)} USGS location IDs")
     return sites
 
