@@ -46,7 +46,7 @@ UNITS_MAPPING = {
 )
 def ingest_nwps_rfc_forecasts(
     temp_dir_path: Union[str, Path],
-    start_spark_cluster: bool = True,
+    start_spark_cluster: bool = False,
 ) -> None:
     """RFC streamflow forecast ingestion workflow."""
     logger = get_run_logger()
@@ -57,7 +57,10 @@ def ingest_nwps_rfc_forecasts(
 
     ev = initialize_evaluation(
         temp_dir_path=temp_dir_path,
-        start_spark_cluster=start_spark_cluster
+        start_spark_cluster=start_spark_cluster,
+        update_configs={
+            "spark.sql.shuffle.partitions": "4"
+        }
     )
 
     # Limit secondary IDs to USGS sites that are active and have discharge data

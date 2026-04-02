@@ -47,7 +47,7 @@ def ingest_usgs_streamflow_obs(
     overwrite_output: Optional[bool] = True,
     write_mode: TableWriteEnum = "append",
     drop_duplicates: bool = True,
-    start_spark_cluster: bool = True,
+    start_spark_cluster: bool = False,
 ) -> None:
     """USGS Streamflow Ingestion from NWIS.
 
@@ -72,7 +72,10 @@ def ingest_usgs_streamflow_obs(
 
     ev = initialize_evaluation(
         temp_dir_path=temp_dir_path,
-        start_spark_cluster=start_spark_cluster
+        start_spark_cluster=start_spark_cluster,
+        update_configs={
+            "spark.sql.shuffle.partitions": "4"
+        }
     )
 
     if (
