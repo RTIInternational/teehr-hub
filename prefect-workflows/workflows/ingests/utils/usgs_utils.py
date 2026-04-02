@@ -22,7 +22,7 @@ def get_usgs_location_ids(
     logger = get_run_logger()
     logger.info("⏰ Querying USGS location IDs")
     locations_df = ev.location_attributes_view(
-            attr_list=["is_active"]
+            attr_list=["is_active", "has_inst_discharge"]
     ).filter(
         filters=[
             {
@@ -30,7 +30,8 @@ def get_usgs_location_ids(
                 "operator": "like",
                 "value": "usgs-%"
             },
-            "is_active = 'True'"
+            "is_active = 'True'",
+            "has_inst_discharge = 'True'"
         ]
     ).to_pandas()
     sites = locations_df["location_id"].str.upper().to_list()
