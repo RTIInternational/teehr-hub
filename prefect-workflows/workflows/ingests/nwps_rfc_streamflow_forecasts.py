@@ -5,6 +5,7 @@ import logging
 
 from prefect import flow, get_run_logger
 from prefect.futures import wait
+from pyspark.sql import functions as F
 
 from workflows.utils.common_utils import initialize_evaluation
 from utils.datastream_utils import (
@@ -59,19 +60,24 @@ def ingest_nwps_rfc_forecasts(
         start_spark_cluster=start_spark_cluster
     )
 
-    # get existing location ids from warehouse
-    secondary_id_list = [
-        row[0] for row in ev.location_crosswalks.to_sdf().select(
-            "secondary_location_id"
-            ).collect()
+    # Limit secondary IDs to USGS sites that are active and have discharge data
+    filtered_crosswalks_sdf = ev.location_crosswalks.add_attributes(
+        attr_list=["is_active", "has_inst_discharge"]
+    ).filter(
+        filters=[
+            {
+                "column": "secondary_location_id",
+                "operator": "like",
+                "value": f"{LOCATION_ID_PREFIX}-%"
+            },
+            "is_active = 'True'",
+            "has_inst_discharge = 'True'"
+        ]
+    ).to_sdf()
+    stripped_ids = [
+        row[0].split("-")[1]
+        for row in filtered_crosswalks_sdf.select("secondary_location_id").collect()
     ]
-
-    stripped_ids = []
-    for prim_id in secondary_id_list:
-        prefix = prim_id.split("-")[0]
-        id_val = prim_id.split("-")[1]
-        if prefix == 'nwpsrfc' and id_val not in stripped_ids:
-            stripped_ids.append(id_val)
 
     # set up single cache directory
     output_cache_dir = Path(

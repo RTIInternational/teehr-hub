@@ -16,6 +16,7 @@ from utils.datastream_utils import (
     coalesce_cache_files,
     load_to_warehouse
 )
+from pyspark.sql import functions as F
 from teehr.utils.utils import remove_dir_if_exists
 
 
@@ -88,16 +89,24 @@ def ingest_datastream_forecasts(
         start_spark_cluster=start_spark_cluster
     )
 
-    # Get existing location IDs from warehouse
-    secondary_id_list = [
-        row[0] for row in ev.location_crosswalks.to_sdf().select("secondary_location_id").collect()
+    # Limit secondary IDs to USGS sites that are active and have discharge data
+    filtered_crosswalks_sdf = ev.location_crosswalks.add_attributes(
+        attr_list=["is_active", "has_inst_discharge"]
+    ).filter(
+        filters=[
+            {
+                "column": "secondary_location_id",
+                "operator": "like",
+                "value": f"{LOCATION_ID_PREFIX}-%"
+            },
+            "is_active = 'True'",
+            "has_inst_discharge = 'True'"
+        ]
+    ).to_sdf()
+    stripped_ids = [
+        int(row[0].split("-")[1])
+        for row in filtered_crosswalks_sdf.select("secondary_location_id").collect()
     ]
-    stripped_ids = []
-    for sec_id in secondary_id_list:
-        prefix = sec_id.split("-")[0]
-        id_val = sec_id.split("-")[1]
-        if prefix == "nrds22":
-            stripped_ids.append(int(id_val))
 
     # Get tz hours and members based on forecast configuration
     if forecast_configuration == "short_range":
