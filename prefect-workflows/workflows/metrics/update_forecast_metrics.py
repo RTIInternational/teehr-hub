@@ -7,8 +7,8 @@ from prefect import flow, get_run_logger
 from workflows.utils.common_utils import initialize_evaluation, set_table_properties
 from update_joined_forecasts import JOINED_FORECAST_TABLE_NAME
 from utils.forecast_utils import (
-    calculate_forecast_metrics_by_lead_time_bins,
-    calculate_forecast_metrics_by_location,
+    write_forecast_metrics_by_lead_time_bins,
+    write_forecast_metrics_by_location,
     FORECAST_BY_LEAD_TIME_BIN_GROUPBY,
     FORECAST_BY_LOCATION_GROUPBY,
     FORECAST_METRICS
@@ -45,17 +45,11 @@ def update_forecast_metrics_table(
         executor_instances=8
     )
 
-    logger.info("Calculating forecast metrics by lead time bins...")
-    sdf = calculate_forecast_metrics_by_lead_time_bins(
+    logger.info("Calculating and writing forecast metrics by lead time bins...")
+    write_forecast_metrics_by_lead_time_bins(
         ev=ev,
         joined_forecast_table_name=JOINED_FORECAST_TABLE_NAME,
-    )
-
-    logger.info("Writing forecast metrics by lead time bins table to warehouse...")
-    ev.write.to_warehouse(
-        source_data=sdf,
-        table_name=METRICS_BY_LEAD_TIME_TABLE_NAME,
-        write_mode="create_or_replace"
+        output_table_name=METRICS_BY_LEAD_TIME_TABLE_NAME
     )
     set_table_properties(
         ev=ev,
@@ -68,17 +62,11 @@ def update_forecast_metrics_table(
     )
     logger.info("Forecast metrics by lead time bins table created.")
 
-    logger.info("Calculating forecast metrics by location...")
-    sdf = calculate_forecast_metrics_by_location(
+    logger.info("Calculating and writing forecast metrics by location...")
+    write_forecast_metrics_by_location(
         ev=ev,
         joined_forecast_table_name=JOINED_FORECAST_TABLE_NAME,
-    )
-
-    logger.info("Writing forecast metrics by location table to warehouse...")
-    ev.write.to_warehouse(
-        source_data=sdf,
-        table_name=METRICS_BY_LOCATION_TABLE_NAME,
-        write_mode="create_or_replace"
+        output_table_name=METRICS_BY_LOCATION_TABLE_NAME
     )
     set_table_properties(
         ev=ev,

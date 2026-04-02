@@ -1,4 +1,3 @@
-from typing import List
 import logging
 
 from prefect import get_run_logger, task
@@ -51,20 +50,21 @@ FORECAST_METRICS = [
 
 
 @task(cache_policy=NO_CACHE)
-def calculate_forecast_metrics_by_lead_time_bins(
+def write_forecast_metrics_by_lead_time_bins(
     ev: teehr.Evaluation,
     joined_forecast_table_name: str,
+    output_table_name: str
 ) -> DataFrame:
-    """Calculate forecast metrics by lead time.
+    """Write forecast metrics by lead time bins.
 
     Notes
     -----
     - This requires the joined forecast table to be created first.
+    - The 'overwrite' write mode preserves history but requires the table to pre-exist.
     """
     logger = get_run_logger()
     logger.info("Creating forecast metrics by lead time bins table...")
-
-    sdf = (
+    (
         ev
         .table(joined_forecast_table_name)
         .add_calculated_fields([
@@ -75,27 +75,31 @@ def calculate_forecast_metrics_by_lead_time_bins(
         .aggregate(
             metrics=FORECAST_METRICS,
             group_by=FORECAST_BY_LEAD_TIME_BIN_GROUPBY,
-        ).add_geometry().to_sdf()
+        )
+        .add_geometry()
+        .write_to(
+            table_name=output_table_name,
+            write_mode="overwrite"
+        )
     )
-
-    return sdf
 
 
 @task(cache_policy=NO_CACHE)
-def calculate_forecast_metrics_by_location(
+def write_forecast_metrics_by_location(
     ev: teehr.Evaluation,
     joined_forecast_table_name: str,
+    output_table_name: str
 ) -> DataFrame:
-    """Calculate forecast metrics by location.
+    """Write forecast metrics by location.
 
     Notes
     -----
     - This requires the joined forecast table to be created first.
+    - The 'overwrite' write mode preserves history but requires the table to pre-exist.
     """
     logger = get_run_logger()
     logger.info("Creating forecast metrics by location table...")
-
-    sdf = (
+    (
         ev
         .table(joined_forecast_table_name)
         .add_calculated_fields([
@@ -106,40 +110,10 @@ def calculate_forecast_metrics_by_location(
         .aggregate(
             metrics=FORECAST_METRICS,
             group_by=FORECAST_BY_LOCATION_GROUPBY
-        ).add_geometry().to_sdf()
+        )
+        .add_geometry()
+        .write_to(
+            table_name=output_table_name,
+            write_mode="overwrite"
+        )
     )
-
-    return sdf
-
-
-@task(cache_policy=NO_CACHE)
-def join_forecast_timeseries(
-    ev: teehr.Evaluation,
-    forecast_configuration_names: List[str]
-) -> DataFrame:
-    """Join secondary forecasts with primary timeseries.
-
-    Notes
-    -----
-    - Joins secondary timeseries whose configuration names are
-      in the provided list to primary timeseries via the location
-      crosswalk.
-    """
-    logger = get_run_logger()
-    logger.info("Creating joined forecast timeseries table...")
-
-    secondary_filters = None
-    if forecast_configuration_names:
-        secondary_filters=[
-            {
-                "column": "configuration_name",
-                "operator": "in",
-                "value": forecast_configuration_names
-            }
-        ]
-
-    joined_sdf = ev.joined_timeseries_view(
-        secondary_filters=secondary_filters
-    ).to_sdf()
-
-    return joined_sdf

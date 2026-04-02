@@ -5,7 +5,7 @@ import logging
 
 from prefect import flow, get_run_logger
 
-from utils.forecast_utils import join_forecast_timeseries
+# from utils.forecast_utils import join_forecast_timeseries
 from workflows.utils.common_utils import initialize_evaluation
 
 logging.getLogger("teehr").setLevel(logging.INFO)
@@ -35,13 +35,9 @@ def update_joined_forecast_table(
         FORECAST_CONFIGURATION_NAMES,
     start_spark_cluster: bool = True,
 ) -> None:
-    """Create the joined forecast table
+    """Create the joined forecast table.
 
-    Notes
-    -----
-    - Ultimately the join will be updated to include a filter so
-      so that recent data can be joined and appended to the existing table.
-    - Currently, the entire joined table is re-created each time.
+    Includes filters to limit the join to forecast configurations.
     """
     logger = get_run_logger()
     ev = initialize_evaluation(
@@ -49,18 +45,17 @@ def update_joined_forecast_table(
         start_spark_cluster=start_spark_cluster,
         executor_instances=8
     )
-
-    logger.info("Joining forecast timeseries...")
-    joined_sdf = join_forecast_timeseries(
-        ev=ev,
-        forecast_configuration_names=forecast_configuration_names
-    )
-
-    logger.info("Writing joined forecast timeseries table to warehouse...")
-    # Note. We could append to joined_timeseries here instead
-    # of recreating a new table.
-    ev.write.to_warehouse(
-        source_data=joined_sdf,
+    logger.info("Creating joined forecast timeseries table...")
+    secondary_filters=[
+        {
+            "column": "configuration_name",
+            "operator": "in",
+            "value": forecast_configuration_names
+        }
+    ]
+    ev.joined_timeseries_view(
+        secondary_filters=secondary_filters
+    ).write_to(
         table_name=JOINED_FORECAST_TABLE_NAME,
         write_mode="create_or_replace"
     )
