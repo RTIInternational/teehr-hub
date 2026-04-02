@@ -90,29 +90,19 @@ def ingest_datastream_forecasts(
     )
 
     # Limit secondary IDs to USGS sites that are active and have discharge data
-    locations_sdf = ev.location_attributes_view(
-            attr_list=["is_active", "has_inst_discharge"]
+    filtered_crosswalks_sdf = ev.location_crosswalks.add_attributes(
+        attr_list=["is_active", "has_inst_discharge"]
     ).filter(
         filters=[
             {
-                "column": "location_id",
+                "column": "secondary_location_id",
                 "operator": "like",
-                "value": "usgs-%"
+                "value": f"{LOCATION_ID_PREFIX}-%"
             },
             "is_active = 'True'",
             "has_inst_discharge = 'True'"
         ]
     ).to_sdf()
-    # Filter crosswalks to 'nrds22-' secondary IDs whose primary_location_id is an active USGS site
-    filtered_crosswalks_sdf = (
-        ev.location_crosswalks.to_sdf()
-        .filter(F.col("secondary_location_id").startswith("nrds22-"))
-        .join(
-            locations_sdf.select(F.col("location_id").alias("primary_location_id")),
-            on="primary_location_id",
-            how="inner"
-        )
-    )
     stripped_ids = [
         int(row[0].split("-")[1])
         for row in filtered_crosswalks_sdf.select("secondary_location_id").collect()
