@@ -59,7 +59,7 @@ def ingest_nwps_rfc_forecasts(
         start_spark_cluster=start_spark_cluster,
         update_configs={
             "spark.sql.shuffle.partitions": "4",
-            "spark.sql.adaptive.enabled": "true"
+            # "spark.sql.adaptive.enabled": "true"
         }
     )
 
