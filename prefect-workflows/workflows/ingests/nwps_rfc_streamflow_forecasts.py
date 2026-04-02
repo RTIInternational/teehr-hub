@@ -45,7 +45,7 @@ UNITS_MAPPING = {
 )
 def ingest_nwps_rfc_forecasts(
     temp_dir_path: Union[str, Path],
-    start_spark_cluster: bool = True,
+    start_spark_cluster: bool = False,
 ) -> None:
     """RFC streamflow forecast ingestion workflow."""
     logger = get_run_logger()
