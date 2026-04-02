@@ -11,32 +11,40 @@ import geopandas as gpd
 from ..config import config
 
 
-def format_datetime_columns(
+def prepare_for_serialization(
     df: pd.DataFrame,
-    columns: list[str] | None = None,
+    datetime_columns: list[str] | None = None,
+    replace_nan: bool = True,
 ) -> pd.DataFrame:
-    """Format datetime columns for JSON serialization.
+    """Prepare DataFrame for JSON serialization.
 
     Converts datetime columns to ISO-like string format, handling null values.
     By default formats 'created_at' and 'updated_at' if they exist.
+    Also replaces NaN values with None for JSON compliance.
 
     Args:
         df: Input DataFrame
-        columns: List of column names to format. Defaults to 
-                 ['created_at', 'updated_at'] if None.
+        datetime_columns: List of datetime column names to format. Defaults to 
+                          ['created_at', 'updated_at'] if None.
+        replace_nan: If True, replaces NaN values with None in all columns
+                     for JSON compliance. Defaults to True.
 
     Returns:
-        DataFrame with formatted datetime columns
+        DataFrame ready for JSON serialization
     """
-    if columns is None:
-        columns = ["created_at", "updated_at"]
+    if datetime_columns is None:
+        datetime_columns = ["created_at", "updated_at"]
 
-    for col in columns:
+    for col in datetime_columns:
         if col in df.columns:
             dt = pd.to_datetime(df[col], errors="coerce")
             non_null_mask = dt.notna()
             dt_str = dt.dt.strftime("%Y-%m-%d %H:%M:%S")
             df[col] = dt_str.where(non_null_mask, None)
+
+    # Replace NaN/NaT with None for JSON serialization
+    if replace_nan:
+        df = df.astype(object).where(pd.notna(df), None)
 
     return df
 

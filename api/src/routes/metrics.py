@@ -9,7 +9,7 @@ from fastapi.responses import JSONResponse
 from ..database import (
     execute_query, sanitize_string, trino_catalog, trino_schema
 )
-from .utils import create_ogc_geojson_response, format_datetime_columns
+from .utils import create_ogc_geojson_response, prepare_for_serialization
 
 router = APIRouter()
 
@@ -83,7 +83,7 @@ async def get_collection_items(
         query_time = time.time() - query_start
         print(f"Query execution time: {query_time:.3f} seconds")
 
-        df = format_datetime_columns(df)
+        df = prepare_for_serialization(df)
         geojson = create_ogc_geojson_response(
             df,
             str(request.url),

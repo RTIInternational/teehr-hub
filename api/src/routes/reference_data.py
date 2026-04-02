@@ -10,7 +10,7 @@ from fastapi import APIRouter, HTTPException, Query, Request
 from fastapi.responses import JSONResponse
 
 from ..database import execute_query, sanitize_string, trino_catalog, trino_schema
-from .utils import format_datetime_columns
+from .utils import prepare_for_serialization
 
 router = APIRouter()
 
@@ -65,7 +65,7 @@ async def get_configuration_items(
         print(f"Configurations query execution time: {query_time:.3f} seconds")
 
         if not df.empty:
-            df = format_datetime_columns(df)
+            df = prepare_for_serialization(df)
         items = df.to_dict(orient="records") if not df.empty else []
 
         response = {
@@ -135,7 +135,7 @@ async def get_unit_items(
         print(f"Units query execution time: {query_time:.3f} seconds")
 
         if not df.empty:
-            df = format_datetime_columns(df)
+            df = prepare_for_serialization(df)
         items = df.to_dict(orient="records") if not df.empty else []
 
         response = {
@@ -205,7 +205,7 @@ async def get_variable_items(
         print(f"Variables query execution time: {query_time:.3f} seconds")
 
         if not df.empty:
-            df = format_datetime_columns(df)
+            df = prepare_for_serialization(df)
         items = df.to_dict(orient="records") if not df.empty else []
 
         response = {
@@ -275,7 +275,7 @@ async def get_attribute_items(
         print(f"Attributes query execution time: {query_time:.3f} seconds")
 
         if not df.empty:
-            df = format_datetime_columns(df)
+            df = prepare_for_serialization(df)
         items = df.to_dict(orient="records") if not df.empty else []
 
         response = {
@@ -367,7 +367,7 @@ async def get_location_attribute_items(
         print(f"Location attributes query execution time: {query_time:.3f} seconds")
 
         if not df.empty:
-            df = format_datetime_columns(df)
+            df = prepare_for_serialization(df)
         items = df.to_dict(orient="records") if not df.empty else []
 
         response = {
