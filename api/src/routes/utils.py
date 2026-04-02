@@ -11,6 +11,36 @@ import geopandas as gpd
 from ..config import config
 
 
+def format_datetime_columns(
+    df: pd.DataFrame,
+    columns: list[str] | None = None,
+) -> pd.DataFrame:
+    """Format datetime columns for JSON serialization.
+
+    Converts datetime columns to ISO-like string format, handling null values.
+    By default formats 'created_at' and 'updated_at' if they exist.
+
+    Args:
+        df: Input DataFrame
+        columns: List of column names to format. Defaults to 
+                 ['created_at', 'updated_at'] if None.
+
+    Returns:
+        DataFrame with formatted datetime columns
+    """
+    if columns is None:
+        columns = ["created_at", "updated_at"]
+
+    for col in columns:
+        if col in df.columns:
+            dt = pd.to_datetime(df[col], errors="coerce")
+            non_null_mask = dt.notna()
+            dt_str = dt.dt.strftime("%Y-%m-%d %H:%M:%S")
+            df[col] = dt_str.where(non_null_mask, None)
+
+    return df
+
+
 def parse_datetime_parameter(datetime_param: str | None) -> tuple:
     """Parse OGC datetime parameter (ISO 8601).
 

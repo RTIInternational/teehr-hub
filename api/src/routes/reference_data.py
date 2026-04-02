@@ -10,6 +10,7 @@ from fastapi import APIRouter, HTTPException, Query, Request
 from fastapi.responses import JSONResponse
 
 from ..database import execute_query, sanitize_string, trino_catalog, trino_schema
+from .utils import format_datetime_columns
 
 router = APIRouter()
 
@@ -63,6 +64,8 @@ async def get_configuration_items(
         query_time = time.time() - query_start
         print(f"Configurations query execution time: {query_time:.3f} seconds")
 
+        if not df.empty:
+            df = format_datetime_columns(df)
         items = df.to_dict(orient="records") if not df.empty else []
 
         response = {
@@ -131,6 +134,8 @@ async def get_unit_items(
         query_time = time.time() - query_start
         print(f"Units query execution time: {query_time:.3f} seconds")
 
+        if not df.empty:
+            df = format_datetime_columns(df)
         items = df.to_dict(orient="records") if not df.empty else []
 
         response = {
@@ -199,6 +204,8 @@ async def get_variable_items(
         query_time = time.time() - query_start
         print(f"Variables query execution time: {query_time:.3f} seconds")
 
+        if not df.empty:
+            df = format_datetime_columns(df)
         items = df.to_dict(orient="records") if not df.empty else []
 
         response = {
@@ -267,6 +274,8 @@ async def get_attribute_items(
         query_time = time.time() - query_start
         print(f"Attributes query execution time: {query_time:.3f} seconds")
 
+        if not df.empty:
+            df = format_datetime_columns(df)
         items = df.to_dict(orient="records") if not df.empty else []
 
         response = {
@@ -357,6 +366,8 @@ async def get_location_attribute_items(
         query_time = time.time() - query_start
         print(f"Location attributes query execution time: {query_time:.3f} seconds")
 
+        if not df.empty:
+            df = format_datetime_columns(df)
         items = df.to_dict(orient="records") if not df.empty else []
 
         response = {

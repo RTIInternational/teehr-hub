@@ -9,7 +9,7 @@ from fastapi.responses import JSONResponse
 
 from ..config import config
 from ..database import execute_query, sanitize_string, trino_catalog, trino_schema
-from .utils import create_ogc_geojson_response
+from .utils import create_ogc_geojson_response, format_datetime_columns
 
 router = APIRouter()
 
@@ -157,6 +157,7 @@ async def get_locations_items(
 
         print(f"Processing {len(df)} location records")
 
+        df = format_datetime_columns(df)
         geojson = create_ogc_geojson_response(
             df,
             str(request.url),
