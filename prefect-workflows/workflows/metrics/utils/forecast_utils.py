@@ -64,7 +64,9 @@ def write_forecast_metrics_by_lead_time_bins(
     - The 'overwrite' write mode preserves history but requires the table to pre-exist.
     """
     logger = get_run_logger()
-    logger.info("Creating forecast metrics by lead time bins table...")
+    logger.info(
+        f"Creating forecast metrics by lead time bins table with write mode '{write_mode}'..."
+    )
     (
         ev
         .table(joined_forecast_table_name)
@@ -100,7 +102,9 @@ def write_forecast_metrics_by_location(
     - The 'overwrite' write mode preserves history but requires the table to pre-exist.
     """
     logger = get_run_logger()
-    logger.info("Creating forecast metrics by location table...")
+    logger.info(
+        f"Creating forecast metrics by location table with write mode '{write_mode}'..."
+    )
     (
         ev
         .table(joined_forecast_table_name)
