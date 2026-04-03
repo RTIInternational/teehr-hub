@@ -151,6 +151,19 @@ def create_ogc_geojson_response(
 
         gdf = gpd.GeoDataFrame(df, crs="EPSG:4326", geometry="geometry")
         geojson = json.loads(gdf.to_json())
+        
+        # Round coordinates to 8 decimal places (~1mm precision) to avoid
+        # excessive precision that can cause issues with some map clients
+        for feature in geojson.get("features", []):
+            geom = feature.get("geometry")
+            if geom and geom.get("coordinates"):
+                coords = geom["coordinates"]
+                if geom["type"] == "Point":
+                    geom["coordinates"] = [round(c, 8) for c in coords]
+                elif geom["type"] in ("LineString", "MultiPoint"):
+                    geom["coordinates"] = [[round(c, 8) for c in pt] for pt in coords]
+                elif geom["type"] in ("Polygon", "MultiLineString"):
+                    geom["coordinates"] = [[[round(c, 8) for c in pt] for pt in ring] for ring in coords]
 
     # Set feature id from properties if available
     for feature in geojson.get("features", []):
