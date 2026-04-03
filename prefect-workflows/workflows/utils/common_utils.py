@@ -55,11 +55,11 @@ def initialize_evaluation(
 def table_exists(
     ev: teehr.Evaluation,
     table_name: str,
-    catalog: str = "iceberg",
-    database: str = "teehr"
+    catalog_name: str = "iceberg",
+    namespace_name: str = "teehr"
 ) -> bool:
     """Check if a table exists in the warehouse."""
-    return ev.spark.catalog.tableExists(f"{catalog}.{database}.{table_name}")
+    return ev.spark.catalog.tableExists(f"{catalog_name}.{namespace_name}.{table_name}")
 
 
 @task(cache_policy=NO_CACHE)
