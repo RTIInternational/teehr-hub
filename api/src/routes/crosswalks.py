@@ -8,6 +8,7 @@ from fastapi import APIRouter, HTTPException, Query, Request
 from fastapi.responses import JSONResponse
 
 from ..database import execute_query, sanitize_string, trino_catalog, trino_schema
+from .utils import prepare_for_serialization
 
 router = APIRouter()
 
@@ -98,6 +99,7 @@ async def get_crosswalk_items(
                 media_type="application/json",
             )
 
+        df = prepare_for_serialization(df)
         items = df.to_dict(orient="records")
 
         # Build response with OGC-style metadata

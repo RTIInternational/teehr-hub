@@ -10,7 +10,7 @@ from fastapi import APIRouter, HTTPException, Query, Request
 from fastapi.responses import JSONResponse
 
 from ..database import execute_query, sanitize_string, trino_catalog, trino_schema
-from .utils import create_ogc_geojson_response
+from .utils import create_ogc_geojson_response, prepare_for_serialization
 
 router = APIRouter()
 
@@ -183,16 +183,8 @@ async def get_primary_timeseries_items(
             "%Y-%m-%d %H:%M:%S"
         )
 
-        # Convert optional datetime columns to string, ensuring missing values become None
-        for col in ["reference_time", "created_at", "updated_at"]:
-            if col in df.columns:
-                dt = pd.to_datetime(df[col], errors="coerce")
-                non_null_mask = dt.notna()
-                dt_str = dt.dt.strftime("%Y-%m-%d %H:%M:%S")
-                df[col] = dt_str.where(non_null_mask, None)
-
-        # Replace NaN with None for JSON serialization
-        df = df.astype(object).where(pd.notna(df), None)
+        # Prepare for JSON serialization
+        df = prepare_for_serialization(df, ["reference_time", "created_at", "updated_at"])
 
         if f and f.lower() == "geojson":
             geojson = create_ogc_geojson_response(
@@ -459,16 +451,8 @@ async def get_secondary_timeseries_items(
             "%Y-%m-%d %H:%M:%S"
         )
 
-        # Convert optional datetime columns to string, ensuring missing values become None
-        for col in ["reference_time", "created_at", "updated_at"]:
-            if col in df.columns:
-                dt = pd.to_datetime(df[col], errors="coerce")
-                non_null_mask = dt.notna()
-                dt_str = dt.dt.strftime("%Y-%m-%d %H:%M:%S")
-                df[col] = dt_str.where(non_null_mask, None)
-
-        # Replace NaN with None for JSON serialization
-        df = df.astype(object).where(pd.notna(df), None)
+        # Prepare for JSON serialization
+        df = prepare_for_serialization(df, ["reference_time", "created_at", "updated_at"])
 
         if f and f.lower() == "geojson":
             geojson = create_ogc_geojson_response(
