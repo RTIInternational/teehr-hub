@@ -226,14 +226,10 @@ const MapComponent = ({
           return;
         }
         
-        // Check for extreme precision that might cause varint issues
-        const lonStr = lon.toString();
-        const latStr = lat.toString();
-        
-        if (lonStr.length > 15 || latStr.length > 15) {
-          invalidFeatures.push({ index, reason: `extreme precision: lon=${lonStr}, lat=${latStr}`, feature });
-          return;
-        }
+        // Round coordinates to 8 decimal places (~1mm precision) to avoid varint issues
+        // while preserving location accuracy
+        feature.geometry.coordinates[0] = Math.round(lon * 1e8) / 1e8;
+        feature.geometry.coordinates[1] = Math.round(lat * 1e8) / 1e8;
         
         // Check for NaN or Infinity
         if (!isFinite(lon) || !isFinite(lat)) {
