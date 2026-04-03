@@ -79,10 +79,10 @@ export const useForecastDataFetching = () => {
       dispatch({ type: ActionTypes.CLEAR_TIMESERIES });
       dispatch({ type: ActionTypes.SET_LOADING, payload: { timeseries: true } });
       
-      const { primary_location_id, configuration, variable, start_date, end_date, reference_start_date, reference_end_date } = filters;
+      const { primary_location_id, configurations, variable, start_date, end_date, reference_start_date, reference_end_date } = filters;
       
-      if (!primary_location_id || !configuration || !variable) {
-        throw new Error('Missing required parameters: primary_location_id, configuration, and variable are required');
+      if (!primary_location_id || !configurations?.length || !variable) {
+        throw new Error('Missing required parameters: primary_location_id, configurations, and variable are required');
       }
 
       // Load primary data (USGS observations)
@@ -94,16 +94,23 @@ export const useForecastDataFetching = () => {
       const primaryData = await apiService.getPrimaryTimeseries(primary_location_id, primaryFilters);
       dispatch({ type: ActionTypes.SET_PRIMARY_TIMESERIES, payload: primaryData });
 
-      // Load secondary data (NWM forecast)
+      // Load secondary data for each configuration and aggregate results
       const secondaryFilters = {
-        configuration,
         variable,
         start_date,
         end_date,
         reference_start_date,
         reference_end_date
       };
-      const secondaryData = await apiService.getSecondaryTimeseries(primary_location_id, secondaryFilters);
+      
+      // Fetch data for all configurations in parallel
+      const secondaryPromises = configurations.map(config => 
+        apiService.getSecondaryTimeseries(primary_location_id, { ...secondaryFilters, configuration: config })
+      );
+      const secondaryResults = await Promise.all(secondaryPromises);
+      
+      // Aggregate all results into a single array
+      const secondaryData = secondaryResults.flat();
       dispatch({ type: ActionTypes.SET_SECONDARY_TIMESERIES, payload: secondaryData });
       
     } catch (error) {

@@ -26,13 +26,11 @@ const MapFilterButton = ({
     <div className="position-absolute top-0 end-0 m-3" style={{ zIndex: 1000 }}>
       <Dropdown show={showDropdown} onToggle={setShowDropdown}>
         <Dropdown.Toggle variant="light" className="shadow-sm">
-          🗺️ Map Filters
+          🗺️ Map Display Settings
         </Dropdown.Toggle>
 
         <Dropdown.Menu style={{ minWidth: '300px' }}>
           <div className="p-3">
-            <h6 className="dropdown-header px-0">Map Display Settings</h6>
-            
             {/* Configuration Filter */}
             <Form.Group className="mb-3">
               <Form.Label className="small fw-bold">Configuration</Form.Label>

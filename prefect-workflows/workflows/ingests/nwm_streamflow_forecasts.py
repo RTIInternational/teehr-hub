@@ -31,7 +31,7 @@ def ingest_nwm_streamflow_forecasts(
     nwm_version: str = "nwm30",
     output_type: str = "channel_rt",
     variable_name: str = "streamflow",
-    start_spark_cluster: bool = True,
+    start_spark_cluster: bool = False,
 ) -> None:
     """NWM Streamflow Forecasts Ingestion.
 
@@ -54,7 +54,10 @@ def ingest_nwm_streamflow_forecasts(
 
     ev = initialize_evaluation(
         temp_dir_path=temp_dir_path,
-        start_spark_cluster=start_spark_cluster
+        start_spark_cluster=start_spark_cluster,
+        update_configs={
+            "spark.sql.shuffle.partitions": "4"
+        }
     )
 
     # Format the NWM configuration name for TEEHR

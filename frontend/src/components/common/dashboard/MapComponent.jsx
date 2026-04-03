@@ -316,8 +316,8 @@ const MapComponent = ({
             12, 12
           ],
           'circle-color': colorExpression,
-          'circle-stroke-width': 2,
-          'circle-stroke-color': '#ffffff',
+          'circle-stroke-width': 1,
+          'circle-stroke-color': 'black',
           'circle-opacity': 0.8
         }
       });
@@ -343,8 +343,8 @@ const MapComponent = ({
               12, 14
             ],
             'circle-color': '#dc3545',
-            'circle-stroke-width': 3,
-            'circle-stroke-color': '#ffffff',
+            'circle-stroke-width': 1,
+            'circle-stroke-color': 'black',
             'circle-opacity': 1
           },
           filter: ['==', 'primary_location_id', '']

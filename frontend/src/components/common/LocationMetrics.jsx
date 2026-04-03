@@ -54,6 +54,24 @@ const LocationMetrics = ({
       <Card.Header className="py-2 d-flex justify-content-between align-items-center">
         <div className="d-flex align-items-center gap-2">
           <Card.Title as="h6" className="mb-0">📊 Metrics</Card.Title>
+          {availableTables.length > 1 && (
+            <Form.Select
+              size="sm"
+              value={selectedTable || ''}
+              onChange={(e) => setSelectedTable(e.target.value)}
+              style={{ width: 'auto', minWidth: '200px' }}
+            >
+            <option value="">Select Table...</option>
+            {availableTables.map(tableName => {
+              const description = tableProperties[tableName]?.description || tableName;
+              return (
+                <option key={tableName} value={tableName}>
+                  {description}
+                </option>
+              );
+            })}
+            </Form.Select>
+          )}
           {(hasLeadTimeBin || hasFilters) && (
             <ButtonGroup size="sm">
               {hasFilters && (
@@ -82,26 +100,6 @@ const LocationMetrics = ({
                 </Button>
               )}
             </ButtonGroup>
-          )}
-        </div>
-        <div className="d-flex align-items-center gap-2">
-          {availableTables.length > 1 && (
-            <Form.Select
-              size="sm"
-              value={selectedTable || ''}
-              onChange={(e) => setSelectedTable(e.target.value)}
-              style={{ width: 'auto', minWidth: '200px' }}
-            >
-            <option value="">Select Table...</option>
-            {availableTables.map(tableName => {
-              const description = tableProperties[tableName]?.description || tableName;
-              return (
-                <option key={tableName} value={tableName}>
-                  {description}
-                </option>
-              );
-            })}
-            </Form.Select>
           )}
         </div>
       </Card.Header>

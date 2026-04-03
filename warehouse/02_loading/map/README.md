@@ -5,7 +5,7 @@
     - 1979-02-01 00:00 to 2023-01-31 23:00
 - USGS high-res drainage basins. TEEHR-Hub data drive: `/data/common/geometry/usgsbasin_geometry_highres.all.parquet`
     - 9068 locations (basin polygons)
- 
+
 ### Output Summary
 - configuration_name: `nwm30_retrospective`
 - location ID prefix: `usgsbasin`
@@ -24,11 +24,11 @@
 
 ### Processing Steps
 #### Calculate fractional area coverage (weights) of pixels overlapping polygons
-- Notebook: https://github.com/RTIInternational/teehr-hub/blob/main/warehouse/03_preprocessing/map/01_calculate_nwm30_pixel_weights.ipynb
+- Notebook: https://github.com/RTIInternational/teehr-hub/blob/main/warehouse/02_loading/map/01_calculate_nwm30_pixel_weights.ipynb
 - Values in s3 at: s3://ciroh-rti-public-data/teehr-data-warehouse/common/map_weights/nwm30_retrospective_conus_usgs_basins/
 
-#### Calculate MAP values 
-- Notebook: https://github.com/RTIInternational/teehr-hub/blob/main/warehouse/03_preprocessing/map/02_calculate_nwm30_retro_usgs_map.ipynb
+#### Calculate MAP values
+- Notebook: https://github.com/RTIInternational/teehr-hub/blob/main/warehouse/02_loading/map/02_calculate_nwm30_retro_usgs_map.ipynb
 - Values in s3 at: s3://ciroh-rti-public-data/teehr-data-warehouse/common/map_values/nwm30_retrospective_conus_usgs_basins/
 
 ### Loading to the Warehouse

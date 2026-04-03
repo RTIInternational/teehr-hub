@@ -10,9 +10,41 @@ from fastapi import APIRouter, HTTPException, Query, Request
 from fastapi.responses import JSONResponse
 
 from ..database import execute_query, sanitize_string, trino_catalog, trino_schema
-from .utils import create_ogc_geojson_response
+from .utils import create_ogc_geojson_response, prepare_for_serialization
 
 router = APIRouter()
+
+
+def _empty_response(request: Request, collection_id: str, f: str | None) -> JSONResponse:
+    """Return a format-appropriate empty response."""
+    if f and f.lower() == "geojson":
+        geojson = create_ogc_geojson_response(
+            pd.DataFrame(),
+            str(request.url),
+            collection_id=collection_id,
+        )
+        return JSONResponse(
+            content=geojson,
+            headers={
+                "Content-Type": "application/geo+json",
+                "Content-Crs": "<http://www.opengis.net/def/crs/OGC/1.3/CRS84>",
+            },
+        )
+
+    if f and f.lower() == "timeseries":
+        return JSONResponse(content=[], media_type="application/json")
+
+    return JSONResponse(
+        content={
+            "items": [],
+            "numberReturned": 0,
+            "links": [
+                {"href": str(request.url), "rel": "self", "type": "application/json"},
+                {"href": f"/collections/{collection_id}", "rel": "collection", "type": "application/json"},
+            ],
+        },
+        media_type="application/json",
+    )
 
 
 @router.get("/collections/primary_timeseries/items")
@@ -34,14 +66,35 @@ async def get_primary_timeseries_items(
     offset: int | None = Query(
         None, ge=0, description="Starting index for pagination"
     ),
-    f: str | None = Query("json", description="Output format: json or geojson"),
+    f: str | None = Query(
+        "json",
+        description=(
+            "Output format. 'json' (default) returns an OGC-style paging envelope "
+            "({items, numberReturned, links}); 'timeseries' returns formatted objects containing metadata "
+            "and grouped timeseries objects; 'geojson' returns an OGC GeoJSON FeatureCollection."
+        ),
+    ),
 ):
     """Get primary timeseries (observations) for a location.
 
-    Returns array of timeseries objects with streamflow data.
+    Supports filtering by:
+        - primary_location_id
+        - datetime: ISO 8601 interval for value_time (e.g., 2020-01-01/2020-12-31)
+        - variable_name: Variable name (e.g., streamflow_hourly_inst)
+        - configuration_name: Configuration name (e.g., nwm30_medium_range)
+        - limit and offset for pagination
+
+        Output format. 'json' (default) returns an OGC-style paging envelope 
+        ({items, numberReturned, links}); 'timeseries' returns formatted objects containing metadata
+        and grouped timeseries objects; 'geojson' returns an OGC GeoJSON FeatureCollection.
     """
     try:
-        print(f"Primary timeseries called with: primary_location_id={primary_location_id}, datetime={datetime_range}, variable_name={variable_name}, configuration_name={configuration_name}")
+        print(
+            f"Primary timeseries called with: primary_location_id={primary_location_id}, "
+            f"datetime={datetime_range}, "
+            f"variable_name={variable_name}, "
+            f"configuration_name={configuration_name}"
+        )
         safe_location_ids = [f"'{sanitize_string(loc)}'" for loc in primary_location_id]
         where_conditions = [f"location_id IN ({', '.join(safe_location_ids)})"]
 
@@ -84,6 +137,8 @@ async def get_primary_timeseries_items(
                 pt.unit_name,
                 pt.value_time,
                 pt.value,
+                pt.created_at,
+                pt.updated_at,
                 l.geometry
             FROM {trino_catalog}.{trino_schema}.primary_timeseries pt
             JOIN {trino_catalog}.{trino_schema}.locations l ON pt.location_id = l.id
@@ -100,7 +155,9 @@ async def get_primary_timeseries_items(
                 variable_name,
                 unit_name,
                 value_time,
-                value
+                value,
+                created_at,
+                updated_at
             FROM {trino_catalog}.{trino_schema}.primary_timeseries
             WHERE {where_clause}
             ORDER BY value_time
@@ -117,7 +174,7 @@ async def get_primary_timeseries_items(
         print(f"Query execution time: {query_time:.3f} seconds")
 
         if df.empty:
-            return JSONResponse(content=[], media_type="application/json")
+            return _empty_response(request, "primary_timeseries", f)
 
         print(f"Query returned {len(df)} primary timeseries records")
 
@@ -126,15 +183,8 @@ async def get_primary_timeseries_items(
             "%Y-%m-%d %H:%M:%S"
         )
 
-        if "reference_time" in df.columns:
-            mask = pd.notna(df["reference_time"])
-            if mask.any():
-                df.loc[mask, "reference_time"] = df.loc[
-                    mask, "reference_time"
-                ].dt.strftime("%Y-%m-%d %H:%M:%S")
-            df["reference_time"] = df["reference_time"].fillna("null")
-        else:
-            df["reference_time"] = "null"
+        # Prepare for JSON serialization
+        df = prepare_for_serialization(df, ["reference_time", "created_at", "updated_at"])
 
         if f and f.lower() == "geojson":
             geojson = create_ogc_geojson_response(
@@ -150,43 +200,80 @@ async def get_primary_timeseries_items(
                     "Content-Crs": "<http://www.opengis.net/def/crs/OGC/1.3/CRS84>",  # noqa: E501
                 },
             )
+        
+        if f and f.lower() == "timeseries":
+            grouped = df.groupby(
+                [
+                    "series_type",
+                    "primary_location_id",
+                    "reference_time",
+                    "configuration_name",
+                    "variable_name",
+                    "unit_name",
+                ],
+                dropna=False  # Don't drop rows with NaN - important for retrospective data
+            )
 
-        grouped = df.groupby(
-            [
-                "series_type",
-                "primary_location_id",
-                "reference_time",
-                "configuration_name",
-                "variable_name",
-                "unit_name",
-            ]
-        )
+            data = []
+            for (
+                series_type,
+                primary_location_id,
+                reference_time,
+                configuration_name,
+                variable_name,
+                unit_name,
+            ), group in grouped:
+                # Handle NaN values from groupby keys - convert to None for JSON
+                ref_time_value = None if pd.isna(reference_time) else reference_time
 
-        data = []
-        for (
-            series_type,
-            primary_location_id,
-            reference_time,
-            configuration_name,
-            variable_name,
-            unit_name,
-        ), group in grouped:
-            timeseries_data = {
-                "series_type": series_type,
-                "primary_location_id": primary_location_id,
-                "reference_time": reference_time,
-                "configuration_name": configuration_name,
-                "variable_name": variable_name,
-                "unit_name": unit_name,
-                "timeseries": group[["value_time", "value"]].to_dict(orient="records"),
-            }
-            data.append(timeseries_data)
+                timeseries_data = {
+                    "series_type": series_type,
+                    "primary_location_id": primary_location_id,
+                    "reference_time": ref_time_value,
+                    "configuration_name": configuration_name,
+                    "variable_name": variable_name,
+                    "unit_name": unit_name,
+                    "timeseries": group[["value_time", "value"]].to_dict(orient="records"),
+                }
+                data.append(timeseries_data)
 
-        format_time = time.time() - format_start
-        print(f"Primary formatting time: {format_time:.3f} seconds")
+            format_time = time.time() - format_start
+            print(f"Primary formatting time: {format_time:.3f} seconds")
 
-        return JSONResponse(content=data, media_type="application/json")
+            return JSONResponse(content=data, media_type="application/json")
 
+        # Default format: return raw records with pagination metadata
+        items = df.to_dict(orient="records")
+
+        response = {
+            "items": items,
+            "numberReturned": len(items),
+            "links": [
+                {"href": str(request.url), "rel": "self", "type": "application/json"},
+                {
+                    "href": "/collections/primary_timeseries",
+                    "rel": "collection",
+                    "type": "application/json",
+                },
+            ],
+        }
+
+        # Add pagination links
+        if limit is not None and len(items) == limit:
+            from urllib.parse import parse_qs, urlencode, urlparse, urlunparse
+
+            parsed = urlparse(str(request.url))
+            query_params = parse_qs(parsed.query)
+            query_params["offset"] = [str((offset or 0) + limit)]
+            query_params["limit"] = [str(limit)]
+            next_query = urlencode(query_params, doseq=True)
+            next_url = urlunparse(parsed._replace(query=next_query))
+            response["links"].append(
+                {"href": next_url, "rel": "next", "type": "application/json"}
+            )
+
+        return JSONResponse(content=response, media_type="application/json")
+    
     except Exception as e:
         print(f"Primary timeseries error: {str(e)}")
         raise HTTPException(
@@ -216,21 +303,38 @@ async def get_secondary_timeseries_items(
     offset: int | None = Query(
         None, ge=0, description="Starting index for pagination"
     ),
-    f: str | None = Query("json", description="Output format: json or geojson"),
+    f: str | None = Query(
+        "json",
+        description=(
+            "Output format. 'json' (default) returns an OGC-style paging envelope "
+            "({items, numberReturned, links}); 'timeseries' returns formatted objects containing metadata "
+            "and grouped timeseries objects; 'geojson' returns an OGC GeoJSON FeatureCollection."
+        ),
+    ),
 ):
-    """Get secondary timeseries (model outputs/forecasts) for a location.
+    """Get secondary timeseries (model outputs/forecasts).
 
     Supports filtering by:
+    - primary_location_id or secondary_location_id (one or the other, not both)
     - datetime: ISO 8601 interval for value_time (e.g., 2020-01-01/2020-12-31)
     - reference_time: ISO 8601 interval for reference_time (e.g., 2025-11-01/..)
     - variable_name: Variable name (e.g., streamflow_hourly_inst)
     - configuration_name: Configuration name (e.g., nwm30_medium_range)
+    - limit and offset for pagination
 
-    Returns array of timeseries objects, one per unique combination of
-    reference_time, configuration, variable, and member.
+    Output format. 'json' (default) returns an OGC-style paging envelope 
+    ({items, numberReturned, links}); 'timeseries' returns formatted objects containing metadata
+    and grouped timeseries objects; 'geojson' returns an OGC GeoJSON FeatureCollection.
     """
     try:
-        print(f"Secondary timeseries called with: primary_location_id={primary_location_id}, secondary_location_id={secondary_location_id}, datetime={datetime_range}, reference_time={reference_time}, variable_name={variable_name}, configuration_name={configuration_name}")
+        print(
+            f"Secondary timeseries called with: primary_location_id={primary_location_id}, "
+            f"secondary_location_id={secondary_location_id}, "
+            f"datetime={datetime_range}, "
+            f"reference_time={reference_time}, "
+            f"variable_name={variable_name}, "
+            f"configuration_name={configuration_name}"
+        )
         
         where_conditions = []
         
@@ -303,7 +407,7 @@ async def get_secondary_timeseries_items(
             query = f"""
             SELECT
                 st.value_time, st.value, st.configuration_name, st.variable_name,
-                st.unit_name, st.member, st.reference_time,
+                st.unit_name, st.member, st.reference_time, st.created_at, st.updated_at,
                 lc.primary_location_id, lc.secondary_location_id,
                 l.geometry
             FROM {trino_catalog}.{trino_schema}.secondary_timeseries st
@@ -318,7 +422,7 @@ async def get_secondary_timeseries_items(
             query = f"""
             SELECT
                 st.value_time, st.value, st.configuration_name, st.variable_name,
-                st.unit_name, st.member, st.reference_time,
+                st.unit_name, st.member, st.reference_time, st.created_at, st.updated_at,
                 lc.primary_location_id, 'secondary' as series_type, lc.secondary_location_id
             FROM {trino_catalog}.{trino_schema}.secondary_timeseries st
             JOIN {trino_catalog}.{trino_schema}.location_crosswalks lc
@@ -338,8 +442,7 @@ async def get_secondary_timeseries_items(
         print(f"Secondary query execution time: {query_time:.3f} seconds")
 
         if df.empty:
-            print("Secondary query returned NO records - returning empty array")
-            return JSONResponse(content=[], media_type="application/json")
+            return _empty_response(request, "secondary_timeseries", f)
 
         print(f"Query returned {len(df)} secondary timeseries records")
 
@@ -348,18 +451,8 @@ async def get_secondary_timeseries_items(
             "%Y-%m-%d %H:%M:%S"
         )
 
-        # Convert reference_time to string, handle NaT as None
-        if "reference_time" in df.columns:
-            df["reference_time"] = pd.to_datetime(df["reference_time"]).dt.strftime(
-                "%Y-%m-%d %H:%M:%S"
-            )
-            df["reference_time"] = df["reference_time"].replace("NaT", None)
-        else:
-            df["reference_time"] = None
-
-        # Replace NaN with None for JSON serialization
-        df["member"] = df["member"].where(pd.notna(df["member"]), None)
-        df["value"] = df["value"].where(pd.notna(df["value"]), None)
+        # Prepare for JSON serialization
+        df = prepare_for_serialization(df, ["reference_time", "created_at", "updated_at"])
 
         if f and f.lower() == "geojson":
             geojson = create_ogc_geojson_response(
@@ -376,55 +469,87 @@ async def get_secondary_timeseries_items(
                 },
             )
 
+        if f and f.lower() == "timeseries":
+            grouped = df.groupby(
+                [
+                    "series_type",
+                    "primary_location_id",
+                    "secondary_location_id",
+                    "reference_time",
+                    "configuration_name",
+                    "variable_name",
+                    "unit_name",
+                    "member",
+                ],
+                dropna=False  # Don't drop rows with NaN - important for retrospective data
+            )
 
-        grouped = df.groupby(
-            [
-                "series_type",
-                "primary_location_id",
-                "secondary_location_id",
-                "reference_time",
-                "configuration_name",
-                "variable_name",
-                "unit_name",
-                "member",
+            print("Number of unique series:", len(grouped))
+            data = []
+            for (
+                series_type,
+                primary_location_id,
+                secondary_location_id,
+                reference_time,
+                configuration_name,
+                variable_name,
+                unit_name,
+                member,
+            ), group in grouped:
+                
+                # Handle NaN values from groupby keys - convert to None for JSON
+                ref_time_value = None if pd.isna(reference_time) else reference_time
+                member_value = None if pd.isna(member) else member
+                
+                timeseries_data = {
+                    "series_type": series_type,
+                    "primary_location_id": primary_location_id,
+                    "secondary_location_id": secondary_location_id,
+                    "reference_time": ref_time_value,
+                    "configuration_name": configuration_name,
+                    "variable_name": variable_name,
+                    "unit_name": unit_name,
+                    "member": member_value,
+                    "timeseries": group[["value_time", "value"]].to_dict(orient="records"),
+                }
+                data.append(timeseries_data)
+
+            format_time = time.time() - format_start
+            print(f"Secondary formatting time: {format_time:.3f} seconds")
+
+            return JSONResponse(content=data, media_type="application/json")
+        
+        # Default format: return raw records with pagination metadata
+        items = df.to_dict(orient="records")
+
+        response = {
+            "items": items,
+            "numberReturned": len(items),
+            "links": [
+                {"href": str(request.url), "rel": "self", "type": "application/json"},
+                {
+                    "href": "/collections/secondary_timeseries",
+                    "rel": "collection",
+                    "type": "application/json",
+                },
             ],
-            dropna=False  # Don't drop rows with NaN - important for retrospective data
-        )
+        }
 
-        print("Number of unique series:", len(grouped))
-        data = []
-        for (
-            series_type,
-            primary_location_id,
-            secondary_location_id,
-            reference_time,
-            configuration_name,
-            variable_name,
-            unit_name,
-            member,
-        ), group in grouped:
-            
-            # Handle NaN values from groupby keys - convert to None for JSON
-            ref_time_value = None if pd.isna(reference_time) else reference_time
-            member_value = None if pd.isna(member) else member
-            
-            timeseries_data = {
-                "series_type": series_type,
-                "primary_location_id": primary_location_id,
-                "secondary_location_id": secondary_location_id,
-                "reference_time": ref_time_value,
-                "configuration_name": configuration_name,
-                "variable_name": variable_name,
-                "unit_name": unit_name,
-                "member": member_value,
-                "timeseries": group[["value_time", "value"]].to_dict(orient="records"),
-            }
-            data.append(timeseries_data)
+        # Add pagination links
+        if limit is not None and len(items) == limit:
+            from urllib.parse import parse_qs, urlencode, urlparse, urlunparse
 
-        format_time = time.time() - format_start
-        print(f"Secondary formatting time: {format_time:.3f} seconds")
+            parsed = urlparse(str(request.url))
+            query_params = parse_qs(parsed.query)
+            query_params["offset"] = [str((offset or 0) + limit)]
+            query_params["limit"] = [str(limit)]
+            next_query = urlencode(query_params, doseq=True)
+            next_url = urlunparse(parsed._replace(query=next_query))
+            response["links"].append(
+                {"href": next_url, "rel": "next", "type": "application/json"}
+            )
 
-        return JSONResponse(content=data, media_type="application/json")
+        return JSONResponse(content=response, media_type="application/json")
 
     except Exception as e:
         print(f"Secondary timeseries error: {str(e)}")

@@ -1,5 +1,6 @@
 /* eslint-disable react-refresh/only-export-components */
 import { createContext, useContext, useReducer } from 'react';
+import { FORECAST_DASHBOARD_DEFAULTS, selectDefault } from '../config/dashboardDefaults';
 
 // Dynamic date helpers - returns dates for 10 days ago through today
 const getTenDaysAgo = () => {
@@ -30,7 +31,7 @@ const initialForecastState = {
   
   // Timeseries filters (forecast-specific defaults)
   timeseriesFilters: {
-    configuration: null,
+    configurations: [], // Array for multi-select
     variable: null,
     start_date: getTenDaysAgo(),
     end_date: getToday(),
@@ -110,33 +111,37 @@ const forecastDashboardReducer = (state, action) => {
       
     case ActionTypes.SET_CONFIGURATIONS:
       const configurations = Array.isArray(action.payload) ? action.payload : [];
+      const defaultConfig = selectDefault(FORECAST_DASHBOARD_DEFAULTS.preferredConfiguration, configurations);
       return {
         ...state,
         configurations,
-        // Set defaults if first time loading
+        // Set defaults if first time loading - prefer configured default if available
         mapFilters: {
           ...state.mapFilters,
-          configuration: state.mapFilters.configuration || configurations[0]
+          configuration: state.mapFilters.configuration || defaultConfig
         },
         timeseriesFilters: {
           ...state.timeseriesFilters,
-          configuration: state.timeseriesFilters.configuration || configurations[0]
+          configurations: state.timeseriesFilters.configurations?.length > 0 
+            ? state.timeseriesFilters.configurations 
+            : (defaultConfig ? [defaultConfig] : [])
         }
       };
       
     case ActionTypes.SET_VARIABLES:
       const variables = Array.isArray(action.payload) ? action.payload : [];
+      const defaultVariable = selectDefault(FORECAST_DASHBOARD_DEFAULTS.preferredVariable, variables);
       return {
         ...state,
         variables,
-        // Set defaults if first time loading
+        // Set defaults if first time loading - prefer configured default if available
         mapFilters: {
           ...state.mapFilters,
-          variable: state.mapFilters.variable || variables[0]
+          variable: state.mapFilters.variable || defaultVariable
         },
         timeseriesFilters: {
           ...state.timeseriesFilters,
-          variable: state.timeseriesFilters.variable || variables[0]
+          variable: state.timeseriesFilters.variable || defaultVariable
         }
       };
       
@@ -149,11 +154,24 @@ const forecastDashboardReducer = (state, action) => {
       };
       
     case ActionTypes.UPDATE_MAP_FILTERS:
+      // Also sync configuration and variable to timeseries filters
+      const mapTimeseriesSync = {};
+      if (action.payload.configuration !== undefined) {
+        // Sync map configuration to timeseries configurations array
+        mapTimeseriesSync.configurations = action.payload.configuration ? [action.payload.configuration] : [];
+      }
+      if (action.payload.variable !== undefined) {
+        mapTimeseriesSync.variable = action.payload.variable;
+      }
       return {
         ...state,
         mapFilters: {
           ...state.mapFilters,
           ...action.payload
+        },
+        timeseriesFilters: {
+          ...state.timeseriesFilters,
+          ...mapTimeseriesSync
         }
       };
       

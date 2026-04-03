@@ -1,7 +1,8 @@
 import { Duration } from 'luxon';
 import Plotly from 'plotly.js-dist-min';
 import { useState, useMemo, useRef, useEffect, useCallback } from 'react';
-import { Button, ButtonGroup, Dropdown, Form } from 'react-bootstrap';
+import { Button, ButtonGroup, Form } from 'react-bootstrap';
+import MultiSelectDropdown from './MultiSelectDropdown';
 import './MetricsTable.css';
 
 const MetricsTable = ({ 
@@ -516,159 +517,48 @@ const MetricsTable = ({
       )}
       
       {currentViewMode === 'filters' && tableProperties?.group_by?.length > 0 ? (
-        <div key="filters-view" className="table-filters p-4">
+        <div key="filters-view" className="table-filters p-3" style={{ overflow: 'auto', flex: 1 }}>
           <div className="row">
-            <div className="col-12 mb-3">
-              <h5 className="text-muted">Filter Options</h5>
-              <p className="text-muted small">Select values to filter the data. Switch to Table or Plot view to see results.</p>
+            {/* Metrics filter section - moved to top */}
+            {tableProperties?.metrics?.length > 0 && (
+              <div className="col-12 mb-2">
+                <label className="form-label fw-bold mb-1">Select Metrics</label>
+                <MultiSelectDropdown
+                  options={tableProperties.metrics}
+                  selected={selectedMetrics}
+                  onChange={setSelectedMetrics}
+                  allSelectedText="All metrics"
+                  noneSelectedText="No metrics"
+                />
+              </div>
+            )}
+            
+            {/* Group by column filters */}
+            <div className="col-12 mb-1">
+              <label className="form-label fw-bold mb-1 text-muted small">Filter by Column</label>
             </div>
             {headers.slice(0, tableProperties.group_by.length).map((header, index) => {
               const uniqueValues = uniqueValuesByColumn[index] || [];
               const selectedValues = filters[index] || [];
               
               return (
-                <div key={index} className="col-lg-4 col-md-6 mb-3">
-                  <label className="form-label fw-bold">{header}</label>
-                  <Dropdown className="w-100">
-                    <Dropdown.Toggle 
-                      variant="outline-secondary" 
-                      className="w-100 d-flex justify-content-between align-items-center"
-                      style={{ fontSize: '14px' }}
-                    >
-                      <span>{selectedValues.length === 0 ? 'All' : `${selectedValues.length} selected`}</span>
-                    </Dropdown.Toggle>
-
-                    <Dropdown.Menu 
-                      style={{ 
-                        minWidth: '250px',
-                        maxHeight: '300px', 
-                        overflowY: 'auto'
-                      }}
-                    >
-                      <Dropdown.Header>
-                        <button
-                          className="btn btn-sm btn-link p-0 text-decoration-none"
-                          onClick={(e) => {
-                            e.preventDefault();
-                            setFilters(prev => ({ ...prev, [index]: [] }));
-                          }}
-                        >
-                          Clear All
-                        </button>
-                      </Dropdown.Header>
-                      
-                      <Dropdown.Divider />
-                      
-                      {uniqueValues.map(value => (
-                        <Dropdown.Item 
-                          key={value} 
-                          as="div" 
-                          className="p-0"
-                          onClick={(e) => e.preventDefault()}
-                        >
-                          <div className="px-3 py-2">
-                            <Form.Check
-                              type="checkbox"
-                              id={`filter-${index}-${value}`}
-                              label={value}
-                              checked={selectedValues.includes(value)}
-                              onChange={(e) => handleCheckboxFilterChange(index, value, e.target.checked)}
-                              className="mb-0"
-                            />
-                          </div>
-                        </Dropdown.Item>
-                      ))}
-                      
-                      {uniqueValues.length === 0 && (
-                        <Dropdown.Item disabled>
-                          No values available
-                        </Dropdown.Item>
-                      )}
-                    </Dropdown.Menu>
-                  </Dropdown>
+                <div key={index} className="col-lg-4 col-md-6 mb-2">
+                  <label className="form-label fw-bold small mb-1">{header}</label>
+                  <MultiSelectDropdown
+                    options={uniqueValues}
+                    selected={selectedValues}
+                    onChange={(newSelected) => setFilters(prev => ({ ...prev, [index]: newSelected }))}
+                    allSelectedText="All"
+                    noneSelectedText="All"
+                  />
                 </div>
               );
             })}
             
-            {/* Metrics filter section */}
-            {tableProperties?.metrics?.length > 0 && (
-              <>
-                <div className="col-12 mt-4 mb-3">
-                  <hr />
-                  <h6 className="text-muted">Select Metrics</h6>
-                  <p className="text-muted small">Choose which metrics to display in the table and plot.</p>
-                </div>
-                <div className="col-12">
-                  <Dropdown className="w-100">
-                    <Dropdown.Toggle 
-                      variant="outline-secondary" 
-                      className="w-100 d-flex justify-content-between align-items-center"
-                      style={{ fontSize: '14px' }}
-                    >
-                      <span>{selectedMetrics.length === 0 ? 'No metrics' : selectedMetrics.length === tableProperties.metrics.length ? 'All metrics' : `${selectedMetrics.length} of ${tableProperties.metrics.length} metrics`}</span>
-                    </Dropdown.Toggle>
-
-                    <Dropdown.Menu 
-                      style={{ 
-                        minWidth: '300px',
-                        maxHeight: '300px', 
-                        overflowY: 'auto'
-                      }}
-                    >
-                      <Dropdown.Header>
-                        <div className="d-flex justify-content-between">
-                          <button
-                            className="btn btn-sm btn-link p-0 text-decoration-none"
-                            onClick={(e) => {
-                              e.preventDefault();
-                              clearMetricsFilter();
-                            }}
-                          >
-                            Select All
-                          </button>
-                          <button
-                            className="btn btn-sm btn-link p-0 text-decoration-none text-danger"
-                            onClick={(e) => {
-                              e.preventDefault();
-                              setSelectedMetrics([]);
-                            }}
-                          >
-                            Clear All
-                          </button>
-                        </div>
-                      </Dropdown.Header>
-                      
-                      <Dropdown.Divider />
-                      
-                      {tableProperties.metrics.map(metric => (
-                        <Dropdown.Item 
-                          key={metric} 
-                          as="div" 
-                          className="p-0"
-                          onClick={(e) => e.preventDefault()}
-                        >
-                          <div className="px-3 py-2">
-                            <Form.Check
-                              type="checkbox"
-                              id={`metric-${metric}`}
-                              label={metric}
-                              checked={selectedMetrics.includes(metric)}
-                              onChange={(e) => handleMetricFilterChange(metric, e.target.checked)}
-                              className="mb-0"
-                            />
-                          </div>
-                        </Dropdown.Item>
-                      ))}
-                    </Dropdown.Menu>
-                  </Dropdown>
-                </div>
-              </>
-            )}
-            
             {/* Active filters summary and clear all */}
             {Object.keys(filters).length > 0 && Object.values(filters).some(f => Array.isArray(f) ? f.length > 0 : f) && (
-              <div className="col-12 mt-3">
-                <div className="alert alert-info d-flex justify-content-between align-items-center">
+              <div className="col-12 mt-2">
+                <div className="alert alert-info py-2 d-flex justify-content-between align-items-center mb-0">
                   <span>
                     <strong>Active Filters:</strong> {Object.values(filters).reduce((total, f) => total + (Array.isArray(f) ? f.length : 0), 0)} selections
                   </span>
@@ -734,10 +624,13 @@ const MetricsTable = ({
                         }}
                       >
                         <span>{header}</span>
-                        <span className="sort-indicator">
-                          {sortConfig.column === index && (
-                            sortConfig.direction === 'asc' ? '▲' : '▼'
-                          )}
+                        <span className="sort-indicator" style={{ display: 'flex', flexDirection: 'column', fontSize: '10px', lineHeight: '8px', marginLeft: '4px' }}>
+                          <span style={{ 
+                            color: sortConfig.column === index && sortConfig.direction === 'asc' ? '#0d6efd' : '#ccc'
+                          }}>▲</span>
+                          <span style={{ 
+                            color: sortConfig.column === index && sortConfig.direction === 'desc' ? '#0d6efd' : '#ccc'
+                          }}>▼</span>
                         </span>
                       </div>
                     </th>
