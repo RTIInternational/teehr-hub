@@ -53,7 +53,8 @@ FORECAST_METRICS = [
 def write_forecast_metrics_by_lead_time_bins(
     ev: teehr.Evaluation,
     joined_forecast_table_name: str,
-    output_table_name: str
+    output_table_name: str,
+    write_mode: str = "overwrite"
 ) -> DataFrame:
     """Write forecast metrics by lead time bins.
 
@@ -79,7 +80,7 @@ def write_forecast_metrics_by_lead_time_bins(
         .add_geometry()
         .write_to(
             table_name=output_table_name,
-            write_mode="overwrite"
+            write_mode=write_mode
         )
     )
 
@@ -88,7 +89,8 @@ def write_forecast_metrics_by_lead_time_bins(
 def write_forecast_metrics_by_location(
     ev: teehr.Evaluation,
     joined_forecast_table_name: str,
-    output_table_name: str
+    output_table_name: str,
+    write_mode: str = "overwrite"
 ) -> DataFrame:
     """Write forecast metrics by location.
 
@@ -114,6 +116,6 @@ def write_forecast_metrics_by_location(
         .add_geometry()
         .write_to(
             table_name=output_table_name,
-            write_mode="overwrite"
+            write_mode=write_mode
         )
     )

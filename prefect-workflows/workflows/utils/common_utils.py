@@ -52,6 +52,17 @@ def initialize_evaluation(
 
 
 @task(cache_policy=NO_CACHE)
+def table_exists(
+    ev: teehr.Evaluation,
+    table_name: str,
+    catalog: str = "iceberg",
+    database: str = "teehr"
+) -> bool:
+    """Check if a table exists in the warehouse."""
+    return ev.spark.catalog.tableExists(f"{catalog}.{database}.{table_name}")
+
+
+@task(cache_policy=NO_CACHE)
 def set_table_properties(
     ev: teehr.Evaluation,
     table_name: str,

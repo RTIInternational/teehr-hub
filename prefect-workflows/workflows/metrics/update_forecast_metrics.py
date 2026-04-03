@@ -4,7 +4,7 @@ import logging
 
 from prefect import flow, get_run_logger
 
-from workflows.utils.common_utils import initialize_evaluation, set_table_properties
+from workflows.utils.common_utils import initialize_evaluation, set_table_properties, table_exists
 from update_joined_forecasts import JOINED_FORECAST_TABLE_NAME
 from utils.forecast_utils import (
     write_forecast_metrics_by_lead_time_bins,
@@ -46,10 +46,16 @@ def update_forecast_metrics_table(
     )
 
     logger.info("Calculating and writing forecast metrics by lead time bins...")
+    lead_time_write_mode = (
+        "overwrite"
+        if table_exists(ev=ev, table_name=METRICS_BY_LEAD_TIME_TABLE_NAME)
+        else "create_or_replace"
+    )
     write_forecast_metrics_by_lead_time_bins(
         ev=ev,
         joined_forecast_table_name=JOINED_FORECAST_TABLE_NAME,
-        output_table_name=METRICS_BY_LEAD_TIME_TABLE_NAME
+        output_table_name=METRICS_BY_LEAD_TIME_TABLE_NAME,
+        write_mode=lead_time_write_mode
     )
     set_table_properties(
         ev=ev,
@@ -63,10 +69,16 @@ def update_forecast_metrics_table(
     logger.info("Forecast metrics by lead time bins table created.")
 
     logger.info("Calculating and writing forecast metrics by location...")
+    location_write_mode = (
+        "overwrite"
+        if table_exists(ev=ev, table_name=METRICS_BY_LOCATION_TABLE_NAME)
+        else "create_or_replace"
+    )
     write_forecast_metrics_by_location(
         ev=ev,
         joined_forecast_table_name=JOINED_FORECAST_TABLE_NAME,
-        output_table_name=METRICS_BY_LOCATION_TABLE_NAME
+        output_table_name=METRICS_BY_LOCATION_TABLE_NAME,
+        write_mode=location_write_mode
     )
     set_table_properties(
         ev=ev,
