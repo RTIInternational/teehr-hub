@@ -63,6 +63,10 @@ def ingest_usgs_streamflow_obs(
 
     # Read the USGS API key from prefect and set as an env variable
     os.environ["API_USGS_PAT"] = Secret.load("api-usgs-pat").get()
+    if os.environ.get("API_USGS_PAT"):
+        logger.info("✅ Successfully loaded 'api-usgs-pat' secret and set API_USGS_PAT env variable.")
+    else:
+        logger.warning("⚠️ API_USGS_PAT env variable is empty after loading 'api-usgs-pat' secret.")
 
     if end_dt is None:
         end_dt = datetime.now(UTC).replace(tzinfo=None)
