@@ -6,7 +6,15 @@ import logging
 from prefect import flow, get_run_logger
 import pandas as pd
 
-from teehr.fetching.utils import format_nwm_configuration_metadata
+from teehr.fetching.nwm.nwm_points import nwm_to_parquet
+from teehr.utils.utils import remove_dir_if_exists
+from teehr.fetching.utils import (
+    format_nwm_variable_name,
+    format_nwm_configuration_metadata
+)
+from teehr.fetching.const import (
+    NWM_VARIABLE_MAPPER
+)
 from workflows.utils.common_utils import initialize_evaluation
 
 # Start up a local Dask cluster
@@ -17,6 +25,11 @@ logging.getLogger("teehr").setLevel(logging.INFO)
 
 
 LOOKBACK_DAYS = 1
+LOCATION_ID_PREFIX = "nwm30"
+OCONUS_STATE_NAMES = [
+    'Northern Mariana Islands', 'Alaska', 'Hawaii', 'Guam',
+    'American Samoa', 'Puerto Rico', 'Virgin Islands'
+]
 
 
 @flow(
@@ -86,12 +99,84 @@ def ingest_nwm_streamflow_forecasts(
         )
         start_dt = end_dt - timedelta(days=num_lookback_days)
 
-    ev.fetch.nwm_operational_points(
+    logger.info(f"Processing NWM forecasts from {start_dt} to {end_dt}")
+
+    # Need to filter for CONUS
+    excluded_states = ", ".join(f"'{s}'" for s in OCONUS_STATE_NAMES)
+    filtered_crosswalks_sdf = ev.location_crosswalks.add_attributes(
+        attr_list=["state_name"]
+    ).filter(
+        filters=[
+            {
+                "column": "secondary_location_id",
+                "operator": "like",
+                "value": f"{LOCATION_ID_PREFIX}-%"
+            },
+            f"state_name NOT IN ({excluded_states})"
+        ]
+    ).to_sdf()
+    stripped_ids = [
+        row[0].split("-")[1]
+        for row in filtered_crosswalks_sdf.select("secondary_location_id").collect()
+    ]
+
+    logger.info(f"Found {len(stripped_ids)} location IDs after filtering for CONUS and NWM sites")
+
+    ev_variable_name = format_nwm_variable_name(variable_name)
+    ev_config = format_nwm_configuration_metadata(
+        nwm_config_name=nwm_configuration,
+        nwm_version=nwm_version
+    )
+    nwm_cache_dir = Path(
+        ev.cache_dir,
+        "fetching",
+        "nwm"
+    )
+    kerchunk_cache_dir = Path(
+        ev.cache_dir,
+        "fetching",
+        "kerchunk"
+    )
+
+    # Clear out caches
+    remove_dir_if_exists(nwm_cache_dir)
+    remove_dir_if_exists(kerchunk_cache_dir)
+
+    logger.info("Fetching NWM data and writing to cache")
+    nwm_to_parquet(
+        configuration=nwm_configuration,
+        output_type=output_type,
+        variable_name=variable_name,
         start_date=start_dt,
         end_date=end_dt,
-        nwm_configuration=nwm_configuration,
+        ingest_days=LOOKBACK_DAYS,
+        location_ids=stripped_ids,
+        json_dir=kerchunk_cache_dir,
+        output_parquet_dir=Path(
+            nwm_cache_dir,
+            ev_config["name"],
+            ev_variable_name
+        ),
         nwm_version=nwm_version,
-        output_type=output_type,
-        variable_name=variable_name
+        data_source="GCS",
+        kerchunk_method="local",
+        prioritize_analysis_value_time=False,
+        t_minus_hours=None,
+        process_by_z_hour=True,
+        stepsize=100,
+        ignore_missing_file=True,
+        overwrite_output=False,
+        variable_mapper=NWM_VARIABLE_MAPPER,
+        timeseries_type="secondary",
+        starting_z_hour=None,
+        ending_z_hour=None,
+        drop_overlapping_assimilation_values=True
     )
+    # load output
+    logger.info("Loading fetched data from cache into the warehouse")
+    ev._load.from_cache(
+        in_path=nwm_cache_dir,
+        table_name="secondary_timeseries"
+    )
+    logger.info("Successfully loaded NWM streamflow forecasts into the warehouse")
     ev.spark.stop()
