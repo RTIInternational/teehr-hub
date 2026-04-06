@@ -6,6 +6,7 @@ import logging
 from prefect import flow, get_run_logger
 import pandas as pd
 
+from teehr import Configuration
 from teehr.fetching.nwm.nwm_points import nwm_to_parquet
 from teehr.utils.utils import remove_dir_if_exists
 from teehr.fetching.utils import (
@@ -158,20 +159,27 @@ def ingest_nwm_streamflow_forecasts(
             ev_variable_name
         ),
         nwm_version=nwm_version,
-        data_source="GCS",
-        kerchunk_method="local",
-        prioritize_analysis_value_time=False,
-        t_minus_hours=None,
-        process_by_z_hour=True,
-        stepsize=100,
-        ignore_missing_file=True,
-        overwrite_output=False,
         variable_mapper=NWM_VARIABLE_MAPPER,
-        timeseries_type="secondary",
-        starting_z_hour=None,
-        ending_z_hour=None,
-        drop_overlapping_assimilation_values=True
+        starting_z_hour=0,
+        ending_z_hour=23
     )
+    # Add configuration to TEEHR if it doesn't already exist
+    config_name_exists = not ev.configurations.filter(
+        {
+            "column": "name",
+            "operator": "=",
+            "value": ev_config["name"]
+        }
+    ).to_sdf().rdd.isEmpty()
+    if not config_name_exists:
+        ev.configurations.add(
+            Configuration(
+                name=ev_config["name"],
+                timeseries_type="secondary",
+                description=ev_config["description"]
+            )
+        )
+
     # load output
     logger.info("Loading fetched data from cache into the warehouse")
     ev._load.from_cache(
