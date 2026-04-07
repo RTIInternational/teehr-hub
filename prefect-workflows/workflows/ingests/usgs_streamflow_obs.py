@@ -25,6 +25,7 @@ from utils import usgs_utils
 from workflows.utils.common_utils import initialize_evaluation
 
 logging.getLogger("teehr").setLevel(logging.INFO)
+logging.getLogger("dataretrieval").setLevel(logging.INFO)
 
 
 LOOKBACK_DAYS = 1
@@ -40,7 +41,7 @@ def ingest_usgs_streamflow_obs(
     end_dt: Union[str, datetime, pd.Timestamp, None] = None,
     num_lookback_days: Union[int, None] = LOOKBACK_DAYS,
     service: USGSServiceEnum = "iv",
-    chunk_by: Union[USGSChunkByEnum, None] = "location_id",
+    chunk_by: Union[USGSChunkByEnum, None] = "week",
     filter_to_hourly: bool = True,
     filter_no_data: bool = True,
     convert_to_si: bool = True,
@@ -53,11 +54,10 @@ def ingest_usgs_streamflow_obs(
 
     Notes
     -----
+    - To test this locally you need to set your USGS API key in secrets.local.yaml.
     - Sets the start date as end date
       minus the number of lookback days.
     - End date defaults to current date and time.
-    - Setting chunk_by to "location_id" means that usgs data
-      will be saved to the cache per location ID, eliminating overwrites.
     """
     logger = get_run_logger()
 
@@ -111,9 +111,8 @@ def ingest_usgs_streamflow_obs(
 
     remove_dir_if_exists(ev.fetch.usgs_cache_dir)
 
-    site_futures = []
     for i, chunk in enumerate(usgs_site_chunks):
-        future = usgs_utils.fetch_usgs_data_to_cache.submit(
+        usgs_utils.fetch_usgs_data_to_cache(
             usgs_sites=chunk,
             output_parquet_dir=Path(output_parquet_dir, f"part_{i}"),
             start_date=start_dt,
@@ -126,9 +125,6 @@ def ingest_usgs_streamflow_obs(
             overwrite_output=overwrite_output,
         )
         logger.info(f"✅ Completed fetching chunk {i+1}/{len(usgs_site_chunks)} to cache")
-        site_futures.append(future)
-
-    wait(site_futures)
     logger.info("✅ Completed fetching USGS data to cache")
 
     # Todo: Coalesce cache files for better write performance?
