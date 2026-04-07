@@ -45,15 +45,29 @@ def update_joined_forecast_table(
         start_spark_cluster=start_spark_cluster,
         executor_instances=8
     )
+    # Find the min reference time across all forecast configurations
+    names = ", ".join(f"'{n}'" for n in forecast_configuration_names)
+    query = f"""
+    SELECT MIN(reference_time) AS global_min_reference_time
+    FROM iceberg.teehr.secondary_timeseries
+    WHERE configuration_name IN ({names})
+    """
+    min_ref_time = ev.spark.sql(query).collect()[0]["global_min_reference_time"]
+    min_ref_time_str = min_ref_time.strftime("%Y-%m-%d %H:%M:%S")
+    logger.info(f"Global minimum reference time: {min_ref_time_str}")
+
     logger.info("Creating joined forecast timeseries table...")
+    primary_filters = [f"value_time >= '{min_ref_time_str}'"]
     secondary_filters=[
         {
             "column": "configuration_name",
             "operator": "in",
             "value": forecast_configuration_names
-        }
+        },
+        f"value_time >= '{min_ref_time_str}'"
     ]
     ev.joined_timeseries_view(
+        primary_filters=primary_filters,
         secondary_filters=secondary_filters
     ).write_to(
         table_name=JOINED_FORECAST_TABLE_NAME,
