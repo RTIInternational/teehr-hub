@@ -5,7 +5,7 @@ import logging
 
 from prefect import flow, get_run_logger
 
-# from utils.forecast_utils import join_forecast_timeseries
+from teehr.models.filters import TableFilter
 from workflows.utils.common_utils import initialize_evaluation
 
 logging.getLogger("teehr").setLevel(logging.INFO)
@@ -45,15 +45,32 @@ def update_joined_forecast_table(
         start_spark_cluster=start_spark_cluster,
         executor_instances=8
     )
+    # Find the min reference time across all forecast configurations
+    names = ", ".join(f"'{n}'" for n in forecast_configuration_names)
+    query = f"""
+    SELECT MIN(reference_time) AS global_min_reference_time
+    FROM iceberg.teehr.secondary_timeseries
+    WHERE configuration_name IN ({names})
+    """
+    min_ref_time = ev.spark.sql(query).collect()[0]["global_min_reference_time"]
+    logger.info(f"Global minimum reference time: {min_ref_time}")
+
     logger.info("Creating joined forecast timeseries table...")
+    value_time_filter = TableFilter(
+        column="value_time",
+        operator=">=",
+        value=min_ref_time
+    )
     secondary_filters=[
         {
             "column": "configuration_name",
             "operator": "in",
             "value": forecast_configuration_names
-        }
+        },
+        value_time_filter
     ]
     ev.joined_timeseries_view(
+        primary_filters=value_time_filter,
         secondary_filters=secondary_filters
     ).write_to(
         table_name=JOINED_FORECAST_TABLE_NAME,
