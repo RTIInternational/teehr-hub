@@ -196,8 +196,7 @@ const forecastDashboardReducer = (state, action) => {
         timeseriesData: {
           ...state.timeseriesData,
           primary: action.payload
-        },
-        timeseriesLoading: false
+        }
       };
       
     case ActionTypes.SET_SECONDARY_TIMESERIES:
@@ -206,7 +205,8 @@ const forecastDashboardReducer = (state, action) => {
         timeseriesData: {
           ...state.timeseriesData,
           secondary: action.payload
-        }
+        },
+        timeseriesLoading: false
       };
       
     case ActionTypes.CLEAR_TIMESERIES:
@@ -219,9 +219,29 @@ const forecastDashboardReducer = (state, action) => {
       };
       
     case ActionTypes.SET_LOADING:
+      // Map shorthand keys to actual state property names
+      const loadingUpdates = {};
+      if ('locations' in action.payload) {
+        loadingUpdates.locationsLoading = action.payload.locations;
+      }
+      if ('timeseries' in action.payload) {
+        loadingUpdates.timeseriesLoading = action.payload.timeseries;
+      }
+      if ('metricsLoading' in action.payload) {
+        loadingUpdates.metricsLoading = action.payload.metricsLoading;
+      }
+      if ('tablePropertiesLoading' in action.payload) {
+        loadingUpdates.tablePropertiesLoading = action.payload.tablePropertiesLoading;
+      }
+      if ('configurations' in action.payload) {
+        loadingUpdates.configurationsLoading = action.payload.configurations;
+      }
+      if ('variables' in action.payload) {
+        loadingUpdates.variablesLoading = action.payload.variables;
+      }
       return {
         ...state,
-        ...action.payload
+        ...loadingUpdates
       };
       
     case ActionTypes.SET_MAP_LOADED:
