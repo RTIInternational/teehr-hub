@@ -1,17 +1,16 @@
+import { useState, useEffect } from 'react';
 import { Card, Spinner, ButtonGroup, Button } from 'react-bootstrap';
 import { PlotlyChart } from '../../common';
-import { useState, useEffect } from 'react';
 
 const TimeseriesComponent = ({ 
   state, 
-  dispatch, 
-  ActionTypes, 
   TimeseriesControls 
 }) => {
   const [viewMode, setViewMode] = useState('filters');
   const hasData = state.timeseriesData.primary?.length > 0 || state.timeseriesData.secondary?.length > 0;
 
-  // Reset to filters view when location changes
+  // Reset to filters view when location changes - this is a valid pattern for resetting
+  // local state when a prop changes (see React docs on "Resetting state when a prop changes")
   useEffect(() => {
     setViewMode('filters');
   }, [state.selectedLocation]);
