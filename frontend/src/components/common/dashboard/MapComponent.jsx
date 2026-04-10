@@ -119,16 +119,31 @@ const MapComponent = ({
   useEffect(() => {
     if (!map.current || !state.mapLoaded) return;
     
+    const mapInstance = map.current;
+    
     // Validate GeoJSON structure
     if (!state.locations || !state.locations.features || !Array.isArray(state.locations.features)) {
       return;
     }
     
+    // Clear existing layers when there's no data
     if (state.locations.features.length === 0) {
+      // Remove existing layers and sources to clear old data from the map
+      if (mapInstance.getLayer('locations-layer')) {
+        mapInstance.removeLayer('locations-layer');
+      }
+      if (mapInstance.getLayer('locations-selected')) {
+        mapInstance.removeLayer('locations-selected');
+      }
+      if (mapInstance.getSource('locations')) {
+        mapInstance.removeSource('locations');
+      }
+      // Close any open popup
+      if (popup.current) {
+        popup.current.remove();
+      }
       return;
     }
-    
-    const mapInstance = map.current;
     
     // Define event handlers outside try block so they're accessible in cleanup
     const handleLocationClick = (e) => {
@@ -387,6 +402,27 @@ const MapComponent = ({
             </div>
             <div className="small text-muted">
               Initializing MapLibre GL...
+            </div>
+          </div>
+        )}
+        
+        {/* Loading overlay for fetching locations */}
+        {state.mapLoaded && state.locationsLoading && (
+          <div 
+            className="position-absolute top-0 start-0 w-100 h-100 d-flex align-items-center justify-content-center"
+            style={{ 
+              backgroundColor: 'rgba(255, 255, 255, 0.7)', 
+              zIndex: 1000,
+              pointerEvents: 'none'
+            }}
+          >
+            <div className="text-center">
+              <div className="spinner-border text-primary mb-2" role="status">
+                <span className="visually-hidden">Loading locations...</span>
+              </div>
+              <div className="small text-muted">
+                Loading location data...
+              </div>
             </div>
           </div>
         )}

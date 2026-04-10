@@ -145,8 +145,6 @@ const Dashboard = () => {
             {state.selectedLocation ? (
               <TimeseriesComponent
                 state={state}
-                dispatch={dispatch}
-                ActionTypes={ActionTypes}
                 TimeseriesControls={ForecastTimeseriesControls}
               />
             ) : (

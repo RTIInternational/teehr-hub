@@ -68,6 +68,7 @@ export const useForecastDataFetching = () => {
       dispatch({ type: ActionTypes.SET_LOCATIONS, payload: locations });
     } catch (error) {
       console.error('useForecastDataFetching: Error loading locations:', error);
+      dispatch({ type: ActionTypes.SET_LOADING, payload: { locations: false } });
       dispatch({ type: ActionTypes.SET_ERROR, payload: `Failed to load locations: ${error.message}` });
     }
   }, [dispatch]);
@@ -114,6 +115,7 @@ export const useForecastDataFetching = () => {
       dispatch({ type: ActionTypes.SET_SECONDARY_TIMESERIES, payload: secondaryData });
       
     } catch (error) {
+      dispatch({ type: ActionTypes.SET_LOADING, payload: { timeseries: false } });
       dispatch({ type: ActionTypes.SET_ERROR, payload: `Failed to load timeseries: ${error.message}` });
     }
   }, [dispatch]);

@@ -85,6 +85,7 @@ export const useRetrospectiveDataFetching = () => {
       dispatch({ type: ActionTypes.SET_LOCATIONS, payload: locations });
     } catch (error) {
       console.error('useRetrospectiveDataFetching: Error loading locations:', error);
+      dispatch({ type: ActionTypes.SET_LOADING, payload: { locations: false } });
       dispatch({ type: ActionTypes.SET_ERROR, payload: `Failed to load locations: ${error.message}` });
     }
   }, [dispatch]);
@@ -130,6 +131,7 @@ export const useRetrospectiveDataFetching = () => {
         
       } catch (error) {
         console.error('Error loading timeseries:', error);
+        dispatch({ type: ActionTypes.SET_LOADING, payload: { timeseries: false } });
         dispatch({ type: ActionTypes.SET_ERROR, payload: `Failed to load timeseries: ${error.message}` });
       }
     }, [dispatch]);

@@ -1,21 +1,19 @@
+import { useState, useEffect } from 'react';
 import { Card, Spinner, ButtonGroup, Button } from 'react-bootstrap';
 import { PlotlyChart } from '../../common';
-import { useState, useEffect } from 'react';
 
 const TimeseriesComponent = ({ 
   state, 
-  dispatch, 
-  ActionTypes, 
   TimeseriesControls 
 }) => {
   const [viewMode, setViewMode] = useState('filters');
   const hasData = state.timeseriesData.primary?.length > 0 || state.timeseriesData.secondary?.length > 0;
 
-  // Reset to filters view when location changes
+  // Reset to filters view when location changes - this is a valid pattern for resetting
+  // local state when a prop changes (see React docs on "Resetting state when a prop changes")
   useEffect(() => {
     setViewMode('filters');
   }, [state.selectedLocation]);
-  const shouldShowPlot = hasData && !state.timeseriesLoading;
   
   return (
     <Card className="shadow-lg h-100 d-flex flex-column" style={{ borderRadius: '8px' }}>
@@ -51,24 +49,24 @@ const TimeseriesComponent = ({
               <p>Click on a location on the map to view its time series data.</p>
             </div>
           </div>
+        ) : state.timeseriesLoading ? (
+          <div className="d-flex justify-content-center align-items-center flex-grow-1">
+            <div className="text-center">
+              <Spinner animation="border" variant="primary" />
+              <div className="mt-2 small text-muted">Loading timeseries data...</div>
+            </div>
+          </div>
         ) : (
           <>
             {/* Show content based on view mode */}
             {viewMode === 'plot' ? (
-              shouldShowPlot ? (
+              hasData ? (
                 <div className="flex-grow-1 p-2" style={{ overflow: 'hidden', minHeight: 0 }}>
                   <PlotlyChart 
                     primaryData={state.timeseriesData.primary}
                     secondaryData={state.timeseriesData.secondary}
                     height="100%"
                   />
-                </div>
-              ) : state.timeseriesLoading ? (
-                <div className="d-flex justify-content-center align-items-center flex-grow-1">
-                  <div className="text-center">
-                    <Spinner animation="border" variant="primary" />
-                    <div className="mt-2 small text-muted">Loading timeseries data...</div>
-                  </div>
                 </div>
               ) : (
                 <div className="d-flex align-items-center justify-content-center flex-grow-1">
