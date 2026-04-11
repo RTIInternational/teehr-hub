@@ -1,0 +1,82 @@
+# Prometheus + Grafana monitoring stack
+# Provides CPU/memory metrics, dashboards, and historical data
+
+kind: Deploy
+type: helm
+name: kube-prometheus-stack
+description: Prometheus and Grafana monitoring stack for cluster observability
+environments:
+  - remote
+dependencies:
+  - deploy.secrets
+spec:
+  chart:
+    repo: https://prometheus-community.github.io/helm-charts
+    name: kube-prometheus-stack
+    version: 58.2.2
+  namespace: teehr-hub
+  values:
+    # Prometheus configuration
+    prometheus:
+      prometheusSpec:
+        retention: 15d
+        storageSpec:
+          volumeClaimTemplate:
+            spec:
+              accessModes: ["ReadWriteOnce"]
+              resources:
+                requests:
+                  storage: 50Gi
+        resources:
+          requests:
+            cpu: 200m
+            memory: 1Gi
+          limits:
+            cpu: 1
+            memory: 2Gi
+        # Only monitor teehr-hub namespace and kube-system
+        serviceMonitorNamespaceSelector: {}
+        serviceMonitorSelector: {}
+        podMonitorNamespaceSelector: {}
+        podMonitorSelector: {}
+
+    # Grafana configuration
+    grafana:
+      adminUser: admin
+      adminPassword: ""  # Will be set from secret
+      admin:
+        existingSecret: grafana-secrets
+        userKey: admin-user
+        passwordKey: admin-password
+      resources:
+        requests:
+          cpu: 100m
+          memory: 256Mi
+        limits:
+          cpu: 500m
+          memory: 512Mi
+      # Pre-installed dashboards for Kubernetes
+      defaultDashboardsEnabled: true
+      defaultDashboardsTimezone: utc
+
+    # AlertManager - disabled for now, can enable later
+    alertmanager:
+      enabled: false
+
+    # Node exporter for node-level metrics
+    nodeExporter:
+      enabled: true
+
+    # kube-state-metrics for Kubernetes object metrics
+    kubeStateMetrics:
+      enabled: true
+
+    # Disable components we don't need
+    kubeProxy:
+      enabled: false  # Not accessible on EKS
+    kubeScheduler:
+      enabled: false  # Not accessible on EKS
+    kubeControllerManager:
+      enabled: false  # Not accessible on EKS
+    kubeEtcd:
+      enabled: false  # Not accessible on EKS
