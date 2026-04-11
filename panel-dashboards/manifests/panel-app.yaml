@@ -30,6 +30,13 @@ spec:
             value: "${var.trino.catalog}"
           - name: TRINO_SCHEMA
             value: "${var.trino.schema}"
+        resources:
+          requests:
+            cpu: 200m
+            memory: 512Mi
+          limits:
+            cpu: 1
+            memory: 2Gi
     # Alternatively, use the following to set env vars from Kubernetes secrets
     # envFrom:
     # - secretRef:
