@@ -71,18 +71,18 @@ dependencies:
 environments:
   - local
   - remote
----
-kind: Deploy
-type: kubernetes
-name: grafana-ingress
-spec:
-  files:
-    - manifests/grafana.yaml
-dependencies:
-  - deploy.cert-manager
-  - deploy.letsencrypt
-  - deploy.cert
-  - deploy.contour
-  - deploy.kube-prometheus-stack
-environments:
-  - remote
+# ---
+# kind: Deploy
+# type: kubernetes
+# name: grafana-ingress
+# spec:
+#   files:
+#     - manifests/grafana.yaml
+# dependencies:
+#   - deploy.cert-manager
+#   - deploy.letsencrypt
+#   - deploy.cert
+#   - deploy.contour
+#   - deploy.kube-prometheus-stack
+# environments:
+#   - remote
