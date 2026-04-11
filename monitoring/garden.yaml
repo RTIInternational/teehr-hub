@@ -1,6 +1,39 @@
 # Prometheus + Grafana monitoring stack
 # Provides CPU/memory metrics, dashboards, and historical data
 
+# Install Prometheus Operator CRDs first (required before helm chart)
+kind: Deploy
+type: exec
+name: prometheus-crds
+description: Install Prometheus Operator CRDs
+environments:
+  - remote
+spec:
+  deployCommand:
+    - kubectl
+    - apply
+    - --server-side
+    - -f
+    - https://raw.githubusercontent.com/prometheus-operator/prometheus-operator/v0.73.2/example/prometheus-operator-crd/monitoring.coreos.com_alertmanagerconfigs.yaml
+    - -f
+    - https://raw.githubusercontent.com/prometheus-operator/prometheus-operator/v0.73.2/example/prometheus-operator-crd/monitoring.coreos.com_alertmanagers.yaml
+    - -f
+    - https://raw.githubusercontent.com/prometheus-operator/prometheus-operator/v0.73.2/example/prometheus-operator-crd/monitoring.coreos.com_podmonitors.yaml
+    - -f
+    - https://raw.githubusercontent.com/prometheus-operator/prometheus-operator/v0.73.2/example/prometheus-operator-crd/monitoring.coreos.com_probes.yaml
+    - -f
+    - https://raw.githubusercontent.com/prometheus-operator/prometheus-operator/v0.73.2/example/prometheus-operator-crd/monitoring.coreos.com_prometheusagents.yaml
+    - -f
+    - https://raw.githubusercontent.com/prometheus-operator/prometheus-operator/v0.73.2/example/prometheus-operator-crd/monitoring.coreos.com_prometheuses.yaml
+    - -f
+    - https://raw.githubusercontent.com/prometheus-operator/prometheus-operator/v0.73.2/example/prometheus-operator-crd/monitoring.coreos.com_prometheusrules.yaml
+    - -f
+    - https://raw.githubusercontent.com/prometheus-operator/prometheus-operator/v0.73.2/example/prometheus-operator-crd/monitoring.coreos.com_scrapeconfigs.yaml
+    - -f
+    - https://raw.githubusercontent.com/prometheus-operator/prometheus-operator/v0.73.2/example/prometheus-operator-crd/monitoring.coreos.com_servicemonitors.yaml
+    - -f
+    - https://raw.githubusercontent.com/prometheus-operator/prometheus-operator/v0.73.2/example/prometheus-operator-crd/monitoring.coreos.com_thanosrulers.yaml
+---
 kind: Deploy
 type: helm
 name: kube-prometheus-stack
@@ -9,6 +42,7 @@ environments:
   - remote
 dependencies:
   - deploy.secrets
+  - deploy.prometheus-crds
 spec:
   chart:
     repo: https://prometheus-community.github.io/helm-charts
@@ -16,9 +50,9 @@ spec:
     version: 58.2.2
   namespace: teehr-hub
   values:
-    # Ensure CRDs are installed
+    # Skip CRDs - installed separately above
     crds:
-      enabled: true
+      enabled: false
 
     # Prometheus configuration
     prometheus:
