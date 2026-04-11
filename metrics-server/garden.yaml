@@ -1,0 +1,50 @@
+# Metrics Server for kubectl top and HPA support
+# Local deployment commented out - not needed for developer laptops
+# ---
+# Metrics Server for local (Kind) environment
+# Requires --kubelet-insecure-tls for Kind clusters
+# kind: Deploy
+# type: helm
+# name: metrics-server
+# description: Deploy Metrics Server for kubectl top and HPA support
+# environments:
+#   - local
+# spec:
+#   chart:
+#     repo: https://kubernetes-sigs.github.io/metrics-server
+#     name: metrics-server
+#     version: 3.12.1
+#   namespace: kube-system
+#   values:
+#     args:
+#       - --kubelet-insecure-tls
+#       - --kubelet-preferred-address-types=InternalIP
+#     resources:
+#       requests:
+#         cpu: 50m
+#         memory: 64Mi
+#       limits:
+#         cpu: 100m
+#         memory: 128Mi
+# ---
+# Metrics Server for remote (EKS) environment
+kind: Deploy
+type: helm
+name: metrics-server
+description: Deploy Metrics Server for kubectl top and HPA support
+environments:
+  - remote
+spec:
+  chart:
+    repo: https://kubernetes-sigs.github.io/metrics-server
+    name: metrics-server
+    version: 3.12.1
+  namespace: kube-system
+  values:
+    resources:
+      requests:
+        cpu: 50m
+        memory: 64Mi
+      limits:
+        cpu: 100m
+        memory: 128Mi
