@@ -15,8 +15,6 @@ spec:
     name: kube-prometheus-stack
     version: 58.2.2
   namespace: teehr-hub
-  # Install CRDs before the chart
-  skipCrdResources: false
   values:
     # Ensure CRDs are installed
     crds:
