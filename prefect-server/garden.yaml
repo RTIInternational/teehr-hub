@@ -22,6 +22,15 @@ spec:
     #   nodeSelector:
     #     teehr-hub/nodegroup-name: core-a
 
+    server:
+      resources:
+        requests:
+          cpu: 500m
+          memory: 1Gi
+        limits:
+          cpu: 1Gi
+          memory: 2Gi
+
     # Don't create a secret - use the existing one
     secret:
       create: false

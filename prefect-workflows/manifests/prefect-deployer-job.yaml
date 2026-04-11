@@ -58,4 +58,11 @@ spec:
           value: ${var.iceberg.catalogWarehouse}
         - name: IN_CLUSTER
           value: "${var.iceberg.inCluster}"
+        resources:
+          requests:
+            cpu: 500m
+            memory: 512Mi
+          limits:
+            cpu: 1000m
+            memory: 1Gi
       restartPolicy: Never
