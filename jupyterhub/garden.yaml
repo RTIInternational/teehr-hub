@@ -291,9 +291,9 @@ spec:
                 display_name: Version ${var.stableTeehrVersion} - 4XL (16 cores, 128 GB memory) 
                 kubespawner_override:
                   image: ${actions.build.teehr-jupyter-driver-image-stable.outputs.deploymentImageId}
-                  mem_limit: 128G
+                  mem_limit: 127G
                   mem_guarantee: 76G
-                  cpu_limit: 16
+                  cpu_limit: 15.5
                   cpu_guarantee: 12
                   node_selector:
                     teehr-hub/nodegroup-name: nb-r5-4xlarge
@@ -331,9 +331,9 @@ spec:
                 display_name: Bleeding Edge ${slice(var.devTeehrVersion, 0, 6)} - 4XL (16 cores, 128 GB memory) 
                 kubespawner_override:
                   image: ${actions.build.teehr-jupyter-driver-image-edge.outputs.deploymentImageId}
-                  mem_limit: 128G
+                  mem_limit: 127G
                   mem_guarantee: 76G
-                  cpu_limit: 16
+                  cpu_limit: 15.5
                   cpu_guarantee: 12
                   node_selector:
                     teehr-hub/nodegroup-name: nb-r5-4xlarge
