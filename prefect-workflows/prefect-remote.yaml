@@ -208,3 +208,14 @@ deployments:
     schedule:
       cron: "0 4 * * 0"
       active: true
+
+  - name: cleanup-old-flow-runs
+    version:
+    tags: []
+    description: Delete old Prefect flow runs (status=COMPLETED, older than 14 days)
+    entrypoint: workflows/maintenance/prefect_cleanup.py:rm_completed_flow_runs
+    parameters: {"age_limit_days": 14}
+    work_pool: *work_pool
+    schedule:
+      cron: "0 3 * * *"
+      active: true

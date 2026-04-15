@@ -180,3 +180,11 @@ deployments:
     entrypoint: workflows/maintenance/routine_table_maintenance.py:routine_table_maintenance
     parameters: {"temp_dir_path": *temp_dir_path, "start_spark_cluster": false}
     work_pool: *work_pool
+
+  - name: cleanup-old-flow-runs
+    version:
+    tags: []
+    description: Delete old Prefect flow runs (status=COMPLETED, older than 14 days)
+    entrypoint: workflows/maintenance/prefect_cleanup.py:rm_completed_flow_runs
+    parameters: {"age_limit_days": 14}
+    work_pool: *work_pool
