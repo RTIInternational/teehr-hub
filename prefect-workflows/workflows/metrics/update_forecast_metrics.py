@@ -28,6 +28,9 @@ METRIC_COL_NAMES = [metric.output_field_name for metric in FORECAST_METRICS]
 def update_forecast_metrics_table(
     temp_dir_path: Union[str, Path],
     start_spark_cluster: bool = True,
+    executor_instances: int = 8,
+    executor_cores: int = 4,
+    executor_memory: str = "16g"
 ) -> None:
     """Create the forecast metrics table
 
@@ -42,7 +45,9 @@ def update_forecast_metrics_table(
     ev = initialize_evaluation(
         temp_dir_path=temp_dir_path,
         start_spark_cluster=start_spark_cluster,
-        executor_instances=8
+        executor_instances=executor_instances,
+        executor_cores=executor_cores,
+        executor_memory=executor_memory
     )
 
     logger.info("Calculating and writing forecast metrics by lead time bins...")

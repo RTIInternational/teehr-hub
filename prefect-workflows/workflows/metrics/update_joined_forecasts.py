@@ -34,6 +34,9 @@ def update_joined_forecast_table(
     forecast_configuration_names: List[str] =
         FORECAST_CONFIGURATION_NAMES,
     start_spark_cluster: bool = True,
+    executor_instances: int = 8,
+    executor_cores: int = 4,
+    executor_memory: str = "16g"
 ) -> None:
     """Create the joined forecast table.
 
@@ -43,7 +46,9 @@ def update_joined_forecast_table(
     ev = initialize_evaluation(
         temp_dir_path=temp_dir_path,
         start_spark_cluster=start_spark_cluster,
-        executor_instances=8
+        executor_instances=executor_instances,
+        executor_cores=executor_cores,
+        executor_memory=executor_memory
     )
     # Find the min reference time across all forecast configurations
     names = ", ".join(f"'{n}'" for n in forecast_configuration_names)
