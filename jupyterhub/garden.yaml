@@ -133,6 +133,7 @@ spec:
           image_pull_policy: IfNotPresent
           node_selector:
             teehr-hub/nodegroup-name: nb-r5-xlarge
+
     prePuller:
       hook:
         enabled: false
@@ -572,7 +573,7 @@ spec:
                 display_name: HEFS-FEWS v0.3.x - XL (4 cores, 16 GB memory)
                 default: true
                 kubespawner_override:
-                  image: "935462133478.dkr.ecr.us-east-2.amazonaws.com/hefs-fews-hub:v0.3"
+                  image: "935462133478.dkr.ecr.us-east-2.amazonaws.com/hefs-fews-hub:v0.3.0"
                   mem_limit: 32G
                   mem_guarantee: 19G
                   cpu_limit: 4
@@ -726,6 +727,12 @@ spec:
         kubespawner_override:
           environment:
             TEEHR_PROJECT_ID: "FFF"
+
+    # prePuller:
+    #   hook:
+    #     enabled: false
+    #   continuous:
+    #     enabled: false
 
     scheduling:
       userScheduler:
