@@ -56,6 +56,10 @@ spec:
           # Allow users to create Spark sessions
           c.KubeSpawner.service_account = 'jupyter'
           c.KubeSpawner.automount_service_account_token = True
+        cull-kernels: |
+          c.MappingKernelManager.cull_idle_timeout = 3600
+          c.MappingKernelManager.cull_connected = True
+          c.MappingKernelManager.cull_busy = False
 
     singleuser:
       image:
@@ -216,6 +220,10 @@ spec:
           # Allow users to create Spark sessions
           c.KubeSpawner.service_account = 'jupyter'
           c.KubeSpawner.automount_service_account_token = True
+        # cull-kernels: |
+        #   c.MappingKernelManager.cull_idle_timeout = 3600
+        #   c.MappingKernelManager.cull_connected = True
+        #   c.MappingKernelManager.cull_busy = False
 
     singleuser:
       image:
@@ -573,24 +581,24 @@ spec:
                 display_name: HEFS-FEWS v0.3.x - XL (4 cores, 16 GB memory)
                 default: true
                 kubespawner_override:
-                  image: "935462133478.dkr.ecr.us-east-2.amazonaws.com/hefs-fews-hub:v0.3.0"
+                  image: "935462133478.dkr.ecr.us-east-2.amazonaws.com/hefs-fews-hub:v0.3"
                   mem_limit: 32G
                   mem_guarantee: 19G
                   cpu_limit: 4
                   cpu_guarantee: 3
                   node_selector:
                     teehr-hub/nodegroup-name: nb-r5-xlarge-firo
-              # hefs-latest:
-              #   display_name: HEFS-FEWS Bleeding Edge - XL (4 cores, 16 GB memory)
-              #   kubespawner_override:
-              #     image: "935462133478.dkr.ecr.us-east-2.amazonaws.com/hefs-fews-hub:dev"
-              #     image_pull_policy: IfNotPresent
-              #     mem_limit: 32G
-              #     mem_guarantee: 19G
-              #     cpu_limit: 4
-              #     cpu_guarantee: 3
-              #     node_selector:
-              #       teehr-hub/nodegroup-name: nb-r5-xlarge-firo
+              hefs-latest:
+                display_name: HEFS-FEWS Bleeding Edge - XL (4 cores, 16 GB memory)
+                kubespawner_override:
+                  image: "935462133478.dkr.ecr.us-east-2.amazonaws.com/hefs-fews-hub:dev"
+                  image_pull_policy: Always
+                  mem_limit: 32G
+                  mem_guarantee: 19G
+                  cpu_limit: 4
+                  cpu_guarantee: 3
+                  node_selector:
+                    teehr-hub/nodegroup-name: nb-r5-xlarge-firo
               current-tag-xlarge:
                 display_name: Version ${var.stableTeehrVersion} - XL (4 cores, 16 GB memory) 
                 kubespawner_override:
