@@ -580,17 +580,17 @@ spec:
                   cpu_guarantee: 3
                   node_selector:
                     teehr-hub/nodegroup-name: nb-r5-xlarge-firo
-              hefs-latest:
-                display_name: HEFS-FEWS Bleeding Edge - XL (4 cores, 16 GB memory)
-                kubespawner_override:
-                  image: "935462133478.dkr.ecr.us-east-2.amazonaws.com/hefs-fews-hub:dev"
-                  image_pull_policy: IfNotPresent
-                  mem_limit: 32G
-                  mem_guarantee: 19G
-                  cpu_limit: 4
-                  cpu_guarantee: 3
-                  node_selector:
-                    teehr-hub/nodegroup-name: nb-r5-xlarge-firo
+              # hefs-latest:
+              #   display_name: HEFS-FEWS Bleeding Edge - XL (4 cores, 16 GB memory)
+              #   kubespawner_override:
+              #     image: "935462133478.dkr.ecr.us-east-2.amazonaws.com/hefs-fews-hub:dev"
+              #     image_pull_policy: IfNotPresent
+              #     mem_limit: 32G
+              #     mem_guarantee: 19G
+              #     cpu_limit: 4
+              #     cpu_guarantee: 3
+              #     node_selector:
+              #       teehr-hub/nodegroup-name: nb-r5-xlarge-firo
               current-tag-xlarge:
                 display_name: Version ${var.stableTeehrVersion} - XL (4 cores, 16 GB memory) 
                 kubespawner_override:
