@@ -55,31 +55,20 @@ def _deserialize_timestamp(value: Any) -> datetime | None:
 def plan_backfill_batches(
     ev: teehr.Evaluation,
     forecast_configuration_names: list[str],
-    batch_by_month: bool = True,
+    batch_size_months: int = 1,
 ) -> list[dict[str, Any]]:
-    """Plan joined forecast batches by configuration and value_time month."""
+    """Plan joined forecast batches by configuration and value_time window."""
     logger = get_run_logger()
 
     if not forecast_configuration_names:
         logger.info("No forecast configurations supplied for backfill planning.")
         return []
 
+    if batch_size_months < 1:
+        raise ValueError("batch_size_months must be at least 1.")
+
     config_names_sql = _format_config_names(forecast_configuration_names)
-    if not batch_by_month:
-        query = f"""
-            SELECT
-                configuration_name,
-                MIN(reference_time) AS batch_min_reference_time,
-                MAX(reference_time) AS batch_max_reference_time,
-                MIN(value_time) AS batch_min_value_time,
-                MAX(value_time) AS batch_max_value_time,
-                COUNT(*) AS batch_row_count
-            FROM iceberg.teehr.secondary_timeseries
-            WHERE configuration_name IN ({config_names_sql})
-            GROUP BY configuration_name
-            ORDER BY configuration_name
-        """
-    else:
+    if batch_size_months == 1:
         query = f"""
             SELECT
                 configuration_name,
@@ -92,6 +81,29 @@ def plan_backfill_batches(
             FROM iceberg.teehr.secondary_timeseries
             WHERE configuration_name IN ({config_names_sql})
             GROUP BY configuration_name, date_trunc('month', value_time)
+            ORDER BY configuration_name, batch_month
+        """
+    else:
+        query = f"""
+            SELECT
+                configuration_name,
+                add_months(
+                    date_trunc('month', value_time),
+                    -pmod(month(value_time) - 1, {batch_size_months})
+                ) AS batch_month,
+                MIN(reference_time) AS batch_min_reference_time,
+                MAX(reference_time) AS batch_max_reference_time,
+                MIN(value_time) AS batch_min_value_time,
+                MAX(value_time) AS batch_max_value_time,
+                COUNT(*) AS batch_row_count
+            FROM iceberg.teehr.secondary_timeseries
+            WHERE configuration_name IN ({config_names_sql})
+            GROUP BY
+                configuration_name,
+                add_months(
+                    date_trunc('month', value_time),
+                    -pmod(month(value_time) - 1, {batch_size_months})
+                )
             ORDER BY configuration_name, batch_month
         """
 
@@ -178,7 +190,7 @@ def plan_incremental_batches(
     ev: teehr.Evaluation,
     forecast_configuration_names: list[str],
     changed_since: datetime,
-    batch_by_month: bool = True,
+    batch_size_months: int = 1,
 ) -> list[dict[str, Any]]:
     """Plan incremental batches from changed forecasts and changed observations.
 
@@ -199,10 +211,10 @@ def plan_incremental_batches(
     planner simple, but it can over-reprocess more forecasts than strictly
     necessary when changed observations are sparse across a large time span.
 
-    Planned batches are grouped by ``configuration_name`` and, when
-    ``batch_by_month`` is True, by ``date_trunc('month', value_time)`` so the
-    subsequent join can prune both primary and secondary tables on the same
-    ``value_time`` axis used by the join itself.
+    Planned batches are grouped by ``configuration_name`` and by a
+    ``batch_size_months`` value_time window so the subsequent join can prune
+    both primary and secondary tables on the same ``value_time`` axis used by
+    the join itself.
     """
     logger = get_run_logger()
 
@@ -210,21 +222,13 @@ def plan_incremental_batches(
         logger.info("No forecast configurations supplied for incremental planning.")
         return []
 
+    if batch_size_months < 1:
+        raise ValueError("batch_size_months must be at least 1.")
+
     changed_since_literal = pd.Timestamp(changed_since).isoformat(sep=" ")
     config_names_sql = _format_config_names(forecast_configuration_names)
 
-    if not batch_by_month:
-        batch_select = """
-            s.configuration_name AS configuration_name,
-            MIN(s.reference_time) AS batch_min_reference_time,
-            MAX(s.reference_time) AS batch_max_reference_time,
-            MIN(s.value_time) AS batch_min_value_time,
-            MAX(s.value_time) AS batch_max_value_time,
-            COUNT(*) AS batch_row_count
-        """
-        batch_group_by = "s.configuration_name"
-        batch_order_by = "configuration_name"
-    else:
+    if batch_size_months == 1:
         batch_select = """
             s.configuration_name AS configuration_name,
             date_trunc('month', s.value_time) AS batch_month,
@@ -235,6 +239,27 @@ def plan_incremental_batches(
             COUNT(*) AS batch_row_count
         """
         batch_group_by = "s.configuration_name, date_trunc('month', s.value_time)"
+        batch_order_by = "configuration_name, batch_month"
+    else:
+        batch_select = f"""
+            s.configuration_name AS configuration_name,
+            add_months(
+                date_trunc('month', s.value_time),
+                -pmod(month(s.value_time) - 1, {batch_size_months})
+            ) AS batch_month,
+            MIN(s.reference_time) AS batch_min_reference_time,
+            MAX(s.reference_time) AS batch_max_reference_time,
+            MIN(s.value_time) AS batch_min_value_time,
+            MAX(s.value_time) AS batch_max_value_time,
+            COUNT(*) AS batch_row_count
+        """
+        batch_group_by = f"""
+            s.configuration_name,
+            add_months(
+                date_trunc('month', s.value_time),
+                -pmod(month(s.value_time) - 1, {batch_size_months})
+            )
+        """
         batch_order_by = "configuration_name, batch_month"
 
     query = f"""

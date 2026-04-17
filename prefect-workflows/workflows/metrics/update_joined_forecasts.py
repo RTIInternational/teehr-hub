@@ -63,11 +63,11 @@ def update_joined_forecast_table(
     executor_instances: int = 8,
     executor_cores: int = 4,
     executor_memory: str = "32g",
-    batch_by_month: bool = True,
+    batch_size_months: int = 1,
 ) -> None:
     """Create the joined forecast table using bounded backfill batches.
 
-    Batches work by configuration_name and value_time month.
+    Batches work by configuration_name and configurable value_time month windows.
     """
     logger = get_run_logger()
     ev = _initialize_joined_forecast_evaluation(
@@ -80,7 +80,7 @@ def update_joined_forecast_table(
     batches = plan_backfill_batches(
         ev=ev,
         forecast_configuration_names=forecast_configuration_names,
-        batch_by_month=batch_by_month,
+        batch_size_months=batch_size_months,
     )
 
     if not batches:
@@ -123,7 +123,7 @@ def update_joined_forecast_table_incremental(
     executor_instances: int = 8,
     executor_cores: int = 4,
     executor_memory: str = "32g",
-    batch_by_month: bool = True,
+    batch_size_months: int = 1,
     safety_lookback_hours: int = DEFAULT_INCREMENTAL_LOOKBACK_HOURS,
     changed_since: Union[str, datetime, None] = None,
 ) -> None:
@@ -156,7 +156,7 @@ def update_joined_forecast_table_incremental(
         batches = plan_backfill_batches(
             ev=ev,
             forecast_configuration_names=forecast_configuration_names,
-            batch_by_month=batch_by_month,
+            batch_size_months=batch_size_months,
         )
         for index, batch in enumerate(batches):
             if index == 0:
@@ -181,7 +181,7 @@ def update_joined_forecast_table_incremental(
         ev=ev,
         forecast_configuration_names=forecast_configuration_names,
         changed_since=checkpoint,
-        batch_by_month=batch_by_month,
+        batch_size_months=batch_size_months,
     )
     if not batches:
         logger.info("No joined forecast incremental batches were planned.")
