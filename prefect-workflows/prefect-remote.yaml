@@ -187,6 +187,17 @@ deployments:
       cron: "0 9,21 * * *"
       active: true
 
+  - name: update-joined-forecast-table-incremental
+    version:
+    tags: []
+    description: Create the joined forecast timeseries table
+    entrypoint: workflows/metrics/update_joined_forecasts.py:update_joined_forecast_table_incremental
+    parameters: {"temp_dir_path": *temp_dir_path}
+    work_pool: *work_pool
+    # schedule:
+    #   cron: "0 9,21 * * *"
+    #   active: true
+
   - name: update-forecast-metrics-table
     version:
     tags: []

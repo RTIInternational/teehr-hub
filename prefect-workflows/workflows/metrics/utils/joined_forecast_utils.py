@@ -24,6 +24,13 @@ JOINED_FORECAST_UNIQUENESS_FIELDS = [
     "member",
 ]
 JOINED_FORECAST_NULLABLE_FIELDS = ["member"]
+JOINED_FORECAST_PARTITION_BY = ["months(value_time)", "configuration_name"]
+JOINED_FORECAST_WRITE_ORDERED_BY = [
+    "primary_location_id",
+    "secondary_location_id",
+    "reference_time",
+    "value_time",
+]
 JOINED_FORECAST_CHECKPOINT_TABLE_NAME = "workflow_state_joined_forecasts"
 
 
@@ -357,6 +364,8 @@ def write_joined_forecast_batch(
         write_mode=write_mode,
         uniqueness_fields=JOINED_FORECAST_UNIQUENESS_FIELDS,
         nullable_fields=JOINED_FORECAST_NULLABLE_FIELDS,
+        partition_by=JOINED_FORECAST_PARTITION_BY,
+        write_ordered_by=JOINED_FORECAST_WRITE_ORDERED_BY,
     )
 
 

@@ -165,6 +165,14 @@ deployments:
     parameters: {"temp_dir_path": *temp_dir_path, "start_spark_cluster": false}
     work_pool: *work_pool
 
+  - name: update-joined-forecast-table-incremental
+    version:
+    tags: []
+    description: Create the joined forecast timeseries table
+    entrypoint: workflows/metrics/update_joined_forecasts.py:update_joined_forecast_table_incremental
+    parameters: {"temp_dir_path": *temp_dir_path, "start_spark_cluster": false}
+    work_pool: *work_pool
+
   - name: update-forecast-metrics-table
     version:
     tags: []
