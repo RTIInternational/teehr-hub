@@ -32,6 +32,7 @@ JOINED_FORECAST_WRITE_ORDERED_BY = [
     "value_time",
 ]
 JOINED_FORECAST_CHECKPOINT_TABLE_NAME = "workflow_state_joined_forecasts"
+PRIMARY_CONFIGURATION_NAME = "usgs_observations"
 
 
 def _format_config_names(configuration_names: list[str]) -> str:
@@ -257,6 +258,7 @@ def plan_incremental_batches(
             WHERE
                 created_at >= TIMESTAMP '{changed_since_literal}'
                 OR updated_at >= TIMESTAMP '{changed_since_literal}'
+                AND configuration_name = '{PRIMARY_CONFIGURATION_NAME}'
         ),
         impacted_by_primary AS (
             SELECT
@@ -290,6 +292,13 @@ def plan_incremental_batches(
 def build_primary_filters(batch: dict[str, Any]) -> list[TableFilter]:
     """Build primary filters for a joined forecast batch."""
     filters = []
+    filters: list[TableFilter] = [
+        TableFilter(
+            column="configuration_name",
+            operator="=",
+            value=PRIMARY_CONFIGURATION_NAME,
+        )
+    ]
     if batch.get("batch_min_value_time") is not None:
         filters.append(
             TableFilter(

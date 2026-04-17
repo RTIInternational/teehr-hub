@@ -23,14 +23,12 @@ FORECAST_CONFIGURATION_NAMES = [
     "nwm30_medium_range",
     "nrds_v22_cfenom_medium_range",
     "nrds_v22_cfenom_short_range",
-    "nrds_v22_lstm_short_range",
-    "nrds_v22_lstm_medium_range",
     "nrds_v22_lstm0_short_range",
     "nrds_v22_lstm0_medium_range",
     "nwpsrfc_streamflow_forecast"
 ]
 DEFAULT_SHUFFLE_PARTITIONS = 256
-DEFAULT_INCREMENTAL_LOOKBACK_HOURS = 24
+DEFAULT_INCREMENTAL_LOOKBACK_HOURS = 2
 JOINED_FORECAST_CHECKPOINT_NAME = "fcst_joined_timeseries"
 
 
