@@ -60,10 +60,10 @@ def update_joined_forecast_table(
     temp_dir_path: Union[str, Path],
     forecast_configuration_names: List[str] = FORECAST_CONFIGURATION_NAMES,
     start_spark_cluster: bool = True,
-    executor_instances: int = 8,
+    executor_instances: int = 24,
     executor_cores: int = 4,
     executor_memory: str = "32g",
-    batch_size_months: int = 1,
+    batch_size_months: int = 24,
 ) -> None:
     """Create the joined forecast table using bounded backfill batches.
 
