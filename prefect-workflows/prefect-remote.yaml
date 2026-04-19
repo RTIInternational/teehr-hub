@@ -193,9 +193,9 @@ deployments:
     entrypoint: workflows/metrics/update_joined_forecasts.py:update_joined_forecast_table
     parameters: {"temp_dir_path": *temp_dir_path}
     work_pool: *work_pool_large
-    schedule:
-      cron: "0 9,21 * * *"
-      active: true
+    # schedule:
+    #   cron: "0 9,21 * * *"
+    #   active: true
 
   - name: update-joined-forecast-table-incremental
     version:
@@ -204,9 +204,9 @@ deployments:
     entrypoint: workflows/metrics/update_joined_forecasts.py:update_joined_forecast_table_incremental
     parameters: {"temp_dir_path": *temp_dir_path}
     work_pool: *work_pool
-    # schedule:
-    #   cron: "0 9,21 * * *"
-    #   active: true
+    schedule:
+      cron: "0 9,21 * * *"
+      active: true
 
   - name: update-forecast-metrics-table
     version:
@@ -214,7 +214,7 @@ deployments:
     description: Create the forecast metrics table
     entrypoint: workflows/metrics/update_forecast_metrics.py:update_forecast_metrics_table
     parameters: {"temp_dir_path": *temp_dir_path}
-    work_pool: *work_pool
+    work_pool: *work_pool_large
     schedule:
       cron: "0 10,22 * * *"
       active: true
