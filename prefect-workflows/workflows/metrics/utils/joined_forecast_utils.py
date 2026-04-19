@@ -408,7 +408,7 @@ def write_joined_forecast_batch(
     df = ev.joined_timeseries_view(
         primary_filters=build_primary_filters(batch),
         secondary_filters=build_secondary_filters(batch),
-    )
+    ).to_sdf()
     
     df.drop_duplicates(subset=JOINED_FORECAST_UNIQUENESS_FIELDS) 
     
