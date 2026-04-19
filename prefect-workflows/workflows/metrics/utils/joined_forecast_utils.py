@@ -390,10 +390,30 @@ def write_joined_forecast_batch(
         write_mode,
     )
 
-    ev.joined_timeseries_view(
+    # Need to update TEEHR to support drop duplicates for non-core tables.
+    # ev.joined_timeseries_view(
+    #     primary_filters=build_primary_filters(batch),
+    #     secondary_filters=build_secondary_filters(batch),
+    # ).write_to(
+    #     table_name=table_name,
+    #     write_mode=write_mode,
+    #     uniqueness_fields=JOINED_FORECAST_UNIQUENESS_FIELDS,
+    #     nullable_fields=JOINED_FORECAST_NULLABLE_FIELDS,
+    #     partition_by=JOINED_FORECAST_PARTITION_BY,
+    #     write_ordered_by=JOINED_FORECAST_WRITE_ORDERED_BY,
+    # )
+
+    # Workaround by dropping duplicates unitl TEEHR supports that natively for non-core tables.
+    # ether via a validate option on the table or in load_dataframe. 
+    df = ev.joined_timeseries_view(
         primary_filters=build_primary_filters(batch),
         secondary_filters=build_secondary_filters(batch),
-    ).write_to(
+    )
+    
+    df.drop_duplicates(subset=JOINED_FORECAST_UNIQUENESS_FIELDS) 
+    
+    ev._write.to_warehouse(
+        source_data=df,
         table_name=table_name,
         write_mode=write_mode,
         uniqueness_fields=JOINED_FORECAST_UNIQUENESS_FIELDS,
