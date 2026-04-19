@@ -16,7 +16,7 @@ from utils.forecast_utils import (
 
 logging.getLogger("teehr").setLevel(logging.INFO)
 
-DEFAULT_SHUFFLE_PARTITIONS = 256
+DEFAULT_SHUFFLE_PARTITIONS = 512
 METRICS_BY_LEAD_TIME_TABLE_NAME = "fcst_metrics_by_lead_time_bins"
 METRICS_BY_LOCATION_TABLE_NAME = "fcst_metrics_by_location"
 METRIC_COL_NAMES = [metric.output_field_name for metric in FORECAST_METRICS]
