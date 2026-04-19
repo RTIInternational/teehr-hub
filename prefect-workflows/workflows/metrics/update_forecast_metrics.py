@@ -29,8 +29,8 @@ METRIC_COL_NAMES = [metric.output_field_name for metric in FORECAST_METRICS]
 def update_forecast_metrics_table(
     temp_dir_path: Union[str, Path],
     start_spark_cluster: bool = True,
-    executor_instances: int = 8,
-    executor_cores: int = 4,
+    executor_instances: int = 64,
+    executor_cores: int = 2,
     executor_memory: str = "32g"
 ) -> None:
     """Create the forecast metrics table
