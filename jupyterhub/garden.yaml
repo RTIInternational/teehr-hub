@@ -220,10 +220,10 @@ spec:
           # Allow users to create Spark sessions
           c.KubeSpawner.service_account = 'jupyter'
           c.KubeSpawner.automount_service_account_token = True
-        # cull-kernels: |
-        #   c.MappingKernelManager.cull_idle_timeout = 3600
-        #   c.MappingKernelManager.cull_connected = True
-        #   c.MappingKernelManager.cull_busy = False
+        cull-kernels: |
+          c.MappingKernelManager.cull_idle_timeout = 3600
+          c.MappingKernelManager.cull_connected = True
+          c.MappingKernelManager.cull_busy = False
 
     singleuser:
       image:
