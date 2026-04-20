@@ -165,6 +165,14 @@ deployments:
     parameters: {"temp_dir_path": *temp_dir_path, "start_spark_cluster": false}
     work_pool: *work_pool
 
+  - name: update-joined-forecast-table-incremental
+    version:
+    tags: []
+    description: Create the joined forecast timeseries table
+    entrypoint: workflows/metrics/update_joined_forecasts.py:update_joined_forecast_table_incremental
+    parameters: {"temp_dir_path": *temp_dir_path, "start_spark_cluster": false}
+    work_pool: *work_pool
+
   - name: update-forecast-metrics-table
     version:
     tags: []
@@ -179,4 +187,12 @@ deployments:
     description: Run routine Iceberg table maintenance (expire snapshots, remove orphan files, compact data files, rewrite manifests)
     entrypoint: workflows/maintenance/routine_table_maintenance.py:routine_table_maintenance
     parameters: {"temp_dir_path": *temp_dir_path, "start_spark_cluster": false}
+    work_pool: *work_pool
+
+  - name: cleanup-old-flow-runs
+    version:
+    tags: []
+    description: Delete old Prefect flow runs (status=COMPLETED, older than 14 days)
+    entrypoint: workflows/maintenance/prefect_cleanup.py:rm_completed_flow_runs
+    parameters: {"age_limit_days": 14}
     work_pool: *work_pool

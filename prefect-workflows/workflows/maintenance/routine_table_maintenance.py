@@ -14,12 +14,11 @@ logging.getLogger("teehr").setLevel(logging.INFO)
 ORPHAN_FILE_RETENTION_DAYS = 2
 SNAPSHOT_RETENTION_DAYS = 7
 NUM_SNAPSHOTS_TO_KEEP = 10
-
-REWRITE_TABLE_SORT_ORDER = {
-    "primary_timeseries": "value_time ASC NULLS LAST, location_id ASC NULLS LAST",
-    "secondary_timeseries": "value_time ASC NULLS LAST, reference_time ASC NULLS LAST, location_id ASC NULLS LAST",
-}
-REWRITE_TABLE_STRATEGY = "sort"  # Can be 'sort' or 'binpack'
+DEFAULT_REWRITE_STRATEGY = "sort"  # Can be 'sort' or 'binpack'
+DEFAULT_TARGET_FILE_SIZE_BYTES = "134217728"  # 128 MB
+WRITE_SORT_ORDER_PROPERTY = "write.sort-order"
+REWRITE_STRATEGY_PROPERTY = "maintenance.rewrite.strategy"
+REWRITE_TARGET_FILE_SIZE_PROPERTY = "maintenance.rewrite.target-file-size-bytes"
 
 
 @task(
@@ -80,20 +79,27 @@ def remove_orphan_files(
 def rewrite_data_files(
     spark: SparkSession,
     table_name: str,
-    sort_order: str,
     strategy: str,
+    sort_order: str | None = None,
+    target_file_size_bytes: str = DEFAULT_TARGET_FILE_SIZE_BYTES,
 ) -> None:
     """Compact small data files and apply z-order sorting."""
     logger = get_run_logger()
     logger.info(f"Rewriting data files on {table_name}")
     if strategy == "sort":
+        if not sort_order:
+            logger.warning(
+                f"No {WRITE_SORT_ORDER_PROPERTY} property found for {table_name}. "
+                "Skipping sort rewrite."
+            )
+            return
         logger.info(f"Using sort strategy with sort order: {sort_order}")
         query = f"""
             CALL iceberg.system.rewrite_data_files(
                 table => 'teehr.{table_name}',
                 strategy => '{strategy}',
                 sort_order => '{sort_order}',
-                options => map('target-file-size-bytes', '134217728') -- 128 MB
+                options => map('target-file-size-bytes', '{target_file_size_bytes}')
         );"""
     elif strategy == "binpack":
         logger.info(f"Using binpack strategy for {table_name}")
@@ -101,12 +107,54 @@ def rewrite_data_files(
             CALL iceberg.system.rewrite_data_files(
                 table => 'teehr.{table_name}',
                 strategy => '{strategy}',
-                options => map('target-file-size-bytes', '134217728') -- 128 MB
+                options => map('target-file-size-bytes', '{target_file_size_bytes}')
         );"""
     else:
         logger.warning(f"Unknown rewrite strategy {strategy} for {table_name}. Skipping rewrite.")
         return
     spark.sql(query).show()
+
+
+@task(
+    task_run_name="get-rewrite-settings-{table_name}",
+    timeout_seconds=5 * 60,
+    retries=2,
+    retry_delay_seconds=30,
+    cache_policy=NO_CACHE
+)
+def get_rewrite_settings(
+    spark: SparkSession,
+    table_name: str,
+) -> dict[str, str | None]:
+    """Read maintenance rewrite settings from Iceberg table properties."""
+    logger = get_run_logger()
+    logger.info(f"Reading rewrite settings from table properties for {table_name}")
+    rows = spark.sql(f"SHOW TBLPROPERTIES iceberg.teehr.{table_name}").collect()
+    properties = {row["key"]: row["value"] for row in rows}
+
+    sort_order = properties.get(WRITE_SORT_ORDER_PROPERTY)
+    strategy = properties.get(REWRITE_STRATEGY_PROPERTY)
+    target_file_size_bytes = properties.get(REWRITE_TARGET_FILE_SIZE_PROPERTY)
+
+    if sort_order is None and strategy is None and target_file_size_bytes is None:
+        return {
+            "enabled": "false",
+            "sort_order": None,
+            "strategy": None,
+            "target_file_size_bytes": None,
+        }
+
+    if strategy is None:
+        strategy = DEFAULT_REWRITE_STRATEGY
+    if target_file_size_bytes is None:
+        target_file_size_bytes = DEFAULT_TARGET_FILE_SIZE_BYTES
+
+    return {
+        "enabled": "true",
+        "sort_order": sort_order,
+        "strategy": strategy,
+        "target_file_size_bytes": target_file_size_bytes,
+    }
 
 
 @task(
@@ -182,12 +230,17 @@ def routine_table_maintenance(
             table_name=table_name,
             expiry_date=orphan_file_expiry_date
         )
-        if table_name in REWRITE_TABLE_SORT_ORDER:
+        rewrite_settings = get_rewrite_settings(
+            spark=ev.spark,
+            table_name=table_name,
+        )
+        if rewrite_settings["enabled"] == "true":
             rewrite_data_files(
                 spark=ev.spark,
                 table_name=table_name,
-                sort_order=REWRITE_TABLE_SORT_ORDER[table_name],
-                strategy=REWRITE_TABLE_STRATEGY
+                sort_order=rewrite_settings["sort_order"],
+                strategy=rewrite_settings["strategy"],
+                target_file_size_bytes=rewrite_settings["target_file_size_bytes"],
             )
         rewrite_manifests(
             spark=ev.spark,
