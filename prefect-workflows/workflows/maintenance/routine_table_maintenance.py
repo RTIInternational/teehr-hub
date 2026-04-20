@@ -11,6 +11,8 @@ from workflows.utils.common_utils import initialize_evaluation
 
 logging.getLogger("teehr").setLevel(logging.INFO)
 
+DEFAULT_SHUFFLE_PARTITIONS = 512
+
 ORPHAN_FILE_RETENTION_DAYS = 2
 SNAPSHOT_RETENTION_DAYS = 7
 NUM_SNAPSHOTS_TO_KEEP = 10
@@ -201,12 +203,13 @@ def routine_table_maintenance(
     ev = initialize_evaluation(
         temp_dir_path=temp_dir_path,
         start_spark_cluster=start_spark_cluster,
-        executor_instances=20,
+        executor_instances=24,
         executor_cores=4,
         executor_memory="32g",
         update_configs={
             "spark.hadoop.fs.s3.impl": "org.apache.hadoop.fs.s3a.S3AFileSystem",
-            "spark.hadoop.fs.AbstractFileSystem.s3.impl": "org.apache.hadoop.fs.s3a.S3A"
+            "spark.hadoop.fs.AbstractFileSystem.s3.impl": "org.apache.hadoop.fs.s3a.S3A",
+            "spark.sql.shuffle.partitions": str(DEFAULT_SHUFFLE_PARTITIONS),
         }
     )
     table_names = ev.list_tables()["name"].tolist()
