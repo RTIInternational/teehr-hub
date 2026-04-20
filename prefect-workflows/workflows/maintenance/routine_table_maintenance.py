@@ -181,6 +181,9 @@ def rewrite_manifests(
 def routine_table_maintenance(
     temp_dir_path: Union[str, Path],
     start_spark_cluster: bool = True,
+    executor_instances: int = 24,
+    executor_cores: int = 4,
+    executor_memory: str = "32g"
 ) -> None:
     """Routine table maintenance workflow.
 
@@ -203,9 +206,9 @@ def routine_table_maintenance(
     ev = initialize_evaluation(
         temp_dir_path=temp_dir_path,
         start_spark_cluster=start_spark_cluster,
-        executor_instances=24,
-        executor_cores=4,
-        executor_memory="32g",
+        executor_instances=executor_instances,
+        executor_cores=executor_cores,
+        executor_memory=executor_memory,
         update_configs={
             "spark.hadoop.fs.s3.impl": "org.apache.hadoop.fs.s3a.S3AFileSystem",
             "spark.hadoop.fs.AbstractFileSystem.s3.impl": "org.apache.hadoop.fs.s3a.S3A",
