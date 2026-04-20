@@ -182,7 +182,7 @@ def routine_table_maintenance(
     temp_dir_path: Union[str, Path],
     start_spark_cluster: bool = True,
     executor_instances: int = 24,
-    executor_cores: int = 4,
+    executor_cores: int = 2,
     executor_memory: str = "32g"
 ) -> None:
     """Routine table maintenance workflow.
