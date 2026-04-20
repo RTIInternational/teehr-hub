@@ -15,10 +15,9 @@ ORPHAN_FILE_RETENTION_DAYS = 2
 SNAPSHOT_RETENTION_DAYS = 7
 NUM_SNAPSHOTS_TO_KEEP = 10
 DEFAULT_REWRITE_STRATEGY = "sort"  # Can be 'sort' or 'binpack'
-DEFAULT_TARGET_FILE_SIZE_BYTES = "134217728"  # 128 MB
+DEFAULT_TARGET_FILE_SIZE_BYTES = "536870912"  # 512 MB
 WRITE_SORT_ORDER_PROPERTY = "write.sort-order"
-REWRITE_STRATEGY_PROPERTY = "maintenance.rewrite.strategy"
-REWRITE_TARGET_FILE_SIZE_PROPERTY = "maintenance.rewrite.target-file-size-bytes"
+WRITE_TARGET_FILE_SIZE_PROPERTY = "write.target-file-size-bytes"
 
 
 @task(
@@ -133,26 +132,21 @@ def get_rewrite_settings(
     properties = {row["key"]: row["value"] for row in rows}
 
     sort_order = properties.get(WRITE_SORT_ORDER_PROPERTY)
-    strategy = properties.get(REWRITE_STRATEGY_PROPERTY)
-    target_file_size_bytes = properties.get(REWRITE_TARGET_FILE_SIZE_PROPERTY)
+    target_file_size_bytes = properties.get(WRITE_TARGET_FILE_SIZE_PROPERTY)
 
-    if sort_order is None and strategy is None and target_file_size_bytes is None:
+    if sort_order is None and target_file_size_bytes is None:
         return {
             "enabled": "false",
             "sort_order": None,
-            "strategy": None,
             "target_file_size_bytes": None,
         }
 
-    if strategy is None:
-        strategy = DEFAULT_REWRITE_STRATEGY
     if target_file_size_bytes is None:
         target_file_size_bytes = DEFAULT_TARGET_FILE_SIZE_BYTES
 
     return {
         "enabled": "true",
         "sort_order": sort_order,
-        "strategy": strategy,
         "target_file_size_bytes": target_file_size_bytes,
     }
 
@@ -239,7 +233,7 @@ def routine_table_maintenance(
                 spark=ev.spark,
                 table_name=table_name,
                 sort_order=rewrite_settings["sort_order"],
-                strategy=rewrite_settings["strategy"],
+                strategy=DEFAULT_REWRITE_STRATEGY,
                 target_file_size_bytes=rewrite_settings["target_file_size_bytes"],
             )
         rewrite_manifests(
