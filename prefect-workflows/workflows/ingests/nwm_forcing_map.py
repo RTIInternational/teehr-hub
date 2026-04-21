@@ -10,7 +10,7 @@ import gc
 import time
 from pathlib import Path
 from datetime import datetime, timedelta, UTC
-from typing import Union, List, Optional
+from typing import Union, List
 
 import pandas as pd
 from prefect import flow, task, get_run_logger
@@ -94,7 +94,7 @@ def compute_and_write_map(
     chunk_end: str,
     output_type: str,
     target_table_name: str,
-    member: Optional[str] = None,
+    member: str = None,
 ) -> None:
     """Compute mean areal precipitation (MAP) and write to a parquet cache file.
 
@@ -257,7 +257,7 @@ def ingest_nwm_forcing_map(
     file_chunk_size: int = FILE_CHUNK_SIZE,
     target_table_name: str = "primary_timeseries",
     t_minus_hours: List[int] = [2],
-    member: Optional[str] = None,
+    member: str = None,
 ) -> None:
     """Calculate Mean Areal Precipitation from NWM forcing grids and write to TEEHR.
 
@@ -376,7 +376,7 @@ def ingest_nwm_forcing_map(
         )
 
     # Set up the local cache directory
-    nwm_cache_dir = Path(temp_dir_path) / "cache" / "nwm_forcing_map"
+    nwm_cache_dir = Path(ev.cache_dir) / "fetching" / ev_config["name"]
     remove_dir_if_exists(nwm_cache_dir)
     nwm_cache_dir.mkdir(parents=True, exist_ok=True)
 
@@ -413,6 +413,8 @@ def ingest_nwm_forcing_map(
             f"Chunk {filepath_chunk[0]} – {filepath_chunk[-1]}: "
             f"{len(filepath_chunk)} file(s)"
         )
+        chunk_start = f"{Path(filepath_chunk[0]).parent.parent.name}_{Path(filepath_chunk[0]).stem}"
+        chunk_end = f"{Path(filepath_chunk[-1]).parent.parent.name}_{Path(filepath_chunk[-1]).stem}"
         compute_and_write_map(
             ev=ev,
             filepaths=filepath_chunk,
@@ -422,8 +424,8 @@ def ingest_nwm_forcing_map(
             teehr_variable_name=ev_variable_name,
             is_analysis=is_analysis,
             nwm_cache_dir=nwm_cache_dir,
-            chunk_start=Path(filepath_chunk[0]).stem,
-            chunk_end=Path(filepath_chunk[-1]).stem,
+            chunk_start=chunk_start,
+            chunk_end=chunk_end,
             output_type=output_type,
             target_table_name=target_table_name,
             member=member,
