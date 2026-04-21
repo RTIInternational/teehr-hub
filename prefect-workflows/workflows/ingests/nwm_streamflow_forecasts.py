@@ -20,7 +20,6 @@ from workflows.utils.common_utils import initialize_evaluation
 
 # Start up a local Dask cluster
 from dask.distributed import Client
-client = Client()
 
 logging.getLogger("teehr").setLevel(logging.INFO)
 
@@ -60,6 +59,8 @@ def ingest_nwm_streamflow_forecasts(
     - End date defaults to current date and time.
     """
     logger = get_run_logger()
+    # Start a local Dask cluster
+    client = Client()
 
     if end_dt is None:
         end_dt = datetime.now(UTC).replace(tzinfo=None)
