@@ -3,7 +3,8 @@ type: kubernetes
 name: minio-deploy
 description: K8s Deploy MinIO
 spec:
-  files: ["./manifests/minio.yaml"]
+  manifestTemplates:
+  - "./manifests/minio.yaml.tpl"
 dependencies:
   - deploy.secrets
 environments:
@@ -14,7 +15,8 @@ type: kubernetes
 name: create-minio-bucket
 description: K8s Job Create MinIO Bucket
 spec:
-  files: ["./manifests/create-bucket.yaml"]
+  manifestFiles:
+  - "./manifests/create-bucket.yaml"
 dependencies:
   - deploy.secrets
   - deploy.minio-deploy

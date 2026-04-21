@@ -4,9 +4,9 @@ name: local-storage
 environments:
   - local
 spec:
-  files:
-    - manifests/local-pv.yaml
-    - manifests/local-pvc.yaml
+  manifestTemplates:
+    - manifests/local-pv.yaml.tpl
+    - manifests/local-pvc.yaml.tpl
 ---
 kind: Deploy
 type: kubernetes
@@ -14,7 +14,7 @@ name: nfs-storage
 environments:
   - remote
 spec:
-  files:
-    - manifests/remote-pv.yaml
-    - manifests/remote-pvc.yaml
-    - manifests/nfs-data-creator.yaml
+  manifestTemplates:
+    - manifests/remote-pv.yaml.tpl
+    - manifests/remote-pvc.yaml.tpl
+    - manifests/nfs-data-creator.yaml.tpl

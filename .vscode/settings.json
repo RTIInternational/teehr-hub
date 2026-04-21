@@ -19,5 +19,8 @@
     "isort.check": false,
     
     // Disable Pylance type checking (optional - Ruff handles linting)
-    "python.analysis.typeCheckingMode": "off"
+    "python.analysis.typeCheckingMode": "off",
+    "files.associations": {
+        "yaml.tpl": "yaml"
+    }
 }
