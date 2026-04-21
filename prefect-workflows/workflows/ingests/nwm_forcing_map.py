@@ -10,7 +10,7 @@ import gc
 import time
 from pathlib import Path
 from datetime import datetime, timedelta, UTC
-from typing import Union, List
+from typing import Union, List, Iterable
 
 import pandas as pd
 from prefect import flow, task, get_run_logger
@@ -83,7 +83,7 @@ def cache_weights_view(ev, location_id_prefix: str) -> None:
 @task(cache_policy=NO_CACHE, timeout_seconds=60 * 60)
 def compute_and_write_map(
     ev,
-    filepaths: Union[List[str], np.array[str]],
+    filepaths: Iterable[str],
     nwm_variable_name: str,
     teehr_config_name: str,
     teehr_unit_name: str,
@@ -205,9 +205,9 @@ def compute_and_write_map(
     map_results = ev.spark.sql(f"""
         SELECT /*+ BROADCAST(w) */
             w.location_id,
-            r.value_time AS value_time,
-            SUM(r.value * w.fraction_covered) / SUM(w.fraction_covered) AS value,
-            r.reference_time AS reference_time,
+            CAST(r.value_time AS TIMESTAMP_NTZ) AS value_time,
+            CAST(SUM(r.value * w.fraction_covered) / SUM(w.fraction_covered) AS FLOAT) AS value,
+            CAST(r.reference_time AS TIMESTAMP_NTZ) AS reference_time,
             '{teehr_unit_name}' AS unit_name,
             '{teehr_variable_name}' AS variable_name,
             '{teehr_config_name}' AS configuration_name
@@ -220,13 +220,8 @@ def compute_and_write_map(
     """)
     if output_type == "secondary":
         map_results = map_results.withColumn("member", F.lit(member))
-    out_path = nwm_cache_dir / f"{chunk_start}_to_{chunk_end}.parquet"
-    write_timeseries_parquet_file(
-        filepath=out_path,
-        overwrite_output=True,
-        data=map_results.toPandas(),
-        timeseries_type=output_type
-    )
+    out_path = nwm_cache_dir / f"{chunk_start}_to_{chunk_end}"
+    map_results.write.parquet(out_path.as_posix())
     logger.info(f"Wrote chunk to cache: {out_path.name}")
 
     ev.spark.catalog.dropTempView("raster_values")
@@ -257,7 +252,7 @@ def ingest_nwm_forcing_map(
     file_chunk_size: int = FILE_CHUNK_SIZE,
     target_table_name: str = "primary_timeseries",
     t_minus_hours: List[int] = [2],
-    member: str = None,
+    member: Union[str, None] = None,
 ) -> None:
     """Calculate Mean Areal Precipitation from NWM forcing grids and write to TEEHR.
 
