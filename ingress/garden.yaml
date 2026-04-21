@@ -2,8 +2,8 @@ kind: Deploy
 type: kubernetes
 name: jupyterhub-ingress
 spec:
-  files:
-    - manifests/hub.yaml
+  manifestTemplates:
+    - manifests/hub.yaml.tpl
 dependencies:
   - deploy.cert-manager
   - deploy.letsencrypt
@@ -17,8 +17,9 @@ kind: Deploy
 type: kubernetes
 name: minio-ingress
 spec:
-  files:
-    - manifests/minio.yaml
+  manifestTemplates:
+    - manifests/minio.yaml.tpl
+
 dependencies:
   - deploy.cert-manager
   - deploy.letsencrypt
@@ -31,8 +32,8 @@ kind: Deploy
 type: kubernetes
 name: panel-ingress
 spec:
-  files:
-    - manifests/panel.yaml
+  manifestTemplates:
+    - manifests/panel.yaml.tpl
 dependencies:
   - deploy.cert-manager
   - deploy.letsencrypt
@@ -46,8 +47,8 @@ kind: Deploy
 type: kubernetes
 name: api-ingress
 spec:
-  files:
-    - manifests/api.yaml
+  manifestTemplates:
+    - manifests/api.yaml.tpl
 dependencies:
   - deploy.cert-manager
   - deploy.letsencrypt
@@ -61,8 +62,8 @@ kind: Deploy
 type: kubernetes
 name: dashboards-ingress
 spec:
-  files:
-    - manifests/dashboards.yaml
+  manifestTemplates:
+    - manifests/dashboards.yaml.tpl
 dependencies:
   - deploy.cert-manager
   - deploy.letsencrypt
@@ -76,8 +77,8 @@ environments:
 # type: kubernetes
 # name: grafana-ingress
 # spec:
-#   files:
-#     - manifests/grafana.yaml
+#   manifestTemplates:
+#     - manifests/grafana.yaml.tpl
 # dependencies:
 #   - deploy.cert-manager
 #   - deploy.letsencrypt

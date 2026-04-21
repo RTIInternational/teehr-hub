@@ -8,5 +8,5 @@ environments:
   - local
   - remote
 spec:
-  files: 
+  manifestFiles:
   - ./manifests/iceberg-pg.yaml

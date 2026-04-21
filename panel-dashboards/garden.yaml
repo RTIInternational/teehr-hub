@@ -18,8 +18,8 @@ kind: Deploy
 type: kubernetes
 name: panel-app
 spec:
-  files:
-    - manifests/panel-app.yaml
+  manifestTemplates:
+    - manifests/panel-app.yaml.tpl
 dependencies:
   - build.panel-dashboards-image
 environments:

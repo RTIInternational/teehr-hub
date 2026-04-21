@@ -26,7 +26,7 @@ environments:
   - local
   - remote
 spec:
-  files:
+  manifestTemplates:
   - ./manifests/prefect-deployer-job.yaml
 ---
 kind: Deploy
@@ -41,8 +41,8 @@ environments:
   - local
   - remote
 spec:
-  files:
-  - ./manifests/update-job-template.yaml
+  manifestTemplates:
+  - ./manifests/update-job-template.yaml.tpl
 ---
 kind: Deploy
 type: kubernetes
@@ -51,7 +51,7 @@ description: Create Prefect job service account
 environments:
   - remote
 spec:
-  files:
+  manifestFiles:
   - ./manifests/prefect-job-sa.yaml
 ---
 kind: Deploy
@@ -64,5 +64,5 @@ environments:
   - local
   - remote
 spec:
-  files:
+  manifestFiles:
   - ./manifests/load-secrets.yaml

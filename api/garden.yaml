@@ -23,10 +23,12 @@ dependencies:
   - deploy.secrets
 
 spec:
-  files:
-    - manifests/deployment.yaml
+  manifestFiles:
     - manifests/service.yaml
-    - manifests/configmap.yaml
+
+  manifestTemplates:
+    - manifests/configmap.yaml.tpl
+    - manifests/deployment.yaml.tpl
 
   defaultTarget:
     kind: Deployment
