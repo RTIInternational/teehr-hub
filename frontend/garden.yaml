@@ -37,10 +37,14 @@ dependencies:
   - build.teehr-frontend
 
 spec:
-  files:
-    - manifests/deployment-dev.yaml
+
+  manifestFiles:
     - manifests/service-dev.yaml
-    - manifests/configmap-dev.yaml
+
+  manifestTemplates:
+    - manifests/deployment-dev.yaml.tpl
+    - manifests/configmap-dev.yaml.tpl
+    
   
   defaultTarget:
     kind: Deployment
@@ -67,8 +71,8 @@ dependencies:
   - build.teehr-frontend-prod
 
 spec:
-  files:
-    - manifests/deployment-prod.yaml
+  manifestFiles:
+    - manifests/deployment-prod.yaml.
     - manifests/service-prod.yaml
   
   defaultTarget:

@@ -45,5 +45,5 @@ jobs:
       - name: Deploy preview env with Garden
         uses: garden-io/garden-action@v2
         with:
-          garden-version: 0.13.54
+          garden-version: 0.14.20
           command: deploy --env remote

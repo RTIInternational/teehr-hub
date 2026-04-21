@@ -2,7 +2,7 @@ kind: Deploy
 type: kubernetes
 name: contour
 spec:
-  files:
+  manifestFiles:
     - manifests/contour.yaml
 environments:
   - remote

@@ -33,6 +33,7 @@ type: kubernetes
 name: node-termination-handler
 description: AWS Node Termination Handler to gracefully handle spot instance interruptions
 spec:
-  files: ["./manifests/node-termination-handler.yaml"]
+  manifestFiles:
+    - "./manifests/node-termination-handler.yaml"
 environments:
   - remote
