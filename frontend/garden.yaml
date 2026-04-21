@@ -71,8 +71,10 @@ dependencies:
   - build.teehr-frontend-prod
 
 spec:
+  manifestTemplates:
+    - manifests/deployment-prod.yaml.tpl
+
   manifestFiles:
-    - manifests/deployment-prod.yaml.
     - manifests/service-prod.yaml
   
   defaultTarget:
