@@ -27,7 +27,6 @@ from teehr.fetching.utils import (
 )
 from teehr.fetching.const import (
     NWM30_ANALYSIS_CONFIG,
-    NWM_BUCKET,
     NWM30_ANALYSIS_CONFIG
 )
 from teehr.utils.utils import remove_dir_if_exists
@@ -42,6 +41,8 @@ DEFAULT_VARIABLE_NAME = "RAINRATE"
 NWM_VERSION_ANALYSIS_CONFIG = {
     "nwm30": NWM30_ANALYSIS_CONFIG,
 }
+NWM30_WEIGHTS_CONFIGURATION = "nwm30_forcing_short_range"
+NWM30_WEIGHTS_VARIABLE_NAME = "rainfall_hourly_rate"
 
 # Regex patterns for parsing datetime info from GCS filepaths
 DATE_PATTERN = r"nwm\.(\d{8})"
@@ -52,12 +53,18 @@ FILE_CHUNK_SIZE = 100  # The max. number of files to process in each chunk
 
 
 @task(cache_policy=NO_CACHE, timeout_seconds=60 * 10)
-def cache_weights_view(ev, location_id_prefix: str) -> None:
+def cache_weights_view(
+    ev,
+    location_id_prefix: str,
+    weights_configuration: str,
+    weights_variable_name: str,
+) -> None:
     """Create and cache a Spark temporary view of pixel coverage weights.
 
     Reads directly from the remote iceberg.teehr.grid_pixel_coverage_weights
-    table, filtering to the specified location prefix, and materializes the
-    result into Spark's in-memory cache for fast repeated joins.
+    table, filtering to the specified location prefix, configuration name, and
+    variable name, and materializes the result into Spark's in-memory cache
+    for fast repeated joins.
 
     Parameters
     ----------
@@ -65,16 +72,23 @@ def cache_weights_view(ev, location_id_prefix: str) -> None:
         Active TEEHR evaluation instance.
     location_id_prefix : str
         Location ID prefix to filter weights (e.g. "usgsbasin").
+    weights_configuration : str
+        Configuration name to filter weights (e.g. "nwm30_forcing_short_range").
+    weights_variable_name : str
+        Variable name to filter weights (e.g. "rainfall_hourly_rate").
     """
     logger = get_run_logger()
     logger.info(
-        f"Caching pixel coverage weights view for prefix '{location_id_prefix}'"
+        f"Caching pixel coverage weights view for prefix '{location_id_prefix}', "
+        f"configuration '{weights_configuration}', variable '{weights_variable_name}'"
     )
     ev.spark.sql(f"""
         CREATE OR REPLACE TEMPORARY VIEW fractions_view AS
         SELECT fraction_covered, location_id, position_index
         FROM iceberg.teehr.grid_pixel_coverage_weights
         WHERE location_id LIKE '{location_id_prefix}-%'
+          AND configuration_name = '{weights_configuration}'
+          AND variable_name = '{weights_variable_name}'
     """)
     ev.spark.sql("CACHE TABLE fractions_view")
     logger.info("Pixel coverage weights view cached successfully")
@@ -376,7 +390,12 @@ def ingest_nwm_forcing_map(
     nwm_cache_dir.mkdir(parents=True, exist_ok=True)
 
     # Cache the pixel coverage weights view once for all chunks (eagerly)
-    cache_weights_view(ev=ev, location_id_prefix=location_id_prefix)
+    cache_weights_view(
+        ev=ev,
+        location_id_prefix=location_id_prefix,
+        weights_configuration=NWM30_WEIGHTS_CONFIGURATION,
+        variable_name=NWM30_WEIGHTS_VARIABLE_NAME,
+    )
 
     # Build paths to files in GCS
     filepaths = build_remote_nwm_filelist(
