@@ -116,10 +116,10 @@ def fetch_nwps_rfc_fcst_to_cache(
         response.raise_for_status()
         fcst_data = response.json()
     except requests.exceptions.RequestException as e:
-        logger.warning(
+        logger.error(
             f"Failed to fetch NWPS RFC forecast data for RFC LID: {RFC_lid} "
             f"- Error: {str(e)}")
-        return
+        raise
 
     # extract data to dataframe
     df = pd.DataFrame(fcst_data['data'])
@@ -127,7 +127,7 @@ def fetch_nwps_rfc_fcst_to_cache(
     # check if dataframe is empty after filtering
     if df.empty:
         logger.warning(f"No forecast data available for RFC LID: {RFC_lid}")
-        return
+        return None
     
     # trim to required fields
     field_list = [field for field in field_mapping if field in df.columns]
@@ -139,7 +139,7 @@ def fetch_nwps_rfc_fcst_to_cache(
 
     # check if dataframe is empty after filtering
     if df.empty:
-        logger.warning(f"No forecast data available remaining after removing no data values.")
+        logger.error(f"No valid forecast data for RFC LID: {RFC_lid} after filtering no data values.")
         raise ValueError(f"No valid forecast data for RFC LID: {RFC_lid} after filtering no data values.")
     
     # convert flow units (kcfs to cms)
@@ -160,18 +160,18 @@ def fetch_nwps_rfc_fcst_to_cache(
         elif timestep_hours == 6:
             variable_name = variable_names[1]
         else:
-            logger.warning(
+            logger.error(
                 f"Unexpected timestep of {timestep_hours} hours "
                 f"for RFC LID: {RFC_lid}."
             )
-            return
+            raise ValueError(f"Unexpected timestep of {timestep_hours} hours for RFC LID: {RFC_lid}.")
     else:
-        logger.warning(
-            f"Multiple timesteps detected for RFC LID: {RFC_lid}."
-            "Cannot determine variable name."
+        logger.error(
+            f"Multiple timesteps detected for RFC LID: {RFC_lid}. "
+            f"Cannot determine variable name. "
             f"Timesteps detected: {time_diffs}"
         )
-        return
+        raise ValueError(f"Multiple timesteps detected for RFC LID: {RFC_lid}")
 
     # assume reference_time is one timestep before first forecast value time
     reference_time = df["value_time"].min()
