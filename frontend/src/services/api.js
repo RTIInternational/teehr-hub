@@ -110,8 +110,21 @@ export const apiService = {
     const datetime = formatDatetimeInterval(filters.start_date, filters.end_date);
     if (datetime) params.append('datetime', datetime);
     
-    if (filters.variable) params.append('variable_name', filters.variable);
-    if (filters.configuration) params.append('configuration_name', filters.configuration);
+    if (Array.isArray(filters.variable)) {
+      filters.variable.forEach((variable) => {
+        if (variable) params.append('variable_name', variable);
+      });
+    } else if (filters.variable) {
+      params.append('variable_name', filters.variable);
+    }
+
+    if (Array.isArray(filters.configuration)) {
+      filters.configuration.forEach((configuration) => {
+        if (configuration) params.append('configuration_name', configuration);
+      });
+    } else if (filters.configuration) {
+      params.append('configuration_name', filters.configuration);
+    }
     params.append('f', 'timeseries'); // Request timeseries format
     
     return apiCall(`/collections/primary_timeseries/items?${params.toString()}`);
@@ -133,8 +146,21 @@ export const apiService = {
     );
     if (refDatetime) params.append('reference_time', refDatetime);
     
-    if (filters.configuration) params.append('configuration_name', filters.configuration);
-    if (filters.variable) params.append('variable_name', filters.variable);
+    if (Array.isArray(filters.configuration)) {
+      filters.configuration.forEach((configuration) => {
+        if (configuration) params.append('configuration_name', configuration);
+      });
+    } else if (filters.configuration) {
+      params.append('configuration_name', filters.configuration);
+    }
+
+    if (Array.isArray(filters.variable)) {
+      filters.variable.forEach((variable) => {
+        if (variable) params.append('variable_name', variable);
+      });
+    } else if (filters.variable) {
+      params.append('variable_name', filters.variable);
+    }
     params.append('f', 'timeseries'); // Request timeseries format
     
     return apiCall(`/collections/secondary_timeseries/items?${params.toString()}`);

@@ -8,14 +8,15 @@ const PlotlyChart = ({ primaryData, secondaryData, selectedLocation, filters, he
   useEffect(() => {
     if (!plotRef.current) return;
 
-    const traces = [];
+    const primaryTraces = [];
+    const secondaryTraces = [];
 
     // Primary trace (observations)
     if (primaryData?.length > 0) {
       // Take the first series for primary data
       const primarySeries = primaryData[0];
       if (primarySeries?.timeseries?.length > 0) {
-        traces.push({
+        primaryTraces.push({
           x: primarySeries.timeseries.map(d => d.value_time),
           y: primarySeries.timeseries.map(d => d.value),
           name: 'Observed (' + (primarySeries.configuration_name || 'USGS') + ')',
@@ -128,11 +129,14 @@ const PlotlyChart = ({ primaryData, secondaryData, selectedLocation, filters, he
                 '<extra></extra>'
             };
             traceMap.set(key, trace);
-            traces.push(trace);
+            secondaryTraces.push(trace);
           }
         }
       });
     }
+
+    // Draw forecasts first and observations last so primary lines remain on top.
+    const traces = [...secondaryTraces, ...primaryTraces];
 
     // Only plot if we have traces
     if (traces.length === 0) {
