@@ -3,10 +3,12 @@ from datetime import datetime, timedelta, UTC
 from typing import Union
 import logging
 
-from prefect import flow, get_run_logger
+from prefect import flow, get_run_logger, task
+from prefect.cache_policies import NO_CACHE
 import pandas as pd
+import pyspark.sql as ps
 
-from teehr import Configuration
+from teehr import Configuration, Evaluation
 from teehr.fetching.nwm.nwm_points import nwm_to_parquet
 from teehr.utils.utils import remove_dir_if_exists
 from teehr.fetching.utils import (
@@ -31,6 +33,41 @@ OCONUS_STATE_NAMES = [
     'Northern Mariana Islands', 'Alaska', 'Hawaii', 'Guam',
     'American Samoa', 'Puerto Rico', 'Virgin Islands'
 ]
+
+
+@task(cache_policy=NO_CACHE)
+def _filter_crosswalk_table(
+    ev: Evaluation,
+    configuration_name: str,
+    location_id_prefix: str,
+) -> ps.DataFrame:
+    """Filter the location crosswalk table for the given configuration domain."""
+    logger = get_run_logger()
+    # Create the state_name filter based on configuration name
+    if "hawaii" in configuration_name.lower():
+        state_filter = f"state_name = 'Hawaii'"
+    elif "alaska" in configuration_name.lower():
+        state_filter = f"state_name = 'Alaska'"
+    elif "puertorico" in configuration_name.lower():
+        state_filter = f"state_name = 'Puerto Rico'"
+    else:
+        oconus_states = ", ".join(f"'{s}'" for s in OCONUS_STATE_NAMES)
+        state_filter = f"state_name NOT IN ({oconus_states})"
+    logger.info(f"Location crosswalk domain filter: {state_filter}")
+    # Filter by state and location ID prefix
+    filtered_crosswalks_sdf = ev.location_crosswalks.add_attributes(
+        attr_list=["state_name"]
+    ).filter(
+        filters=[
+            {
+                "column": "secondary_location_id",
+                "operator": "like",
+                "value": f"{location_id_prefix}-%"
+            },
+            state_filter
+        ]
+    ).to_sdf()
+    return filtered_crosswalks_sdf
 
 
 @flow(
@@ -101,27 +138,17 @@ def ingest_nwm_streamflow_forecasts(
         start_dt = end_dt - timedelta(days=num_lookback_days)
 
     logger.info(f"Processing NWM forecasts from {start_dt} to {end_dt}")
-
-    # Need to filter for CONUS
-    excluded_states = ", ".join(f"'{s}'" for s in OCONUS_STATE_NAMES)
-    filtered_crosswalks_sdf = ev.location_crosswalks.add_attributes(
-        attr_list=["state_name"]
-    ).filter(
-        filters=[
-            {
-                "column": "secondary_location_id",
-                "operator": "like",
-                "value": f"{LOCATION_ID_PREFIX}-%"
-            },
-            f"state_name NOT IN ({excluded_states})"
-        ]
-    ).to_sdf()
+    # Get the NWM IDs for the correct domain based on the configuration name and prefix.
+    filtered_crosswalks_sdf = _filter_crosswalk_table(
+        ev=ev,
+        configuration_name=teehr_nwm_config["name"],
+        location_id_prefix=LOCATION_ID_PREFIX
+    )
     stripped_ids = [
         row[0].split("-")[1]
         for row in filtered_crosswalks_sdf.select("secondary_location_id").collect()
     ]
-
-    logger.info(f"Found {len(stripped_ids)} location IDs after filtering for CONUS and NWM sites")
+    logger.info(f"Found {len(stripped_ids)} location IDs after filtering for the domain and NWM sites")
 
     ev_variable_name = format_nwm_variable_name(variable_name)
     ev_config = format_nwm_configuration_metadata(
