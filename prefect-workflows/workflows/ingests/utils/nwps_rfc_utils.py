@@ -85,7 +85,7 @@ def generate_task_name():
     return f"{task_name}-for-{endpoint['RFC_lid']}"
 
 @task(
-    task_run_name=generate_task_name
+    task_run_name=generate_task_name,
     retries=3,
     retry_delay_seconds=60,
 )
