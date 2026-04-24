@@ -9,6 +9,8 @@ from teehr.fetching.utils import write_timeseries_parquet_file
 import requests
 import pandas as pd
 
+from prefect.runtime import flow_run, task_run
+
 NO_DATA_VALUES = [-9999, -999]
 
 
@@ -76,9 +78,14 @@ def generate_nwps_endpoints(
     logger.info(f"Generated {len(endpoints)} NWPS RFC API endpoints.")
     return endpoints
 
+def generate_task_name():
+    task_name = task_run.task_name
+    parameters = task_run.parameters
+    endpoint = parameters["endpoint"]
+    return f"{task_name}-for-{endpoint['RFC_lid']}"
 
 @task(
-    task_run_name="fetch-to-cache-{endpoint['RFC_lid']}"
+    task_run_name=generate_task_name
 )
 def fetch_nwps_rfc_fcst_to_cache(
     endpoint: dict,
