@@ -88,6 +88,7 @@ def fetch_nwps_rfc_fcst_to_cache(
     """Fetch NWPS RFC forecast data and write to parquet cache."""
     logger = get_run_logger()
     RFC_lid = endpoint["RFC_lid"]
+    logger.info(f"Fetching NWPS RFC forecast for RFC LID: {RFC_lid}...")
 
     # create cache directory if it doesn't exist
     cache_dir_path = Path(output_cache_dir)
@@ -96,6 +97,7 @@ def fetch_nwps_rfc_fcst_to_cache(
 
     # Fetch forecast data
     fcst_url = endpoint["forecast"]
+    logger.info(f"Fetching forecast data from URL: {fcst_url}")
     try:
         response = requests.get(fcst_url)
         response.raise_for_status()
@@ -150,6 +152,7 @@ def fetch_nwps_rfc_fcst_to_cache(
 
     # assume reference_time is one timestep before first forecast value time
     reference_time = df["value_time"].min()
+    logger.info(f"Determined reference time {reference_time} for RFC LID: {RFC_lid}.")
     reference_time = pd.Timestamp(reference_time)
     if variable_name == "streamflow_hourly_inst":
         reference_time = reference_time - pd.Timedelta(hours=1)
