@@ -16,13 +16,15 @@ const PlotlyChart = ({ primaryData, secondaryData, selectedLocation, filters, he
       // Take the first series for primary data
       const primarySeries = primaryData[0];
       if (primarySeries?.timeseries?.length > 0) {
+        const configName = primarySeries.configuration_name || 'USGS';
         primaryTraces.push({
           x: primarySeries.timeseries.map(d => d.value_time),
           y: primarySeries.timeseries.map(d => d.value),
-          name: 'Observed (' + (primarySeries.configuration_name || 'USGS') + ')',
+          name: 'Observed (' + configName + ')',
           type: 'scatter',
           mode: 'lines',
           line: { color: '#000000', width: 2.5 },
+          showlegend: true,
           hovertemplate: 
             '<b>%{fullData.name}</b><br>' +
             'Date: %{x}<br>' +
@@ -89,8 +91,11 @@ const PlotlyChart = ({ primaryData, secondaryData, selectedLocation, filters, he
           const key = `${series.configuration_name}|${series.variable_name}|${series.reference_time}`;
           
           if (!traceMap.has(key)) {
-            // Include reference_time in legend name for forecasts (multiple reference_times)
-            let traceName = series.configuration_name;
+            const configName = series.configuration_name;
+            
+            // Display trace name with reference_time details in hover, but keep legend simple
+            let traceName = configName;
+            let hoverName = configName;
             if (series.reference_time && series.reference_time !== 'null') {
               // Format reference_time for display (e.g., "2024-01-15T00:00" -> "01/15 00:00")
               try {
@@ -99,15 +104,15 @@ const PlotlyChart = ({ primaryData, secondaryData, selectedLocation, filters, he
                 const day = String(refDate.getDate()).padStart(2, '0');
                 const hours = String(refDate.getHours()).padStart(2, '0');
                 const mins = String(refDate.getMinutes()).padStart(2, '0');
-                traceName = `${series.configuration_name} (${month}/${day} ${hours}:${mins})`;
+                hoverName = `${configName} (${month}/${day} ${hours}:${mins})`;
               } catch {
-                traceName = `${series.configuration_name} (${series.reference_time})`;
+                hoverName = `${configName} (${series.reference_time})`;
               }
             }
             
             // Get base color for this configuration and calculate opacity
-            const baseColor = configColorMap.get(series.configuration_name) || baseColors[0];
-            const opacity = getOpacity(series.configuration_name, series.reference_time);
+            const baseColor = configColorMap.get(configName) || baseColors[0];
+            const opacity = getOpacity(configName, series.reference_time);
             const rgbaColor = `rgba(${baseColor.r}, ${baseColor.g}, ${baseColor.b}, ${opacity})`;
             
             const trace = {
@@ -120,8 +125,9 @@ const PlotlyChart = ({ primaryData, secondaryData, selectedLocation, filters, he
                 color: rgbaColor, 
                 width: 2 
               },
+              showlegend: false, // Will be set to true for last occurrence only
               hovertemplate: 
-                '<b>%{fullData.name}</b><br>' +
+                '<b>' + hoverName + '</b><br>' +
                 'Date: %{x}<br>' +
                 `${formatVariableName(series.variable_name || filters.variable)}: %{y}${series.unit_name ? ' ' + formatUnitName(series.unit_name) : ''}<br>` +
                 (series.reference_time && series.reference_time !== 'null' ? 
@@ -132,6 +138,15 @@ const PlotlyChart = ({ primaryData, secondaryData, selectedLocation, filters, he
             secondaryTraces.push(trace);
           }
         }
+      });
+      
+      // Set showlegend only for the last trace of each configuration
+      const lastTraceIndexPerConfig = new Map();
+      secondaryTraces.forEach((trace, index) => {
+        lastTraceIndexPerConfig.set(trace.name, index);
+      });
+      lastTraceIndexPerConfig.forEach((index) => {
+        secondaryTraces[index].showlegend = true;
       });
     }
 
@@ -158,13 +173,22 @@ const PlotlyChart = ({ primaryData, secondaryData, selectedLocation, filters, he
           font: { size: 14 }
         }
       },
-      margin: { l: 80, r: 20, t: 20, b: 60 },
-      showlegend: false
+      margin: { l: 80, r: 200, t: 20, b: 60 },
+      showlegend: true,
+      legend: {
+        x: 1.01,
+        y: 0.95,
+        xanchor: 'left',
+        yanchor: 'top',
+        bgcolor: 'rgba(255, 255, 255, 0.8)',
+        bordercolor: '#999',
+        borderwidth: 0
+      }
     };
 
     Plotly.react(plotRef.current, traces, layout, { 
       responsive: true,
-      displayModeBar: true
+      displayModeBar: 'hover'
     });
 
   }, [primaryData, secondaryData, selectedLocation, filters]);
