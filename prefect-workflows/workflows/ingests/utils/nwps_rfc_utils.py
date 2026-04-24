@@ -196,7 +196,7 @@ def fetch_nwps_rfc_fcst_to_cache(
             f"Reference time {reference_time} is not newer than last cached "
             f"reference time {last_reference_time}."
         )
-        return
+        return None
 
     # Assemble dataframe
     unit_name = units_mapping[variable_name]
