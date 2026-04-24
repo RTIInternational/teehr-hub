@@ -129,6 +129,11 @@ def fetch_nwps_rfc_fcst_to_cache(
         logger.warning(f"No forecast data available for RFC LID: {RFC_lid}")
         return
     
+    # trim to required fields
+    field_list = [field for field in field_mapping if field in df.columns]
+    df = df[field_list]
+    df.rename(columns=field_mapping, inplace=True)
+
     # filter out no data values
     df = df[~df["value"].isin(NO_DATA_VALUES)]
 
@@ -137,11 +142,6 @@ def fetch_nwps_rfc_fcst_to_cache(
         logger.warning(f"No forecast data available remaining after removing no data values.")
         raise ValueError(f"No valid forecast data for RFC LID: {RFC_lid} after filtering no data values.")
     
-    # trim to required fields
-    field_list = [field for field in field_mapping if field in df.columns]
-    df = df[field_list]
-    df.rename(columns=field_mapping, inplace=True)
-
     # convert flow units (kcfs to cms)
     df["value"] = df["value"] * 28.3168
 
