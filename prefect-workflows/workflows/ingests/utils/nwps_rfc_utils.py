@@ -86,6 +86,8 @@ def generate_task_name():
 
 @task(
     task_run_name=generate_task_name
+    retries=3,
+    retry_delay_seconds=60,
 )
 def fetch_nwps_rfc_fcst_to_cache(
     endpoint: dict,
@@ -133,7 +135,7 @@ def fetch_nwps_rfc_fcst_to_cache(
     # check if dataframe is empty after filtering
     if df.empty:
         logger.warning(f"No forecast data available remaining after removing no data values.")
-        return
+        raise ValueError(f"No valid forecast data for RFC LID: {RFC_lid} after filtering no data values.")
     
     # trim to required fields
     field_list = [field for field in field_mapping if field in df.columns]
