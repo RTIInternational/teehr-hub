@@ -9,7 +9,7 @@ from teehr.fetching.utils import write_timeseries_parquet_file
 import requests
 import pandas as pd
 
-NO_DATA_VALUES = [-9999]
+NO_DATA_VALUES = [-9999, -999]
 
 
 @task(cache_policy=NO_CACHE)
