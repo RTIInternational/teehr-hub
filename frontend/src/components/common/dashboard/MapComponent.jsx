@@ -354,7 +354,7 @@ const MapComponent = ({
               12, 14
             ],
               'circle-color': colorExpression,
-              'circle-stroke-width': 3,
+              'circle-stroke-width': 2,
             'circle-stroke-color': 'black',
             'circle-opacity': 1
           },
