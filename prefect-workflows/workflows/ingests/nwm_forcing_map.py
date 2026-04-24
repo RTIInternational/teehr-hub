@@ -215,6 +215,16 @@ def compute_and_write_map(
         "CAST(pos AS BIGINT) as position_index",
     )
     raster_exp_sdf.createOrReplaceTempView("raster_values")
+
+    if "hawaii" in teehr_config_name:
+        domain_name = "nwm30_hawaii_forcing"
+    elif "alaska" in teehr_config_name:
+        domain_name = "nwm30_alaska_forcing"
+    elif "puertorico" in teehr_config_name:
+        domain_name = "nwm30_puertorico_forcing"
+    else:
+        domain_name = "nwm30_conus_forcing"
+
     # Compute coverage-weighted average per location and timestep
     map_results = ev.spark.sql(f"""
         SELECT /*+ BROADCAST(w) */
@@ -229,6 +239,8 @@ def compute_and_write_map(
             raster_values AS r
         JOIN
             fractions_view AS w ON r.position_index = w.position_index
+        WHERE
+            w.domain_name = '{domain_name}'
         GROUP BY
             w.location_id, r.value_time, r.reference_time
     """)
