@@ -113,6 +113,18 @@ deployments:
       cron: "0 6,18 * * *"
       active: true
 
+  - name: ingest-nwm-forcing-analysis-assim-map
+    version:
+    tags: []
+    description: Calculate Mean Areal Precipitation from NWM forcing analysis/assimilation grids
+    entrypoint: workflows/ingests/nwm_forcing_map.py:ingest_nwm_forcing_map
+    parameters: {
+      "temp_dir_path": *temp_dir_path,
+      "nwm_configuration": "forcing_analysis_assim",
+      "start_spark_cluster": false
+    }
+    work_pool: *work_pool
+
   - name: ingest-datastream-short-range-cfe-forecasts
     version:
     tags: []
