@@ -9,6 +9,8 @@ from teehr.fetching.utils import write_timeseries_parquet_file
 import requests
 import pandas as pd
 
+NO_DATA_VALUES = [-9999]
+
 
 @task(cache_policy=NO_CACHE)
 def query_last_reference_times(
@@ -75,7 +77,9 @@ def generate_nwps_endpoints(
     return endpoints
 
 
-@task()
+@task(
+    task_run_name="fetch-to-cache-{endpoint['RFC_lid']}"
+)
 def fetch_nwps_rfc_fcst_to_cache(
     endpoint: dict,
     output_cache_dir: str,
@@ -110,10 +114,20 @@ def fetch_nwps_rfc_fcst_to_cache(
 
     # extract data to dataframe
     df = pd.DataFrame(fcst_data['data'])
+   
+    # check if dataframe is empty after filtering
     if df.empty:
         logger.warning(f"No forecast data available for RFC LID: {RFC_lid}")
         return
+    
+    # filter out no data values
+    df = df[~df["value"].isin(NO_DATA_VALUES)]
 
+    # check if dataframe is empty after filtering
+    if df.empty:
+        logger.warning(f"No forecast data available remaining after removing no data values.")
+        return
+    
     # trim to required fields
     field_list = [field for field in field_mapping if field in df.columns]
     df = df[field_list]
@@ -162,6 +176,10 @@ def fetch_nwps_rfc_fcst_to_cache(
     # Add check to skip if reference_time is not newer than last
     # reference_time in warehouse for this gage
     last_reference_time = endpoint["last_reference_time"]
+    logger.info(
+        f"Comparing reference time {reference_time} to last cached reference time "
+        f"{last_reference_time} for RFC LID: {RFC_lid}."
+    )
     if (last_reference_time is not None and
        reference_time <= last_reference_time):
         logger.info(
