@@ -1,5 +1,5 @@
 import maplibregl from 'maplibre-gl';
-import { useEffect, useRef, useCallback } from 'react';
+import { useEffect, useRef, useCallback, useMemo, useState } from 'react';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import MapLegend from './MapLegend.jsx';
 
@@ -15,6 +15,57 @@ const MapComponent = ({
   const mapContainer = useRef(null);
   const map = useRef(null);
   const popup = useRef(null);
+  const [searchTerm, setSearchTerm] = useState('');
+
+  const selectFeatureOnMap = useCallback((feature, options = {}) => {
+    if (!feature?.geometry?.coordinates || !feature?.properties) return;
+
+    const { flyTo = true } = options;
+    const coordinates = feature.geometry.coordinates.slice();
+    const properties = feature.properties;
+
+    selectLocation({
+      primary_location_id: properties.primary_location_id,
+      secondary_location_id: properties.secondary_location_id,
+      name: properties.name,
+      coordinates
+    });
+
+    if (map.current?.getLayer('locations-selected')) {
+      map.current.setFilter('locations-selected', ['==', 'primary_location_id', properties.primary_location_id]);
+    }
+
+    if (flyTo && map.current) {
+      map.current.flyTo({
+        center: coordinates,
+        zoom: Math.max(map.current.getZoom(), 10),
+        duration: 700,
+        essential: true
+      });
+    }
+  }, [selectLocation]);
+
+  const matchedLocations = useMemo(() => {
+    const term = searchTerm.trim().toLowerCase();
+    const features = state.locations?.features || [];
+
+    if (!term) return [];
+
+    return features
+      .filter(feature => {
+        const props = feature?.properties || {};
+        const primaryId = String(props.primary_location_id || '').toLowerCase();
+        const secondaryId = String(props.secondary_location_id || '').toLowerCase();
+        const name = String(props.name || '').toLowerCase();
+
+        return (
+          primaryId.includes(term) ||
+          secondaryId.includes(term) ||
+          name.includes(term)
+        );
+      })
+      .slice(0, 15);
+  }, [searchTerm, state.locations]);
 
   // Initialize map function
   const initializeMap = useCallback(() => {
@@ -149,18 +200,7 @@ const MapComponent = ({
     const handleLocationClick = (e) => {
       if (e.features.length > 0) {
         const feature = e.features[0];
-        const coordinates = feature.geometry.coordinates.slice();
-        const properties = feature.properties;
-        
-        // Update selected location
-        selectLocation({
-          primary_location_id: properties.primary_location_id,
-          name: properties.name,
-          coordinates: coordinates
-        });
-        
-        // Update map selection
-        mapInstance.setFilter('locations-selected', ['==', 'primary_location_id', properties.primary_location_id]);
+        selectFeatureOnMap(feature, { flyTo: false });
       }
     };
     
@@ -390,7 +430,7 @@ const MapComponent = ({
       }
     };
 
-  }, [state.locations, state.mapLoaded, state.mapFilters.metricName, selectLocation, dispatch, ActionTypes, getMetricLabel]);
+  }, [state.locations, state.mapLoaded, state.mapFilters.metricName, selectLocation, dispatch, ActionTypes, getMetricLabel, selectFeatureOnMap]);
   
   return (
     <div className="position-relative h-100 w-100">
@@ -429,6 +469,74 @@ const MapComponent = ({
         
         {/* Map Controls */}
         {state.mapLoaded && <MapFilterButton />}
+
+        {/* Location search */}
+        {state.mapLoaded && (
+          <div
+            className="position-absolute top-0 start-0 m-3"
+            style={{ zIndex: 1200, width: 'min(380px, calc(100% - 200px))' }}
+          >
+            <div className="input-group shadow-sm" style={{ height: '38px' }}>
+              <span className="input-group-text bg-white border-end-0 rounded-start-3" aria-hidden="true">🔎</span>
+              <input
+                type="text"
+                className="form-control border-start-0"
+                placeholder="Search by primary ID, secondary ID, or name"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                aria-label="Search map locations"
+                style={{ height: '38px' }}
+              />
+              {searchTerm && (
+                <button
+                  type="button"
+                  className="btn rounded-end-3"
+                  onClick={() => setSearchTerm('')}
+                  aria-label="Clear search"
+                  style={{
+                    height: '38px',
+                    backgroundColor: '#ffffff',
+                    borderColor: '#ced4da',
+                    color: '#6c757d'
+                  }}
+                >
+                  Clear
+                </button>
+              )}
+            </div>
+
+            {searchTerm.trim() && (
+              <div className="list-group shadow-sm" style={{ maxHeight: '260px', overflowY: 'auto' }}>
+                {matchedLocations.length > 0 ? (
+                  matchedLocations.map((feature) => {
+                    const props = feature.properties || {};
+                    return (
+                      <button
+                        key={`${props.primary_location_id}-${props.secondary_location_id || ''}`}
+                        type="button"
+                        className="list-group-item list-group-item-action"
+                        onClick={() => {
+                          selectFeatureOnMap(feature, { flyTo: true });
+                          setSearchTerm('');
+                        }}
+                      >
+                        <div className="d-flex justify-content-between align-items-start gap-2">
+                          <div className="text-start">
+                            <div className="fw-semibold">{props.name || 'Unnamed location'}</div>
+                            <div className="small text-muted">Primary: {props.primary_location_id || 'N/A'}</div>
+                            <div className="small text-muted">Secondary: {props.secondary_location_id || 'N/A'}</div>
+                          </div>
+                        </div>
+                      </button>
+                    );
+                  })
+                ) : (
+                  <div className="list-group-item small text-muted">No matching locations found.</div>
+                )}
+              </div>
+            )}
+          </div>
+        )}
         
         {/* Map Legend */}
         {state.mapLoaded && <MapLegend metric={state.mapFilters.metricName} getMetricLabel={getMetricLabel} />}
