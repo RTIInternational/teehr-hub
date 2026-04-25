@@ -4,7 +4,6 @@ from typing import Union
 import logging
 
 from prefect import flow, get_run_logger
-from prefect.futures import wait
 from pyspark.sql import functions as F
 
 from workflows.utils.common_utils import initialize_evaluation
@@ -31,8 +30,10 @@ FIELD_MAPPING = {
     "validTime": "value_time",
     "secondary": "value",
 }
-VARIABLE_NAMES = ["streamflow_hourly_inst",
-                  "streamflow_6hr_inst"]
+VARIABLE_NAMES = [
+    "streamflow_hourly_inst",
+    "streamflow_6hr_inst"
+]
 CONFIGURATION_NAME = "nwpsrfc_streamflow_forecast"
 UNITS_MAPPING = {
     "streamflow_hourly_inst": "m^3/s",
@@ -112,12 +113,11 @@ def ingest_nwps_rfc_forecasts(
     endpoint_batches = _chunk_list(nwps_endpoints, BATCH_SIZE)
     logger.info(
         f"Fetching {len(nwps_endpoints)} NWPS RFC forecasts using "
-        f"{len(endpoint_batches)} batch tasks (batch_size={BATCH_SIZE})"
+        f"{len(endpoint_batches)} batches serially (batch_size={BATCH_SIZE})"
     )
 
-    batch_futures = []
     for batch_index, endpoint_batch in enumerate(endpoint_batches, start=1):
-        future = fetch_nwps_rfc_fcst_batch_to_cache.submit(
+        fetch_nwps_rfc_fcst_batch_to_cache(
             endpoints=endpoint_batch,
             output_cache_dir=output_cache_dir,
             field_mapping=FIELD_MAPPING,
@@ -128,23 +128,13 @@ def ingest_nwps_rfc_forecasts(
             batch_index=batch_index,
             total_batches=len(endpoint_batches),
         )
-        batch_futures.append(future)
 
-    wait(batch_futures)
     logger.info("✅ Completed fetching NWPS RFC forecast data to cache")
 
     if has_cache_data(output_cache_dir):
         logger.info(
             f"Adding cached data to evaluation from: {output_cache_dir}"
         )
-        # # coalesce cache files
-        # coalesced_cache_dir = output_cache_dir / "coalesced"
-        # coalesce_cache_files(
-        #     ev=ev,
-        #     num_cache_files=num_cache_files,
-        #     output_cache_dir=output_cache_dir,
-        #     coalesced_cache_dir=coalesced_cache_dir,
-        # )
 
         # load output
         load_to_warehouse(

@@ -1,8 +1,5 @@
 import asyncio
-from httpx import HTTPStatusError
 from prefect import get_client
-from prefect.client.schemas.actions import GlobalConcurrencyLimitCreate
-from prefect.exceptions import ObjectAlreadyExists
 from prefect.server.schemas.actions import WorkPoolUpdate
 
 
@@ -258,109 +255,5 @@ async def update_kubernetes_pool():
         )
 
 
-GLOBAL_CONCURRENCY_LIMITS = [
-    {"name": "nwps-rfc-fetch", "limit": 8},
-]
-
-
-def _get_limit_id(limit_obj):
-    if isinstance(limit_obj, dict):
-        return limit_obj.get("id")
-    return getattr(limit_obj, "id", None)
-
-
-def _get_limit_value(limit_obj):
-    if isinstance(limit_obj, dict):
-        # API payloads can surface either key depending on client/model shape.
-        return limit_obj.get("limit", limit_obj.get("concurrency_limit"))
-
-    if hasattr(limit_obj, "limit"):
-        return getattr(limit_obj, "limit")
-    if hasattr(limit_obj, "concurrency_limit"):
-        return getattr(limit_obj, "concurrency_limit")
-    return None
-
-
-async def _find_global_concurrency_limit(client, name: str):
-    by_name_candidates = [
-        "read_global_concurrency_limit_by_name",
-        "get_global_concurrency_limit_by_name",
-    ]
-    for method_name in by_name_candidates:
-        method = getattr(client, method_name, None)
-        if method is None:
-            continue
-        return await method(name=name)
-
-    list_candidates = [
-        "read_global_concurrency_limits",
-        "read_concurrency_limits",
-    ]
-    for method_name in list_candidates:
-        method = getattr(client, method_name, None)
-        if method is None:
-            continue
-
-        params = inspect.signature(method).parameters
-        kwargs = {}
-        if "limit" in params:
-            kwargs["limit"] = 500
-
-        limits = await method(**kwargs)
-        for limit_obj in limits:
-            limit_name = (
-                limit_obj.get("name")
-                if isinstance(limit_obj, dict)
-                else getattr(limit_obj, "name", None)
-            )
-            if limit_name == name:
-                return limit_obj
-
-    return None
-
-
-async def _delete_global_concurrency_limit(client, name: str) -> None:
-    await client.delete_global_concurrency_limit_by_name(name=name)
-
-
-async def upsert_global_concurrency_limits():
-    async with get_client() as client:
-        for gcl in GLOBAL_CONCURRENCY_LIMITS:
-            try:
-                await client.create_global_concurrency_limit(
-                    concurrency_limit=GlobalConcurrencyLimitCreate(
-                        name=gcl["name"],
-                        limit=gcl["limit"],
-                    )
-                )
-                print(f"Created GCL '{gcl['name']}' with limit={gcl['limit']}")
-            except (HTTPStatusError, ObjectAlreadyExists) as e:
-                is_conflict = isinstance(e, ObjectAlreadyExists) or (
-                    isinstance(e, HTTPStatusError) and e.response.status_code == 409
-                )
-                if is_conflict:
-                    existing = await _find_global_concurrency_limit(client, gcl["name"])
-                    existing_limit = _get_limit_value(existing) if existing is not None else None
-                    if existing_limit == gcl["limit"]:
-                        print(
-                            f"GCL '{gcl['name']}' already exists with limit={existing_limit}, no change needed"
-                        )
-                        continue
-
-                    await _delete_global_concurrency_limit(client, gcl["name"])
-                    await client.create_global_concurrency_limit(
-                        concurrency_limit=GlobalConcurrencyLimitCreate(
-                            name=gcl["name"],
-                            limit=gcl["limit"],
-                        )
-                    )
-                    print(
-                        f"Recreated GCL '{gcl['name']}' with limit={gcl['limit']} (was {existing_limit})"
-                    )
-                else:
-                    raise
-
-
 if __name__ == "__main__":
     asyncio.run(update_kubernetes_pool())
-    asyncio.run(upsert_global_concurrency_limits())
