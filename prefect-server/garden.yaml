@@ -30,6 +30,23 @@ spec:
         limits:
           cpu: "2"
           memory: 4Gi
+      env:
+        - name: PREFECT_SERVER_DATABASE_SQLALCHEMY_POOL_SIZE
+          value: "30"
+        - name: PREFECT_SERVER_DATABASE_SQLALCHEMY_MAX_OVERFLOW
+          value: "60"
+        - name: PREFECT_SERVER_DATABASE_SQLALCHEMY_POOL_TIMEOUT
+          value: "60"
+        - name: PREFECT_SERVER_DATABASE_CONNECTION_TIMEOUT
+          value: "10"
+        - name: PREFECT_SERVER_DATABASE_TIMEOUT
+          value: "30"
+        - name: PREFECT_SERVER_CONCURRENCY_MAXIMUM_CONCURRENCY_SLOT_WAIT_SECONDS
+          value: "180"
+        - name: PREFECT_DEPLOYMENT_CONCURRENCY_SLOT_WAIT_SECONDS
+          value: "180"
+        - name: PREFECT_SERVER_EVENTS_STREAM_OUT_ENABLED
+          value: "false"
 
     # Don't create a secret - use the existing one
     secret:

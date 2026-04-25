@@ -10,7 +10,7 @@ from teehr.fetching.utils import write_timeseries_parquet_file
 import requests
 import pandas as pd
 
-from prefect.runtime import flow_run, task_run
+from prefect.runtime import task_run
 
 NO_DATA_VALUES = [-9999, -999]
 
@@ -84,6 +84,75 @@ def generate_task_name():
     parameters = task_run.parameters
     endpoint = parameters["endpoint"]
     return f"{task_name}-for-{endpoint['RFC_lid']}"
+
+
+def generate_batch_task_name():
+    task_name = task_run.task_name
+    parameters = task_run.parameters
+    batch_index = parameters.get("batch_index", "?")
+    total_batches = parameters.get("total_batches", "?")
+    return f"{task_name}-batch-{batch_index}-of-{total_batches}"
+
+
+@task(
+    task_run_name=generate_batch_task_name,
+    retries=3,
+    retry_delay_seconds=60,
+)
+def fetch_nwps_rfc_fcst_batch_to_cache(
+    endpoints: List[dict],
+    output_cache_dir: str,
+    field_mapping: dict,
+    units_mapping: dict,
+    variable_names: list,
+    configuration_name: str,
+    location_id_prefix: str,
+    batch_index: int,
+    total_batches: int,
+):
+    """Fetch NWPS RFC forecast data for a batch of endpoints."""
+    logger = get_run_logger()
+    logger.info(
+        f"Processing NWPS batch {batch_index}/{total_batches} with {len(endpoints)} endpoints"
+    )
+
+    successful = 0
+    skipped = 0
+    failed = 0
+
+    with concurrency("nwps-rfc-fetch", occupy=1):
+        for endpoint in endpoints:
+            RFC_lid = endpoint["RFC_lid"]
+            try:
+                result = _fetch_nwps_rfc_fcst_to_cache_impl(
+                    endpoint=endpoint,
+                    output_cache_dir=output_cache_dir,
+                    field_mapping=field_mapping,
+                    units_mapping=units_mapping,
+                    variable_names=variable_names,
+                    configuration_name=configuration_name,
+                    location_id_prefix=location_id_prefix,
+                    logger=logger,
+                )
+                if result is None:
+                    skipped += 1
+                else:
+                    successful += 1
+            except Exception as exc:  # noqa: BLE001
+                failed += 1
+                logger.error(
+                    f"Batch {batch_index}/{total_batches}: failed endpoint RFC LID {RFC_lid}: {exc}"
+                )
+
+    logger.info(
+        f"Completed NWPS batch {batch_index}/{total_batches}: "
+        f"successful={successful}, skipped={skipped}, failed={failed}"
+    )
+
+    if failed > 0:
+        raise RuntimeError(
+            f"NWPS batch {batch_index}/{total_batches} had {failed} failed endpoints"
+        )
 
 @task(
     task_run_name=generate_task_name,
@@ -254,6 +323,7 @@ def _fetch_nwps_rfc_fcst_to_cache_impl(
         timeseries_type="secondary",
         overwrite_output=False
     )
+    return True
 
 
 @task()

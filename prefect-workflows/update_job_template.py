@@ -1,4 +1,5 @@
 import asyncio
+import inspect
 from httpx import HTTPStatusError
 from prefect import get_client
 from prefect.client.schemas.actions import GlobalConcurrencyLimitCreate
@@ -258,8 +259,110 @@ async def update_kubernetes_pool():
 
 
 GLOBAL_CONCURRENCY_LIMITS = [
-    {"name": "nwps-rfc-fetch", "limit": 20},
+    {"name": "nwps-rfc-fetch", "limit": 8},
 ]
+
+
+def _get_limit_id(limit_obj):
+    if isinstance(limit_obj, dict):
+        return limit_obj.get("id")
+    return getattr(limit_obj, "id", None)
+
+
+def _get_limit_value(limit_obj):
+    if isinstance(limit_obj, dict):
+        # API payloads can surface either key depending on client/model shape.
+        return limit_obj.get("limit", limit_obj.get("concurrency_limit"))
+
+    if hasattr(limit_obj, "limit"):
+        return getattr(limit_obj, "limit")
+    if hasattr(limit_obj, "concurrency_limit"):
+        return getattr(limit_obj, "concurrency_limit")
+    return None
+
+
+async def _find_global_concurrency_limit(client, name: str):
+    by_name_candidates = [
+        "read_global_concurrency_limit_by_name",
+        "get_global_concurrency_limit_by_name",
+    ]
+    for method_name in by_name_candidates:
+        method = getattr(client, method_name, None)
+        if method is None:
+            continue
+        return await method(name=name)
+
+    list_candidates = [
+        "read_global_concurrency_limits",
+        "read_concurrency_limits",
+    ]
+    for method_name in list_candidates:
+        method = getattr(client, method_name, None)
+        if method is None:
+            continue
+
+        params = inspect.signature(method).parameters
+        kwargs = {}
+        if "limit" in params:
+            kwargs["limit"] = 500
+
+        limits = await method(**kwargs)
+        for limit_obj in limits:
+            limit_name = (
+                limit_obj.get("name")
+                if isinstance(limit_obj, dict)
+                else getattr(limit_obj, "name", None)
+            )
+            if limit_name == name:
+                return limit_obj
+
+    return None
+
+
+async def _update_global_concurrency_limit(client, limit_obj, target_limit: int) -> bool:
+    limit_id = _get_limit_id(limit_obj)
+
+    update_candidates = [
+        "update_global_concurrency_limit",
+        "update_concurrency_limit",
+    ]
+    for method_name in update_candidates:
+        method = getattr(client, method_name, None)
+        if method is None:
+            continue
+
+        params = inspect.signature(method).parameters
+        attempts = []
+
+        if "name" in params:
+            attempts.append({"name": getattr(limit_obj, "name", None), "limit": target_limit})
+            attempts.append({"name": getattr(limit_obj, "name", None), "concurrency_limit": target_limit})
+
+        if "id" in params and limit_id is not None:
+            attempts.append({"id": limit_id, "limit": target_limit})
+            attempts.append({"id": limit_id, "concurrency_limit": target_limit})
+
+        if "concurrency_limit" in params:
+            if "id" in params and limit_id is not None:
+                attempts.append({"id": limit_id, "concurrency_limit": {"limit": target_limit}})
+            if "name" in params:
+                attempts.append({"name": getattr(limit_obj, "name", None), "concurrency_limit": {"limit": target_limit}})
+
+        for kwargs in attempts:
+            filtered_kwargs = {
+                key: value
+                for key, value in kwargs.items()
+                if key in params and value is not None
+            }
+            if not filtered_kwargs:
+                continue
+            try:
+                await method(**filtered_kwargs)
+                return True
+            except TypeError:
+                continue
+
+    return False
 
 
 async def upsert_global_concurrency_limits():
@@ -275,7 +378,31 @@ async def upsert_global_concurrency_limits():
                 print(f"Created GCL '{gcl['name']}' with limit={gcl['limit']}")
             except HTTPStatusError as e:
                 if e.response.status_code == 409:
-                    print(f"GCL '{gcl['name']}' already exists — skipping.")
+                    existing = await _find_global_concurrency_limit(client, gcl["name"])
+                    if existing is None:
+                        raise RuntimeError(
+                            f"GCL '{gcl['name']}' exists but could not be retrieved for update."
+                        )
+
+                    existing_limit = _get_limit_value(existing)
+                    if existing_limit == gcl["limit"]:
+                        print(
+                            f"GCL '{gcl['name']}' already exists with limit={existing_limit}"
+                        )
+                        continue
+
+                    updated = await _update_global_concurrency_limit(
+                        client=client,
+                        limit_obj=existing,
+                        target_limit=gcl["limit"],
+                    )
+                    if not updated:
+                        raise RuntimeError(
+                            f"GCL '{gcl['name']}' exists but could not be updated to {gcl['limit']}."
+                        )
+                    print(
+                        f"Updated GCL '{gcl['name']}' from {existing_limit} to {gcl['limit']}"
+                    )
                 else:
                     raise
 

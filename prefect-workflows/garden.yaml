@@ -19,6 +19,7 @@ description: K8s Deploy Prefect Workflows
 dependencies:
   - deploy.prefect-server
   - deploy.prefect-worker
+  - deploy.update-job-template
   - deploy.load-secrets
   - build.teehr-prefect-image
   - build.teehr-spark-executor-image
