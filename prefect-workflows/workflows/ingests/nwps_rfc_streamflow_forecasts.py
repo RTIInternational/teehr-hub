@@ -5,7 +5,6 @@ import logging
 
 from prefect import flow, get_run_logger
 from prefect.futures import wait
-from prefect.concurrency.sync import concurrency
 from pyspark.sql import functions as F
 
 from workflows.utils.common_utils import initialize_evaluation
@@ -109,16 +108,15 @@ def ingest_nwps_rfc_forecasts(
 
     endpoint_futures = []
     for endpoint in nwps_endpoints:
-        with concurrency("nwps-rfc-fetch", occupy=1):
-            future = fetch_nwps_rfc_fcst_to_cache.submit(
-                endpoint=endpoint,
-                output_cache_dir=output_cache_dir,
-                field_mapping=FIELD_MAPPING,
-                units_mapping=UNITS_MAPPING,
-                variable_names=VARIABLE_NAMES,
-                configuration_name=CONFIGURATION_NAME,
-                location_id_prefix=LOCATION_ID_PREFIX
-            )
+        future = fetch_nwps_rfc_fcst_to_cache.submit(
+            endpoint=endpoint,
+            output_cache_dir=output_cache_dir,
+            field_mapping=FIELD_MAPPING,
+            units_mapping=UNITS_MAPPING,
+            variable_names=VARIABLE_NAMES,
+            configuration_name=CONFIGURATION_NAME,
+            location_id_prefix=LOCATION_ID_PREFIX
+        )
         endpoint_futures.append(future)
 
     wait(endpoint_futures)
