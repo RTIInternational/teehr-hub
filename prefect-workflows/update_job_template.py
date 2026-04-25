@@ -3,6 +3,7 @@ import inspect
 from httpx import HTTPStatusError
 from prefect import get_client
 from prefect.client.schemas.actions import GlobalConcurrencyLimitCreate
+from prefect.exceptions import ObjectAlreadyExists
 from prefect.server.schemas.actions import WorkPoolUpdate
 
 
@@ -376,8 +377,11 @@ async def upsert_global_concurrency_limits():
                     )
                 )
                 print(f"Created GCL '{gcl['name']}' with limit={gcl['limit']}")
-            except HTTPStatusError as e:
-                if e.response.status_code == 409:
+            except (HTTPStatusError, ObjectAlreadyExists) as e:
+                is_conflict = isinstance(e, ObjectAlreadyExists) or (
+                    isinstance(e, HTTPStatusError) and e.response.status_code == 409
+                )
+                if is_conflict:
                     existing = await _find_global_concurrency_limit(client, gcl["name"])
                     if existing is None:
                         raise RuntimeError(
