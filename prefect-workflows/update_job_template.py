@@ -1,5 +1,4 @@
 import asyncio
-import inspect
 from httpx import HTTPStatusError
 from prefect import get_client
 from prefect.client.schemas.actions import GlobalConcurrencyLimitCreate
@@ -320,50 +319,19 @@ async def _find_global_concurrency_limit(client, name: str):
     return None
 
 
-async def _update_global_concurrency_limit(client, limit_obj, target_limit: int) -> bool:
-    limit_id = _get_limit_id(limit_obj)
+async def _delete_global_concurrency_limit(client, name: str) -> None:
+    limit_id = None
+    existing = await _find_global_concurrency_limit(client, name)
+    if existing is not None:
+        limit_id = _get_limit_id(existing)
 
-    update_candidates = [
-        "update_global_concurrency_limit",
-        "update_concurrency_limit",
-    ]
-    for method_name in update_candidates:
-        method = getattr(client, method_name, None)
-        if method is None:
-            continue
-
-        params = inspect.signature(method).parameters
-        attempts = []
-
-        if "name" in params:
-            attempts.append({"name": getattr(limit_obj, "name", None), "limit": target_limit})
-            attempts.append({"name": getattr(limit_obj, "name", None), "concurrency_limit": target_limit})
-
-        if "id" in params and limit_id is not None:
-            attempts.append({"id": limit_id, "limit": target_limit})
-            attempts.append({"id": limit_id, "concurrency_limit": target_limit})
-
-        if "concurrency_limit" in params:
-            if "id" in params and limit_id is not None:
-                attempts.append({"id": limit_id, "concurrency_limit": {"limit": target_limit}})
-            if "name" in params:
-                attempts.append({"name": getattr(limit_obj, "name", None), "concurrency_limit": {"limit": target_limit}})
-
-        for kwargs in attempts:
-            filtered_kwargs = {
-                key: value
-                for key, value in kwargs.items()
-                if key in params and value is not None
-            }
-            if not filtered_kwargs:
-                continue
-            try:
-                await method(**filtered_kwargs)
-                return True
-            except TypeError:
-                continue
-
-    return False
+    if limit_id is not None:
+        await client.delete_global_concurrency_limit_by_id(id=limit_id)
+    else:
+        # Fallback: try delete-by-name if available
+        method = getattr(client, "delete_global_concurrency_limit", None)
+        if method is not None:
+            await method(name=name)
 
 
 async def upsert_global_concurrency_limits():
@@ -383,29 +351,22 @@ async def upsert_global_concurrency_limits():
                 )
                 if is_conflict:
                     existing = await _find_global_concurrency_limit(client, gcl["name"])
-                    if existing is None:
-                        raise RuntimeError(
-                            f"GCL '{gcl['name']}' exists but could not be retrieved for update."
-                        )
-
-                    existing_limit = _get_limit_value(existing)
+                    existing_limit = _get_limit_value(existing) if existing is not None else None
                     if existing_limit == gcl["limit"]:
                         print(
-                            f"GCL '{gcl['name']}' already exists with limit={existing_limit}"
+                            f"GCL '{gcl['name']}' already exists with limit={existing_limit}, no change needed"
                         )
                         continue
 
-                    updated = await _update_global_concurrency_limit(
-                        client=client,
-                        limit_obj=existing,
-                        target_limit=gcl["limit"],
-                    )
-                    if not updated:
-                        raise RuntimeError(
-                            f"GCL '{gcl['name']}' exists but could not be updated to {gcl['limit']}."
+                    await _delete_global_concurrency_limit(client, gcl["name"])
+                    await client.create_global_concurrency_limit(
+                        concurrency_limit=GlobalConcurrencyLimitCreate(
+                            name=gcl["name"],
+                            limit=gcl["limit"],
                         )
+                    )
                     print(
-                        f"Updated GCL '{gcl['name']}' from {existing_limit} to {gcl['limit']}"
+                        f"Recreated GCL '{gcl['name']}' with limit={gcl['limit']} (was {existing_limit})"
                     )
                 else:
                     raise
