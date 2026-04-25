@@ -268,19 +268,20 @@ async def upsert_task_run_concurrency_limits():
             limit = tcl["concurrency_limit"]
             
             try:
-                # Try to create - will fail if already exists
-                await client.create_task_run_concurrency_limit(
+                # Create or update - server does upsert
+                await client.create_concurrency_limit(
                     tag=tag,
                     concurrency_limit=limit,
                 )
-                print(f"Created task run concurrency limit for tag '{tag}' with limit={limit}")
+                print(f"✓ Task run concurrency limit for tag '{tag}' set to limit={limit}")
             except Exception as e:
-                # If it already exists, we can either skip or delete+recreate
-                # For now, just log it exists
+                # Log any unexpected errors but don't fail
                 error_str = str(e).lower()
-                if "already exists" in error_str or "409" in error_str or "conflict" in error_str:
-                    print(f"Task run concurrency limit for tag '{tag}' already exists, skipping")
+                if "already exists" in error_str or "409" in error_str:
+                    # Already exists - this is handled by server upsert, shouldn't reach here
+                    print(f"Task run concurrency limit for tag '{tag}' already exists")
                 else:
+                    print(f"Error managing concurrency limit for tag '{tag}': {e}")
                     raise
 
 
