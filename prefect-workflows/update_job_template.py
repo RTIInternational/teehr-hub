@@ -1,5 +1,3 @@
-# Note, this script needs to be manually copied from
-# load_secrets.py to load-secrets.yaml
 import asyncio
 from httpx import HTTPStatusError
 from prefect import get_client
