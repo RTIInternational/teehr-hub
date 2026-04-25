@@ -320,18 +320,7 @@ async def _find_global_concurrency_limit(client, name: str):
 
 
 async def _delete_global_concurrency_limit(client, name: str) -> None:
-    limit_id = None
-    existing = await _find_global_concurrency_limit(client, name)
-    if existing is not None:
-        limit_id = _get_limit_id(existing)
-
-    if limit_id is not None:
-        await client.delete_global_concurrency_limit_by_id(id=limit_id)
-    else:
-        # Fallback: try delete-by-name if available
-        method = getattr(client, "delete_global_concurrency_limit", None)
-        if method is not None:
-            await method(name=name)
+    await client.delete_global_concurrency_limit_by_name(name=name)
 
 
 async def upsert_global_concurrency_limits():
