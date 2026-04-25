@@ -1,8 +1,12 @@
 # Note, this script needs to be manually copied from
 # load_secrets.py to load-secrets.yaml
 import asyncio
+from httpx import HTTPStatusError
 from prefect import get_client
-from prefect.server.schemas.actions import WorkPoolUpdate
+from prefect.server.schemas.actions import (
+    GlobalConcurrencyLimitCreate,
+    WorkPoolUpdate,
+)
 
 
 async def update_kubernetes_pool():
@@ -256,5 +260,30 @@ async def update_kubernetes_pool():
             work_pool=work_pool_update
         )
 
+
+GLOBAL_CONCURRENCY_LIMITS = [
+    {"name": "nwps-rfc-fetch", "limit": 20},
+]
+
+
+async def upsert_global_concurrency_limits():
+    async with get_client() as client:
+        for gcl in GLOBAL_CONCURRENCY_LIMITS:
+            try:
+                await client.create_global_concurrency_limit(
+                    concurrency_limit=GlobalConcurrencyLimitCreate(
+                        name=gcl["name"],
+                        limit=gcl["limit"],
+                    )
+                )
+                print(f"Created GCL '{gcl['name']}' with limit={gcl['limit']}")
+            except HTTPStatusError as e:
+                if e.response.status_code == 409:
+                    print(f"GCL '{gcl['name']}' already exists — skipping.")
+                else:
+                    raise
+
+
 if __name__ == "__main__":
     asyncio.run(update_kubernetes_pool())
+    asyncio.run(upsert_global_concurrency_limits())
