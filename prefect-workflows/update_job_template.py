@@ -3,10 +3,8 @@
 import asyncio
 from httpx import HTTPStatusError
 from prefect import get_client
-from prefect.server.schemas.actions import (
-    GlobalConcurrencyLimitCreate,
-    WorkPoolUpdate,
-)
+from prefect.client.schemas.actions import GlobalConcurrencyLimitCreate
+from prefect.server.schemas.actions import WorkPoolUpdate
 
 
 async def update_kubernetes_pool():
