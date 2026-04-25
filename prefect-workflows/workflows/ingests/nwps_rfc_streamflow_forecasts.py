@@ -1,9 +1,11 @@
 from pathlib import Path
 from datetime import datetime, UTC
-from typing import Union
+from typing import Any, Union
 import logging
 
 from prefect import flow, get_run_logger
+from prefect.futures import wait
+from prefect.states import State
 from pyspark.sql import functions as F
 
 from workflows.utils.common_utils import initialize_evaluation
@@ -14,7 +16,7 @@ from utils.datastream_utils import (
 from utils.nwps_rfc_utils import (
     query_last_reference_times,
     generate_nwps_endpoints,
-    fetch_nwps_rfc_fcst_batch_to_cache,
+    fetch_nwps_rfc_fcst_to_cache,
     has_cache_data
 )
 from teehr.utils.utils import remove_dir_if_exists
@@ -39,11 +41,6 @@ UNITS_MAPPING = {
     "streamflow_hourly_inst": "m^3/s",
     "streamflow_6hr_inst": "m^3/s"
 }
-BATCH_SIZE = 100
-
-
-def _chunk_list(items: list, chunk_size: int) -> list[list]:
-    return [items[i:i + chunk_size] for i in range(0, len(items), chunk_size)]
 
 
 @flow(
@@ -109,27 +106,47 @@ def ingest_nwps_rfc_forecasts(
         last_reference_times=last_reference_times
     )
 
-    # fetch data to cache using batched tasks to reduce orchestration overhead
-    endpoint_batches = _chunk_list(nwps_endpoints, BATCH_SIZE)
+    # fetch data to cache using per-LID tasks with tag-based concurrency
     logger.info(
-        f"Fetching {len(nwps_endpoints)} NWPS RFC forecasts using "
-        f"{len(endpoint_batches)} batches serially (batch_size={BATCH_SIZE})"
+        f"Fetching {len(nwps_endpoints)} NWPS RFC forecasts as individual tasks "
+        f"with tag-based concurrency limit"
     )
 
-    for batch_index, endpoint_batch in enumerate(endpoint_batches, start=1):
-        fetch_nwps_rfc_fcst_batch_to_cache(
-            endpoints=endpoint_batch,
+    futures = []
+    for endpoint in nwps_endpoints:
+        future = fetch_nwps_rfc_fcst_to_cache.submit(
+            endpoint=endpoint,
             output_cache_dir=output_cache_dir,
             field_mapping=FIELD_MAPPING,
             units_mapping=UNITS_MAPPING,
             variable_names=VARIABLE_NAMES,
             configuration_name=CONFIGURATION_NAME,
             location_id_prefix=LOCATION_ID_PREFIX,
-            batch_index=batch_index,
-            total_batches=len(endpoint_batches),
         )
+        futures.append(future)
 
-    logger.info("✅ Completed fetching NWPS RFC forecast data to cache")
+    # Wait for all futures to complete concurrently
+    done, not_done = wait(futures)
+    
+    # Check each future's state
+    successful: list[Any] = []
+    failed: list[State] = []
+    
+    for future in done:
+        if future.state.is_completed():
+            successful.append(future.result())
+        else:
+            failed.append(future.state)
+    
+    logger.info(
+        f"✅ Completed fetching NWPS RFC forecast data: "
+        f"successful={len(successful)}, failed={len(failed)}"
+    )
+    
+    if failed:
+        logger.warning(f"Failed task states: {[str(state) for state in failed]}")
+        if len(failed) == len(futures):
+            raise RuntimeError("All NWPS fetch tasks failed!")
 
     if has_cache_data(output_cache_dir):
         logger.info(

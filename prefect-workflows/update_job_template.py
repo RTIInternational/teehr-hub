@@ -255,5 +255,35 @@ async def update_kubernetes_pool():
         )
 
 
+TASK_RUN_CONCURRENCY_LIMITS = [
+    {"tag": "nwps", "concurrency_limit": 8},
+]
+
+
+async def upsert_task_run_concurrency_limits():
+    """Create or update task run concurrency limits by tag."""
+    async with get_client() as client:
+        for tcl in TASK_RUN_CONCURRENCY_LIMITS:
+            tag = tcl["tag"]
+            limit = tcl["concurrency_limit"]
+            
+            try:
+                # Try to create - will fail if already exists
+                await client.create_task_run_concurrency_limit(
+                    tag=tag,
+                    concurrency_limit=limit,
+                )
+                print(f"Created task run concurrency limit for tag '{tag}' with limit={limit}")
+            except Exception as e:
+                # If it already exists, we can either skip or delete+recreate
+                # For now, just log it exists
+                error_str = str(e).lower()
+                if "already exists" in error_str or "409" in error_str or "conflict" in error_str:
+                    print(f"Task run concurrency limit for tag '{tag}' already exists, skipping")
+                else:
+                    raise
+
+
 if __name__ == "__main__":
     asyncio.run(update_kubernetes_pool())
+    asyncio.run(upsert_task_run_concurrency_limits())
