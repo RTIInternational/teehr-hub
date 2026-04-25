@@ -3,7 +3,6 @@ from pathlib import Path
 
 from prefect import task, get_run_logger
 from prefect.cache_policies import NO_CACHE
-from prefect.concurrency.sync import concurrency
 
 from teehr.fetching.utils import write_timeseries_parquet_file
 
@@ -120,29 +119,28 @@ def fetch_nwps_rfc_fcst_batch_to_cache(
     skipped = 0
     failed = 0
 
-    with concurrency("nwps-rfc-fetch", occupy=1):
-        for endpoint in endpoints:
-            RFC_lid = endpoint["RFC_lid"]
-            try:
-                result = _fetch_nwps_rfc_fcst_to_cache_impl(
-                    endpoint=endpoint,
-                    output_cache_dir=output_cache_dir,
-                    field_mapping=field_mapping,
-                    units_mapping=units_mapping,
-                    variable_names=variable_names,
-                    configuration_name=configuration_name,
-                    location_id_prefix=location_id_prefix,
-                    logger=logger,
-                )
-                if result is None:
-                    skipped += 1
-                else:
-                    successful += 1
-            except Exception as exc:  # noqa: BLE001
-                failed += 1
-                logger.error(
-                    f"Batch {batch_index}/{total_batches}: failed endpoint RFC LID {RFC_lid}: {exc}"
-                )
+    for endpoint in endpoints:
+        RFC_lid = endpoint["RFC_lid"]
+        try:
+            result = _fetch_nwps_rfc_fcst_to_cache_impl(
+                endpoint=endpoint,
+                output_cache_dir=output_cache_dir,
+                field_mapping=field_mapping,
+                units_mapping=units_mapping,
+                variable_names=variable_names,
+                configuration_name=configuration_name,
+                location_id_prefix=location_id_prefix,
+                logger=logger,
+            )
+            if result is None:
+                skipped += 1
+            else:
+                successful += 1
+        except Exception as exc:  # noqa: BLE001
+            failed += 1
+            logger.error(
+                f"Batch {batch_index}/{total_batches}: failed endpoint RFC LID {RFC_lid}: {exc}"
+            )
 
     logger.info(
         f"Completed NWPS batch {batch_index}/{total_batches}: "
@@ -173,17 +171,16 @@ def fetch_nwps_rfc_fcst_to_cache(
     RFC_lid = endpoint["RFC_lid"]
     logger.info(f"Fetching NWPS RFC forecast for RFC LID: {RFC_lid}...")
 
-    with concurrency("nwps-rfc-fetch", occupy=1):
-        return _fetch_nwps_rfc_fcst_to_cache_impl(
-            endpoint=endpoint,
-            output_cache_dir=output_cache_dir,
-            field_mapping=field_mapping,
-            units_mapping=units_mapping,
-            variable_names=variable_names,
-            configuration_name=configuration_name,
-            location_id_prefix=location_id_prefix,
-            logger=logger,
-        )
+    return _fetch_nwps_rfc_fcst_to_cache_impl(
+        endpoint=endpoint,
+        output_cache_dir=output_cache_dir,
+        field_mapping=field_mapping,
+        units_mapping=units_mapping,
+        variable_names=variable_names,
+        configuration_name=configuration_name,
+        location_id_prefix=location_id_prefix,
+        logger=logger,
+    )
 
 
 def _fetch_nwps_rfc_fcst_to_cache_impl(
