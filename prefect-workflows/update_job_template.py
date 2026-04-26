@@ -1,5 +1,6 @@
 import asyncio
 from prefect import get_client
+from prefect.exceptions import ObjectNotFound
 from prefect.server.schemas.actions import WorkPoolUpdate
 
 
@@ -261,28 +262,32 @@ TASK_RUN_CONCURRENCY_LIMITS = [
 
 
 async def upsert_task_run_concurrency_limits():
-    """Create or update task run concurrency limits by tag."""
+    """Recreate task run concurrency limits by tag to clear stale slots."""
     async with get_client() as client:
         for tcl in TASK_RUN_CONCURRENCY_LIMITS:
             tag = tcl["tag"]
             limit = tcl["concurrency_limit"]
-            
+
             try:
-                # Create or update - server does upsert
+                # Tag-based task concurrency maps to a global limit named `tag:{tag}`.
+                # Recreate the limit to clear stale active slots from prior crashed runs.
+                try:
+                    await client.delete_global_concurrency_limit_by_name(name=f"tag:{tag}")
+                    print(f"Deleted existing global limit 'tag:{tag}'")
+                except ObjectNotFound:
+                    pass
+
                 await client.create_concurrency_limit(
                     tag=tag,
                     concurrency_limit=limit,
                 )
-                print(f"✓ Task run concurrency limit for tag '{tag}' set to limit={limit}")
+                print(
+                    f"✓ Task run concurrency limit for tag '{tag}' recreated "
+                    f"with limit={limit}"
+                )
             except Exception as e:
-                # Log any unexpected errors but don't fail
-                error_str = str(e).lower()
-                if "already exists" in error_str or "409" in error_str:
-                    # Already exists - this is handled by server upsert, shouldn't reach here
-                    print(f"Task run concurrency limit for tag '{tag}' already exists")
-                else:
-                    print(f"Error managing concurrency limit for tag '{tag}': {e}")
-                    raise
+                print(f"Error managing concurrency limit for tag '{tag}': {e}")
+                raise
 
 
 if __name__ == "__main__":
