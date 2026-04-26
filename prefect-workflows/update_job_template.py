@@ -258,6 +258,7 @@ async def update_kubernetes_pool():
 
 TASK_RUN_CONCURRENCY_LIMITS = [
     {"tag": "nwps", "concurrency_limit": 8},
+    {"tag": "nrds", "concurrency_limit": 8},
 ]
 
 
