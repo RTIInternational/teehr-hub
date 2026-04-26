@@ -91,8 +91,8 @@ def generate_task_name():
 @task(
     task_run_name=generate_task_name,
     tags=["nwps"],
-    retries=3,
-    retry_delay_seconds=60,
+    # retries=3,
+    # retry_delay_seconds=60,
     timeout_seconds=TASK_TIMEOUT_SECONDS,
 )
 def fetch_nwps_rfc_fcst_to_cache(
