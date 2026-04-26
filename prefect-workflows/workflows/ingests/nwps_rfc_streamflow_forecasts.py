@@ -45,6 +45,7 @@ UNITS_MAPPING = {
 TASK_RUNNER_MAX_WORKERS = 8
 SUBMISSION_BATCH_SIZE = 24
 SUBMISSION_GATE_SECONDS = 5
+FAILURE_RATE_THRESHOLD = 0.25
 
 
 @flow(
@@ -162,6 +163,13 @@ def ingest_nwps_rfc_forecasts(
         f"✅ Completed fetching NWPS RFC forecast data: "
         f"successful={successful}, failed={failed}"
     )
+
+    failure_rate = (failed / total) if total else 0.0
+    if failure_rate > FAILURE_RATE_THRESHOLD:
+        raise RuntimeError(
+            f"NWPS fetch failure rate exceeded threshold: "
+            f"failed={failed}/{total} ({failure_rate:.1%}) > {FAILURE_RATE_THRESHOLD:.0%}"
+        )
 
     if failed == total:
         raise RuntimeError("All NWPS fetch tasks failed!")
