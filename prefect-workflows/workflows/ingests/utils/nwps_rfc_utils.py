@@ -12,6 +12,9 @@ import pandas as pd
 from prefect.runtime import task_run
 
 NO_DATA_VALUES = [-9999, -999]
+HTTP_CONNECT_TIMEOUT_SECONDS = 5
+HTTP_READ_TIMEOUT_SECONDS = 30
+TASK_TIMEOUT_SECONDS = 180
 
 
 @task(cache_policy=NO_CACHE)
@@ -90,6 +93,7 @@ def generate_task_name():
     tags=["nwps"],
     retries=3,
     retry_delay_seconds=60,
+    timeout_seconds=TASK_TIMEOUT_SECONDS,
 )
 def fetch_nwps_rfc_fcst_to_cache(
     endpoint: dict,
@@ -138,7 +142,10 @@ def _fetch_nwps_rfc_fcst_to_cache_impl(
     fcst_url = endpoint["forecast"]
     logger.info(f"Fetching forecast data from URL: {fcst_url}")
     try:
-        response = requests.get(fcst_url)
+        response = requests.get(
+            fcst_url,
+            timeout=(HTTP_CONNECT_TIMEOUT_SECONDS, HTTP_READ_TIMEOUT_SECONDS),
+        )
         response.raise_for_status()
         fcst_data = response.json()
     except requests.exceptions.RequestException as e:
