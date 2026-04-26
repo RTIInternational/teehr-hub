@@ -201,7 +201,7 @@ def fetch_nwps_rfc_fcst_to_cache(
     if (last_reference_time is not None and
        reference_time <= last_reference_time):
         logger.info(
-            f"Skipping fetch for RFC LID: {RFC_lid} - "
+            f"Skipping insert for RFC LID: {RFC_lid} - "
             f"Reference time {reference_time} is not newer than last cached "
             f"reference time {last_reference_time}."
         )
