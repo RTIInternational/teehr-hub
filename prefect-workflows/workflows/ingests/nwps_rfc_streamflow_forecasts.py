@@ -1,11 +1,11 @@
 from pathlib import Path
 from datetime import datetime, UTC
-from typing import Any, Union
+from typing import Union
 import logging
 
 from prefect import flow, get_run_logger
 from prefect.futures import wait
-from prefect.states import State
+from prefect.task_runners import ThreadPoolTaskRunner
 from pyspark.sql import functions as F
 
 from workflows.utils.common_utils import initialize_evaluation
@@ -41,10 +41,13 @@ UNITS_MAPPING = {
     "streamflow_hourly_inst": "m^3/s",
     "streamflow_6hr_inst": "m^3/s"
 }
+TASK_RUNNER_MAX_WORKERS = 8
+SUBMISSION_BATCH_SIZE = 24
 
 
 @flow(
     flow_run_name="ingest-nwps-rfc-forecasts",
+    task_runner=ThreadPoolTaskRunner(max_workers=TASK_RUNNER_MAX_WORKERS),
     timeout_seconds=60 * 60
 )
 def ingest_nwps_rfc_forecasts(
@@ -112,41 +115,53 @@ def ingest_nwps_rfc_forecasts(
         f"with tag-based concurrency limit"
     )
 
-    futures = []
-    for endpoint in nwps_endpoints:
-        future = fetch_nwps_rfc_fcst_to_cache.submit(
-            endpoint=endpoint,
-            output_cache_dir=output_cache_dir,
-            field_mapping=FIELD_MAPPING,
-            units_mapping=UNITS_MAPPING,
-            variable_names=VARIABLE_NAMES,
-            configuration_name=CONFIGURATION_NAME,
-            location_id_prefix=LOCATION_ID_PREFIX,
-        )
-        futures.append(future)
+    successful = 0
+    failed = 0
+    total = len(nwps_endpoints)
 
-    # Wait for all futures to complete concurrently
-    done, not_done = wait(futures)
-    
-    # Check each future's state
-    successful: list[Any] = []
-    failed: list[State] = []
-    
-    for future in done:
-        if future.state.is_completed():
-            successful.append(future.result())
-        else:
-            failed.append(future.state)
-    
+    # Limit submission burst to reduce DB pressure on self-hosted Prefect.
+    for batch_start in range(0, total, SUBMISSION_BATCH_SIZE):
+        endpoint_batch = nwps_endpoints[batch_start:batch_start + SUBMISSION_BATCH_SIZE]
+        futures = []
+        for endpoint in endpoint_batch:
+            future = fetch_nwps_rfc_fcst_to_cache.submit(
+                endpoint=endpoint,
+                output_cache_dir=output_cache_dir,
+                field_mapping=FIELD_MAPPING,
+                units_mapping=UNITS_MAPPING,
+                variable_names=VARIABLE_NAMES,
+                configuration_name=CONFIGURATION_NAME,
+                location_id_prefix=LOCATION_ID_PREFIX,
+            )
+            futures.append(future)
+
+        done, not_done = wait(futures)
+        if not_done:
+            logger.warning(f"{len(not_done)} NWPS tasks still pending after wait()")
+
+        batch_successful = 0
+        batch_failed = 0
+        for future in done:
+            if future.state.is_completed():
+                batch_successful += 1
+            else:
+                batch_failed += 1
+
+        successful += batch_successful
+        failed += batch_failed
+        logger.info(
+            f"Completed NWPS submission batch "
+            f"{(batch_start // SUBMISSION_BATCH_SIZE) + 1}: "
+            f"successful={batch_successful}, failed={batch_failed}"
+        )
+
     logger.info(
         f"✅ Completed fetching NWPS RFC forecast data: "
-        f"successful={len(successful)}, failed={len(failed)}"
+        f"successful={successful}, failed={failed}"
     )
-    
-    if failed:
-        logger.warning(f"Failed task states: {[str(state) for state in failed]}")
-        if len(failed) == len(futures):
-            raise RuntimeError("All NWPS fetch tasks failed!")
+
+    if failed == total:
+        raise RuntimeError("All NWPS fetch tasks failed!")
 
     if has_cache_data(output_cache_dir):
         logger.info(
