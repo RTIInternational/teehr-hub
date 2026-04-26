@@ -109,30 +109,6 @@ def fetch_nwps_rfc_fcst_to_cache(
     RFC_lid = endpoint["RFC_lid"]
     logger.info(f"Fetching NWPS RFC forecast for RFC LID: {RFC_lid}...")
 
-    return _fetch_nwps_rfc_fcst_to_cache_impl(
-        endpoint=endpoint,
-        output_cache_dir=output_cache_dir,
-        field_mapping=field_mapping,
-        units_mapping=units_mapping,
-        variable_names=variable_names,
-        configuration_name=configuration_name,
-        location_id_prefix=location_id_prefix,
-        logger=logger,
-    )
-
-
-def _fetch_nwps_rfc_fcst_to_cache_impl(
-    endpoint,
-    output_cache_dir,
-    field_mapping,
-    units_mapping,
-    variable_names,
-    configuration_name,
-    location_id_prefix,
-    logger,
-):
-    RFC_lid = endpoint["RFC_lid"]
-
     # create cache directory if it doesn't exist
     cache_dir_path = Path(output_cache_dir)
     if not cache_dir_path.exists():
