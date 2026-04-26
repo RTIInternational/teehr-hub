@@ -2,6 +2,7 @@ from pathlib import Path
 from datetime import datetime, UTC
 from typing import Union
 import logging
+import time
 
 from prefect import flow, get_run_logger
 from prefect.futures import wait
@@ -43,6 +44,7 @@ UNITS_MAPPING = {
 }
 TASK_RUNNER_MAX_WORKERS = 8
 SUBMISSION_BATCH_SIZE = 24
+SUBMISSION_GATE_SECONDS = 5
 
 
 @flow(
@@ -112,16 +114,16 @@ def ingest_nwps_rfc_forecasts(
     # Submit task runs in bounded batches to balance throughput and stability.
     logger.info(
         f"Fetching {len(nwps_endpoints)} NWPS RFC forecasts in batches "
-        f"(batch_size={SUBMISSION_BATCH_SIZE}, max_workers={TASK_RUNNER_MAX_WORKERS})"
+        f"(batch_size={SUBMISSION_BATCH_SIZE}, max_workers={TASK_RUNNER_MAX_WORKERS}, "
+        f"gate_seconds={SUBMISSION_GATE_SECONDS})"
     )
 
-    successful = 0
-    failed = 0
     total = len(nwps_endpoints)
+    all_futures = []
 
     for batch_start in range(0, total, SUBMISSION_BATCH_SIZE):
         endpoint_batch = nwps_endpoints[batch_start:batch_start + SUBMISSION_BATCH_SIZE]
-        futures = []
+        batch_index = (batch_start // SUBMISSION_BATCH_SIZE) + 1
 
         for endpoint in endpoint_batch:
             future = fetch_nwps_rfc_fcst_to_cache.submit(
@@ -133,31 +135,28 @@ def ingest_nwps_rfc_forecasts(
                 configuration_name=CONFIGURATION_NAME,
                 location_id_prefix=LOCATION_ID_PREFIX,
             )
-            futures.append(future)
-
-        done, not_done = wait(futures)
-        if not_done:
-            logger.warning(
-                f"{len(not_done)} NWPS tasks still pending after wait() for batch "
-                f"{(batch_start // SUBMISSION_BATCH_SIZE) + 1}"
-            )
-
-        batch_successful = 0
-        batch_failed = 0
-        for future in done:
-            if future.state.is_completed():
-                batch_successful += 1
-            else:
-                batch_failed += 1
-
-        successful += batch_successful
-        failed += batch_failed
+            all_futures.append(future)
 
         logger.info(
-            f"NWPS batch {(batch_start // SUBMISSION_BATCH_SIZE) + 1} complete: "
-            f"successful={batch_successful}, failed={batch_failed}, "
+            f"NWPS batch {batch_index} submitted: "
             f"processed={min(batch_start + SUBMISSION_BATCH_SIZE, total)}/{total}"
         )
+
+        # Time-gated submission: do not wait for batch completion before enqueuing next.
+        if batch_start + SUBMISSION_BATCH_SIZE < total:
+            time.sleep(SUBMISSION_GATE_SECONDS)
+
+    done, not_done = wait(all_futures)
+    if not_done:
+        logger.warning(f"{len(not_done)} NWPS tasks still pending after final wait()")
+
+    successful = 0
+    failed = 0
+    for future in done:
+        if future.state.is_completed():
+            successful += 1
+        else:
+            failed += 1
 
     logger.info(
         f"✅ Completed fetching NWPS RFC forecast data: "
