@@ -12,7 +12,6 @@ from teehr import Configuration, Evaluation, Variable
 from teehr.fetching.nwm.nwm_points import nwm_to_parquet
 from teehr.utils.utils import remove_dir_if_exists
 from teehr.fetching.utils import (
-    # format_nwm_variable_name,
     format_nwm_configuration_metadata
 )
 from teehr.fetching.const import (
@@ -166,7 +165,6 @@ def ingest_nwm_streamflow_forecasts(
     ev_variable_name = variable_mapper[VARIABLE_NAME].get(
         variable_name, variable_name
     )
-    # ev_variable_name = format_nwm_variable_name(variable_name)
     ev_config = format_nwm_configuration_metadata(
         nwm_config_name=nwm_configuration,
         nwm_version=nwm_version
@@ -206,37 +204,6 @@ def ingest_nwm_streamflow_forecasts(
         ending_z_hour=23,
         timeseries_type=timeseries_type
     )
-    # Add configuration to TEEHR if it doesn't already exist
-    config_name_exists = not ev.configurations.filter(
-        {
-            "column": "name",
-            "operator": "=",
-            "value": ev_config["name"]
-        }
-    ).to_sdf().rdd.isEmpty()
-    if not config_name_exists:
-        ev.configurations.add(
-            Configuration(
-                name=ev_config["name"],
-                timeseries_type=timeseries_type,
-                description=ev_config["description"]
-            )
-        )
-    # Add variable name to TEEHR if it doesn't already exist
-    variable_name_exists = not ev.variables.filter(
-        {
-            "column": "name",
-            "operator": "=",
-            "value": ev_variable_name
-        }
-    ).to_sdf().rdd.isEmpty()
-    if not variable_name_exists:
-        ev.variables.add(
-            Variable(
-                name=ev_variable_name,
-                long_name="15-minute Instantaneous Streamflow",
-            )
-        )
 
     # load output
     logger.info("Loading fetched data from cache into the warehouse")
