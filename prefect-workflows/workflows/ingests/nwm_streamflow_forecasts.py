@@ -18,6 +18,7 @@ from teehr.fetching.utils import (
 from teehr.fetching.const import (
     NWM_VARIABLE_MAPPER
 )
+from teehr.models.fetching.utils import TimeseriesTypeEnum
 from workflows.utils.common_utils import initialize_evaluation
 
 # Start up a local Dask cluster
@@ -82,6 +83,7 @@ def ingest_nwm_streamflow_forecasts(
     output_type: str = "channel_rt",
     variable_name: str = "streamflow",
     start_spark_cluster: bool = False,
+    timeseries_type: Union[TimeseriesTypeEnum, str] = "secondary"
 ) -> None:
     """NWM Streamflow Forecasts Ingestion.
 
@@ -97,6 +99,11 @@ def ingest_nwm_streamflow_forecasts(
     """
     logger = get_run_logger()
     client = Client()
+
+    if isinstance(timeseries_type, str):
+        timeseries_type = TimeseriesTypeEnum(timeseries_type)
+
+    logger.info(f"Starting NWM streamflow forecast ingestion with configuration: {nwm_configuration}, variable: {variable_name}, output type: {output_type}, timeseries type: {timeseries_type}")
 
     if end_dt is None:
         end_dt = datetime.now(UTC).replace(tzinfo=None)
@@ -165,7 +172,6 @@ def ingest_nwm_streamflow_forecasts(
         "fetching",
         "kerchunk"
     )
-
     # Clear out caches
     remove_dir_if_exists(nwm_cache_dir)
     remove_dir_if_exists(kerchunk_cache_dir)
@@ -188,7 +194,8 @@ def ingest_nwm_streamflow_forecasts(
         nwm_version=nwm_version,
         variable_mapper=NWM_VARIABLE_MAPPER,
         starting_z_hour=0,
-        ending_z_hour=23
+        ending_z_hour=23,
+        timeseries_type=timeseries_type
     )
     # Add configuration to TEEHR if it doesn't already exist
     config_name_exists = not ev.configurations.filter(
@@ -202,16 +209,23 @@ def ingest_nwm_streamflow_forecasts(
         ev.configurations.add(
             Configuration(
                 name=ev_config["name"],
-                timeseries_type="secondary",
+                timeseries_type=timeseries_type,
                 description=ev_config["description"]
             )
         )
 
     # load output
     logger.info("Loading fetched data from cache into the warehouse")
+    if timeseries_type == TimeseriesTypeEnum.primary:
+        table_name = "primary_timeseries"
+        # Need to add the NWM IDs to themselves in the crosswalk? Locations table?
+        # Should the IDs just be replaced by primary in the files?
+    else:
+        table_name = "secondary_timeseries"
     ev._load.from_cache(
         in_path=nwm_cache_dir,
-        table_name="secondary_timeseries"
+        table_name=table_name
     )
     logger.info("Successfully loaded NWM streamflow forecasts into the warehouse")
+    client.close()
     ev.spark.stop()

@@ -217,7 +217,7 @@ deployments:
       "temp_dir_path": *temp_dir_path,
       "nwm_configuration": "analysis_assim_no_da",
       "output_type": "channel_rt",
-      "start_spark_cluster": false
+      "start_spark_cluster": falses,
     }
     work_pool: *work_pool
     schedule:
@@ -233,7 +233,7 @@ deployments:
       "temp_dir_path": *temp_dir_path,
       "nwm_configuration": "analysis_assim_alaska_no_da",
       "output_type": "channel_rt",
-      "start_spark_cluster": false
+      "start_spark_cluster": false,
     }
     work_pool: *work_pool
     schedule:
@@ -249,7 +249,7 @@ deployments:
       "temp_dir_path": *temp_dir_path,
       "nwm_configuration": "analysis_assim_extend_no_da",
       "output_type": "channel_rt",
-      "start_spark_cluster": false
+      "start_spark_cluster": false,
     }
     work_pool: *work_pool
     schedule:
@@ -265,7 +265,7 @@ deployments:
       "temp_dir_path": *temp_dir_path,
       "nwm_configuration": "analysis_assim_extend_alaska_no_da",
       "output_type": "channel_rt",
-      "start_spark_cluster": false
+      "start_spark_cluster": false,
     }
     work_pool: *work_pool
     schedule:
@@ -281,7 +281,7 @@ deployments:
       "temp_dir_path": *temp_dir_path,
       "nwm_configuration": "analysis_assim_hawaii_no_da",
       "output_type": "channel_rt",
-      "start_spark_cluster": false
+      "start_spark_cluster": false,
     }
     work_pool: *work_pool
     schedule:
