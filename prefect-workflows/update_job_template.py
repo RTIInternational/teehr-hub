@@ -1,7 +1,6 @@
-# Note, this script needs to be manually copied from
-# load_secrets.py to load-secrets.yaml
 import asyncio
 from prefect import get_client
+from prefect.exceptions import ObjectNotFound
 from prefect.server.schemas.actions import WorkPoolUpdate
 
 
@@ -256,5 +255,42 @@ async def update_kubernetes_pool():
             work_pool=work_pool_update
         )
 
+
+TASK_RUN_CONCURRENCY_LIMITS = [
+    {"tag": "nwps", "concurrency_limit": 8},
+    {"tag": "nrds", "concurrency_limit": 8},
+]
+
+
+async def upsert_task_run_concurrency_limits():
+    """Recreate task run concurrency limits by tag to clear stale slots."""
+    async with get_client() as client:
+        for tcl in TASK_RUN_CONCURRENCY_LIMITS:
+            tag = tcl["tag"]
+            limit = tcl["concurrency_limit"]
+
+            try:
+                # Tag-based task concurrency maps to a global limit named `tag:{tag}`.
+                # Recreate the limit to clear stale active slots from prior crashed runs.
+                try:
+                    await client.delete_global_concurrency_limit_by_name(name=f"tag:{tag}")
+                    print(f"Deleted existing global limit 'tag:{tag}'")
+                except ObjectNotFound:
+                    pass
+
+                await client.create_concurrency_limit(
+                    tag=tag,
+                    concurrency_limit=limit,
+                )
+                print(
+                    f"✓ Task run concurrency limit for tag '{tag}' recreated "
+                    f"with limit={limit}"
+                )
+            except Exception as e:
+                print(f"Error managing concurrency limit for tag '{tag}': {e}")
+                raise
+
+
 if __name__ == "__main__":
     asyncio.run(update_kubernetes_pool())
+    asyncio.run(upsert_task_run_concurrency_limits())

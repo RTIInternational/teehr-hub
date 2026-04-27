@@ -15,6 +15,20 @@ from .utils import create_ogc_geojson_response, prepare_for_serialization
 router = APIRouter()
 
 
+def _build_string_in_condition(column: str, values: list[str], table_alias: str | None = None) -> str | None:
+    """Build a sanitized SQL equality/IN condition for a non-empty list of strings."""
+    sanitized_values = [sanitize_string(v) for v in values if v]
+    if not sanitized_values:
+        return None
+
+    qualified_column = f"{table_alias}.{column}" if table_alias else column
+    if len(sanitized_values) == 1:
+        return f"{qualified_column} = '{sanitized_values[0]}'"
+
+    quoted_values = ", ".join(f"'{v}'" for v in sanitized_values)
+    return f"{qualified_column} IN ({quoted_values})"
+
+
 def _empty_response(request: Request, collection_id: str, f: str | None) -> JSONResponse:
     """Return a format-appropriate empty response."""
     if f and f.lower() == "geojson":
@@ -58,8 +72,12 @@ async def get_primary_timeseries_items(
         alias="datetime",
         description="ISO 8601 datetime interval (e.g., 2020-01-01/2020-12-31)",
     ),
-    variable_name: str | None = Query(None, description="Variable name filter"),
-    configuration_name: str | None = Query(None, description="Configuration name filter"),
+    variable_name: list[str] | None = Query(
+        None, description="Variable name filter(s) - can be specified multiple times"
+    ),
+    configuration_name: list[str] | None = Query(
+        None, description="Configuration name filter(s) - can be specified multiple times"
+    ),
     limit: int | None = Query(
         None, ge=1, description="Maximum number of items to return (omit to return all)"
     ),
@@ -80,9 +98,12 @@ async def get_primary_timeseries_items(
     Supports filtering by:
         - primary_location_id
         - datetime: ISO 8601 interval for value_time (e.g., 2020-01-01/2020-12-31)
-        - variable_name: Variable name (e.g., streamflow_hourly_inst)
-        - configuration_name: Configuration name (e.g., nwm30_medium_range)
+        - variable_name: Variable name(s) (repeat query param for multiple)
+        - configuration_name: Configuration name(s) (repeat query param for multiple)
         - limit and offset for pagination
+
+        Multi-value example:
+        - /collections/primary_timeseries/items?primary_location_id=123&variable_name=streamflow&variable_name=stage&configuration_name=obs_usgs&configuration_name=obs_alt
 
         Output format. 'json' (default) returns an OGC-style paging envelope 
         ({items, numberReturned, links}); 'timeseries' returns formatted objects containing metadata
@@ -117,13 +138,17 @@ async def get_primary_timeseries_items(
                 )
         # Filter by variable/parameter
         if variable_name:
-            safe_variable = sanitize_string(variable_name)
-            where_conditions.append(f"variable_name = '{safe_variable}'")
+            variable_condition = _build_string_in_condition("variable_name", variable_name)
+            if variable_condition:
+                where_conditions.append(variable_condition)
 
         # Filter by configuration
         if configuration_name:
-            safe_configuration = sanitize_string(configuration_name)
-            where_conditions.append(f"configuration_name = '{safe_configuration}'")
+            configuration_condition = _build_string_in_condition(
+                "configuration_name", configuration_name
+            )
+            if configuration_condition:
+                where_conditions.append(configuration_condition)
         where_clause = " AND ".join(where_conditions)
 
         # Build query based on format
@@ -295,8 +320,12 @@ async def get_secondary_timeseries_items(
         None,
         description="ISO 8601 reference time interval (e.g., 2020-01-01/2020-12-31)",  # noqa: E501
     ),
-    variable_name: str | None = Query(None, description="Variable name filter"),
-    configuration_name: str | None = Query(None, description="Configuration name filter"),
+    variable_name: list[str] | None = Query(
+        None, description="Variable name filter(s) - can be specified multiple times"
+    ),
+    configuration_name: list[str] | None = Query(
+        None, description="Configuration name filter(s) - can be specified multiple times"
+    ),
     limit: int | None = Query(
         None, ge=1, description="Maximum number of items to return (omit to return all)"
     ),
@@ -318,9 +347,12 @@ async def get_secondary_timeseries_items(
     - primary_location_id or secondary_location_id (one or the other, not both)
     - datetime: ISO 8601 interval for value_time (e.g., 2020-01-01/2020-12-31)
     - reference_time: ISO 8601 interval for reference_time (e.g., 2025-11-01/..)
-    - variable_name: Variable name (e.g., streamflow_hourly_inst)
-    - configuration_name: Configuration name (e.g., nwm30_medium_range)
+    - variable_name: Variable name(s) (repeat query param for multiple)
+    - configuration_name: Configuration name(s) (repeat query param for multiple)
     - limit and offset for pagination
+
+    Multi-value example:
+    - /collections/secondary_timeseries/items?primary_location_id=123&variable_name=streamflow&variable_name=stage&configuration_name=nwm30_short_range&configuration_name=nwm30_medium_range
 
     Output format. 'json' (default) returns an OGC-style paging envelope 
     ({items, numberReturned, links}); 'timeseries' returns formatted objects containing metadata
@@ -393,13 +425,20 @@ async def get_secondary_timeseries_items(
                 )
         # Filter by variable/parameter
         if variable_name:
-            safe_variable = sanitize_string(variable_name)
-            where_conditions.append(f"st.variable_name = '{safe_variable}'")
+            variable_condition = _build_string_in_condition(
+                "variable_name", variable_name, table_alias="st"
+            )
+            if variable_condition:
+                where_conditions.append(variable_condition)
 
         # Filter by configuration
         if configuration_name:
-            safe_configuration = sanitize_string(configuration_name)
-            where_conditions.append(f"st.configuration_name = '{safe_configuration}'")
+            configuration_condition = _build_string_in_condition(
+                "configuration_name", configuration_name, table_alias="st"
+            )
+            if configuration_condition:
+                where_conditions.append(configuration_condition)
+
         where_clause = " AND ".join(where_conditions)
 
         # Build query based on format

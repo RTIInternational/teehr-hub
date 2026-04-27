@@ -137,7 +137,7 @@ def generate_s3_filepaths(
     return s3_filepaths
 
 
-@task()
+# @task()
 def generate_single_filepath(
     vpu_prefix: dict,
     yrmoday: str,
@@ -152,7 +152,7 @@ def generate_single_filepath(
     return s3_filepath
 
 
-@task()
+@task(tags=["nrds"])
 def fetch_troute_output_to_cache(
     filepath_info: dict,
     warehouse_ngen_ids: List[int],
@@ -242,4 +242,4 @@ def fetch_troute_output_to_cache(
         overwrite_output=False
     )
 
-    return
+    return True

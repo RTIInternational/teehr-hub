@@ -183,7 +183,7 @@ deployments:
     }
     work_pool: *work_pool
     schedule:
-      cron: "15 * * * *"
+      cron: "29 * * * *"
       active: true
 
   - name: update-joined-forecast-table
