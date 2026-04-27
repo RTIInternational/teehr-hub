@@ -8,15 +8,17 @@ from prefect.cache_policies import NO_CACHE
 import pandas as pd
 import pyspark.sql as ps
 
-from teehr import Configuration, Evaluation
+from teehr import Configuration, Evaluation, Variable
 from teehr.fetching.nwm.nwm_points import nwm_to_parquet
 from teehr.utils.utils import remove_dir_if_exists
 from teehr.fetching.utils import (
-    format_nwm_variable_name,
+    # format_nwm_variable_name,
     format_nwm_configuration_metadata
 )
 from teehr.fetching.const import (
-    NWM_VARIABLE_MAPPER
+    NWM_VARIABLE_MAPPER,
+    NWM_HAWAII_VARIABLE_MAPPER,
+    VARIABLE_NAME
 )
 from teehr.models.fetching.utils import TimeseriesTypeEnum
 from workflows.utils.common_utils import initialize_evaluation
@@ -157,7 +159,14 @@ def ingest_nwm_streamflow_forecasts(
     ]
     logger.info(f"Found {len(stripped_ids)} location IDs after filtering for the domain and NWM sites")
 
-    ev_variable_name = format_nwm_variable_name(variable_name)
+    if "hawaii" in nwm_configuration:
+        variable_mapper = NWM_HAWAII_VARIABLE_MAPPER
+    else:
+        variable_mapper = NWM_VARIABLE_MAPPER
+    ev_variable_name = variable_mapper[VARIABLE_NAME].get(
+        variable_name, variable_name
+    )
+    # ev_variable_name = format_nwm_variable_name(variable_name)
     ev_config = format_nwm_configuration_metadata(
         nwm_config_name=nwm_configuration,
         nwm_version=nwm_version
@@ -192,7 +201,7 @@ def ingest_nwm_streamflow_forecasts(
             ev_variable_name
         ),
         nwm_version=nwm_version,
-        variable_mapper=NWM_VARIABLE_MAPPER,
+        variable_mapper=variable_mapper,
         starting_z_hour=0,
         ending_z_hour=23,
         timeseries_type=timeseries_type
@@ -211,6 +220,21 @@ def ingest_nwm_streamflow_forecasts(
                 name=ev_config["name"],
                 timeseries_type=timeseries_type,
                 description=ev_config["description"]
+            )
+        )
+    # Add variable name to TEEHR if it doesn't already exist
+    variable_name_exists = not ev.variables.filter(
+        {
+            "column": "name",
+            "operator": "=",
+            "value": ev_variable_name
+        }
+    ).to_sdf().rdd.isEmpty()
+    if not variable_name_exists:
+        ev.variables.add(
+            Variable(
+                name=ev_variable_name,
+                long_name="15-minute Instantaneous Streamflow",
             )
         )
 
