@@ -9,6 +9,13 @@ from teehr.fetching.utils import write_timeseries_parquet_file
 import requests
 import pandas as pd
 
+from prefect.runtime import task_run
+
+NO_DATA_VALUES = [-9999, -999]
+HTTP_CONNECT_TIMEOUT_SECONDS = 5
+HTTP_READ_TIMEOUT_SECONDS = 30
+TASK_TIMEOUT_SECONDS = 180
+
 
 @task(cache_policy=NO_CACHE)
 def query_last_reference_times(
@@ -74,8 +81,20 @@ def generate_nwps_endpoints(
     logger.info(f"Generated {len(endpoints)} NWPS RFC API endpoints.")
     return endpoints
 
+def generate_task_name():
+    task_name = task_run.task_name
+    parameters = task_run.parameters
+    endpoint = parameters["endpoint"]
+    return f"{task_name}-for-{endpoint['RFC_lid']}"
 
-@task()
+
+@task(
+    task_run_name=generate_task_name,
+    tags=["nwps"],
+    # retries=3,
+    # retry_delay_seconds=60,
+    timeout_seconds=TASK_TIMEOUT_SECONDS,
+)
 def fetch_nwps_rfc_fcst_to_cache(
     endpoint: dict,
     output_cache_dir: str,
@@ -88,6 +107,7 @@ def fetch_nwps_rfc_fcst_to_cache(
     """Fetch NWPS RFC forecast data and write to parquet cache."""
     logger = get_run_logger()
     RFC_lid = endpoint["RFC_lid"]
+    logger.info(f"Fetching NWPS RFC forecast for RFC LID: {RFC_lid}...")
 
     # create cache directory if it doesn't exist
     cache_dir_path = Path(output_cache_dir)
@@ -96,27 +116,41 @@ def fetch_nwps_rfc_fcst_to_cache(
 
     # Fetch forecast data
     fcst_url = endpoint["forecast"]
+    logger.info(f"Fetching forecast data from URL: {fcst_url}")
     try:
-        response = requests.get(fcst_url)
+        response = requests.get(
+            fcst_url,
+            timeout=(HTTP_CONNECT_TIMEOUT_SECONDS, HTTP_READ_TIMEOUT_SECONDS),
+        )
         response.raise_for_status()
         fcst_data = response.json()
     except requests.exceptions.RequestException as e:
-        logger.warning(
+        logger.error(
             f"Failed to fetch NWPS RFC forecast data for RFC LID: {RFC_lid} "
             f"- Error: {str(e)}")
-        return
+        raise
 
     # extract data to dataframe
     df = pd.DataFrame(fcst_data['data'])
+   
+    # check if dataframe is empty after filtering
     if df.empty:
         logger.warning(f"No forecast data available for RFC LID: {RFC_lid}")
-        return
-
+        return None
+    
     # trim to required fields
     field_list = [field for field in field_mapping if field in df.columns]
     df = df[field_list]
     df.rename(columns=field_mapping, inplace=True)
 
+    # filter out no data values
+    df = df[~df["value"].isin(NO_DATA_VALUES)]
+
+    # check if dataframe is empty after filtering
+    if df.empty:
+        logger.error(f"No valid forecast data for RFC LID: {RFC_lid} after filtering no data values.")
+        raise ValueError(f"No valid forecast data for RFC LID: {RFC_lid} after filtering no data values.")
+    
     # convert flow units (kcfs to cms)
     df["value"] = df["value"] * 28.3168
 
@@ -135,21 +169,22 @@ def fetch_nwps_rfc_fcst_to_cache(
         elif timestep_hours == 6:
             variable_name = variable_names[1]
         else:
-            logger.warning(
+            logger.error(
                 f"Unexpected timestep of {timestep_hours} hours "
                 f"for RFC LID: {RFC_lid}."
             )
-            return
+            raise ValueError(f"Unexpected timestep of {timestep_hours} hours for RFC LID: {RFC_lid}.")
     else:
-        logger.warning(
-            f"Multiple timesteps detected for RFC LID: {RFC_lid}."
-            "Cannot determine variable name."
+        logger.error(
+            f"Multiple timesteps detected for RFC LID: {RFC_lid}. "
+            f"Cannot determine variable name. "
             f"Timesteps detected: {time_diffs}"
         )
-        return
+        raise ValueError(f"Multiple timesteps detected for RFC LID: {RFC_lid}")
 
     # assume reference_time is one timestep before first forecast value time
     reference_time = df["value_time"].min()
+    logger.info(f"Determined reference time {reference_time} for RFC LID: {RFC_lid}.")
     reference_time = pd.Timestamp(reference_time)
     if variable_name == "streamflow_hourly_inst":
         reference_time = reference_time - pd.Timedelta(hours=1)
@@ -159,14 +194,18 @@ def fetch_nwps_rfc_fcst_to_cache(
     # Add check to skip if reference_time is not newer than last
     # reference_time in warehouse for this gage
     last_reference_time = endpoint["last_reference_time"]
+    logger.info(
+        f"Comparing reference time {reference_time} to last cached reference time "
+        f"{last_reference_time} for RFC LID: {RFC_lid}."
+    )
     if (last_reference_time is not None and
        reference_time <= last_reference_time):
         logger.info(
-            f"Skipping fetch for RFC LID: {RFC_lid} - "
+            f"Skipping insert for RFC LID: {RFC_lid} - "
             f"Reference time {reference_time} is not newer than last cached "
             f"reference time {last_reference_time}."
         )
-        return
+        return None
 
     # Assemble dataframe
     unit_name = units_mapping[variable_name]
@@ -198,6 +237,7 @@ def fetch_nwps_rfc_fcst_to_cache(
         timeseries_type="secondary",
         overwrite_output=False
     )
+    return True
 
 
 @task()

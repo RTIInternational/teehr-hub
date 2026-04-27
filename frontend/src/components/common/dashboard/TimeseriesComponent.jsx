@@ -4,7 +4,8 @@ import { PlotlyChart } from '../../common';
 
 const TimeseriesComponent = ({ 
   state, 
-  TimeseriesControls 
+  TimeseriesControls,
+  timeseriesControlsProps = {}
 }) => {
   const [viewMode, setViewMode] = useState('filters');
   const hasData = state.timeseriesData.primary?.length > 0 || state.timeseriesData.secondary?.length > 0;
@@ -79,7 +80,10 @@ const TimeseriesComponent = ({
               )
             ) : (
               <div className="p-3 flex-grow-1 overflow-auto">
-                <TimeseriesControls onViewModeChange={setViewMode} />
+                <TimeseriesControls
+                  {...timeseriesControlsProps}
+                  onViewModeChange={setViewMode}
+                />
               </div>
             )}
           </>

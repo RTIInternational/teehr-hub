@@ -1,11 +1,11 @@
 import { useEffect } from 'react';
 import { useForecastDashboard, ActionTypes } from '../../../context/ForecastDashboardContext.jsx';
 import { useForecastData } from './useForecastData';
+import ForecastTimeseriesFilters from './ForecastTimeseriesControls';
 import { 
   MapComponent, 
   TimeseriesComponent, 
-  MapFilterButton, 
-  TimeseriesControls 
+  MapFilterButton
 } from '../../common/dashboard';
 import { LocationMetrics, LocationCard } from '../../common';
 import { getMetricLabel } from '../../common/dashboard/utils.js';
@@ -27,18 +27,6 @@ const Dashboard = () => {
       mapFilters={mapFilters}
       updateMapFilters={updateMapFilters}
       loadLocations={loadLocations}
-    />
-  );
-  
-  const ForecastTimeseriesControls = ({ onViewModeChange }) => (
-    <TimeseriesControls
-      state={state}
-      timeseriesFilters={timeseriesFilters}
-      updateTimeseriesFilters={updateTimeseriesFilters}
-      loadTimeseries={loadTimeseries}
-      selectedLocation={selectedLocation}
-      onViewModeChange={onViewModeChange}
-      mapFilters={mapFilters}
     />
   );
   
@@ -64,7 +52,7 @@ const Dashboard = () => {
           className="dashboard-grid h-100" 
           style={{
             display: 'grid',
-            gridTemplateColumns: '3fr 2fr',
+            gridTemplateColumns: '1fr 1fr',
             gridTemplateRows: 'auto 12vh 1fr auto', // Changed last row to auto for flexible metrics height
             gap: '12px',
             padding: '12px',
@@ -145,7 +133,14 @@ const Dashboard = () => {
             {state.selectedLocation ? (
               <TimeseriesComponent
                 state={state}
-                TimeseriesControls={ForecastTimeseriesControls}
+                TimeseriesControls={ForecastTimeseriesFilters}
+                timeseriesControlsProps={{
+                  state,
+                  timeseriesFilters,
+                  updateTimeseriesFilters,
+                  loadTimeseries,
+                  selectedLocation
+                }}
               />
             ) : (
               <div className="d-flex align-items-center justify-content-center h-100 text-muted">
