@@ -248,7 +248,7 @@ deployments:
     }
     work_pool: *work_pool
 
-  # NWM Forcing MAP Ingests
+  # NWM Forcing Analysis MAP Ingests
   - name: ingest-nwm-forcing-analysis-assim
     version:
     tags: []
@@ -257,7 +257,8 @@ deployments:
     parameters: {
       "temp_dir_path": *temp_dir_path,
       "nwm_configuration": "forcing_analysis_assim",
-      "start_spark_cluster": false
+      "start_spark_cluster": false,
+      "file_chunk_size": 2
     }
     work_pool: *work_pool
 
@@ -269,7 +270,8 @@ deployments:
     parameters: {
       "temp_dir_path": *temp_dir_path,
       "nwm_configuration": "forcing_analysis_assim_alaska",
-      "start_spark_cluster": false
+      "start_spark_cluster": false,
+      "file_chunk_size": 2
     }
     work_pool: *work_pool
 
@@ -281,7 +283,8 @@ deployments:
     parameters: {
       "temp_dir_path": *temp_dir_path,
       "nwm_configuration": "forcing_analysis_assim_extend",
-      "start_spark_cluster": false
+      "start_spark_cluster": false,
+      "file_chunk_size": 2
     }
     work_pool: *work_pool
 
@@ -293,7 +296,8 @@ deployments:
     parameters: {
       "temp_dir_path": *temp_dir_path,
       "nwm_configuration": "forcing_analysis_assim_extend_alaska",
-      "start_spark_cluster": false
+      "start_spark_cluster": false,
+      "file_chunk_size": 2
     }
     work_pool: *work_pool
 
@@ -305,7 +309,8 @@ deployments:
     parameters: {
       "temp_dir_path": *temp_dir_path,
       "nwm_configuration": "forcing_analysis_assim_hawaii",
-      "start_spark_cluster": false
+      "start_spark_cluster": false,
+      "file_chunk_size": 2
     }
     work_pool: *work_pool
 
@@ -317,7 +322,23 @@ deployments:
     parameters: {
       "temp_dir_path": *temp_dir_path,
       "nwm_configuration": "forcing_analysis_assim_puertorico",
-      "start_spark_cluster": false
+      "start_spark_cluster": false,
+      "file_chunk_size": 2
+    }
+    work_pool: *work_pool
+
+  # NWM Forcing Short Range MAP Ingests
+  - name: ingest-nwm-forcing-short-range
+    version:
+    tags: []
+    description: Calculate Mean Areal Precipitation from NWM forcing short range
+    entrypoint: workflows/ingests/nwm_forcing_map.py:ingest_nwm_forcing_map
+    parameters: {
+      "temp_dir_path": *temp_dir_path,
+      "nwm_configuration": "forcing_short_range",
+      "start_spark_cluster": false,
+      "file_chunk_size": 2,
+      "target_table_name": "secondary_timeseries"
     }
     work_pool: *work_pool
 

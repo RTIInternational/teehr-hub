@@ -6,7 +6,6 @@ weighted averages using pixel coverage weights stored in the remote Iceberg ware
 Supports both analysis/assimilation (e.g. forcing_analysis_assim) and forecast
 (e.g. forcing_short_range, forcing_medium_range) NWM forcing configurations.
 """
-import gc
 import time
 from pathlib import Path
 from datetime import datetime, timedelta, UTC
@@ -16,16 +15,13 @@ import pandas as pd
 from prefect import flow, task, get_run_logger
 from prefect.cache_policies import NO_CACHE
 from pyspark.sql import functions as F
-import numpy as np
 
 from teehr import Configuration
 from teehr.fetching.utils import (
     format_nwm_configuration_metadata,
     build_remote_nwm_filelist,
-    write_timeseries_parquet_file
 )
 from teehr.fetching.const import (
-    NWM30_ANALYSIS_CONFIG,
     NWM30_ANALYSIS_CONFIG,
     NWM_VARIABLE_MAPPER,
     VARIABLE_NAME
@@ -42,7 +38,6 @@ DEFAULT_VARIABLE_NAME = "RAINRATE"
 NWM_VERSION_ANALYSIS_CONFIG = {
     "nwm30": NWM30_ANALYSIS_CONFIG,
 }
-NWM30_WEIGHTS_CONFIGURATION = "nwm30_forcing_short_range"
 NWM30_WEIGHTS_VARIABLE_NAME = "rainfall_hourly_rate"
 
 # Regex patterns for parsing datetime info from GCS filepaths
@@ -95,7 +90,6 @@ def cache_weights_view(
     logger.info("Pixel coverage weights view cached successfully")
 
 
-@task(cache_policy=NO_CACHE, timeout_seconds=60 * 5)
 def parse_value_and_reference_times_from_path(nc_sdf, is_analysis: bool):
     """Parse value_time and reference_time from NWM NetCDF GCS filepaths.
 
@@ -276,9 +270,6 @@ def compute_and_write_map(
     logger.info(f"Wrote chunk to cache: {out_path.name}")
 
     ev.spark.catalog.dropTempView("raster_values")
-    del raster_exp_sdf
-    gc.collect()
-
     elapsed = (time.time() - t0) / 60
     logger.info(
         f"Processed {len(filepaths)} files and wrote MAP to cache in {elapsed:.2f} min"
@@ -458,11 +449,9 @@ def ingest_nwm_forcing_map(
     )
     # For sedona the filepath must start with 'gs' instead of 'gcs'
     filepaths = sorted([fp.replace("gcs://", "gs://") for fp in filepaths])
-    num_splits = int(len(filepaths) / file_chunk_size)
-    if num_splits > 0:
-        chunked_filepaths = np.array_split(filepaths, num_splits)
-    else:
-        chunked_filepaths = [filepaths]
+    chunked_filepaths = [
+        filepaths[i:i+file_chunk_size] for i in range(0, len(filepaths), file_chunk_size)
+    ]
 
     logger.info(
         f"Processing {len(filepaths)} file(s) in {len(chunked_filepaths)} chunk(s) "
