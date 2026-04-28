@@ -76,6 +76,7 @@ deployments:
   - name: ingest-usgs-streamflow-obs
     version:
     tags: []
+    concurrency_limit: 1
     description: Ingest USGS streamflow data from NWIS
     entrypoint: workflows/ingests/usgs_streamflow_obs.py:ingest_usgs_streamflow_obs
     parameters: {"temp_dir_path": *temp_dir_path}
@@ -88,6 +89,7 @@ deployments:
   - name: ingest-nwm-short-range-streamflow-forecasts
     version:
     tags: []
+    concurrency_limit: 1
     description: Ingest NWM short range streamflow forecasts from GCS
     entrypoint: workflows/ingests/nwm_streamflow_forecasts.py:ingest_nwm_streamflow_forecasts
     parameters: {
@@ -102,6 +104,7 @@ deployments:
   - name: ingest-nwm-short-range-alaska-streamflow-forecasts
     version:
     tags: []
+    concurrency_limit: 1
     description: Ingest NWM short range Alaska streamflow forecasts from GCS
     entrypoint: workflows/ingests/nwm_streamflow_forecasts.py:ingest_nwm_streamflow_forecasts
     parameters: {
@@ -117,6 +120,7 @@ deployments:
   - name: ingest-nwm-short-range-hawaii-streamflow-forecasts
     version:
     tags: []
+    concurrency_limit: 1
     description: Ingest NWM short range Hawaii streamflow forecasts from GCS
     entrypoint: workflows/ingests/nwm_streamflow_forecasts.py:ingest_nwm_streamflow_forecasts
     parameters: {
@@ -132,6 +136,7 @@ deployments:
   - name: ingest-nwm-short-range-puertorico-streamflow-forecasts
     version:
     tags: []
+    concurrency_limit: 1
     description: Ingest NWM short range Puerto Rico streamflow forecasts from GCS
     entrypoint: workflows/ingests/nwm_streamflow_forecasts.py:ingest_nwm_streamflow_forecasts
     parameters: {
@@ -147,6 +152,7 @@ deployments:
   - name: ingest-nwm-medium-range-streamflow-forecasts
     version:
     tags: []
+    concurrency_limit: 1
     description: Ingest NWM medium range member 1 streamflow forecasts from GCS
     entrypoint: workflows/ingests/nwm_streamflow_forecasts.py:ingest_nwm_streamflow_forecasts
     parameters: {
@@ -162,6 +168,7 @@ deployments:
   - name: ingest-nwm-medium-range-blend-streamflow-forecasts
     version:
     tags: []
+    concurrency_limit: 1
     description: Ingest NWM medium range blend streamflow forecasts from GCS
     entrypoint: workflows/ingests/nwm_streamflow_forecasts.py:ingest_nwm_streamflow_forecasts
     parameters: {
@@ -178,6 +185,7 @@ deployments:
   - name: ingest-nwm-medium-range-alaska-streamflow-forecasts
     version:
     tags: []
+    concurrency_limit: 1
     description: Ingest NWM medium range Alaska streamflow forecasts from GCS
     entrypoint: workflows/ingests/nwm_streamflow_forecasts.py:ingest_nwm_streamflow_forecasts
     parameters: {
@@ -194,6 +202,7 @@ deployments:
   - name: ingest-nwm-medium-range-alaska-blend-streamflow-forecasts
     version:
     tags: []
+    concurrency_limit: 1
     description: Ingest NWM medium range Alaska blend streamflow forecasts from GCS
     entrypoint: workflows/ingests/nwm_streamflow_forecasts.py:ingest_nwm_streamflow_forecasts
     parameters: {
@@ -211,6 +220,7 @@ deployments:
   - name: ingest-nwm-analysis-assim-no-da
     version:
     tags: []
+    concurrency_limit: 1
     description: Ingest NWM analysis assimilation (no DA) streamflow forecasts from GCS
     entrypoint: workflows/ingests/nwm_streamflow_forecasts.py:ingest_nwm_streamflow_forecasts
     parameters: {
@@ -227,6 +237,7 @@ deployments:
   - name: ingest-nwm-analysis-assim-alaska-no-da
     version:
     tags: []
+    concurrency_limit: 1
     description: Ingest NWM analysis assimilation (no DA) Alaska streamflow forecasts from GCS
     entrypoint: workflows/ingests/nwm_streamflow_forecasts.py:ingest_nwm_streamflow_forecasts
     parameters: {
@@ -243,6 +254,7 @@ deployments:
   - name: ingest-nwm-analysis-assim-extend-no-da
     version:
     tags: []
+    concurrency_limit: 1
     description: Ingest NWM analysis assimilation (no DA) extended streamflow forecasts from GCS
     entrypoint: workflows/ingests/nwm_streamflow_forecasts.py:ingest_nwm_streamflow_forecasts
     parameters: {
@@ -259,6 +271,7 @@ deployments:
   - name: ingest-nwm-analysis-assim-extend-alaska-no-da
     version:
     tags: []
+    concurrency_limit: 1
     description: Ingest NWM analysis assimilation (no DA) extended Alaska streamflow forecasts from GCS
     entrypoint: workflows/ingests/nwm_streamflow_forecasts.py:ingest_nwm_streamflow_forecasts
     parameters: {
@@ -275,6 +288,7 @@ deployments:
   - name: ingest-nwm-analysis-assim-hawaii-no-da
     version:
     tags: []
+    concurrency_limit: 1
     description: Ingest NWM analysis assimilation (no DA) Hawaii streamflow forecasts from GCS
     entrypoint: workflows/ingests/nwm_streamflow_forecasts.py:ingest_nwm_streamflow_forecasts
     parameters: {
@@ -291,6 +305,7 @@ deployments:
   - name: ingest-nwm-analysis-assim-puertorico-no-da
     version:
     tags: []
+    concurrency_limit: 1
     description: Ingest NWM analysis assimilation (no DA) Puerto Rico streamflow forecasts from GCS
     entrypoint: workflows/ingests/nwm_streamflow_forecasts.py:ingest_nwm_streamflow_forecasts
     parameters: {
@@ -308,6 +323,7 @@ deployments:
   - name: ingest-datastream-short-range-cfe-forecasts
     version:
     tags: []
+    concurrency_limit: 1
     description: Ingest DataStream streamflow forecasts from S3
     entrypoint: workflows/ingests/datastream_streamflow_forecasts.py:ingest_datastream_forecasts
     parameters: {
@@ -323,6 +339,7 @@ deployments:
   - name: ingest-datastream-medium-range-cfe-forecasts
     version:
     tags: []
+    concurrency_limit: 1
     description: Ingest DataStream streamflow forecasts from S3
     entrypoint: workflows/ingests/datastream_streamflow_forecasts.py:ingest_datastream_forecasts
     parameters: {
@@ -338,6 +355,7 @@ deployments:
   - name: ingest-datastream-short-range-lstm-forecasts
     version:
     tags: []
+    concurrency_limit: 1
     description: Ingest DataStream streamflow forecasts from S3
     entrypoint: workflows/ingests/datastream_streamflow_forecasts.py:ingest_datastream_forecasts
     parameters: {
@@ -353,6 +371,7 @@ deployments:
   - name: ingest-datastream-medium-range-lstm-forecasts
     version:
     tags: []
+    concurrency_limit: 1
     description: Ingest DataStream streamflow forecasts from S3
     entrypoint: workflows/ingests/datastream_streamflow_forecasts.py:ingest_datastream_forecasts
     parameters: {
@@ -369,6 +388,7 @@ deployments:
   - name: ingest-nwps-rfc-streamflow-forecasts
     version:
     tags: []
+    concurrency_limit: 1
     description: Ingest NWPS RFC streamflow forecasts from NOAA servers
     entrypoint: workflows/ingests/nwps_rfc_streamflow_forecasts.py:ingest_nwps_rfc_forecasts
     parameters: {
