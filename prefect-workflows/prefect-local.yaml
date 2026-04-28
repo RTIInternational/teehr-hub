@@ -337,7 +337,8 @@ deployments:
       "temp_dir_path": *temp_dir_path,
       "nwm_configuration": "forcing_short_range",
       "start_spark_cluster": false,
-      "target_table_name": "secondary_timeseries"
+      "target_table_name": "secondary_timeseries",
+      "file_chunk_size": 2
     }
     work_pool: *work_pool
 
@@ -350,7 +351,8 @@ deployments:
       "temp_dir_path": *temp_dir_path,
       "nwm_configuration": "forcing_short_range_alaska",
       "start_spark_cluster": false,
-      "target_table_name": "secondary_timeseries"
+      "target_table_name": "secondary_timeseries",
+      "file_chunk_size": 2
     }
     work_pool: *work_pool
 
@@ -363,7 +365,8 @@ deployments:
       "temp_dir_path": *temp_dir_path,
       "nwm_configuration": "forcing_short_range_hawaii",
       "start_spark_cluster": false,
-      "target_table_name": "secondary_timeseries"
+      "target_table_name": "secondary_timeseries",
+      "file_chunk_size": 2
     }
     work_pool: *work_pool
 
@@ -376,7 +379,8 @@ deployments:
       "temp_dir_path": *temp_dir_path,
       "nwm_configuration": "forcing_short_range_puertorico",
       "start_spark_cluster": false,
-      "target_table_name": "secondary_timeseries"
+      "target_table_name": "secondary_timeseries",
+      "file_chunk_size": 2
     }
     work_pool: *work_pool
 
@@ -390,7 +394,8 @@ deployments:
       "temp_dir_path": *temp_dir_path,
       "nwm_configuration": "forcing_medium_range",
       "start_spark_cluster": false,
-      "target_table_name": "secondary_timeseries"
+      "target_table_name": "secondary_timeseries",
+      "file_chunk_size": 2
     }
     work_pool: *work_pool
 
@@ -403,7 +408,8 @@ deployments:
       "temp_dir_path": *temp_dir_path,
       "nwm_configuration": "forcing_medium_range_alaska",
       "start_spark_cluster": false,
-      "target_table_name": "secondary_timeseries"
+      "target_table_name": "secondary_timeseries",
+      "file_chunk_size": 2
     }
     work_pool: *work_pool
 
@@ -416,7 +422,8 @@ deployments:
       "temp_dir_path": *temp_dir_path,
       "nwm_configuration": "forcing_medium_range_hawaii",
       "start_spark_cluster": false,
-      "target_table_name": "secondary_timeseries"
+      "target_table_name": "secondary_timeseries",
+      "file_chunk_size": 2
     }
     work_pool: *work_pool
 
@@ -429,7 +436,8 @@ deployments:
       "temp_dir_path": *temp_dir_path,
       "nwm_configuration": "forcing_medium_range_puertorico",
       "start_spark_cluster": false,
-      "target_table_name": "secondary_timeseries"
+      "target_table_name": "secondary_timeseries",
+      "file_chunk_size": 2
     }
     work_pool: *work_pool
 
