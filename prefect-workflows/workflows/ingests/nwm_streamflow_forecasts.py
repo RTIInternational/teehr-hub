@@ -118,7 +118,6 @@ def ingest_nwm_streamflow_forecasts(
             "spark.sql.shuffle.partitions": "4"
         }
     )
-
     # Format the NWM configuration name for TEEHR
     teehr_nwm_config = format_nwm_configuration_metadata(
         nwm_config_name=nwm_configuration,
@@ -163,8 +162,9 @@ def ingest_nwm_streamflow_forecasts(
     else:
         variable_mapper = NWM_VARIABLE_MAPPER
     ev_variable_name = variable_mapper[VARIABLE_NAME].get(
-        variable_name, variable_name
-    )
+            variable_name, {}
+    ).get("name", variable_name)
+
     ev_config = format_nwm_configuration_metadata(
         nwm_config_name=nwm_configuration,
         nwm_version=nwm_version
@@ -204,13 +204,12 @@ def ingest_nwm_streamflow_forecasts(
         ending_z_hour=23,
         timeseries_type=timeseries_type
     )
-
     # load output
     logger.info("Loading fetched data from cache into the warehouse")
     if timeseries_type == TimeseriesTypeEnum.primary:
+        # Primarily for forcing data. Make sure the basin location IDs
+        # are mapped to themselves in the location crosswalks table.
         table_name = "primary_timeseries"
-        # Need to add the NWM IDs to themselves in the crosswalk? Locations table?
-        # Should the IDs just be replaced by primary in the files?
     else:
         table_name = "secondary_timeseries"
     ev._load.from_cache(
