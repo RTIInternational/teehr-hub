@@ -249,7 +249,7 @@ deployments:
     work_pool: *work_pool
 
   # NWM Forcing MAP Ingests
-  - name: ingest-nwm-forcing-analysis-assim-map
+  - name: ingest-nwm-forcing-analysis-assim
     version:
     tags: []
     description: Calculate Mean Areal Precipitation from NWM forcing analysis/assimilation grids
@@ -257,6 +257,66 @@ deployments:
     parameters: {
       "temp_dir_path": *temp_dir_path,
       "nwm_configuration": "forcing_analysis_assim",
+      "start_spark_cluster": false
+    }
+    work_pool: *work_pool
+
+  - name: ingest-nwm-forcing-analysis-assim-alaska
+    version:
+    tags: []
+    description: Calculate Mean Areal Precipitation from NWM forcing analysis/assimilation grids
+    entrypoint: workflows/ingests/nwm_forcing_map.py:ingest_nwm_forcing_map
+    parameters: {
+      "temp_dir_path": *temp_dir_path,
+      "nwm_configuration": "forcing_analysis_assim_alaska",
+      "start_spark_cluster": false
+    }
+    work_pool: *work_pool
+
+  - name: ingest-nwm-forcing-analysis-assim-extend
+    version:
+    tags: []
+    description: Calculate Mean Areal Precipitation from NWM forcing analysis/assimilation grids
+    entrypoint: workflows/ingests/nwm_forcing_map.py:ingest_nwm_forcing_map
+    parameters: {
+      "temp_dir_path": *temp_dir_path,
+      "nwm_configuration": "forcing_analysis_assim_extend",
+      "start_spark_cluster": false
+    }
+    work_pool: *work_pool
+
+  - name: ingest-nwm-forcing-analysis-assim-extend-alaska
+    version:
+    tags: []
+    description: Calculate Mean Areal Precipitation from NWM forcing analysis/assimilation grids
+    entrypoint: workflows/ingests/nwm_forcing_map.py:ingest_nwm_forcing_map
+    parameters: {
+      "temp_dir_path": *temp_dir_path,
+      "nwm_configuration": "forcing_analysis_assim_extend_alaska",
+      "start_spark_cluster": false
+    }
+    work_pool: *work_pool
+
+  - name: ingest-nwm-forcing-analysis-assim-hawaii
+    version:
+    tags: []
+    description: Calculate Mean Areal Precipitation from NWM forcing analysis/assimilation grids
+    entrypoint: workflows/ingests/nwm_forcing_map.py:ingest_nwm_forcing_map
+    parameters: {
+      "temp_dir_path": *temp_dir_path,
+      "nwm_configuration": "forcing_analysis_assim_hawaii",
+      "start_spark_cluster": false
+    }
+    work_pool: *work_pool
+
+  - name: ingest-nwm-forcing-analysis-assim-puertorico
+    version:
+    tags: []
+    description: Calculate Mean Areal Precipitation from NWM forcing analysis/assimilation grids
+    entrypoint: workflows/ingests/nwm_forcing_map.py:ingest_nwm_forcing_map
+    parameters: {
+      "temp_dir_path": *temp_dir_path,
+      "nwm_configuration": "forcing_analysis_assim_puertorico",
       "start_spark_cluster": false
     }
     work_pool: *work_pool
