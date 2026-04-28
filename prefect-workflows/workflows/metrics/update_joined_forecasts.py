@@ -25,7 +25,19 @@ FORECAST_CONFIGURATION_NAMES = [
     "nrds_v22_cfenom_short_range",
     "nrds_v22_lstm0_short_range",
     "nrds_v22_lstm0_medium_range",
-    "nwpsrfc_streamflow_forecast"
+    "nwpsrfc_streamflow_forecast",
+    "nwm30_analysis_assim_no_da",
+    "nwm30_analysis_assim_alaska_no_da",
+    "nwm30_analysis_assim_extend_no_da",
+    "nwm30_analysis_assim_extend_alaska_no_da",
+    "nwm30_analysis_assim_hawaii_no_da",
+    "nwm30_analysis_assim_puertorico_no_da",
+    "nwm30_short_range_alaska",
+    "nwm30_short_range_hawaii",
+    "nwm30_short_range_puertorico",
+    "nwm30_medium_range_alaska",
+    "nwm30_medium_range_blend",
+    "nwm30_medium_range_blend_alaska"
 ]
 DEFAULT_SHUFFLE_PARTITIONS = 256
 DEFAULT_INCREMENTAL_LOOKBACK_HOURS = 2
