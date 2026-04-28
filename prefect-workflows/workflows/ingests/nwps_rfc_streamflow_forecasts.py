@@ -2,9 +2,11 @@ from pathlib import Path
 from datetime import datetime, UTC
 from typing import Union
 import logging
+import time
 
 from prefect import flow, get_run_logger
 from prefect.futures import wait
+from prefect.task_runners import ThreadPoolTaskRunner
 from pyspark.sql import functions as F
 
 from workflows.utils.common_utils import initialize_evaluation
@@ -31,17 +33,24 @@ FIELD_MAPPING = {
     "validTime": "value_time",
     "secondary": "value",
 }
-VARIABLE_NAMES = ["streamflow_hourly_inst",
-                  "streamflow_6hr_inst"]
+VARIABLE_NAMES = [
+    "streamflow_hourly_inst",
+    "streamflow_6hr_inst"
+]
 CONFIGURATION_NAME = "nwpsrfc_streamflow_forecast"
 UNITS_MAPPING = {
     "streamflow_hourly_inst": "m^3/s",
     "streamflow_6hr_inst": "m^3/s"
 }
+TASK_RUNNER_MAX_WORKERS = 8
+SUBMISSION_BATCH_SIZE = 56
+SUBMISSION_GATE_SECONDS = 5
+FAILURE_RATE_THRESHOLD = 0.25
 
 
 @flow(
     flow_run_name="ingest-nwps-rfc-forecasts",
+    task_runner=ThreadPoolTaskRunner(max_workers=TASK_RUNNER_MAX_WORKERS),
     timeout_seconds=60 * 60
 )
 def ingest_nwps_rfc_forecasts(
@@ -103,37 +112,72 @@ def ingest_nwps_rfc_forecasts(
         last_reference_times=last_reference_times
     )
 
-    # fetch data to cache using parallel tasks (one per endpoint)
-    logger.info(f"Fetching {len(nwps_endpoints)} NWPS RFC forecasts")
+    # Submit task runs in bounded batches to balance throughput and stability.
+    logger.info(
+        f"Fetching {len(nwps_endpoints)} NWPS RFC forecasts in batches "
+        f"(batch_size={SUBMISSION_BATCH_SIZE}, max_workers={TASK_RUNNER_MAX_WORKERS}, "
+        f"gate_seconds={SUBMISSION_GATE_SECONDS})"
+    )
 
-    endpoint_futures = []
-    for endpoint in nwps_endpoints:
-        future = fetch_nwps_rfc_fcst_to_cache.submit(
-            endpoint=endpoint,
-            output_cache_dir=output_cache_dir,
-            field_mapping=FIELD_MAPPING,
-            units_mapping=UNITS_MAPPING,
-            variable_names=VARIABLE_NAMES,
-            configuration_name=CONFIGURATION_NAME,
-            location_id_prefix=LOCATION_ID_PREFIX
+    total = len(nwps_endpoints)
+    all_futures = []
+
+    for batch_start in range(0, total, SUBMISSION_BATCH_SIZE):
+        endpoint_batch = nwps_endpoints[batch_start:batch_start + SUBMISSION_BATCH_SIZE]
+        batch_index = (batch_start // SUBMISSION_BATCH_SIZE) + 1
+
+        for endpoint in endpoint_batch:
+            future = fetch_nwps_rfc_fcst_to_cache.submit(
+                endpoint=endpoint,
+                output_cache_dir=output_cache_dir,
+                field_mapping=FIELD_MAPPING,
+                units_mapping=UNITS_MAPPING,
+                variable_names=VARIABLE_NAMES,
+                configuration_name=CONFIGURATION_NAME,
+                location_id_prefix=LOCATION_ID_PREFIX,
+            )
+            all_futures.append(future)
+
+        logger.info(
+            f"NWPS batch {batch_index} submitted: "
+            f"processed={min(batch_start + SUBMISSION_BATCH_SIZE, total)}/{total}"
         )
-        endpoint_futures.append(future)
 
-    wait(endpoint_futures)
-    logger.info("✅ Completed fetching NWPS RFC forecast data to cache")
+        # Time-gated submission: do not wait for batch completion before enqueuing next.
+        if batch_start + SUBMISSION_BATCH_SIZE < total:
+            time.sleep(SUBMISSION_GATE_SECONDS)
+
+    done, not_done = wait(all_futures)
+    if not_done:
+        logger.warning(f"{len(not_done)} NWPS tasks still pending after final wait()")
+
+    successful = 0
+    failed = 0
+    for future in done:
+        if future.state.is_completed():
+            successful += 1
+        else:
+            failed += 1
+
+    logger.info(
+        f"✅ Completed fetching NWPS RFC forecast data: "
+        f"successful={successful}, failed={failed}"
+    )
+
+    failure_rate = (failed / total) if total else 0.0
+    if failure_rate > FAILURE_RATE_THRESHOLD:
+        raise RuntimeError(
+            f"NWPS fetch failure rate exceeded threshold: "
+            f"failed={failed}/{total} ({failure_rate:.1%}) > {FAILURE_RATE_THRESHOLD:.0%}"
+        )
+
+    if failed == total:
+        raise RuntimeError("All NWPS fetch tasks failed!")
 
     if has_cache_data(output_cache_dir):
         logger.info(
             f"Adding cached data to evaluation from: {output_cache_dir}"
         )
-        # # coalesce cache files
-        # coalesced_cache_dir = output_cache_dir / "coalesced"
-        # coalesce_cache_files(
-        #     ev=ev,
-        #     num_cache_files=num_cache_files,
-        #     output_cache_dir=output_cache_dir,
-        #     coalesced_cache_dir=coalesced_cache_dir,
-        # )
 
         # load output
         load_to_warehouse(

@@ -2,8 +2,11 @@ from pathlib import Path
 from datetime import datetime, timedelta, UTC
 from typing import Union
 import logging
+import time
 
 from prefect import flow, get_run_logger
+from prefect.futures import wait
+from prefect.task_runners import ThreadPoolTaskRunner
 import pandas as pd
 import botocore.session
 from botocore import UNSIGNED
@@ -41,6 +44,10 @@ VARIABLE_NAME = "streamflow_hourly_inst"
 FORECAST_CONFIGURATION = "short_range"
 HYDROFABRIC_VERSION = "v2.2_hydrofabric"
 DATASTREAM_NAME = "cfe_nom"
+TASK_RUNNER_MAX_WORKERS = 8
+SUBMISSION_BATCH_SIZE = 24
+SUBMISSION_GATE_SECONDS = 5
+FAILURE_RATE_THRESHOLD = 0.25
 
 # Set up access for public S3 bucket
 session = botocore.session.get_session()
@@ -52,6 +59,7 @@ s3 = session.create_client(
 
 @flow(
     flow_run_name="ingest-datastream-forecasts",
+    task_runner=ThreadPoolTaskRunner(max_workers=TASK_RUNNER_MAX_WORKERS),
     timeout_seconds=60 * 60
 )
 def ingest_datastream_forecasts(
@@ -150,40 +158,68 @@ def ingest_datastream_forecasts(
         s3=s3
     )
 
-    for filepath_info in s3_filepaths:
+    logger.info(
+        f"Fetching {len(s3_filepaths)} DataStream files in batches "
+        f"(batch_size={SUBMISSION_BATCH_SIZE}, max_workers={TASK_RUNNER_MAX_WORKERS}, "
+        f"gate_seconds={SUBMISSION_GATE_SECONDS})"
+    )
+
+    all_futures = []
+    total = len(s3_filepaths)
+
+    for batch_start in range(0, total, SUBMISSION_BATCH_SIZE):
+        filepath_batch = s3_filepaths[batch_start:batch_start + SUBMISSION_BATCH_SIZE]
+        batch_index = (batch_start // SUBMISSION_BATCH_SIZE) + 1
+
+        for filepath_info in filepath_batch:
+            future = fetch_troute_output_to_cache.submit(
+                filepath_info=filepath_info,
+                output_cache_dir=output_cache_dir,
+                bucket_name=BUCKET_NAME,
+                warehouse_ngen_ids=stripped_ids,
+                unit_name=UNIT_NAME,
+                variable_name=VARIABLE_NAME,
+                configuration_name=configuration_name,
+                location_id_prefix=LOCATION_ID_PREFIX,
+            )
+            all_futures.append(future)
+
         logger.info(
-            f"Fetching troute output from S3 for {configuration_name}: {filepath_info['filepath']}"
-        )
-        # Fetch troute output to cache
-        fetch_troute_output_to_cache(
-            filepath_info=filepath_info,
-            output_cache_dir=output_cache_dir,
-            bucket_name=BUCKET_NAME,
-            warehouse_ngen_ids=stripped_ids,
-            unit_name=UNIT_NAME,
-            variable_name=VARIABLE_NAME,
-            configuration_name=configuration_name,
-            location_id_prefix=LOCATION_ID_PREFIX,
+            f"DataStream batch {batch_index} submitted: "
+            f"processed={min(batch_start + SUBMISSION_BATCH_SIZE, total)}/{total}"
         )
 
-    # futures = []
-    # for filepath_info in s3_filepaths:
-    #     logger.info(
-    #         f"Fetching troute output from S3 for {configuration_name}: {filepath_info['filepath']}"
-    #     )
-    #     # Fetch troute output to cache
-    #     future = fetch_troute_output_to_cache.submit(
-    #         filepath_info=filepath_info,
-    #         output_cache_dir=output_cache_dir,
-    #         bucket_name=BUCKET_NAME,
-    #         warehouse_ngen_ids=stripped_ids,
-    #         unit_name=UNIT_NAME,
-    #         variable_name=VARIABLE_NAME,
-    #         configuration_name=configuration_name,
-    #         location_id_prefix=LOCATION_ID_PREFIX,
-    #     )
-    #     futures.append(future)
-    # wait(futures)
+        # Time-gated submission: do not wait for batch completion before enqueuing next.
+        if batch_start + SUBMISSION_BATCH_SIZE < total:
+            time.sleep(SUBMISSION_GATE_SECONDS)
+
+    done, not_done = wait(all_futures)
+    if not_done:
+        logger.warning(
+            f"{len(not_done)} DataStream tasks still pending after final wait()"
+        )
+
+    successful = 0
+    failed = 0
+    for future in done:
+        if future.state.is_completed():
+            successful += 1
+        else:
+            failed += 1
+
+    logger.info(
+        f"Completed DataStream fetch tasks: successful={successful}, failed={failed}"
+    )
+
+    failure_rate = (failed / total) if total else 0.0
+    if failure_rate > FAILURE_RATE_THRESHOLD:
+        raise RuntimeError(
+            f"DataStream fetch failure rate exceeded threshold: "
+            f"failed={failed}/{total} ({failure_rate:.1%}) > {FAILURE_RATE_THRESHOLD:.0%}"
+        )
+
+    if failed == total:
+        raise RuntimeError("All DataStream fetch tasks failed!")
 
     # # Coalesce cache files for optimized loading
     # coalesced_cache_dir = output_cache_dir / "coalesced"

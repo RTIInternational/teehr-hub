@@ -112,21 +112,18 @@ export const useRetrospectiveDataFetching = () => {
         const primaryData = await apiService.getPrimaryTimeseries(primary_location_id, primaryFilters);
         dispatch({ type: ActionTypes.SET_PRIMARY_TIMESERIES, payload: primaryData });
   
-        // Load secondary data for each configuration and aggregate results
+        // Load secondary data with multi-value configuration filtering
         const secondaryFilters = {
           variable,
           start_date,
-          end_date
+          end_date,
+          configuration: configurations
         };
-        
-        // Fetch data for all configurations in parallel
-        const secondaryPromises = configurations.map(config => 
-          apiService.getSecondaryTimeseries(primary_location_id, { ...secondaryFilters, configuration: config })
+
+        const secondaryData = await apiService.getSecondaryTimeseries(
+          primary_location_id,
+          secondaryFilters
         );
-        const secondaryResults = await Promise.all(secondaryPromises);
-        
-        // Aggregate all results into a single array
-        const secondaryData = secondaryResults.flat();
         dispatch({ type: ActionTypes.SET_SECONDARY_TIMESERIES, payload: secondaryData });
         
       } catch (error) {
