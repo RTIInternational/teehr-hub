@@ -20,14 +20,15 @@ import numpy as np
 
 from teehr import Configuration
 from teehr.fetching.utils import (
-    format_nwm_variable_name,
     format_nwm_configuration_metadata,
     build_remote_nwm_filelist,
     write_timeseries_parquet_file
 )
 from teehr.fetching.const import (
     NWM30_ANALYSIS_CONFIG,
-    NWM30_ANALYSIS_CONFIG
+    NWM30_ANALYSIS_CONFIG,
+    NWM_VARIABLE_MAPPER,
+    VARIABLE_NAME
 )
 from teehr.utils.utils import remove_dir_if_exists
 from workflows.utils.common_utils import initialize_evaluation
@@ -56,7 +57,7 @@ FILE_CHUNK_SIZE = 100  # The max. number of files to process in each chunk
 def cache_weights_view(
     ev,
     location_id_prefix: str,
-    weights_configuration: str,
+    weights_domain_name: str,
     weights_variable_name: str,
 ) -> None:
     """Create and cache a Spark temporary view of pixel coverage weights.
@@ -72,22 +73,22 @@ def cache_weights_view(
         Active TEEHR evaluation instance.
     location_id_prefix : str
         Location ID prefix to filter weights (e.g. "usgsbasin").
-    weights_configuration : str
-        Configuration name to filter weights (e.g. "nwm30_forcing_short_range").
+    weights_domain_name : str
+        Domain name to filter weights (e.g. "nwm30_alaska_forcing").
     weights_variable_name : str
         Variable name to filter weights (e.g. "rainfall_hourly_rate").
     """
     logger = get_run_logger()
     logger.info(
         f"Caching pixel coverage weights view for prefix '{location_id_prefix}', "
-        f"configuration '{weights_configuration}', variable '{weights_variable_name}'"
+        f"domain '{weights_domain_name}', variable '{weights_variable_name}'"
     )
     ev.spark.sql(f"""
         CREATE OR REPLACE TEMPORARY VIEW fractions_view AS
-        SELECT fraction_covered, location_id, position_index
+        SELECT fraction_covered, location_id, position_index, domain_name, variable_name
         FROM iceberg.teehr.grid_pixel_coverage_weights
         WHERE location_id LIKE '{location_id_prefix}-%'
-          AND configuration_name = '{weights_configuration}'
+          AND domain_name = '{weights_domain_name}'
           AND variable_name = '{weights_variable_name}'
     """)
     ev.spark.sql("CACHE TABLE fractions_view")
@@ -108,6 +109,7 @@ def compute_and_write_map(
     chunk_end: str,
     output_type: str,
     target_table_name: str,
+    weights_domain_name: str,
     member: str = None,
 ) -> None:
     """Compute mean areal precipitation (MAP) and write to a parquet cache file.
@@ -144,8 +146,8 @@ def compute_and_write_map(
         End filename of the chunk, used to name the output parquet file.
     output_type : str
         Type of timeseries to write (e.g. "primary" or "secondary").
-    target_table_name : str
-        Target table name to write (e.g. "primary_timeseries").
+    weights_domain_name : str
+        Domain name to filter pixel coverage weights table (e.g. "nwm30_conus_forcing").
     member : str, optional
         Member name to write (e.g. "0"). Only used when output_type is "secondary".
     """
@@ -163,6 +165,7 @@ def compute_and_write_map(
             "path as filepath",
         )
     )
+    logger.info("Parsing value_time and reference_time from filepaths.")
     if is_analysis:
         # value_time = cycle z-hour minus tmXX lookback offset
         # Use Python API (not SQL f-string) to avoid Spark SQL backslash-escape consuming
@@ -203,7 +206,7 @@ def compute_and_write_map(
             "reference_time",
             cycle_ts
         )
-    # Explode raster pixels to rows: (value_time, reference_time, value, position_index)
+    logger.info("Exploding raster pixels.")
     raster_exp_sdf = nc_sdf.selectExpr(
         "posexplode(RS_BandAsArray(raster, 1))",
         "value_time",
@@ -215,15 +218,6 @@ def compute_and_write_map(
         "CAST(pos AS BIGINT) as position_index",
     )
     raster_exp_sdf.createOrReplaceTempView("raster_values")
-
-    if "hawaii" in teehr_config_name:
-        domain_name = "nwm30_hawaii_forcing"
-    elif "alaska" in teehr_config_name:
-        domain_name = "nwm30_alaska_forcing"
-    elif "puertorico" in teehr_config_name:
-        domain_name = "nwm30_puertorico_forcing"
-    else:
-        domain_name = "nwm30_conus_forcing"
 
     # Compute coverage-weighted average per location and timestep
     map_results = ev.spark.sql(f"""
@@ -240,7 +234,7 @@ def compute_and_write_map(
         JOIN
             fractions_view AS w ON r.position_index = w.position_index
         WHERE
-            w.domain_name = '{domain_name}'
+            w.domain_name = '{weights_domain_name}'
         GROUP BY
             w.location_id, r.value_time, r.reference_time
     """)
@@ -256,8 +250,7 @@ def compute_and_write_map(
 
     elapsed = (time.time() - t0) / 60
     logger.info(
-        f"Processed {len(filepaths)} files and wrote MAP to {target_table_name} "
-        f"in {elapsed:.2f} min"
+        f"Processed {len(filepaths)} files and wrote MAP to cache in {elapsed:.2f} min"
     )
 
 
@@ -277,7 +270,7 @@ def ingest_nwm_forcing_map(
     start_spark_cluster: bool = False,
     file_chunk_size: int = FILE_CHUNK_SIZE,
     target_table_name: str = "primary_timeseries",
-    t_minus_hours: List[int] = [2],
+    t_minus_hours: Union[List[int], None] = None,
     member: Union[str, None] = None,
 ) -> None:
     """Calculate Mean Areal Precipitation from NWM forcing grids and write to TEEHR.
@@ -344,7 +337,11 @@ def ingest_nwm_forcing_map(
         nwm_config_name=nwm_configuration,
         nwm_version=nwm_version,
     )
-    ev_variable_name = format_nwm_variable_name(nwm_variable_name)
+
+    variable_mapper = NWM_VARIABLE_MAPPER
+    ev_variable_name = variable_mapper[VARIABLE_NAME].get(
+            nwm_variable_name, {}
+    ).get("name", nwm_variable_name)
 
     analysis_config_dict = NWM_VERSION_ANALYSIS_CONFIG.get(nwm_version, NWM30_ANALYSIS_CONFIG)
     is_analysis = nwm_configuration in analysis_config_dict
@@ -396,20 +393,26 @@ def ingest_nwm_forcing_map(
             )
         )
 
-    # Set up the local cache directory
     nwm_cache_dir = Path(ev.cache_dir) / "fetching" / ev_config["name"]
     remove_dir_if_exists(nwm_cache_dir)
     nwm_cache_dir.mkdir(parents=True, exist_ok=True)
 
-    # Cache the pixel coverage weights view once for all chunks (eagerly)
+    if "hawaii" in nwm_configuration:
+        weights_domain_name = "nwm30_hawaii_forcing"
+    elif "alaska" in nwm_configuration:
+        weights_domain_name = "nwm30_alaska_forcing"
+    elif "puertorico" in nwm_configuration:
+        weights_domain_name = "nwm30_puertorico_forcing"
+    else:
+        weights_domain_name = "nwm30_conus_forcing"
+
     cache_weights_view(
         ev=ev,
         location_id_prefix=location_id_prefix,
-        weights_configuration=NWM30_WEIGHTS_CONFIGURATION,
-        variable_name=NWM30_WEIGHTS_VARIABLE_NAME,
+        weights_domain_name=weights_domain_name,
+        weights_variable_name=NWM30_WEIGHTS_VARIABLE_NAME,
     )
 
-    # Build paths to files in GCS
     filepaths = build_remote_nwm_filelist(
         configuration=nwm_configuration,
         output_type="forcing",
@@ -453,8 +456,8 @@ def ingest_nwm_forcing_map(
             chunk_start=chunk_start,
             chunk_end=chunk_end,
             output_type=output_type,
-            target_table_name=target_table_name,
             member=member,
+            weights_domain_name=weights_domain_name
         )
 
     logger.info("Loading cached MAP data into the warehouse")
