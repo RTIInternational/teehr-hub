@@ -8,7 +8,7 @@ from prefect.cache_policies import NO_CACHE
 import pandas as pd
 import pyspark.sql as ps
 
-from teehr import Configuration, Evaluation, Variable
+from teehr import Evaluation
 from teehr.fetching.nwm.nwm_points import nwm_to_parquet
 from teehr.utils.utils import remove_dir_if_exists
 from teehr.fetching.utils import (
@@ -98,124 +98,126 @@ def ingest_nwm_streamflow_forecasts(
       minus the number of lookback days.
     - End date defaults to current date and time.
     """
-    logger = get_run_logger()
-    client = Client()
+    try:
+        logger = get_run_logger()
+        client = Client()
 
-    if isinstance(timeseries_type, str):
-        timeseries_type = TimeseriesTypeEnum(timeseries_type)
+        if isinstance(timeseries_type, str):
+            timeseries_type = TimeseriesTypeEnum(timeseries_type)
 
-    logger.info(f"Starting NWM streamflow forecast ingestion with configuration: {nwm_configuration}, variable: {variable_name}, output type: {output_type}, timeseries type: {timeseries_type}")
+        logger.info(f"Starting NWM streamflow forecast ingestion with configuration: {nwm_configuration}, variable: {variable_name}, output type: {output_type}, timeseries type: {timeseries_type}")
 
-    if end_dt is None:
-        end_dt = datetime.now(UTC).replace(tzinfo=None)
-    elif isinstance(end_dt, str):
-        end_dt = datetime.fromisoformat(end_dt)
+        if end_dt is None:
+            end_dt = datetime.now(UTC).replace(tzinfo=None)
+        elif isinstance(end_dt, str):
+            end_dt = datetime.fromisoformat(end_dt)
 
-    ev = initialize_evaluation(
-        temp_dir_path=temp_dir_path,
-        start_spark_cluster=start_spark_cluster,
-        update_configs={
-            "spark.sql.shuffle.partitions": "4"
-        }
-    )
-    # Format the NWM configuration name for TEEHR
-    teehr_nwm_config = format_nwm_configuration_metadata(
-        nwm_config_name=nwm_configuration,
-        nwm_version=nwm_version
-    )
-    if num_lookback_days is None:
-        logger.info(
-            "No lookback days provided, determining start date from latest"
-            " NWM reference time"
+        ev = initialize_evaluation(
+            temp_dir_path=temp_dir_path,
+            start_spark_cluster=start_spark_cluster,
+            update_configs={
+                "spark.sql.shuffle.partitions": "4"
+            }
         )
-        latest_nwm_reference_time = ev.spark.sql(f"""
-            SELECT MAX(reference_time) as latest_reference_time
-            FROM iceberg.teehr.secondary_timeseries
-            WHERE configuration_name = '{teehr_nwm_config["name"]}'
-        """).collect()
-        if len(latest_nwm_reference_time) > 0:
-            latest_nwm_reference_time = latest_nwm_reference_time[0].asDict()["latest_reference_time"]
-            start_dt = latest_nwm_reference_time + timedelta(minutes=1)
+        # Format the NWM configuration name for TEEHR
+        teehr_nwm_config = format_nwm_configuration_metadata(
+            nwm_config_name=nwm_configuration,
+            nwm_version=nwm_version
+        )
+        if num_lookback_days is None:
+            logger.info(
+                "No lookback days provided, determining start date from latest"
+                " NWM reference time"
+            )
+            latest_nwm_reference_time = ev.spark.sql(f"""
+                SELECT MAX(reference_time) as latest_reference_time
+                FROM iceberg.teehr.secondary_timeseries
+                WHERE configuration_name = '{teehr_nwm_config["name"]}'
+            """).collect()
+            if len(latest_nwm_reference_time) > 0:
+                latest_nwm_reference_time = latest_nwm_reference_time[0].asDict()["latest_reference_time"]
+                start_dt = latest_nwm_reference_time + timedelta(minutes=1)
+            else:
+                start_dt = end_dt - timedelta(days=LOOKBACK_DAYS)
         else:
-            start_dt = end_dt - timedelta(days=LOOKBACK_DAYS)
-    else:
-        logger.info(
-            f"Setting start date to {num_lookback_days} days before end date"
+            logger.info(
+                f"Setting start date to {num_lookback_days} days before end date"
+            )
+            start_dt = end_dt - timedelta(days=num_lookback_days)
+
+        logger.info(f"Processing NWM forecasts from {start_dt} to {end_dt}")
+        # Get the NWM IDs for the correct domain based on the configuration name and prefix.
+        filtered_crosswalks_sdf = _filter_crosswalk_table(
+            ev=ev,
+            configuration_name=teehr_nwm_config["name"],
+            location_id_prefix=LOCATION_ID_PREFIX
         )
-        start_dt = end_dt - timedelta(days=num_lookback_days)
+        stripped_ids = [
+            row[0].split("-")[1]
+            for row in filtered_crosswalks_sdf.select("secondary_location_id").collect()
+        ]
+        logger.info(f"Found {len(stripped_ids)} location IDs after filtering for the domain and NWM sites")
 
-    logger.info(f"Processing NWM forecasts from {start_dt} to {end_dt}")
-    # Get the NWM IDs for the correct domain based on the configuration name and prefix.
-    filtered_crosswalks_sdf = _filter_crosswalk_table(
-        ev=ev,
-        configuration_name=teehr_nwm_config["name"],
-        location_id_prefix=LOCATION_ID_PREFIX
-    )
-    stripped_ids = [
-        row[0].split("-")[1]
-        for row in filtered_crosswalks_sdf.select("secondary_location_id").collect()
-    ]
-    logger.info(f"Found {len(stripped_ids)} location IDs after filtering for the domain and NWM sites")
+        if "hawaii" in nwm_configuration:
+            variable_mapper = NWM_HAWAII_VARIABLE_MAPPER
+        else:
+            variable_mapper = NWM_VARIABLE_MAPPER
+        ev_variable_name = variable_mapper[VARIABLE_NAME].get(
+                variable_name, {}
+        ).get("name", variable_name)
 
-    if "hawaii" in nwm_configuration:
-        variable_mapper = NWM_HAWAII_VARIABLE_MAPPER
-    else:
-        variable_mapper = NWM_VARIABLE_MAPPER
-    ev_variable_name = variable_mapper[VARIABLE_NAME].get(
-            variable_name, {}
-    ).get("name", variable_name)
+        ev_config = format_nwm_configuration_metadata(
+            nwm_config_name=nwm_configuration,
+            nwm_version=nwm_version
+        )
+        nwm_cache_dir = Path(
+            ev.cache_dir,
+            "fetching",
+            "nwm"
+        )
+        kerchunk_cache_dir = Path(
+            ev.cache_dir,
+            "fetching",
+            "kerchunk"
+        )
+        # Clear out caches
+        remove_dir_if_exists(nwm_cache_dir)
+        remove_dir_if_exists(kerchunk_cache_dir)
 
-    ev_config = format_nwm_configuration_metadata(
-        nwm_config_name=nwm_configuration,
-        nwm_version=nwm_version
-    )
-    nwm_cache_dir = Path(
-        ev.cache_dir,
-        "fetching",
-        "nwm"
-    )
-    kerchunk_cache_dir = Path(
-        ev.cache_dir,
-        "fetching",
-        "kerchunk"
-    )
-    # Clear out caches
-    remove_dir_if_exists(nwm_cache_dir)
-    remove_dir_if_exists(kerchunk_cache_dir)
-
-    logger.info("Fetching NWM data and writing to cache")
-    nwm_to_parquet(
-        configuration=nwm_configuration,
-        output_type=output_type,
-        variable_name=variable_name,
-        start_date=start_dt,
-        end_date=end_dt,
-        ingest_days=LOOKBACK_DAYS,
-        location_ids=stripped_ids,
-        json_dir=kerchunk_cache_dir,
-        output_parquet_dir=Path(
-            nwm_cache_dir,
-            ev_config["name"],
-            ev_variable_name
-        ),
-        nwm_version=nwm_version,
-        variable_mapper=variable_mapper,
-        starting_z_hour=0,
-        ending_z_hour=23,
-        timeseries_type=timeseries_type
-    )
-    # load output
-    logger.info("Loading fetched data from cache into the warehouse")
-    if timeseries_type == TimeseriesTypeEnum.primary:
-        # Primarily for forcing data. Make sure the basin location IDs
-        # are mapped to themselves in the location crosswalks table.
-        table_name = "primary_timeseries"
-    else:
-        table_name = "secondary_timeseries"
-    ev._load.from_cache(
-        in_path=nwm_cache_dir,
-        table_name=table_name
-    )
-    logger.info("Successfully loaded NWM streamflow forecasts into the warehouse")
-    client.close()
-    ev.spark.stop()
+        logger.info("Fetching NWM data and writing to cache")
+        nwm_to_parquet(
+            configuration=nwm_configuration,
+            output_type=output_type,
+            variable_name=variable_name,
+            start_date=start_dt,
+            end_date=end_dt,
+            ingest_days=LOOKBACK_DAYS,
+            location_ids=stripped_ids,
+            json_dir=kerchunk_cache_dir,
+            output_parquet_dir=Path(
+                nwm_cache_dir,
+                ev_config["name"],
+                ev_variable_name
+            ),
+            nwm_version=nwm_version,
+            variable_mapper=variable_mapper,
+            starting_z_hour=0,
+            ending_z_hour=23,
+            timeseries_type=timeseries_type
+        )
+        # load output
+        logger.info("Loading fetched data from cache into the warehouse")
+        if timeseries_type == TimeseriesTypeEnum.primary:
+            # Primarily for forcing data. Make sure the basin location IDs
+            # are mapped to themselves in the location crosswalks table.
+            table_name = "primary_timeseries"
+        else:
+            table_name = "secondary_timeseries"
+        ev._load.from_cache(
+            in_path=nwm_cache_dir,
+            table_name=table_name
+        )
+        logger.info("Successfully loaded NWM streamflow forecasts into the warehouse")
+    finally:
+        client.close()
+        ev.spark.stop()

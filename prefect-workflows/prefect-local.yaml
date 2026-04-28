@@ -313,7 +313,7 @@ deployments:
     }
     work_pool: *work_pool
 
-  # Maintence and Metrics Workflows
+  # Maintenance and Metrics Workflows
   - name: update-joined-forecast-table
     version:
     tags: []
