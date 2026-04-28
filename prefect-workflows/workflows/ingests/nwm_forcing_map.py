@@ -6,6 +6,7 @@ weighted averages using pixel coverage weights stored in the remote Iceberg ware
 Supports both analysis/assimilation (e.g. forcing_analysis_assim) and forecast
 (e.g. forcing_short_range, forcing_medium_range) NWM forcing configurations.
 """
+import re
 import time
 from pathlib import Path
 from datetime import datetime, timedelta, UTC
@@ -47,6 +48,20 @@ LEAD_PATTERN = r"\.f(\d{3})\."
 TM_PATTERN = r"\.tm(\d+)\."
 FILE_CHUNK_SIZE = 100  # The max. number of files to process in each chunk
 
+# Allowlist pattern for values interpolated into Spark SQL strings.
+# Permits alphanumeric characters, underscores, hyphens, forward slashes,
+# carets, and dots (covers unit names like "mm/s", "m^3/s", config names, etc.).
+_SAFE_SQL_PARAM_RE = re.compile(r"^[a-zA-Z0-9_.\-/^]+$")
+
+
+def _validate_sql_param(value: str, name: str) -> str:
+    """Raise ValueError if value contains characters not in the SQL allowlist."""
+    if not _SAFE_SQL_PARAM_RE.match(value):
+        raise ValueError(
+            f"Unsafe characters in SQL parameter '{name}': {value!r}"
+        )
+    return value
+
 
 @task(cache_policy=NO_CACHE, timeout_seconds=60 * 10)
 def cache_weights_view(
@@ -73,6 +88,9 @@ def cache_weights_view(
     weights_variable_name : str
         Variable name to filter weights (e.g. "rainfall_hourly_rate").
     """
+    _validate_sql_param(location_id_prefix, "location_id_prefix")
+    _validate_sql_param(weights_domain_name, "weights_domain_name")
+    _validate_sql_param(weights_variable_name, "weights_variable_name")
     logger = get_run_logger()
     logger.info(
         f"Caching pixel coverage weights view for prefix '{location_id_prefix}', "
@@ -214,6 +232,10 @@ def compute_and_write_map(
     member : str, optional
         Member name to write (e.g. "0"). Only used when output_type is "secondary".
     """
+    _validate_sql_param(teehr_config_name, "teehr_config_name")
+    _validate_sql_param(teehr_unit_name, "teehr_unit_name")
+    _validate_sql_param(teehr_variable_name, "teehr_variable_name")
+    _validate_sql_param(weights_domain_name, "weights_domain_name")
     logger = get_run_logger()
     t0 = time.time()
     logger.info(f"Processing {len(filepaths)} NWM forcing files")

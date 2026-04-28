@@ -337,7 +337,98 @@ deployments:
       "temp_dir_path": *temp_dir_path,
       "nwm_configuration": "forcing_short_range",
       "start_spark_cluster": false,
-      "file_chunk_size": 2,
+      "target_table_name": "secondary_timeseries"
+    }
+    work_pool: *work_pool
+
+  - name: ingest-nwm-forcing-short-range-alaska
+    version:
+    tags: []
+    description: Calculate Mean Areal Precipitation from NWM forcing short range Alaska
+    entrypoint: workflows/ingests/nwm_forcing_map.py:ingest_nwm_forcing_map
+    parameters: {
+      "temp_dir_path": *temp_dir_path,
+      "nwm_configuration": "forcing_short_range_alaska",
+      "start_spark_cluster": false,
+      "target_table_name": "secondary_timeseries"
+    }
+    work_pool: *work_pool
+
+  - name: ingest-nwm-forcing-short-range-hawaii
+    version:
+    tags: []
+    description: Calculate Mean Areal Precipitation from NWM forcing short range Hawaii
+    entrypoint: workflows/ingests/nwm_forcing_map.py:ingest_nwm_forcing_map
+    parameters: {
+      "temp_dir_path": *temp_dir_path,
+      "nwm_configuration": "forcing_short_range_hawaii",
+      "start_spark_cluster": false,
+      "target_table_name": "secondary_timeseries"
+    }
+    work_pool: *work_pool
+
+  - name: ingest-nwm-forcing-short-range-puertorico
+    version:
+    tags: []
+    description: Calculate Mean Areal Precipitation from NWM forcing short range Puerto Rico
+    entrypoint: workflows/ingests/nwm_forcing_map.py:ingest_nwm_forcing_map
+    parameters: {
+      "temp_dir_path": *temp_dir_path,
+      "nwm_configuration": "forcing_short_range_puertorico",
+      "start_spark_cluster": false,
+      "target_table_name": "secondary_timeseries"
+    }
+    work_pool: *work_pool
+
+  # NWM Forcing Medium Range MAP Ingests
+  - name: ingest-nwm-forcing-medium-range
+    version:
+    tags: []
+    description: Calculate Mean Areal Precipitation from NWM forcing medium range
+    entrypoint: workflows/ingests/nwm_forcing_map.py:ingest_nwm_forcing_map
+    parameters: {
+      "temp_dir_path": *temp_dir_path,
+      "nwm_configuration": "forcing_medium_range",
+      "start_spark_cluster": false,
+      "target_table_name": "secondary_timeseries"
+    }
+    work_pool: *work_pool
+
+  - name: ingest-nwm-forcing-medium-range-alaska
+    version:
+    tags: []
+    description: Calculate Mean Areal Precipitation from NWM forcing medium range Alaska
+    entrypoint: workflows/ingests/nwm_forcing_map.py:ingest_nwm_forcing_map
+    parameters: {
+      "temp_dir_path": *temp_dir_path,
+      "nwm_configuration": "forcing_medium_range_alaska",
+      "start_spark_cluster": false,
+      "target_table_name": "secondary_timeseries"
+    }
+    work_pool: *work_pool
+
+  - name: ingest-nwm-forcing-medium-range-hawaii
+    version:
+    tags: []
+    description: Calculate Mean Areal Precipitation from NWM forcing medium range Hawaii
+    entrypoint: workflows/ingests/nwm_forcing_map.py:ingest_nwm_forcing_map
+    parameters: {
+      "temp_dir_path": *temp_dir_path,
+      "nwm_configuration": "forcing_medium_range_hawaii",
+      "start_spark_cluster": false,
+      "target_table_name": "secondary_timeseries"
+    }
+    work_pool: *work_pool
+
+  - name: ingest-nwm-forcing-medium-range-puertorico
+    version:
+    tags: []
+    description: Calculate Mean Areal Precipitation from NWM forcing medium range Puerto Rico
+    entrypoint: workflows/ingests/nwm_forcing_map.py:ingest_nwm_forcing_map
+    parameters: {
+      "temp_dir_path": *temp_dir_path,
+      "nwm_configuration": "forcing_medium_range_puertorico",
+      "start_spark_cluster": false,
       "target_table_name": "secondary_timeseries"
     }
     work_pool: *work_pool
