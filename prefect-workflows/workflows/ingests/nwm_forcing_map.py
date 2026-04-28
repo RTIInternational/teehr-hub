@@ -95,6 +95,76 @@ def cache_weights_view(
     logger.info("Pixel coverage weights view cached successfully")
 
 
+@task(cache_policy=NO_CACHE, timeout_seconds=60 * 5)
+def parse_value_and_reference_times_from_path(nc_sdf, is_analysis: bool):
+    """Parse value_time and reference_time from NWM NetCDF GCS filepaths.
+
+    Adds ``value_time`` and ``reference_time`` columns to the DataFrame by
+    extracting datetime components from the filepath using regex patterns.
+
+    For analysis/assimilation configurations, ``value_time`` is computed as
+    the cycle z-hour minus the tmXX lookback offset, and ``reference_time``
+    is set to None. For forecast configurations, ``value_time`` is the cycle
+    z-hour plus the lead hours offset, and ``reference_time`` is the cycle
+    z-hour timestamp.
+
+    Parameters
+    ----------
+    nc_sdf : pyspark.sql.DataFrame
+        Spark DataFrame with a ``filepath`` column containing GCS URIs of NWM
+        NetCDF files.
+    is_analysis : bool
+        True for analysis/assimilation configs (value_time = cycle z-hour minus
+        tmXX offset); False for forecast configs (value_time = z-hour + lead offset).
+
+    Returns
+    -------
+    pyspark.sql.DataFrame
+        Input DataFrame with ``value_time`` and ``reference_time`` columns added.
+    """
+    if is_analysis:
+        # value_time = cycle z-hour minus tmXX lookback offset
+        # Use Python API (not SQL f-string) to avoid Spark SQL backslash-escape consuming
+        # regex metacharacters like \d in the pattern string.
+        cycle_ts = F.to_timestamp(
+            F.concat(
+                F.regexp_extract("filepath", DATE_PATTERN, 1),
+                F.lit(" "),
+                F.regexp_extract("filepath", HOUR_PATTERN, 1),
+                F.lit(":00")
+            ),
+            "yyyyMMdd HH:mm"
+        )
+        tm_hours = F.regexp_extract("filepath", TM_PATTERN, 1).cast("int")
+        nc_sdf = nc_sdf.withColumn(
+            "value_time",
+            (F.unix_timestamp(cycle_ts) - tm_hours * 3600).cast("timestamp")
+        ).withColumn(
+            "reference_time",
+            F.lit(None).cast("timestamp")
+        )
+    else:
+        # value_time = cycle z-hour + lead hours
+        cycle_ts = F.to_timestamp(
+            F.concat(
+                F.regexp_extract("filepath", DATE_PATTERN, 1),
+                F.lit(" "),
+                F.regexp_extract("filepath", HOUR_PATTERN, 1),
+                F.lit(":00"),
+            ),
+            "yyyyMMdd HH:mm",
+        )
+        lead_hours = F.regexp_extract("filepath", LEAD_PATTERN, 1).cast("int")
+        nc_sdf = nc_sdf.withColumn(
+            "value_time",
+            (F.unix_timestamp(cycle_ts) + lead_hours * 3600).cast("timestamp")
+        ).withColumn(
+            "reference_time",
+            cycle_ts
+        )
+    return nc_sdf
+
+
 @task(cache_policy=NO_CACHE, timeout_seconds=60 * 60)
 def compute_and_write_map(
     ev,
@@ -108,7 +178,6 @@ def compute_and_write_map(
     chunk_start: str,
     chunk_end: str,
     output_type: str,
-    target_table_name: str,
     weights_domain_name: str,
     member: str = None,
 ) -> None:
@@ -166,46 +235,8 @@ def compute_and_write_map(
         )
     )
     logger.info("Parsing value_time and reference_time from filepaths.")
-    if is_analysis:
-        # value_time = cycle z-hour minus tmXX lookback offset
-        # Use Python API (not SQL f-string) to avoid Spark SQL backslash-escape consuming
-        # regex metacharacters like \d in the pattern string.
-        cycle_ts = F.to_timestamp(
-            F.concat(
-                F.regexp_extract("filepath", DATE_PATTERN, 1),
-                F.lit(" "),
-                F.regexp_extract("filepath", HOUR_PATTERN, 1),
-                F.lit(":00")
-            ),
-            "yyyyMMdd HH:mm"
-        )
-        tm_hours = F.regexp_extract("filepath", TM_PATTERN, 1).cast("int")
-        nc_sdf = nc_sdf.withColumn(
-            "value_time",
-            (F.unix_timestamp(cycle_ts) - tm_hours * 3600).cast("timestamp")
-        ).withColumn(
-            "reference_time",
-            F.lit(None).cast("timestamp")
-        )
-    else:
-        # value_time = cycle z-hour + lead hours
-        cycle_ts = F.to_timestamp(
-            F.concat(
-                F.regexp_extract("filepath", DATE_PATTERN, 1),
-                F.lit(" "),
-                F.regexp_extract("filepath", HOUR_PATTERN, 1),
-                F.lit(":00"),
-            ),
-            "yyyyMMdd HH:mm",
-        )
-        lead_hours = F.regexp_extract("filepath", LEAD_PATTERN, 1).cast("int")
-        nc_sdf = nc_sdf.withColumn(
-            "value_time",
-            (F.unix_timestamp(cycle_ts) + lead_hours * 3600).cast("timestamp")
-        ).withColumn(
-            "reference_time",
-            cycle_ts
-        )
+    nc_sdf = parse_value_and_reference_times_from_path(nc_sdf, is_analysis)
+
     logger.info("Exploding raster pixels.")
     raster_exp_sdf = nc_sdf.selectExpr(
         "posexplode(RS_BandAsArray(raster, 1))",
