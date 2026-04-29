@@ -286,7 +286,7 @@ def compute_and_write_map(
             w.location_id, r.value_time, r.reference_time
     """)
     if output_type == "secondary":
-        map_results = map_results.withColumn("member", F.lit(member))
+        map_results = map_results.withColumn("member", F.lit(member).cast("string"))
     out_path = nwm_cache_dir / f"{chunk_start}_to_{chunk_end}"
     map_results.write.parquet(out_path.as_posix())
     logger.info(f"Wrote chunk to cache: {out_path.name}")
