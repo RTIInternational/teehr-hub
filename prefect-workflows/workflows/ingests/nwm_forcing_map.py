@@ -315,6 +315,7 @@ def ingest_nwm_forcing_map(
     t_minus_hours: Union[List[int], None] = None,
     member: Union[str, None] = None,
     executor_instances: int = 8,
+    shuffle_partitions: Union[int, None] = None,
 ) -> None:
     """Calculate Mean Areal Precipitation from NWM forcing grids and write to TEEHR.
 
@@ -365,6 +366,9 @@ def ingest_nwm_forcing_map(
     executor_instances : int
         Number of Spark executor instances to use when processing the data.
         Valid when start_spark_cluster is True. Defaults to 8.
+    shuffle_partitions : int or None
+        Number of shuffle partitions to use in Spark. If None, the default Spark
+        configuration is used.
     """
     logger = get_run_logger()
 
@@ -373,12 +377,19 @@ def ingest_nwm_forcing_map(
     elif isinstance(end_dt, str):
         end_dt = datetime.fromisoformat(end_dt)
 
+    if shuffle_partitions is not None:
+        logger.info(f"Setting Spark shuffle partitions to {shuffle_partitions}")
+        update_configs = {"spark.sql.shuffle.partitions": shuffle_partitions}
+    else:
+        update_configs = None
+
     ev = initialize_evaluation(
         temp_dir_path=temp_dir_path,
         start_spark_cluster=start_spark_cluster,
         enable_gcs=True,
         gcs_project_id="anonymous",
-        executor_instances=executor_instances
+        executor_instances=executor_instances,
+        update_configs=update_configs
     )
     ev_config = format_nwm_configuration_metadata(
         nwm_config_name=nwm_configuration,
