@@ -426,7 +426,7 @@ deployments:
     parameters: {
       "temp_dir_path": *temp_dir_path,
       "nwm_configuration": "forcing_short_range",
-      "start_spark_cluster": false,
+      "start_spark_cluster": true,
       "target_table_name": "secondary_timeseries"
     }
     work_pool: *work_pool
@@ -495,7 +495,7 @@ deployments:
     parameters: {
       "temp_dir_path": *temp_dir_path,
       "nwm_configuration": "forcing_medium_range",
-      "start_spark_cluster": false,
+      "start_spark_cluster": true,
       "target_table_name": "secondary_timeseries"
     }
     work_pool: *work_pool

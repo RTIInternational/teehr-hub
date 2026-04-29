@@ -98,7 +98,7 @@ def cache_weights_view(
     )
     ev.spark.sql(f"""
         CREATE OR REPLACE TEMPORARY VIEW fractions_view AS
-        SELECT fraction_covered, location_id, position_index, domain_name, variable_name
+        SELECT fraction_covered, location_id, position_index
         FROM iceberg.teehr.grid_pixel_coverage_weights
         WHERE location_id LIKE '{location_id_prefix}-%'
           AND domain_name = '{weights_domain_name}'
@@ -280,8 +280,6 @@ def compute_and_write_map(
             raster_values AS r
         JOIN
             fractions_view AS w ON r.position_index = w.position_index
-        WHERE
-            w.domain_name = '{weights_domain_name}'
         GROUP BY
             w.location_id, r.value_time, r.reference_time
     """)
