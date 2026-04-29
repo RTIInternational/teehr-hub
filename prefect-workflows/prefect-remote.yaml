@@ -83,6 +83,7 @@ deployments:
     work_pool: *work_pool
     schedule:
       cron: "0 8,20 * * *"
+      catchup: false
       active: true
 
   # NWM Short and Medium Range Ingests
@@ -99,6 +100,7 @@ deployments:
     work_pool: *work_pool
     schedule:
       cron: "0 7,19 * * *"
+      catchup: false
       active: true
 
   - name: ingest-nwm-short-range-alaska-streamflow-forecasts
@@ -115,6 +117,7 @@ deployments:
     work_pool: *work_pool
     schedule:
       cron: "10 7,19 * * *"
+      catchup: false
       active: true
 
   - name: ingest-nwm-short-range-hawaii-streamflow-forecasts
@@ -131,6 +134,7 @@ deployments:
     work_pool: *work_pool
     schedule:
       cron: "20 7,19 * * *"
+      catchup: false
       active: true
 
   - name: ingest-nwm-short-range-puertorico-streamflow-forecasts
@@ -147,6 +151,7 @@ deployments:
     work_pool: *work_pool
     schedule:
       cron: "30 7,19 * * *"
+      catchup: false
       active: true
 
   - name: ingest-nwm-medium-range-streamflow-forecasts
@@ -163,6 +168,7 @@ deployments:
     work_pool: *work_pool
     schedule:
       cron: "0 6,18 * * *"
+      catchup: false
       active: true
 
   - name: ingest-nwm-medium-range-blend-streamflow-forecasts
@@ -180,6 +186,7 @@ deployments:
     work_pool: *work_pool
     schedule:
       cron: "10 6,18 * * *"
+      catchup: false
       active: true
 
   - name: ingest-nwm-medium-range-alaska-streamflow-forecasts
@@ -197,6 +204,7 @@ deployments:
     work_pool: *work_pool
     schedule:
       cron: "20 6,18 * * *"
+      catchup: false
       active: true
 
   - name: ingest-nwm-medium-range-alaska-blend-streamflow-forecasts
@@ -214,6 +222,7 @@ deployments:
     work_pool: *work_pool
     schedule:
       cron: "30 6,18 * * *"
+      catchup: false
       active: true
 
   # NWM Assimilation Ingests
@@ -232,6 +241,7 @@ deployments:
     work_pool: *work_pool
     schedule:
       cron: "0 5,17 * * *"
+      catchup: false
       active: true
 
   - name: ingest-nwm-analysis-assim-alaska-no-da
@@ -249,6 +259,7 @@ deployments:
     work_pool: *work_pool
     schedule:
       cron: "10 5,17 * * *"
+      catchup: false
       active: true
 
   - name: ingest-nwm-analysis-assim-extend-no-da
@@ -266,6 +277,7 @@ deployments:
     work_pool: *work_pool
     schedule:
       cron: "20 5,17 * * *"
+      catchup: false
       active: true
 
   - name: ingest-nwm-analysis-assim-extend-alaska-no-da
@@ -283,6 +295,7 @@ deployments:
     work_pool: *work_pool
     schedule:
       cron: "30 5,17 * * *"
+      catchup: false
       active: true
 
   - name: ingest-nwm-analysis-assim-hawaii-no-da
@@ -300,6 +313,7 @@ deployments:
     work_pool: *work_pool
     schedule:
       cron: "40 5,17 * * *"
+      catchup: false
       active: true
 
   - name: ingest-nwm-analysis-assim-puertorico-no-da
@@ -317,6 +331,7 @@ deployments:
     work_pool: *work_pool
     schedule:
       cron: "50 5,17 * * *"
+      catchup: false
       active: true
 
   # NWM Forcing MAP Ingests
@@ -334,6 +349,7 @@ deployments:
     work_pool: *work_pool
     schedule:
       cron: "0 1,13 * * *"
+      catchup: false
       active: true
 
   - name: ingest-nwm-forcing-analysis-assim-alaska
@@ -350,6 +366,7 @@ deployments:
     work_pool: *work_pool
     schedule:
       cron: "10 1,13 * * *"
+      catchup: false
       active: true
 
   - name: ingest-nwm-forcing-analysis-assim-extend
@@ -366,6 +383,7 @@ deployments:
     work_pool: *work_pool
     schedule:
       cron: "20 1,13 * * *"
+      catchup: false
       active: true
 
   - name: ingest-nwm-forcing-analysis-assim-extend-alaska
@@ -382,6 +400,7 @@ deployments:
     work_pool: *work_pool
     schedule:
       cron: "30 1,13 * * *"
+      catchup: false
       active: true
 
   - name: ingest-nwm-forcing-analysis-assim-hawaii
@@ -398,6 +417,7 @@ deployments:
     work_pool: *work_pool
     schedule:
       cron: "40 1,13 * * *"
+      catchup: false
       active: true
 
   - name: ingest-nwm-forcing-analysis-assim-puertorico
@@ -414,6 +434,7 @@ deployments:
     work_pool: *work_pool
     schedule:
       cron: "50 1,13 * * *"
+      catchup: false
       active: true
 
   # NWM Forcing Short Range MAP Ingests
@@ -434,6 +455,7 @@ deployments:
     work_pool: *work_pool
     schedule:
       cron: "0 2,14 * * *"
+      catchup: false
       active: true
 
   - name: ingest-nwm-forcing-short-range-alaska
@@ -451,6 +473,7 @@ deployments:
     work_pool: *work_pool
     schedule:
       cron: "10 2,14 * * *"
+      catchup: false
       active: true
 
   - name: ingest-nwm-forcing-short-range-hawaii
@@ -468,6 +491,7 @@ deployments:
     work_pool: *work_pool
     schedule:
       cron: "20 2,14 * * *"
+      catchup: false
       active: true
 
   - name: ingest-nwm-forcing-short-range-puertorico
@@ -485,6 +509,7 @@ deployments:
     work_pool: *work_pool
     schedule:
       cron: "30 2,14 * * *"
+      catchup: false
       active: true
 
   # NWM Forcing Medium Range MAP Ingests
@@ -505,6 +530,7 @@ deployments:
     work_pool: *work_pool
     schedule:
       cron: "0 3,15 * * *"
+      catchup: false
       active: true
 
   - name: ingest-nwm-forcing-medium-range-alaska
@@ -522,6 +548,7 @@ deployments:
     work_pool: *work_pool
     schedule:
       cron: "10 3,15 * * *"
+      catchup: false
       active: true
 
   - name: ingest-nwm-forcing-medium-range-hawaii
@@ -539,6 +566,7 @@ deployments:
     work_pool: *work_pool
     schedule:
       cron: "20 3,15 * * *"
+      catchup: false
       active: true
 
   - name: ingest-nwm-forcing-medium-range-puertorico
@@ -556,6 +584,7 @@ deployments:
     work_pool: *work_pool
     schedule:
       cron: "30 3,15 * * *"
+      catchup: false
       active: true
 
   # DataStream Ingests
@@ -573,6 +602,7 @@ deployments:
     work_pool: *work_pool
     schedule:
       cron: "30 10 * * *"
+      catchup: false
       active: true
 
   - name: ingest-datastream-medium-range-cfe-forecasts
@@ -589,6 +619,7 @@ deployments:
     work_pool: *work_pool
     schedule:
       cron: "0 11 * * *"
+      catchup: false
       active: true
 
   - name: ingest-datastream-short-range-lstm-forecasts
@@ -605,6 +636,7 @@ deployments:
     work_pool: *work_pool
     schedule:
       cron: "30 11 * * *"
+      catchup: false
       active: true
 
   - name: ingest-datastream-medium-range-lstm-forecasts
@@ -621,6 +653,7 @@ deployments:
     work_pool: *work_pool
     schedule:
       cron: "0 12 * * *"
+      catchup: false
       active: true
 
   # RFC Ingest
@@ -636,6 +669,7 @@ deployments:
     work_pool: *work_pool
     schedule:
       cron: "29 * * * *"
+      catchup: false
       active: true
 
   # Maintenance and Metrics Workflows
@@ -661,6 +695,7 @@ deployments:
     work_pool: *work_pool
     schedule:
       cron: "0 9,21 * * *"
+      catchup: false
       active: true
 
   - name: update-forecast-metrics-table
@@ -673,6 +708,7 @@ deployments:
     work_pool: *work_pool_large
     schedule:
       cron: "0 10,22 * * *"
+      catchup: false
       active: true
 
   - name: routine-table-maintenance
@@ -685,6 +721,7 @@ deployments:
     work_pool: *work_pool
     schedule:
       cron: "0 4 * * 0"
+      catchup: false
       active: true
 
   - name: cleanup-old-flow-runs
@@ -697,4 +734,5 @@ deployments:
     work_pool: *work_pool
     schedule:
       cron: "15 3 * * *"
+      catchup: false
       active: true
