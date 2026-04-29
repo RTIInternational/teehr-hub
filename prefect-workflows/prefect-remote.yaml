@@ -427,7 +427,9 @@ deployments:
       "temp_dir_path": *temp_dir_path,
       "nwm_configuration": "forcing_short_range",
       "start_spark_cluster": true,
-      "target_table_name": "secondary_timeseries"
+      "target_table_name": "secondary_timeseries",
+      "executor_instances": 8,
+      "shuffle_partitions": 200
     }
     work_pool: *work_pool
     schedule:
@@ -498,7 +500,7 @@ deployments:
       "start_spark_cluster": true,
       "target_table_name": "secondary_timeseries",
       "executor_instances": 12,
-      "shuffle_partitions": 512
+      "shuffle_partitions": 200
     }
     work_pool: *work_pool
     schedule:
