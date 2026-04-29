@@ -314,6 +314,7 @@ def ingest_nwm_forcing_map(
     target_table_name: str = "primary_timeseries",
     t_minus_hours: Union[List[int], None] = None,
     member: Union[str, None] = None,
+    executor_instances: int = 8,
 ) -> None:
     """Calculate Mean Areal Precipitation from NWM forcing grids and write to TEEHR.
 
@@ -361,6 +362,9 @@ def ingest_nwm_forcing_map(
         configuration is specified.
     member : str, optional
         Member name to write to secondary_timeseries (e.g. "0").
+    executor_instances : int
+        Number of Spark executor instances to use when processing the data.
+        Valid when start_spark_cluster is True. Defaults to 8.
     """
     logger = get_run_logger()
 
@@ -373,7 +377,8 @@ def ingest_nwm_forcing_map(
         temp_dir_path=temp_dir_path,
         start_spark_cluster=start_spark_cluster,
         enable_gcs=True,
-        gcs_project_id="anonymous"
+        gcs_project_id="anonymous",
+        executor_instances=executor_instances
     )
     ev_config = format_nwm_configuration_metadata(
         nwm_config_name=nwm_configuration,

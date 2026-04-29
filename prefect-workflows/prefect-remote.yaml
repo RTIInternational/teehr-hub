@@ -496,7 +496,8 @@ deployments:
       "temp_dir_path": *temp_dir_path,
       "nwm_configuration": "forcing_medium_range",
       "start_spark_cluster": true,
-      "target_table_name": "secondary_timeseries"
+      "target_table_name": "secondary_timeseries",
+      "executor_instances": 12
     }
     work_pool: *work_pool
     schedule:
