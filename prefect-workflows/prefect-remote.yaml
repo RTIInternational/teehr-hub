@@ -639,6 +639,7 @@ deployments:
   - name: update-joined-forecast-table
     version:
     tags: []
+    concurrency_limit: 1
     description: Create the joined forecast timeseries table
     entrypoint: workflows/metrics/update_joined_forecasts.py:update_joined_forecast_table
     parameters: {"temp_dir_path": *temp_dir_path}
@@ -650,6 +651,7 @@ deployments:
   - name: update-joined-forecast-table-incremental
     version:
     tags: []
+    concurrency_limit: 1
     description: Create the joined forecast timeseries table
     entrypoint: workflows/metrics/update_joined_forecasts.py:update_joined_forecast_table_incremental
     parameters: {"temp_dir_path": *temp_dir_path}
@@ -661,6 +663,7 @@ deployments:
   - name: update-forecast-metrics-table
     version:
     tags: []
+    concurrency_limit: 1
     description: Create the forecast metrics table
     entrypoint: workflows/metrics/update_forecast_metrics.py:update_forecast_metrics_table
     parameters: {"temp_dir_path": *temp_dir_path}
@@ -672,6 +675,7 @@ deployments:
   - name: routine-table-maintenance
     version:
     tags: []
+    concurrency_limit: 1
     description: Run routine Iceberg table maintenance (expire snapshots, remove orphan files, compact data files, rewrite manifests)
     entrypoint: workflows/maintenance/routine_table_maintenance.py:routine_table_maintenance
     parameters: {"temp_dir_path": *temp_dir_path}
@@ -683,6 +687,7 @@ deployments:
   - name: cleanup-old-flow-runs
     version:
     tags: []
+    concurrency_limit: 1
     description: Delete old Prefect flow runs (status=COMPLETED, older than 14 days)
     entrypoint: workflows/maintenance/prefect_cleanup.py:rm_completed_flow_runs
     parameters: {"age_limit_days": 14}
