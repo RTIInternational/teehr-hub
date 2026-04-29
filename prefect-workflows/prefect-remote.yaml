@@ -578,17 +578,17 @@ deployments:
       cron: "10 3,15 * * *"
       active: true
 
-  - name: ingest-nwm-forcing-medium-range-hawaii
+  - name: ingest-nwm-forcing-medium-range-blend
     version:
     tags: []
     concurrency_limit: 1
     concurrency_options:
       collision_strategy: "CANCEL_NEW"
-    description: Calculate Mean Areal Precipitation from NWM forcing medium range Hawaii
+    description: Calculate Mean Areal Precipitation from NWM forcing medium range Blend
     entrypoint: workflows/ingests/nwm_forcing_map.py:ingest_nwm_forcing_map
     parameters: {
       "temp_dir_path": *temp_dir_path,
-      "nwm_configuration": "forcing_medium_range_hawaii",
+      "nwm_configuration": "forcing_medium_range_blend",
       "start_spark_cluster": false,
       "target_table_name": "secondary_timeseries"
     }
@@ -597,17 +597,17 @@ deployments:
       cron: "20 3,15 * * *"
       active: true
 
-  - name: ingest-nwm-forcing-medium-range-puertorico
+  - name: ingest-nwm-forcing-medium-range-blend-alaska
     version:
     tags: []
     concurrency_limit: 1
     concurrency_options:
       collision_strategy: "CANCEL_NEW"
-    description: Calculate Mean Areal Precipitation from NWM forcing medium range Puerto Rico
+    description: Calculate Mean Areal Precipitation from NWM forcing medium range Blend-Alaska
     entrypoint: workflows/ingests/nwm_forcing_map.py:ingest_nwm_forcing_map
     parameters: {
       "temp_dir_path": *temp_dir_path,
-      "nwm_configuration": "forcing_medium_range_puertorico",
+      "nwm_configuration": "forcing_medium_range_blend_alaska",
       "start_spark_cluster": false,
       "target_table_name": "secondary_timeseries"
     }
