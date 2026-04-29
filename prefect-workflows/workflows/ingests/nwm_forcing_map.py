@@ -30,7 +30,6 @@ from teehr.fetching.const import (
 from teehr.utils.utils import remove_dir_if_exists
 from workflows.utils.common_utils import initialize_evaluation
 
-
 LOOKBACK_DAYS = 1
 LOCATION_ID_PREFIX = "usgsbasin"
 DEFAULT_VARIABLE_NAME = "RAINRATE"

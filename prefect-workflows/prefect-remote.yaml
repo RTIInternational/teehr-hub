@@ -497,7 +497,8 @@ deployments:
       "nwm_configuration": "forcing_medium_range",
       "start_spark_cluster": true,
       "target_table_name": "secondary_timeseries",
-      "executor_instances": 12
+      "executor_instances": 12,
+      "shuffle_partitions": 512
     }
     work_pool: *work_pool
     schedule:
