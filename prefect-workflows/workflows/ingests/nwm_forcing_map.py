@@ -38,7 +38,6 @@ DEFAULT_VARIABLE_NAME = "RAINRATE"
 NWM_VERSION_ANALYSIS_CONFIG = {
     "nwm30": NWM30_ANALYSIS_CONFIG,
 }
-NWM30_WEIGHTS_VARIABLE_NAME = "rainfall_hourly_rate"
 
 # Regex patterns for parsing datetime info from GCS filepaths
 DATE_PATTERN = r"nwm\.(\d{8})"
@@ -467,7 +466,7 @@ def ingest_nwm_forcing_map(
         ev=ev,
         location_id_prefix=location_id_prefix,
         weights_domain_name=weights_domain_name,
-        weights_variable_name=NWM30_WEIGHTS_VARIABLE_NAME,
+        weights_variable_name=ev_variable_name,
     )
 
     filepaths = build_remote_nwm_filelist(
