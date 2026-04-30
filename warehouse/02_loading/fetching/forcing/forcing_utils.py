@@ -72,7 +72,6 @@ def cache_weights_view(
     logger.info(f"Cached {distinct_positions.count()} distinct position indices for pre-filtering")
     return distinct_positions    
 
-
 def parse_value_and_reference_times_from_path(nc_sdf, is_analysis: bool):
     """Parse value_time and reference_time from NWM NetCDF GCS filepaths.
 
