@@ -77,6 +77,8 @@ deployments:
     version:
     tags: []
     concurrency_limit: 1
+    concurrency_options:
+      collision_strategy: "CANCEL_NEW"
     description: Ingest USGS streamflow data from NWIS
     entrypoint: workflows/ingests/usgs_streamflow_obs.py:ingest_usgs_streamflow_obs
     parameters: {"temp_dir_path": *temp_dir_path}
@@ -90,6 +92,8 @@ deployments:
     version:
     tags: []
     concurrency_limit: 1
+    concurrency_options:
+      collision_strategy: "CANCEL_NEW"
     description: Ingest NWM short range streamflow forecasts from GCS
     entrypoint: workflows/ingests/nwm_streamflow_forecasts.py:ingest_nwm_streamflow_forecasts
     parameters: {
@@ -105,6 +109,8 @@ deployments:
     version:
     tags: []
     concurrency_limit: 1
+    concurrency_options:
+      collision_strategy: "CANCEL_NEW"
     description: Ingest NWM short range Alaska streamflow forecasts from GCS
     entrypoint: workflows/ingests/nwm_streamflow_forecasts.py:ingest_nwm_streamflow_forecasts
     parameters: {
@@ -121,6 +127,8 @@ deployments:
     version:
     tags: []
     concurrency_limit: 1
+    concurrency_options:
+      collision_strategy: "CANCEL_NEW"
     description: Ingest NWM short range Hawaii streamflow forecasts from GCS
     entrypoint: workflows/ingests/nwm_streamflow_forecasts.py:ingest_nwm_streamflow_forecasts
     parameters: {
@@ -137,6 +145,8 @@ deployments:
     version:
     tags: []
     concurrency_limit: 1
+    concurrency_options:
+      collision_strategy: "CANCEL_NEW"
     description: Ingest NWM short range Puerto Rico streamflow forecasts from GCS
     entrypoint: workflows/ingests/nwm_streamflow_forecasts.py:ingest_nwm_streamflow_forecasts
     parameters: {
@@ -153,6 +163,8 @@ deployments:
     version:
     tags: []
     concurrency_limit: 1
+    concurrency_options:
+      collision_strategy: "CANCEL_NEW"
     description: Ingest NWM medium range member 1 streamflow forecasts from GCS
     entrypoint: workflows/ingests/nwm_streamflow_forecasts.py:ingest_nwm_streamflow_forecasts
     parameters: {
@@ -169,6 +181,8 @@ deployments:
     version:
     tags: []
     concurrency_limit: 1
+    concurrency_options:
+      collision_strategy: "CANCEL_NEW"
     description: Ingest NWM medium range blend streamflow forecasts from GCS
     entrypoint: workflows/ingests/nwm_streamflow_forecasts.py:ingest_nwm_streamflow_forecasts
     parameters: {
@@ -186,6 +200,8 @@ deployments:
     version:
     tags: []
     concurrency_limit: 1
+    concurrency_options:
+      collision_strategy: "CANCEL_NEW"
     description: Ingest NWM medium range Alaska streamflow forecasts from GCS
     entrypoint: workflows/ingests/nwm_streamflow_forecasts.py:ingest_nwm_streamflow_forecasts
     parameters: {
@@ -203,6 +219,8 @@ deployments:
     version:
     tags: []
     concurrency_limit: 1
+    concurrency_options:
+      collision_strategy: "CANCEL_NEW"
     description: Ingest NWM medium range Alaska blend streamflow forecasts from GCS
     entrypoint: workflows/ingests/nwm_streamflow_forecasts.py:ingest_nwm_streamflow_forecasts
     parameters: {
@@ -221,6 +239,8 @@ deployments:
     version:
     tags: []
     concurrency_limit: 1
+    concurrency_options:
+      collision_strategy: "CANCEL_NEW"
     description: Ingest NWM analysis assimilation (no DA) streamflow forecasts from GCS
     entrypoint: workflows/ingests/nwm_streamflow_forecasts.py:ingest_nwm_streamflow_forecasts
     parameters: {
@@ -238,6 +258,8 @@ deployments:
     version:
     tags: []
     concurrency_limit: 1
+    concurrency_options:
+      collision_strategy: "CANCEL_NEW"
     description: Ingest NWM analysis assimilation (no DA) Alaska streamflow forecasts from GCS
     entrypoint: workflows/ingests/nwm_streamflow_forecasts.py:ingest_nwm_streamflow_forecasts
     parameters: {
@@ -255,6 +277,8 @@ deployments:
     version:
     tags: []
     concurrency_limit: 1
+    concurrency_options:
+      collision_strategy: "CANCEL_NEW"
     description: Ingest NWM analysis assimilation (no DA) extended streamflow forecasts from GCS
     entrypoint: workflows/ingests/nwm_streamflow_forecasts.py:ingest_nwm_streamflow_forecasts
     parameters: {
@@ -272,6 +296,8 @@ deployments:
     version:
     tags: []
     concurrency_limit: 1
+    concurrency_options:
+      collision_strategy: "CANCEL_NEW"
     description: Ingest NWM analysis assimilation (no DA) extended Alaska streamflow forecasts from GCS
     entrypoint: workflows/ingests/nwm_streamflow_forecasts.py:ingest_nwm_streamflow_forecasts
     parameters: {
@@ -289,6 +315,8 @@ deployments:
     version:
     tags: []
     concurrency_limit: 1
+    concurrency_options:
+      collision_strategy: "CANCEL_NEW"
     description: Ingest NWM analysis assimilation (no DA) Hawaii streamflow forecasts from GCS
     entrypoint: workflows/ingests/nwm_streamflow_forecasts.py:ingest_nwm_streamflow_forecasts
     parameters: {
@@ -306,6 +334,8 @@ deployments:
     version:
     tags: []
     concurrency_limit: 1
+    concurrency_options:
+      collision_strategy: "CANCEL_NEW"
     description: Ingest NWM analysis assimilation (no DA) Puerto Rico streamflow forecasts from GCS
     entrypoint: workflows/ingests/nwm_streamflow_forecasts.py:ingest_nwm_streamflow_forecasts
     parameters: {
@@ -319,11 +349,280 @@ deployments:
       cron: "50 5,17 * * *"
       active: true
 
+  # NWM Forcing MAP Ingests
+  - name: ingest-nwm-forcing-analysis-assim
+    version:
+    tags: []
+    concurrency_limit: 1
+    concurrency_options:
+      collision_strategy: "CANCEL_NEW"
+    description: Calculate Mean Areal Precipitation from NWM forcing analysis assimilation grids (CONUS)
+    entrypoint: workflows/ingests/nwm_forcing_map.py:ingest_nwm_forcing_map
+    parameters: {
+      "temp_dir_path": *temp_dir_path,
+      "nwm_configuration": "forcing_analysis_assim",
+      "start_spark_cluster": false
+    }
+    work_pool: *work_pool
+    schedule:
+      cron: "0 1,13 * * *"
+      active: true
+
+  - name: ingest-nwm-forcing-analysis-assim-alaska
+    version:
+    tags: []
+    concurrency_limit: 1
+    concurrency_options:
+      collision_strategy: "CANCEL_NEW"
+    description: Calculate Mean Areal Precipitation from NWM forcing analysis assimilation grids (Alaska)
+    entrypoint: workflows/ingests/nwm_forcing_map.py:ingest_nwm_forcing_map
+    parameters: {
+      "temp_dir_path": *temp_dir_path,
+      "nwm_configuration": "forcing_analysis_assim_alaska",
+      "start_spark_cluster": false
+    }
+    work_pool: *work_pool
+    schedule:
+      cron: "10 1,13 * * *"
+      active: true
+
+  - name: ingest-nwm-forcing-analysis-assim-extend
+    version:
+    tags: []
+    concurrency_limit: 1
+    concurrency_options:
+      collision_strategy: "CANCEL_NEW"
+    description: Calculate Mean Areal Precipitation from NWM forcing analysis assimilation extend grids (CONUS)
+    entrypoint: workflows/ingests/nwm_forcing_map.py:ingest_nwm_forcing_map
+    parameters: {
+      "temp_dir_path": *temp_dir_path,
+      "nwm_configuration": "forcing_analysis_assim_extend",
+      "start_spark_cluster": false
+    }
+    work_pool: *work_pool
+    schedule:
+      cron: "20 1,13 * * *"
+      active: true
+
+  - name: ingest-nwm-forcing-analysis-assim-extend-alaska
+    version:
+    tags: []
+    concurrency_limit: 1
+    concurrency_options:
+      collision_strategy: "CANCEL_NEW"
+    description: Calculate Mean Areal Precipitation from NWM forcing analysis assimilation extend grids (Alaska)
+    entrypoint: workflows/ingests/nwm_forcing_map.py:ingest_nwm_forcing_map
+    parameters: {
+      "temp_dir_path": *temp_dir_path,
+      "nwm_configuration": "forcing_analysis_assim_extend_alaska",
+      "start_spark_cluster": false
+    }
+    work_pool: *work_pool
+    schedule:
+      cron: "30 1,13 * * *"
+      active: true
+
+  - name: ingest-nwm-forcing-analysis-assim-hawaii
+    version:
+    tags: []
+    concurrency_limit: 1
+    concurrency_options:
+      collision_strategy: "CANCEL_NEW"
+    description: Calculate Mean Areal Precipitation from NWM forcing analysis assimilation grids (Hawaii)
+    entrypoint: workflows/ingests/nwm_forcing_map.py:ingest_nwm_forcing_map
+    parameters: {
+      "temp_dir_path": *temp_dir_path,
+      "nwm_configuration": "forcing_analysis_assim_hawaii",
+      "start_spark_cluster": false
+    }
+    work_pool: *work_pool
+    schedule:
+      cron: "40 1,13 * * *"
+      active: true
+
+  - name: ingest-nwm-forcing-analysis-assim-puertorico
+    version:
+    tags: []
+    concurrency_limit: 1
+    concurrency_options:
+      collision_strategy: "CANCEL_NEW"
+    description: Calculate Mean Areal Precipitation from NWM forcing analysis assimilation grids (Puerto Rico)
+    entrypoint: workflows/ingests/nwm_forcing_map.py:ingest_nwm_forcing_map
+    parameters: {
+      "temp_dir_path": *temp_dir_path,
+      "nwm_configuration": "forcing_analysis_assim_puertorico",
+      "start_spark_cluster": false
+    }
+    work_pool: *work_pool
+    schedule:
+      cron: "50 1,13 * * *"
+      active: true
+
+  # NWM Forcing Short Range MAP Ingests
+  - name: ingest-nwm-forcing-short-range
+    version:
+    tags: []
+    concurrency_limit: 1
+    concurrency_options:
+      collision_strategy: "CANCEL_NEW"
+    description: Calculate Mean Areal Precipitation from NWM forcing short range
+    entrypoint: workflows/ingests/nwm_forcing_map.py:ingest_nwm_forcing_map
+    parameters: {
+      "temp_dir_path": *temp_dir_path,
+      "nwm_configuration": "forcing_short_range",
+      "start_spark_cluster": true,
+      "target_table_name": "secondary_timeseries",
+      "executor_instances": 8,
+      "shuffle_partitions": 200
+    }
+    work_pool: *work_pool
+    schedule:
+      cron: "0 2,14 * * *"
+      active: true
+
+  - name: ingest-nwm-forcing-short-range-alaska
+    version:
+    tags: []
+    concurrency_limit: 1
+    concurrency_options:
+      collision_strategy: "CANCEL_NEW"
+    description: Calculate Mean Areal Precipitation from NWM forcing short range Alaska
+    entrypoint: workflows/ingests/nwm_forcing_map.py:ingest_nwm_forcing_map
+    parameters: {
+      "temp_dir_path": *temp_dir_path,
+      "nwm_configuration": "forcing_short_range_alaska",
+      "start_spark_cluster": false,
+      "target_table_name": "secondary_timeseries"
+    }
+    work_pool: *work_pool
+    schedule:
+      cron: "10 2,14 * * *"
+      active: true
+
+  - name: ingest-nwm-forcing-short-range-hawaii
+    version:
+    tags: []
+    concurrency_limit: 1
+    concurrency_options:
+      collision_strategy: "CANCEL_NEW"
+    description: Calculate Mean Areal Precipitation from NWM forcing short range Hawaii
+    entrypoint: workflows/ingests/nwm_forcing_map.py:ingest_nwm_forcing_map
+    parameters: {
+      "temp_dir_path": *temp_dir_path,
+      "nwm_configuration": "forcing_short_range_hawaii",
+      "start_spark_cluster": false,
+      "target_table_name": "secondary_timeseries"
+    }
+    work_pool: *work_pool
+    schedule:
+      cron: "20 2,14 * * *"
+      active: true
+
+  - name: ingest-nwm-forcing-short-range-puertorico
+    version:
+    tags: []
+    concurrency_limit: 1
+    concurrency_options:
+      collision_strategy: "CANCEL_NEW"
+    description: Calculate Mean Areal Precipitation from NWM forcing short range Puerto Rico
+    entrypoint: workflows/ingests/nwm_forcing_map.py:ingest_nwm_forcing_map
+    parameters: {
+      "temp_dir_path": *temp_dir_path,
+      "nwm_configuration": "forcing_short_range_puertorico",
+      "start_spark_cluster": false,
+      "target_table_name": "secondary_timeseries"
+    }
+    work_pool: *work_pool
+    schedule:
+      cron: "30 2,14 * * *"
+      active: true
+
+  # NWM Forcing Medium Range MAP Ingests
+  - name: ingest-nwm-forcing-medium-range
+    version:
+    tags: []
+    concurrency_limit: 1
+    concurrency_options:
+      collision_strategy: "CANCEL_NEW"
+    description: Calculate Mean Areal Precipitation from NWM forcing medium range
+    entrypoint: workflows/ingests/nwm_forcing_map.py:ingest_nwm_forcing_map
+    parameters: {
+      "temp_dir_path": *temp_dir_path,
+      "nwm_configuration": "forcing_medium_range",
+      "start_spark_cluster": true,
+      "target_table_name": "secondary_timeseries",
+      "executor_instances": 12,
+      "shuffle_partitions": 200
+    }
+    work_pool: *work_pool
+    schedule:
+      cron: "0 3,15 * * *"
+      active: true
+
+  - name: ingest-nwm-forcing-medium-range-alaska
+    version:
+    tags: []
+    concurrency_limit: 1
+    concurrency_options:
+      collision_strategy: "CANCEL_NEW"
+    description: Calculate Mean Areal Precipitation from NWM forcing medium range Alaska
+    entrypoint: workflows/ingests/nwm_forcing_map.py:ingest_nwm_forcing_map
+    parameters: {
+      "temp_dir_path": *temp_dir_path,
+      "nwm_configuration": "forcing_medium_range_alaska",
+      "start_spark_cluster": false,
+      "target_table_name": "secondary_timeseries"
+    }
+    work_pool: *work_pool
+    schedule:
+      cron: "10 3,15 * * *"
+      active: true
+
+  - name: ingest-nwm-forcing-medium-range-blend
+    version:
+    tags: []
+    concurrency_limit: 1
+    concurrency_options:
+      collision_strategy: "CANCEL_NEW"
+    description: Calculate Mean Areal Precipitation from NWM forcing medium range Blend
+    entrypoint: workflows/ingests/nwm_forcing_map.py:ingest_nwm_forcing_map
+    parameters: {
+      "temp_dir_path": *temp_dir_path,
+      "nwm_configuration": "forcing_medium_range_blend",
+      "start_spark_cluster": false,
+      "target_table_name": "secondary_timeseries"
+    }
+    work_pool: *work_pool
+    schedule:
+      cron: "20 3,15 * * *"
+      active: true
+
+  - name: ingest-nwm-forcing-medium-range-blend-alaska
+    version:
+    tags: []
+    concurrency_limit: 1
+    concurrency_options:
+      collision_strategy: "CANCEL_NEW"
+    description: Calculate Mean Areal Precipitation from NWM forcing medium range Blend-Alaska
+    entrypoint: workflows/ingests/nwm_forcing_map.py:ingest_nwm_forcing_map
+    parameters: {
+      "temp_dir_path": *temp_dir_path,
+      "nwm_configuration": "forcing_medium_range_blend_alaska",
+      "start_spark_cluster": false,
+      "target_table_name": "secondary_timeseries"
+    }
+    work_pool: *work_pool
+    schedule:
+      cron: "30 3,15 * * *"
+      active: true
+
   # DataStream Ingests
   - name: ingest-datastream-short-range-cfe-forecasts
     version:
     tags: []
     concurrency_limit: 1
+    concurrency_options:
+      collision_strategy: "CANCEL_NEW"
     description: Ingest DataStream streamflow forecasts from S3
     entrypoint: workflows/ingests/datastream_streamflow_forecasts.py:ingest_datastream_forecasts
     parameters: {
@@ -340,6 +639,8 @@ deployments:
     version:
     tags: []
     concurrency_limit: 1
+    concurrency_options:
+      collision_strategy: "CANCEL_NEW"
     description: Ingest DataStream streamflow forecasts from S3
     entrypoint: workflows/ingests/datastream_streamflow_forecasts.py:ingest_datastream_forecasts
     parameters: {
@@ -356,6 +657,8 @@ deployments:
     version:
     tags: []
     concurrency_limit: 1
+    concurrency_options:
+      collision_strategy: "CANCEL_NEW"
     description: Ingest DataStream streamflow forecasts from S3
     entrypoint: workflows/ingests/datastream_streamflow_forecasts.py:ingest_datastream_forecasts
     parameters: {
@@ -372,6 +675,8 @@ deployments:
     version:
     tags: []
     concurrency_limit: 1
+    concurrency_options:
+      collision_strategy: "CANCEL_NEW"
     description: Ingest DataStream streamflow forecasts from S3
     entrypoint: workflows/ingests/datastream_streamflow_forecasts.py:ingest_datastream_forecasts
     parameters: {
@@ -389,6 +694,8 @@ deployments:
     version:
     tags: []
     concurrency_limit: 1
+    concurrency_options:
+      collision_strategy: "CANCEL_NEW"
     description: Ingest NWPS RFC streamflow forecasts from NOAA servers
     entrypoint: workflows/ingests/nwps_rfc_streamflow_forecasts.py:ingest_nwps_rfc_forecasts
     parameters: {
@@ -403,6 +710,9 @@ deployments:
   - name: update-joined-forecast-table
     version:
     tags: []
+    concurrency_limit: 1
+    concurrency_options:
+      collision_strategy: "CANCEL_NEW"
     description: Create the joined forecast timeseries table
     entrypoint: workflows/metrics/update_joined_forecasts.py:update_joined_forecast_table
     parameters: {"temp_dir_path": *temp_dir_path}
@@ -414,6 +724,9 @@ deployments:
   - name: update-joined-forecast-table-incremental
     version:
     tags: []
+    concurrency_limit: 1
+    concurrency_options:
+      collision_strategy: "CANCEL_NEW"
     description: Create the joined forecast timeseries table
     entrypoint: workflows/metrics/update_joined_forecasts.py:update_joined_forecast_table_incremental
     parameters: {"temp_dir_path": *temp_dir_path}
@@ -425,6 +738,9 @@ deployments:
   - name: update-forecast-metrics-table
     version:
     tags: []
+    concurrency_limit: 1
+    concurrency_options:
+      collision_strategy: "CANCEL_NEW"
     description: Create the forecast metrics table
     entrypoint: workflows/metrics/update_forecast_metrics.py:update_forecast_metrics_table
     parameters: {"temp_dir_path": *temp_dir_path}
@@ -436,6 +752,9 @@ deployments:
   - name: routine-table-maintenance
     version:
     tags: []
+    concurrency_limit: 1
+    concurrency_options:
+      collision_strategy: "CANCEL_NEW"
     description: Run routine Iceberg table maintenance (expire snapshots, remove orphan files, compact data files, rewrite manifests)
     entrypoint: workflows/maintenance/routine_table_maintenance.py:routine_table_maintenance
     parameters: {"temp_dir_path": *temp_dir_path}
@@ -447,10 +766,13 @@ deployments:
   - name: cleanup-old-flow-runs
     version:
     tags: []
+    concurrency_limit: 1
+    concurrency_options:
+      collision_strategy: "CANCEL_NEW"
     description: Delete old Prefect flow runs (status=COMPLETED, older than 14 days)
     entrypoint: workflows/maintenance/prefect_cleanup.py:rm_completed_flow_runs
     parameters: {"age_limit_days": 14}
     work_pool: *work_pool
     schedule:
-      cron: "0 3 * * *"
+      cron: "15 3 * * *"
       active: true
