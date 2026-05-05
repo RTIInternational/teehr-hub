@@ -6,12 +6,12 @@ USER 0
 ARG TEEHR_VERSION
 
 # Add deadsnakes PPA and install Python 3.12
-RUN apt-get update && apt-get install -y \
+RUN timeout 300 apt-get update && timeout 120 apt-get install -y \
     software-properties-common \
     curl \
-    && add-apt-repository ppa:deadsnakes/ppa \
-    && apt-get update \
-    && apt-get install -y \
+    && timeout 300 add-apt-repository ppa:deadsnakes/ppa \
+    && timeout 300 apt-get update \
+    && timeout 300 apt-get install -y \
     python3.12 \
     python3.12-dev \
     python3.12-venv \
