@@ -4,5 +4,5 @@ SET name = 'rainfall_hourly_mean',
 WHERE name = 'rainfall_hourly_rate'
 
 UPDATE variables
-SET long_name = '6-Hour Instantaneous Streamflow',
+SET long_name = '6-Hour Instantaneous Streamflow'
 WHERE name = 'streamflow_6hr_inst'
