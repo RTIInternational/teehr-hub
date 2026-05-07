@@ -769,9 +769,9 @@ deployments:
     concurrency_limit: 1
     concurrency_options:
       collision_strategy: "CANCEL_NEW"
-    description: Delete old Prefect flow runs (status=COMPLETED, older than 14 days)
+    description: Delete old Prefect flow runs (status=COMPLETED, older than 7 days)
     entrypoint: workflows/maintenance/prefect_cleanup.py:rm_completed_flow_runs
-    parameters: {"age_limit_days": 14}
+    parameters: {"age_limit_days": 7}
     work_pool: *work_pool
     schedule:
       cron: "15 3 * * *"

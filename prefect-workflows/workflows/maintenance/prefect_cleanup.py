@@ -12,8 +12,8 @@ from prefect.server.schemas.filters import (
 
 
 @flow(name="Cleanup Old Flow Runs")
-async def rm_completed_flow_runs(age_limit_days: int = 14):
-    """Retrieve prefect flow runs older than 14 days and delete them."""
+async def rm_completed_flow_runs(age_limit_days: int = 7):
+    """Retrieve prefect flow runs older than 7 days and delete them."""
     logger = get_run_logger()
 
     lookback_dt = datetime.now(timezone.utc) - timedelta(days=age_limit_days)
