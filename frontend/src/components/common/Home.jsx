@@ -44,7 +44,7 @@ const Home = () => {
         'Quality control tools'
       ],
       path: '/data',
-      status: 'coming-soon',
+      status: 'available',
       image: '/api/static/preview-data.png', // placeholder
       color: 'success'
     },
@@ -102,7 +102,7 @@ const Home = () => {
       image: '/api/static/preview-data.png', // placeholder
       color: 'success'
     },
-    
+
     {
       id: 'post-event',
       title: 'Post Flood Event Evaluations',
@@ -213,7 +213,7 @@ const Home = () => {
             <Col lg={8}>
               <h1 className="display-4 mb-3">TEEHR Dashboard Hub</h1>
               <p className="lead">
-                Tools for Exploratory Evaluation in Hydrologic Research. 
+                Tools for Exploratory Evaluation in Hydrologic Research.
                 Choose from our collection of specialized dashboards for hydrologic data analysis.
               </p>
             </Col>
@@ -235,7 +235,7 @@ const Home = () => {
             </Col>
           ))}
         </Row>
-        
+
         {/* Footer Info */}
         <Row className="mt-5 pt-4 border-top">
           <Col className="text-center text-muted">

@@ -3,14 +3,14 @@ import { useEffect, useRef, useCallback, useMemo, useState } from 'react';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import MapLegend from './MapLegend.jsx';
 
-const MapComponent = ({ 
-  state, 
-  dispatch, 
-  ActionTypes, 
-  selectLocation, 
-  loadLocations, 
+const MapComponent = ({
+  state,
+  dispatch,
+  ActionTypes,
+  selectLocation,
+  loadLocations,
   MapFilterButton,
-  getMetricLabel 
+  getMetricLabel
 }) => {
   const mapContainer = useRef(null);
   const map = useRef(null);
@@ -70,7 +70,7 @@ const MapComponent = ({
   // Initialize map function
   const initializeMap = useCallback(() => {
     if (map.current) return; // Initialize map only once
-    
+
     if (!mapContainer.current) {
       console.error('MapComponent: Map container not found');
       return;
@@ -88,13 +88,13 @@ const MapComponent = ({
         zoom: 4,
         attributionControl: false
       });
-      
+
       popup.current = new maplibregl.Popup({
         closeButton: true,
         closeOnClick: false,
         maxWidth: '300px'
       });
-      
+
       map.current.on('load', () => {
         // Add OpenStreetMap background
         map.current.addSource('osm', {
@@ -102,37 +102,37 @@ const MapComponent = ({
           tiles: ['https://a.tile.openstreetmap.org/{z}/{x}/{y}.png'],
           tileSize: 256
         });
-        
+
         map.current.addLayer({
           id: 'osm',
           type: 'raster',
           source: 'osm'
         });
-        
+
         dispatch({ type: ActionTypes.SET_MAP_LOADED, payload: true });
       });
-      
+
       // Add click handler for empty space (deselect location)
       map.current.on('click', (e) => {
         // Only deselect if we didn't click on a location feature
         const features = map.current.queryRenderedFeatures(e.point, {
           layers: ['locations-layer']
         });
-        
+
         if (features.length === 0) {
           // Clicked on empty space - deselect location
           selectLocation(null);
-          
+
           // Clear map selection
           if (map.current.getLayer('locations-selected')) {
             map.current.setFilter('locations-selected', ['==', 'primary_location_id', '']);
           }
-          
+
           // Close popup
           popup.current.remove();
         }
       });
-      
+
       map.current.on('error', (e) => {
         console.error('MapLibre error:', e);
         dispatch({ type: ActionTypes.SET_ERROR, payload: `Map error: ${e.error?.message || 'Unknown error'}` });
@@ -147,7 +147,7 @@ const MapComponent = ({
   // Initialize map
   useEffect(() => {
     initializeMap();
-    
+
     return () => {
       if (map.current) {
         map.current.remove();
@@ -155,7 +155,7 @@ const MapComponent = ({
       }
     };
   }, [initializeMap]);
-  
+
   // Load initial locations when map is ready and filters are available
   useEffect(() => {
     if (state.mapLoaded && state.mapFilters.configuration && state.mapFilters.variable) {
@@ -165,18 +165,18 @@ const MapComponent = ({
       });
     }
   }, [state.mapLoaded, state.mapFilters.configuration, state.mapFilters.variable, loadLocations]);
-  
+
   // Update map when locations change
   useEffect(() => {
     if (!map.current || !state.mapLoaded) return;
-    
+
     const mapInstance = map.current;
-    
+
     // Validate GeoJSON structure
     if (!state.locations || !state.locations.features || !Array.isArray(state.locations.features)) {
       return;
     }
-    
+
     // Clear existing layers when there's no data
     if (state.locations.features.length === 0) {
       // Remove existing layers and sources to clear old data from the map
@@ -195,7 +195,7 @@ const MapComponent = ({
       }
       return;
     }
-    
+
     // Define event handlers outside try block so they're accessible in cleanup
     const handleLocationClick = (e) => {
       if (e.features.length > 0) {
@@ -203,16 +203,16 @@ const MapComponent = ({
         selectFeatureOnMap(feature, { flyTo: false });
       }
     };
-    
+
     const handleLocationHover = (e) => {
       mapInstance.getCanvas().style.cursor = 'pointer';
-      
+
       const coordinates = e.features[0].geometry.coordinates.slice();
       const properties = e.features[0].properties;
-      
+
       const metricValue = properties[state.mapFilters.metricName];
       const metricLabel = getMetricLabel(state.mapFilters.metricName);
-      
+
       popup.current
         .setLngLat(coordinates)
         .setHTML(`
@@ -227,12 +227,12 @@ const MapComponent = ({
         `)
         .addTo(mapInstance);
     };
-    
+
     const handleLocationLeave = () => {
       mapInstance.getCanvas().style.cursor = '';
       popup.current.remove();
     };
-    
+
     try {
       // Remove existing layers and sources
       if (mapInstance.getLayer('locations-layer')) {
@@ -244,54 +244,54 @@ const MapComponent = ({
       if (mapInstance.getSource('locations')) {
         mapInstance.removeSource('locations');
       }
-      
+
       // Validate GeoJSON format before adding to map
       const validFeatures = [];
       const invalidFeatures = [];
       const clampedMetrics = [];
-      
+
       state.locations.features.forEach((feature, index) => {
         // Basic structure validation
-        if (!feature.type || feature.type !== 'Feature' || 
-            !feature.geometry || 
+        if (!feature.type || feature.type !== 'Feature' ||
+            !feature.geometry ||
             !feature.geometry.coordinates ||
             !Array.isArray(feature.geometry.coordinates)) {
           invalidFeatures.push({ index, reason: 'invalid structure', feature });
           return;
         }
-        
+
         const coords = feature.geometry.coordinates;
         const lon = coords[0];
         const lat = coords[1];
-        
+
         // Coordinate validation
         if (typeof lon !== 'number' || typeof lat !== 'number') {
           invalidFeatures.push({ index, reason: 'non-numeric coordinates', feature });
           return;
         }
-        
+
         // Check for valid coordinate ranges
         if (lon < -180 || lon > 180) {
           invalidFeatures.push({ index, reason: `longitude out of range: ${lon}`, feature });
           return;
         }
-        
+
         if (lat < -90 || lat > 90) {
           invalidFeatures.push({ index, reason: `latitude out of range: ${lat}`, feature });
           return;
         }
-        
+
         // Round coordinates to 8 decimal places (~1mm precision) to avoid varint issues
         // while preserving location accuracy
         feature.geometry.coordinates[0] = Math.round(lon * 1e8) / 1e8;
         feature.geometry.coordinates[1] = Math.round(lat * 1e8) / 1e8;
-        
+
         // Check for NaN or Infinity
         if (!isFinite(lon) || !isFinite(lat)) {
           invalidFeatures.push({ index, reason: `infinite or NaN coordinates: lon=${lon}, lat=${lat}`, feature });
           return;
         }
-        
+
         // Validate and clamp ALL numeric properties that might cause varint issues
         if (feature.properties) {
           Object.keys(feature.properties).forEach(key => {
@@ -308,10 +308,10 @@ const MapComponent = ({
             }
           });
         }
-        
+
         validFeatures.push(feature);
       });
-      
+
       // Log validation results in a single message
       if (invalidFeatures.length > 0 || clampedMetrics.length > 0) {
         console.warn('MapComponent: Data validation results:', {
@@ -323,19 +323,19 @@ const MapComponent = ({
           clampedDetails: clampedMetrics
         });
       }
-      
+
       const geojsonData = {
         type: 'FeatureCollection',
         features: validFeatures
       };
-      
+
       // Unlikely edge case, but handled here.
       if (geojsonData.features.length === 0) {
         console.warn('MapComponent: All location features were filtered out due to invalid format');
         dispatch({ type: ActionTypes.SET_ERROR, payload: 'Location data format is invalid - no valid features found' });
         return;
       }
-      
+
       // Add new source with error handling
       try {
         mapInstance.addSource('locations', {
@@ -347,10 +347,10 @@ const MapComponent = ({
         dispatch({ type: ActionTypes.SET_ERROR, payload: `Map source error: ${sourceError.message}` });
         return;
       }
-      
+
       // Get color expression for metric-based coloring
       const colorExpression = getMetricColorExpression(state.mapFilters.metricName);
-    
+
     // Add locations layer with error handling
     try {
       mapInstance.addLayer({
@@ -377,7 +377,7 @@ const MapComponent = ({
       dispatch({ type: ActionTypes.SET_ERROR, payload: `Map layer error: ${layerError.message}` });
       return;
     }
-    
+
     // Add selected location layer with error handling
     try {
       mapInstance.addLayer({
@@ -405,18 +405,18 @@ const MapComponent = ({
       dispatch({ type: ActionTypes.SET_ERROR, payload: `Map selected layer error: ${selectedLayerError.message}` });
       return;
     }
-      
+
       // Add event listeners
       mapInstance.on('click', 'locations-layer', handleLocationClick);
       mapInstance.on('mouseenter', 'locations-layer', handleLocationHover);
       mapInstance.on('mouseleave', 'locations-layer', handleLocationLeave);
-      
+
     } catch (error) {
       console.error('MapComponent: Error adding locations to map:', error);
       dispatch({ type: ActionTypes.SET_ERROR, payload: `Failed to add locations to map: ${error.message}` });
       return;
     }
-    
+
     // Cleanup function
     return () => {
       try {
@@ -431,7 +431,7 @@ const MapComponent = ({
     };
 
   }, [state.locations, state.mapLoaded, state.mapFilters.metricName, selectLocation, dispatch, ActionTypes, getMetricLabel, selectFeatureOnMap]);
-  
+
   return (
     <div className="position-relative h-100 w-100">
       <div ref={mapContainer} className="h-100 w-100">
@@ -445,13 +445,13 @@ const MapComponent = ({
             </div>
           </div>
         )}
-        
+
         {/* Loading overlay for fetching locations */}
         {state.mapLoaded && state.locationsLoading && (
-          <div 
+          <div
             className="position-absolute top-0 start-0 w-100 h-100 d-flex align-items-center justify-content-center"
-            style={{ 
-              backgroundColor: 'rgba(255, 255, 255, 0.7)', 
+            style={{
+              backgroundColor: 'rgba(255, 255, 255, 0.7)',
               zIndex: 1000,
               pointerEvents: 'none'
             }}
@@ -466,9 +466,9 @@ const MapComponent = ({
             </div>
           </div>
         )}
-        
+
         {/* Map Controls */}
-        {state.mapLoaded && <MapFilterButton />}
+        {state.mapLoaded && MapFilterButton && <MapFilterButton />}
 
         {/* Location search */}
         {state.mapLoaded && (
@@ -537,7 +537,7 @@ const MapComponent = ({
             )}
           </div>
         )}
-        
+
         {/* Map Legend */}
         {state.mapLoaded && <MapLegend metric={state.mapFilters.metricName} getMetricLabel={getMetricLabel} />}
       </div>
@@ -548,7 +548,7 @@ const MapComponent = ({
 // Helper function for metric color expression
 const getMetricColorExpression = (metric) => {
   if (!metric) return '#0d6efd';
-  
+
   const colorScales = {
     'relative_bias': {
       colors: ['#4575b4', '#91bfdb', '#e0f3f8', '#f7f7f7', '#fee090', '#fc8d59', '#d73027'],
@@ -571,10 +571,10 @@ const getMetricColorExpression = (metric) => {
       stops: [0, 1, 5, 20]
     }
   };
-  
+
   const scale = colorScales[metric];
   if (!scale) return '#0d6efd';
-  
+
   return [
     'interpolate',
     ['linear'],

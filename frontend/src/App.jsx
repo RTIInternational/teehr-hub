@@ -1,10 +1,11 @@
-import { Container, Alert } from 'react-bootstrap';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { Dashboard } from './components/dashboards/retrospective';
 import { ForecastDashboard } from './components/dashboards/forecast';
+import { DataDashboard } from './components/dashboards/data_management';
 import { Home, Navbar } from './components/common';
 import { RetrospectiveDashboardProvider } from './context/RetrospectiveDashboardContext.jsx';
 import { ForecastDashboardProvider } from './context/ForecastDashboardContext.jsx';
+import { DataDashboardProvider } from './context/DataDashboardContext.jsx';
 import 'bootstrap/dist/css/bootstrap.min.css';
 import './App.css';
 
@@ -18,33 +19,30 @@ function App() {
             <Route path="/" element={<Home />} />
             {/* Redirect old dashboard route to retrospective */}
             <Route path="/dashboard" element={<Navigate to="/retrospective" replace />} />
-            <Route 
-              path="/retrospective" 
+            <Route
+              path="/retrospective"
               element={
                   <RetrospectiveDashboardProvider>
                     <Dashboard />
                   </RetrospectiveDashboardProvider>
-              } 
+              }
             />
             {/* Future routes */}
-            <Route 
-              path="/forecast" 
+            <Route
+              path="/forecast"
               element={
                   <ForecastDashboardProvider>
                     <ForecastDashboard />
                   </ForecastDashboardProvider>
-              } 
+              }
             />
-            <Route 
-              path="/data" 
+            <Route
+              path="/data"
               element={
-                <Container className="mt-5 text-center">
-                  <Alert variant="info">
-                    <Alert.Heading>Data Management</Alert.Heading>
-                    <p>Coming Soon</p>
-                  </Alert>
-                </Container>
-              } 
+                <DataDashboardProvider>
+                  <DataDashboard />
+                </DataDashboardProvider>
+              }
             />
           </Routes>
         </main>

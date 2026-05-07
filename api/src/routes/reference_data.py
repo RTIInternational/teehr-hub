@@ -90,6 +90,101 @@ async def get_configuration_items(
         ) from e
 
 
+@router.get("/collections/configurations_summary/items")
+async def get_configurations_summary_items(
+    request: Request,
+    configuration_name: str | None = Query(None, description="Filter by configuration name"),
+    timeseries_type: str | None = Query(None, description="Filter by type (primary, secondary)"),
+    limit: int | None = Query(
+        None, ge=1, description="Maximum number of items to return (omit to return all)"
+    ),
+    offset: int | None = Query(
+        None, ge=0, description="Starting index for pagination"
+    ),
+):
+    """Get configuration summary rows from iceberg.teehr.configurations_summary.
+
+    Returns one row per configuration with aggregate statistics such as
+    time ranges, location counts, and associated variable/unit metadata.
+    """
+    try:
+        where_conditions = []
+
+        if configuration_name:
+            safe_name = sanitize_string(configuration_name)
+            where_conditions.append(f"configuration_name = '{safe_name}'")
+
+        if timeseries_type:
+            safe_timeseries_type = sanitize_string(timeseries_type)
+            where_conditions.append(f"timeseries_type = '{safe_timeseries_type}'")
+
+        where_clause = " AND ".join(where_conditions) if where_conditions else "1=1"
+
+        pagination = ""
+        if offset is not None:
+            pagination += f" OFFSET {offset}"
+        if limit is not None:
+            pagination += f" LIMIT {limit}"
+
+        query = f"""
+            SELECT
+                configuration_name,
+                variable_name,
+                unit_name,
+                min_reference_time,
+                max_reference_time,
+                min_value_time,
+                max_value_time,
+                n_locations,
+                description,
+                timeseries_type,
+                location_id_prefix,
+                created_at,
+                updated_at
+            FROM {trino_catalog}.{trino_schema}.configurations_summary
+            WHERE {where_clause}
+            ORDER BY configuration_name
+            {pagination}
+        """
+
+        query_start = time.time()
+        df = execute_query(query)
+        query_time = time.time() - query_start
+        print(f"Configurations summary query execution time: {query_time:.3f} seconds")
+
+        if not df.empty:
+            df = prepare_for_serialization(df, datetime_columns=[
+                "min_reference_time",
+                "max_reference_time",
+                "min_value_time",
+                "max_value_time",
+                "created_at",
+                "updated_at",
+            ])
+        items = df.to_dict(orient="records") if not df.empty else []
+
+        response = {
+            "items": items,
+            "numberReturned": len(items),
+            "links": [
+                {"href": str(request.url), "rel": "self", "type": "application/json"},
+                {
+                    "href": "/collections/configurations_summary",
+                    "rel": "collection",
+                    "type": "application/json",
+                },
+            ],
+        }
+
+        return JSONResponse(content=response, media_type="application/json")
+
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to load configurations summary: {str(e)}",
+        ) from e
+
+
 @router.get("/collections/units/items")
 async def get_unit_items(
     request: Request,
