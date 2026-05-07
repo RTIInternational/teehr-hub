@@ -177,6 +177,22 @@ const ConfigurationsPanel = ({ configurations = [], loading = false, error = nul
                   </td>
                 </tr>
               ))}
+              {cfg.n_members != null && (
+                <tr>
+                  <th className="table-light" style={{ whiteSpace: 'nowrap', width: '40%' }}># Members</th>
+                  <td>{cfg.n_members}</td>
+                </tr>
+              )}
+              {Array.isArray(cfg.members) && cfg.members.length > 0 && (
+                <tr>
+                  <th className="table-light" style={{ whiteSpace: 'nowrap', verticalAlign: 'top' }}>Members</th>
+                  <td style={{ fontSize: '0.8rem' }}>
+                    {cfg.members.map((m) => (
+                      <span key={m} className="badge bg-secondary me-1 mb-1" style={{ fontWeight: 'normal' }}>{m}</span>
+                    ))}
+                  </td>
+                </tr>
+              )}
             </tbody>
           </Table>
         ) : (
