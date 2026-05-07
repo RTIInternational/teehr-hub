@@ -12,7 +12,9 @@ const MapComponent = ({
   MapFilterButton,
   getMetricLabel,
   showSearch = true,
-  overlayLocations = null
+  overlayLocations = null,
+  overlayVisible = true,
+  hoveredOverlayId = null
 }) => {
   const mapContainer = useRef(null);
   const map = useRef(null);
@@ -457,6 +459,7 @@ const MapComponent = ({
     const mapInstance = map.current;
 
     const removeOverlay = () => {
+      if (mapInstance.getLayer('overlay-highlight')) mapInstance.removeLayer('overlay-highlight');
       if (mapInstance.getLayer('overlay-fill')) mapInstance.removeLayer('overlay-fill');
       if (mapInstance.getLayer('overlay-line')) mapInstance.removeLayer('overlay-line');
       if (mapInstance.getSource('overlay-locations')) mapInstance.removeSource('overlay-locations');
@@ -476,13 +479,26 @@ const MapComponent = ({
         id: 'overlay-fill',
         type: 'fill',
         source: 'overlay-locations',
+        layout: { visibility: 'none' },
         paint: { 'fill-color': '#4a90d9', 'fill-opacity': 0.3 }
       }, beforeLayer);
       mapInstance.addLayer({
         id: 'overlay-line',
         type: 'line',
         source: 'overlay-locations',
+        layout: { visibility: 'none' },
         paint: { 'line-color': '#2c5f8a', 'line-width': 0.8, 'line-opacity': 0.7 }
+      }, beforeLayer);
+      mapInstance.addLayer({
+        id: 'overlay-highlight',
+        type: 'fill',
+        source: 'overlay-locations',
+        layout: { visibility: 'none' },
+        paint: { 'fill-color': '#ff9800', 'fill-opacity': 0.7 },
+        filter: ['any',
+          ['==', ['get', 'id'], ''],
+          ['==', ['id'], -1]
+        ]
       }, beforeLayer);
     } else {
       mapInstance.addLayer({
@@ -497,6 +513,25 @@ const MapComponent = ({
       try { removeOverlay(); } catch { /* silent */ }
     };
   }, [overlayLocations, state.mapLoaded]);
+
+  // Update overlay layer visibility
+  useEffect(() => {
+    if (!map.current || !state.mapLoaded) return;
+    const visibility = overlayVisible ? 'visible' : 'none';
+    ['overlay-fill', 'overlay-line', 'overlay-highlight'].forEach((id) => {
+      if (map.current.getLayer(id)) map.current.setLayoutProperty(id, 'visibility', visibility);
+    });
+  }, [overlayVisible, state.mapLoaded]);
+
+  // Update highlight filter when hovered overlay ID changes
+  useEffect(() => {
+    if (!map.current || !state.mapLoaded) return;
+    if (!map.current.getLayer('overlay-highlight')) return;
+    const filter = hoveredOverlayId
+      ? ['any', ['==', ['get', 'id'], hoveredOverlayId], ['==', ['id'], hoveredOverlayId]]
+      : ['any', ['==', ['get', 'id'], ''], ['==', ['id'], -1]];
+    map.current.setFilter('overlay-highlight', filter);
+  }, [hoveredOverlayId, state.mapLoaded]);
 
   return (
     <div className="position-relative h-100 w-100">

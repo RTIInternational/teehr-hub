@@ -13,6 +13,8 @@ const Dashboard = () => {
   const [selectedCfg, setSelectedCfg] = useState(null);
   const [committedCfg, setCommittedCfg] = useState(null);
   const [huc8Locations, setHuc8Locations] = useState(null);
+  const [hoveredSpatialAggregate, setHoveredSpatialAggregate] = useState(null);
+  const [overlayVisible, setOverlayVisible] = useState(false);
 
   // Load configurations and huc8 overlay locations on mount
   useEffect(() => {
@@ -34,6 +36,7 @@ const Dashboard = () => {
 
   const handleConfigurationSelect = useCallback((cfg) => {
     setSelectedCfg(cfg);
+    setCommittedCfg(null);
     if (!cfg || !Array.isArray(cfg.coordinates) || cfg.coordinates.length === 0) {
       dispatch({ type: ActionTypes.SET_LOCATIONS, payload: { type: 'FeatureCollection', features: [] } });
       return;
@@ -122,7 +125,18 @@ const Dashboard = () => {
                 getMetricLabel={() => ''}
                 showSearch={false}
                 overlayLocations={huc8Locations}
+                overlayVisible={overlayVisible}
+                hoveredOverlayId={hoveredSpatialAggregate ?? null}
               />
+              {/* HUC8 layer toggle */}
+              <button
+                className={`btn btn-sm position-absolute ${overlayVisible ? 'btn-primary' : 'btn-outline-secondary bg-white'}`}
+                style={{ bottom: '10px', left: '10px', zIndex: 1100, fontSize: '0.7rem', padding: '2px 8px', opacity: 0.9 }}
+                onClick={() => setOverlayVisible((v) => !v)}
+                title="Toggle HUC8 boundaries"
+              >
+                HUC8 {overlayVisible ? 'On' : 'Off'}
+              </button>
             </div>
 
             {/* Configurations Panel - Right */}
@@ -139,7 +153,7 @@ const Dashboard = () => {
                 error={state.configurations.length === 0 && !state.configsLoading ? state.error : null}
                 onSelect={handleConfigurationSelect}
                 canGenerate={!!selectedCfg}
-                onGenerate={() => setCommittedCfg(selectedCfg)}
+                onGenerate={() => { setCommittedCfg(selectedCfg); setOverlayVisible(true); }}
               />
             </div>
           </div>
@@ -157,6 +171,7 @@ const Dashboard = () => {
               configurationName={committedCfg?.configuration_name}
               variableName={committedCfg?.variable_name}
               unitName={committedCfg?.unit_name}
+              onHover={setHoveredSpatialAggregate}
             />
           </div>
         </div>

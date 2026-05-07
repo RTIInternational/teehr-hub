@@ -4,10 +4,11 @@ import { apiService } from '../../../services/api';
 
 const CHART_HEIGHT = 700;
 
-const CompletenessHeatmap = ({ configurationName, variableName, unitName }) => {
+const CompletenessHeatmap = ({ configurationName, variableName, unitName, onHover = null }) => {
   const plotRef = useRef(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [plotReady, setPlotReady] = useState(false);
 
   useEffect(() => {
     if (!configurationName || !variableName || !unitName) return;
@@ -16,6 +17,7 @@ const CompletenessHeatmap = ({ configurationName, variableName, unitName }) => {
     let cancelled = false;
     setLoading(true);
     setError(null);
+    setPlotReady(false);
 
     apiService.getAggregationHuc8Weekly({
       configuration_name: configurationName,
@@ -86,9 +88,12 @@ const CompletenessHeatmap = ({ configurationName, variableName, unitName }) => {
             zmin: 0,
             zmax: 100,
             colorscale: [
-              [0.0, '#d62728'],
-              [0.5, '#ffdd57'],
-              [1.0, '#2ca02c'],
+              [0.0,  '#d94701'],
+              [0.2,  '#fd8d3c'],
+              [0.4,  '#fdbe85'],
+              [0.6,  '#74a9cf'],
+              [0.8,  '#045a8d'],
+              [1.0,  '#2d004b'],
             ],
             colorbar: { title: 'Completeness (%)' },
             hovertemplate:
@@ -108,14 +113,34 @@ const CompletenessHeatmap = ({ configurationName, variableName, unitName }) => {
         },
         { responsive: false }
       );
+      if (!cancelled) setPlotReady(true);
     }).catch((err) => {
       if (!cancelled) setError(err.message);
     }).finally(() => {
       if (!cancelled) setLoading(false);
     });
 
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+      if (onHover) onHover(null);
+    };
   }, [configurationName, variableName, unitName]);
+
+  // Attach Plotly hover events once the plot is rendered
+  useEffect(() => {
+    if (!plotReady || !plotRef.current) return;
+    const el = plotRef.current;
+    const handleHover = (data) => {
+      if (onHover && data.points?.[0]) onHover(String(data.points[0].y));
+    };
+    const handleUnhover = () => { if (onHover) onHover(null); };
+    el.on('plotly_hover', handleHover);
+    el.on('plotly_unhover', handleUnhover);
+    return () => {
+      el.removeListener?.('plotly_hover', handleHover);
+      el.removeListener?.('plotly_unhover', handleUnhover);
+    };
+  }, [plotReady, onHover]);
 
   if (!configurationName || !variableName || !unitName) {
     return (
