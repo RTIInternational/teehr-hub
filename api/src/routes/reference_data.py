@@ -140,7 +140,13 @@ async def get_configurations_summary_items(
                 timeseries_type,
                 location_id_prefix,
                 created_at,
-                updated_at
+                updated_at,
+                CASE WHEN geometry IS NOT NULL THEN
+                    transform(
+                        geometry,
+                        g -> ARRAY[ST_X(ST_GeomFromBinary(g)), ST_Y(ST_GeomFromBinary(g))]
+                    )
+                ELSE NULL END AS coordinates
             FROM {trino_catalog}.{trino_schema}.configurations_summary
             WHERE {where_clause}
             ORDER BY configuration_name
@@ -498,4 +504,86 @@ async def get_location_attribute_items(
         raise HTTPException(
             status_code=500,
             detail=f"Failed to load location attributes: {str(e)}",
+        ) from e
+
+
+@router.get("/collections/configuration_completeness/items")
+async def get_aggregation_huc8_weekly_items(
+    request: Request,
+    configuration_name: str | None = Query(None, description="Filter by configuration name"),
+    variable_name: str | None = Query(None, description="Filter by variable name"),
+    unit_name: str | None = Query(None, description="Filter by unit name"),
+    limit: int | None = Query(None, ge=1, description="Maximum number of items to return"),
+    offset: int | None = Query(None, ge=0, description="Starting index for pagination"),
+):
+    """Get primary timeseries completeness aggregation rows.
+
+    Returns rows with: spatial_aggregate, period, actual_count, num_locations,
+    expected_count, configuration_name, variable_name, unit_name.
+    """
+    try:
+        where_conditions = []
+        if configuration_name:
+            safe_cfg = sanitize_string(configuration_name)
+            where_conditions.append(f"configuration_name = '{safe_cfg}'")
+        if variable_name:
+            safe_var = sanitize_string(variable_name)
+            where_conditions.append(f"variable_name = '{safe_var}'")
+        if unit_name:
+            # unit_name may contain special chars like ^ and / (e.g. m^3/s)
+            # escape single quotes and build a safe literal
+            escaped_unit = unit_name.replace("'", "''")
+            where_conditions.append(f"unit_name = '{escaped_unit}'")
+
+        where_clause = " AND ".join(where_conditions) if where_conditions else "1=1"
+
+        pagination = ""
+        if offset is not None:
+            pagination += f" OFFSET {offset}"
+        if limit is not None:
+            pagination += f" LIMIT {limit}"
+
+        query = f"""
+            SELECT
+                spatial_aggregate,
+                period,
+                actual_count,
+                num_locations,
+                expected_count,
+                configuration_name,
+                variable_name,
+                unit_name
+            FROM {trino_catalog}.{trino_schema}.configuration_completeness
+            WHERE {where_clause}
+            ORDER BY spatial_aggregate, period
+            {pagination}
+        """
+
+        query_start = time.time()
+        df = execute_query(query)
+        print(f"Aggregation HUC8 weekly query: {time.time() - query_start:.3f}s")
+
+        if not df.empty:
+            df = prepare_for_serialization(df, datetime_columns=["period"])
+        items = df.to_dict(orient="records") if not df.empty else []
+
+        response = {
+            "items": items,
+            "numberReturned": len(items),
+            "links": [
+                {"href": str(request.url), "rel": "self", "type": "application/json"},
+                {
+                    "href": "/collections/configuration_completeness",
+                    "rel": "collection",
+                    "type": "application/json",
+                },
+            ],
+        }
+
+        return JSONResponse(content=response, media_type="application/json")
+
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to load configuration_completeness: {str(e)}",
         ) from e

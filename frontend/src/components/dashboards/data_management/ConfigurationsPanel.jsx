@@ -7,29 +7,31 @@ const formatDatetime = (val) => {
 };
 
 const FIELD_LABELS = [
-  { key: 'configuration_name', label: 'Configuration' },
-  { key: 'variable_name', label: 'Variable' },
-  { key: 'unit_name', label: 'Unit' },
+  { key: 'description', label: 'Description' },
   { key: 'timeseries_type', label: 'Type' },
   { key: 'location_id_prefix', label: 'Location Prefix' },
   { key: 'n_locations', label: '# Locations' },
-  { key: 'min_reference_time', label: 'Min Reference Time' },
-  { key: 'max_reference_time', label: 'Max Reference Time' },
-  { key: 'min_value_time', label: 'Min Value Time' },
-  { key: 'max_value_time', label: 'Max Value Time' },
-  { key: 'description', label: 'Description' },
+  { key: 'reference_time_range', label: 'Reference Time' },
+  { key: 'value_time_range', label: 'Value Time' },
   { key: 'created_at', label: 'Created At' },
   { key: 'updated_at', label: 'Updated At' },
 ];
 
-const DATETIME_KEYS = new Set([
-  'min_reference_time', 'max_reference_time',
-  'min_value_time', 'max_value_time',
-  'created_at', 'updated_at',
-]);
+const DATETIME_KEYS = new Set(['created_at', 'updated_at']);
 
-const ConfigurationsPanel = ({ configurations = [], loading = false, error = null }) => {
-  const [selected, setSelected] = useState('');
+const formatRange = (min, max) => {
+  const a = formatDatetime(min);
+  const b = formatDatetime(max);
+  if (!min && !max) return '—';
+  if (!min) return `— to ${b}`;
+  if (!max) return `${a} to —`;
+  return `${a} – ${b}`;
+};
+
+const ConfigurationsPanel = ({ configurations = [], loading = false, error = null, onSelect = null, onGenerate = null, canGenerate = false }) => {
+  const [selectedConfig, setSelectedConfig] = useState('');
+  const [selectedVariable, setSelectedVariable] = useState('');
+  const [selectedUnit, setSelectedUnit] = useState('');
 
   if (loading) {
     return (
@@ -58,7 +60,62 @@ const ConfigurationsPanel = ({ configurations = [], loading = false, error = nul
     );
   }
 
-  const cfg = configurations.find((c) => c.configuration_name === selected) ?? null;
+  // Unique configuration names
+  const configNames = [...new Set(configurations.map((c) => c.configuration_name))].sort();
+
+  // Variable names for the selected configuration
+  const variableNames = selectedConfig
+    ? [...new Set(
+        configurations
+          .filter((c) => c.configuration_name === selectedConfig)
+          .map((c) => c.variable_name)
+      )].sort()
+    : [];
+
+  // Unit names for the selected configuration + variable
+  const unitNames = selectedConfig && selectedVariable
+    ? [...new Set(
+        configurations
+          .filter((c) => c.configuration_name === selectedConfig && c.variable_name === selectedVariable)
+          .map((c) => c.unit_name)
+      )].sort()
+    : [];
+
+  // The matching row for the detail table
+  const cfg = selectedConfig && selectedVariable && selectedUnit
+    ? (configurations.find(
+        (c) =>
+          c.configuration_name === selectedConfig &&
+          c.variable_name === selectedVariable &&
+          c.unit_name === selectedUnit
+      ) ?? null)
+    : null;
+
+  const handleConfigChange = (value) => {
+    setSelectedConfig(value);
+    setSelectedVariable('');
+    setSelectedUnit('');
+    if (onSelect) onSelect(null);
+  };
+
+  const handleVariableChange = (value) => {
+    setSelectedVariable(value);
+    setSelectedUnit('');
+    if (onSelect) onSelect(null);
+  };
+
+  const handleUnitChange = (value) => {
+    setSelectedUnit(value);
+    if (onSelect) {
+      const match = configurations.find(
+        (c) =>
+          c.configuration_name === selectedConfig &&
+          c.variable_name === selectedVariable &&
+          c.unit_name === value
+      ) ?? null;
+      onSelect(match);
+    }
+  };
 
   return (
     <div className="d-flex flex-column h-100" style={{ overflow: 'hidden' }}>
@@ -66,15 +123,39 @@ const ConfigurationsPanel = ({ configurations = [], loading = false, error = nul
         <h6 className="mb-2 fw-semibold">Configurations</h6>
         <Form.Select
           size="sm"
-          value={selected}
-          onChange={(e) => setSelected(e.target.value)}
+          value={selectedConfig}
+          onChange={(e) => handleConfigChange(e.target.value)}
           aria-label="Select configuration"
+          className="mb-2"
         >
           <option value="">— Select a configuration —</option>
-          {configurations.map((c) => (
-            <option key={c.configuration_name} value={c.configuration_name}>
-              {c.configuration_name}
-            </option>
+          {configNames.map((name) => (
+            <option key={name} value={name}>{name}</option>
+          ))}
+        </Form.Select>
+        <Form.Select
+          size="sm"
+          value={selectedVariable}
+          onChange={(e) => handleVariableChange(e.target.value)}
+          aria-label="Select variable"
+          disabled={!selectedConfig}
+          className="mb-2"
+        >
+          <option value="">— Select a variable —</option>
+          {variableNames.map((name) => (
+            <option key={name} value={name}>{name}</option>
+          ))}
+        </Form.Select>
+        <Form.Select
+          size="sm"
+          value={selectedUnit}
+          onChange={(e) => handleUnitChange(e.target.value)}
+          aria-label="Select unit"
+          disabled={!selectedVariable}
+        >
+          <option value="">— Select a unit —</option>
+          {unitNames.map((name) => (
+            <option key={name} value={name}>{name}</option>
           ))}
         </Form.Select>
       </div>
@@ -86,11 +167,13 @@ const ConfigurationsPanel = ({ configurations = [], loading = false, error = nul
                 <tr key={key}>
                   <th className="table-light" style={{ whiteSpace: 'nowrap', width: '40%' }}>{label}</th>
                   <td>
-                    {key === 'configuration_name'
-                      ? <code>{cfg[key] ?? '—'}</code>
-                      : DATETIME_KEYS.has(key)
-                        ? formatDatetime(cfg[key])
-                        : cfg[key] ?? '—'}
+                    {key === 'reference_time_range'
+                      ? formatRange(cfg.min_reference_time, cfg.max_reference_time)
+                      : key === 'value_time_range'
+                        ? formatRange(cfg.min_value_time, cfg.max_value_time)
+                        : DATETIME_KEYS.has(key)
+                          ? formatDatetime(cfg[key])
+                          : cfg[key] ?? '—'}
                   </td>
                 </tr>
               ))}
@@ -98,9 +181,19 @@ const ConfigurationsPanel = ({ configurations = [], loading = false, error = nul
           </Table>
         ) : (
           <div className="d-flex align-items-center justify-content-center h-100 text-muted">
-            <span>Select a configuration to view details.</span>
+            <span>Select a configuration, variable, and unit to view details.</span>
           </div>
         )}
+      </div>
+      <div style={{ padding: '8px 12px', borderTop: '1px solid #e0e0e0', flexShrink: 0 }}>
+        <button
+          className="btn btn-primary btn-sm w-100"
+          style={{ height: '28px', fontSize: '0.75rem', padding: '0 12px' }}
+          disabled={!canGenerate}
+          onClick={onGenerate}
+        >
+          Generate Completeness Heatmap
+        </button>
       </div>
     </div>
   );

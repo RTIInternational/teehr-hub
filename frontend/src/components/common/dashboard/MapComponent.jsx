@@ -10,7 +10,9 @@ const MapComponent = ({
   selectLocation,
   loadLocations,
   MapFilterButton,
-  getMetricLabel
+  getMetricLabel,
+  showSearch = true,
+  overlayLocations = null
 }) => {
   const mapContainer = useRef(null);
   const map = useRef(null);
@@ -411,6 +413,23 @@ const MapComponent = ({
       mapInstance.on('mouseenter', 'locations-layer', handleLocationHover);
       mapInstance.on('mouseleave', 'locations-layer', handleLocationLeave);
 
+      // If overlay layers already exist, move them below the new locations layers
+      if (mapInstance.getLayer('overlay-fill')) mapInstance.moveLayer('overlay-fill', 'locations-layer');
+      if (mapInstance.getLayer('overlay-line')) mapInstance.moveLayer('overlay-line', 'locations-layer');
+
+      // Fit map to the extent of the loaded features
+      if (validFeatures.length > 0) {
+        const lons = validFeatures.map(f => f.geometry.coordinates[0]);
+        const lats = validFeatures.map(f => f.geometry.coordinates[1]);
+        const minLon = Math.min(...lons);
+        const maxLon = Math.max(...lons);
+        const minLat = Math.min(...lats);
+        const maxLat = Math.max(...lats);
+        if (isFinite(minLon) && isFinite(minLat) && isFinite(maxLon) && isFinite(maxLat)) {
+          mapInstance.fitBounds([[minLon, minLat], [maxLon, maxLat]], { padding: 50, duration: 700, maxZoom: 14 });
+        }
+      }
+
     } catch (error) {
       console.error('MapComponent: Error adding locations to map:', error);
       dispatch({ type: ActionTypes.SET_ERROR, payload: `Failed to add locations to map: ${error.message}` });
@@ -431,6 +450,53 @@ const MapComponent = ({
     };
 
   }, [state.locations, state.mapLoaded, state.mapFilters.metricName, selectLocation, dispatch, ActionTypes, getMetricLabel, selectFeatureOnMap]);
+
+  // Overlay layer (e.g. huc8 polygons) at 50% opacity
+  useEffect(() => {
+    if (!map.current || !state.mapLoaded) return;
+    const mapInstance = map.current;
+
+    const removeOverlay = () => {
+      if (mapInstance.getLayer('overlay-fill')) mapInstance.removeLayer('overlay-fill');
+      if (mapInstance.getLayer('overlay-line')) mapInstance.removeLayer('overlay-line');
+      if (mapInstance.getSource('overlay-locations')) mapInstance.removeSource('overlay-locations');
+    };
+
+    removeOverlay();
+
+    const features = overlayLocations?.features;
+    if (!features || features.length === 0) return;
+
+    mapInstance.addSource('overlay-locations', { type: 'geojson', data: overlayLocations });
+
+    const geomType = features[0]?.geometry?.type;
+    const beforeLayer = mapInstance.getLayer('locations-layer') ? 'locations-layer' : undefined;
+    if (geomType === 'Polygon' || geomType === 'MultiPolygon') {
+      mapInstance.addLayer({
+        id: 'overlay-fill',
+        type: 'fill',
+        source: 'overlay-locations',
+        paint: { 'fill-color': '#4a90d9', 'fill-opacity': 0.3 }
+      }, beforeLayer);
+      mapInstance.addLayer({
+        id: 'overlay-line',
+        type: 'line',
+        source: 'overlay-locations',
+        paint: { 'line-color': '#2c5f8a', 'line-width': 0.8, 'line-opacity': 0.7 }
+      }, beforeLayer);
+    } else {
+      mapInstance.addLayer({
+        id: 'overlay-fill',
+        type: 'circle',
+        source: 'overlay-locations',
+        paint: { 'circle-radius': 5, 'circle-color': '#4a90d9', 'circle-opacity': 0.5, 'circle-stroke-width': 1, 'circle-stroke-color': '#2c5f8a' }
+      }, beforeLayer);
+    }
+
+    return () => {
+      try { removeOverlay(); } catch { /* silent */ }
+    };
+  }, [overlayLocations, state.mapLoaded]);
 
   return (
     <div className="position-relative h-100 w-100">
@@ -471,7 +537,7 @@ const MapComponent = ({
         {state.mapLoaded && MapFilterButton && <MapFilterButton />}
 
         {/* Location search */}
-        {state.mapLoaded && (
+        {state.mapLoaded && showSearch && (
           <div
             className="position-absolute top-0 start-0 m-3"
             style={{ zIndex: 1200, width: 'min(380px, calc(100% - 200px))' }}

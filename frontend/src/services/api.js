@@ -185,6 +185,25 @@ export const apiService = {
 
   // Health check
   healthCheck: () => apiCall('/health'),
+
+  // Get locations filtered by ID prefix, returns GeoJSON FeatureCollection
+  getLocationsByPrefix: (prefix, limit = 5000) => {
+    const params = new URLSearchParams();
+    params.append('prefix', prefix);
+    params.append('limit', limit);
+    return apiCall(`/collections/locations/items?${params.toString()}`);
+  },
+
+  // Get HUC8 weekly aggregation (completeness) data
+  getAggregationHuc8Weekly: (filters = {}) => {
+    const params = new URLSearchParams();
+    if (filters.configuration_name) params.append('configuration_name', filters.configuration_name);
+    if (filters.variable_name) params.append('variable_name', filters.variable_name);
+    if (filters.unit_name) params.append('unit_name', filters.unit_name);
+    if (filters.limit) params.append('limit', filters.limit);
+    if (filters.offset) params.append('offset', filters.offset);
+    return apiCall(`/collections/configuration_completeness/items?${params.toString()}`);
+  },
 };
 
 export default apiService;
