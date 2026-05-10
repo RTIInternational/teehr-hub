@@ -2,6 +2,7 @@
 Timeseries endpoints (OGC API - GeoJSON and TEEHR TS).
 """
 
+import logging
 import time
 from datetime import datetime
 
@@ -13,6 +14,7 @@ from ..database import execute_query, sanitize_string, trino_catalog, trino_sche
 from .utils import create_ogc_geojson_response, prepare_for_serialization
 
 router = APIRouter()
+logger = logging.getLogger("teehr-api.routes.timeseries")
 
 
 def _build_string_in_condition(column: str, values: list[str], table_alias: str | None = None) -> str | None:
@@ -110,11 +112,12 @@ async def get_primary_timeseries_items(
         and grouped timeseries objects; 'geojson' returns an OGC GeoJSON FeatureCollection.
     """
     try:
-        print(
-            f"Primary timeseries called with: primary_location_id={primary_location_id}, "
-            f"datetime={datetime_range}, "
-            f"variable_name={variable_name}, "
-            f"configuration_name={configuration_name}"
+        logger.debug(
+            "Primary timeseries called with primary_location_id=%s datetime=%s variable_name=%s configuration_name=%s",
+            primary_location_id,
+            datetime_range,
+            variable_name,
+            configuration_name,
         )
         safe_location_ids = [f"'{sanitize_string(loc)}'" for loc in primary_location_id]
         where_conditions = [f"location_id IN ({', '.join(safe_location_ids)})"]
@@ -196,12 +199,12 @@ async def get_primary_timeseries_items(
         query_start = time.time()
         df = execute_query(query)
         query_time = time.time() - query_start
-        print(f"Query execution time: {query_time:.3f} seconds")
+        logger.debug("Primary query execution time: %.3f seconds", query_time)
 
         if df.empty:
             return _empty_response(request, "primary_timeseries", f)
 
-        print(f"Query returned {len(df)} primary timeseries records")
+        logger.debug("Primary query returned %s records", len(df))
 
         format_start = time.time()
         df["value_time"] = pd.to_datetime(df["value_time"]).dt.strftime(
@@ -263,7 +266,7 @@ async def get_primary_timeseries_items(
                 data.append(timeseries_data)
 
             format_time = time.time() - format_start
-            print(f"Primary formatting time: {format_time:.3f} seconds")
+            logger.debug("Primary formatting time: %.3f seconds", format_time)
 
             return JSONResponse(content=data, media_type="application/json")
 
@@ -300,7 +303,7 @@ async def get_primary_timeseries_items(
         return JSONResponse(content=response, media_type="application/json")
     
     except Exception as e:
-        print(f"Primary timeseries error: {str(e)}")
+        logger.error("Primary timeseries error: %s", str(e))
         raise HTTPException(
             status_code=500, detail=f"Failed to load primary timeseries: {str(e)}"
         ) from e
@@ -359,13 +362,14 @@ async def get_secondary_timeseries_items(
     and grouped timeseries objects; 'geojson' returns an OGC GeoJSON FeatureCollection.
     """
     try:
-        print(
-            f"Secondary timeseries called with: primary_location_id={primary_location_id}, "
-            f"secondary_location_id={secondary_location_id}, "
-            f"datetime={datetime_range}, "
-            f"reference_time={reference_time}, "
-            f"variable_name={variable_name}, "
-            f"configuration_name={configuration_name}"
+        logger.debug(
+            "Secondary timeseries called with primary_location_id=%s secondary_location_id=%s datetime=%s reference_time=%s variable_name=%s configuration_name=%s",
+            primary_location_id,
+            secondary_location_id,
+            datetime_range,
+            reference_time,
+            variable_name,
+            configuration_name,
         )
         
         where_conditions = []
@@ -478,12 +482,12 @@ async def get_secondary_timeseries_items(
         query_start = time.time()
         df = execute_query(query)
         query_time = time.time() - query_start
-        print(f"Secondary query execution time: {query_time:.3f} seconds")
+        logger.debug("Secondary query execution time: %.3f seconds", query_time)
 
         if df.empty:
             return _empty_response(request, "secondary_timeseries", f)
 
-        print(f"Query returned {len(df)} secondary timeseries records")
+        logger.debug("Secondary query returned %s records", len(df))
 
         format_start = time.time()
         df["value_time"] = pd.to_datetime(df["value_time"]).dt.strftime(
@@ -523,7 +527,7 @@ async def get_secondary_timeseries_items(
                 dropna=False  # Don't drop rows with NaN - important for retrospective data
             )
 
-            print("Number of unique series:", len(grouped))
+            logger.debug("Number of unique secondary series: %s", len(grouped))
             data = []
             for (
                 series_type,
@@ -554,7 +558,7 @@ async def get_secondary_timeseries_items(
                 data.append(timeseries_data)
 
             format_time = time.time() - format_start
-            print(f"Secondary formatting time: {format_time:.3f} seconds")
+            logger.debug("Secondary formatting time: %.3f seconds", format_time)
 
             return JSONResponse(content=data, media_type="application/json")
         
@@ -591,7 +595,7 @@ async def get_secondary_timeseries_items(
         return JSONResponse(content=response, media_type="application/json")
 
     except Exception as e:
-        print(f"Secondary timeseries error: {str(e)}")
+        logger.error("Secondary timeseries error: %s", str(e))
         raise HTTPException(
             status_code=500, detail=f"Failed to load secondary timeseries: {str(e)}"
         ) from e

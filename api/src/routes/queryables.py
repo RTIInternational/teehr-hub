@@ -9,7 +9,7 @@ fields.
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import JSONResponse
 
-from ..database import get_trino_connection, sanitize_string
+from ..database import execute_query, get_trino_connection, sanitize_string
 
 router = APIRouter()
 
@@ -435,10 +435,8 @@ async def get_queryable_values(collection_id: str, property_name: str):
         raise HTTPException(status_code=400, detail="Invalid collection or property name")
 
     try:
-        conn = get_trino_connection()
-        cur = conn.cursor()
-
         # Determine catalog and schema from the configured Trino connection
+        conn = get_trino_connection()
         catalog = getattr(conn, "catalog", "iceberg")
         schema = getattr(conn, "schema", "teehr")
 
@@ -449,10 +447,8 @@ async def get_queryable_values(collection_id: str, property_name: str):
             WHERE {sanitized_property} IS NOT NULL
             ORDER BY {sanitized_property}
         """
-        cur.execute(query)
-        results = cur.fetchall()
-
-        values = [row[0] for row in results]
+        df = execute_query(query)
+        values = df[sanitized_property].tolist() if not df.empty else []
 
         return JSONResponse(
             content=values,

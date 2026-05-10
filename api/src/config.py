@@ -31,6 +31,45 @@ class Config:
     # CORS settings
     CORS_ORIGINS = os.environ.get("CORS_ORIGINS", "*")
 
+    # Authentication settings
+    KEYCLOAK_ISSUER_URL = os.environ.get(
+        "KEYCLOAK_ISSUER_URL",
+        "http://auth.teehr.local.app.garden/realms/teehr",
+    )
+    KEYCLOAK_JWKS_URL = os.environ.get("KEYCLOAK_JWKS_URL", "")
+    KEYCLOAK_AUDIENCE = os.environ.get("KEYCLOAK_AUDIENCE", "teehr-api")
+    KEYCLOAK_ALLOWED_AUDIENCES = os.environ.get(
+        "KEYCLOAK_ALLOWED_AUDIENCES",
+        "teehr-api,teehr-frontend",
+    )
+    KEYCLOAK_AUTH_URL = os.environ.get(
+        "KEYCLOAK_AUTH_URL",
+        f"{KEYCLOAK_ISSUER_URL}/protocol/openid-connect/auth",
+    )
+    KEYCLOAK_TOKEN_URL = os.environ.get(
+        "KEYCLOAK_TOKEN_URL",
+        f"{KEYCLOAK_ISSUER_URL}/protocol/openid-connect/token",
+    )
+    KEYCLOAK_SWAGGER_CLIENT_ID = os.environ.get(
+        "KEYCLOAK_SWAGGER_CLIENT_ID",
+        "teehr-frontend",
+    )
+
+    # API key storage settings
+    API_KEYS_DB_DSN = os.environ.get(
+        "API_KEYS_DB_DSN",
+        "postgresql://keycloak:keycloak123@keycloak-pg:5432/teehr_api",
+    )
+    API_KEY_PREFIX = os.environ.get("API_KEY_PREFIX", "thk_")
+    API_KEY_HASH_SALT = os.environ.get(
+        "API_KEY_HASH_SALT",
+        "local-dev-change-me",
+    )
+
+    # Rate limit settings (requests per minute)
+    ANON_RATE_LIMIT_RPM = int(os.environ.get("ANON_RATE_LIMIT_RPM", "20"))
+    AUTH_RATE_LIMIT_RPM = int(os.environ.get("AUTH_RATE_LIMIT_RPM", "120"))
+
     # Logging
     LOG_LEVEL = os.environ.get("LOG_LEVEL", "INFO")
 

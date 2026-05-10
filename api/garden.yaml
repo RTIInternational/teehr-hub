@@ -21,6 +21,7 @@ environments:
 dependencies:
   - build.teehr-api
   - deploy.secrets
+  - deploy.keycloak-bootstrap
 
 spec:
   manifestFiles:

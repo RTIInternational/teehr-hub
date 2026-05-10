@@ -2,6 +2,7 @@
 Metrics collection endpoints (OGC API Features).
 """
 
+import logging
 import time
 
 from fastapi import APIRouter, HTTPException, Query, Request
@@ -12,6 +13,7 @@ from ..database import (
 from .utils import create_ogc_geojson_response, prepare_for_serialization
 
 router = APIRouter()
+logger = logging.getLogger("teehr-api.routes.metrics")
 
 
 @router.get("/collections/{collection_id}/items")
@@ -81,7 +83,7 @@ async def get_collection_items(
         query_start = time.time()
         df = execute_query(query)
         query_time = time.time() - query_start
-        print(f"Query execution time: {query_time:.3f} seconds")
+        logger.debug("Metrics query execution time: %.3f seconds", query_time)
 
         df = prepare_for_serialization(df)
         geojson = create_ogc_geojson_response(
