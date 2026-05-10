@@ -87,6 +87,22 @@ dependencies:
   - deploy.keycloak-bootstrap
 environments:
   - local
+---
+kind: Deploy
+type: kubernetes
+name: prefect-ingress
+spec:
+  manifestTemplates:
+    - manifests/prefect.yaml.tpl
+dependencies:
+  - deploy.cert-manager
+  - deploy.letsencrypt
+  - deploy.cert
+  - deploy.contour
+  - deploy.prefect-oidc-proxy
+environments:
+  - local
+  - remote
 # ---
 # kind: Deploy
 # type: kubernetes

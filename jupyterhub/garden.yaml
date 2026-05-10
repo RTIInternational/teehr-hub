@@ -56,15 +56,15 @@ spec:
           claim_groups_key: groups
           allowed_groups:
             - jupyter-user
-            - admin
+            - jupyter-admin
         JupyterHub:
           authenticator_class: generic-oauth
           allow_named_servers: true
           named_server_limit_per_user: 5
         Authenticator:
           manage_groups: true
-          admin_users:
-            - admin
+          admin_groups:
+            - jupyter-admin
       extraEnv:
         OAUTH_CLIENT_ID:
           valueFrom:

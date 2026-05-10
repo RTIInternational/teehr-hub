@@ -45,11 +45,23 @@ data:
           "realmRoles": ["jupyter-user"]
         },
         {
+          "name": "jupyter-admin",
+          "realmRoles": ["jupyter-user"]
+        },
+        {
           "name": "iceberg-user",
           "realmRoles": ["iceberg-user"]
         },
         {
-          "name": "admin",
+          "name": "key-management-admin",
+          "realmRoles": ["admin"]
+        },
+        {
+          "name": "prefect-admin",
+          "realmRoles": ["admin"]
+        },
+        {
+          "name": "webapi-admin",
           "realmRoles": ["admin"],
           "clientRoles": {
             "realm-management": [
@@ -89,7 +101,7 @@ data:
           "protocol": "openid-connect",
           "publicClient": false,
           "serviceAccountsEnabled": true,
-          "secret": "CHANGE_ME_TEEHR_API_CLIENT_SECRET"
+          "secret": "$(env:TEEHR_API_CLIENT_SECRET)"
         },
         {
           "clientId": "jupyterhub",
@@ -120,6 +132,37 @@ data:
           ],
           "webOrigins": [
             "https://hub.${var.hostname}"
+          ]
+        },
+        {
+          "clientId": "prefect-oauth2-proxy",
+          "enabled": true,
+          "protocol": "openid-connect",
+          "publicClient": false,
+          "secret": "$(env:PREFECT_OAUTH2_CLIENT_SECRET)",
+          "attributes": {
+            "post.logout.redirect.uris": "https://prefect.${var.hostname}/*"
+          },
+          "protocolMappers": [
+            {
+              "name": "groups",
+              "protocol": "openid-connect",
+              "protocolMapper": "oidc-group-membership-mapper",
+              "consentRequired": false,
+              "config": {
+                "full.path": "false",
+                "id.token.claim": "true",
+                "access.token.claim": "true",
+                "userinfo.token.claim": "true",
+                "claim.name": "groups"
+              }
+            }
+          ],
+          "redirectUris": [
+            "https://prefect.${var.hostname}/oauth2/callback"
+          ],
+          "webOrigins": [
+            "https://prefect.${var.hostname}"
           ]
         }
       ]

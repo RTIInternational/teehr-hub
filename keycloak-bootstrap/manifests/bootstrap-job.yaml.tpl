@@ -33,6 +33,16 @@ spec:
                 secretKeyRef:
                   name: jupyterhub
                   key: OAUTH_CLIENT_SECRET
+            - name: PREFECT_OAUTH2_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: prefect-oidc-secrets
+                  key: client-secret
+            - name: TEEHR_API_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: teehr-api-secrets
+                  key: client-secret
             - name: SMTP_HOST
               valueFrom:
                 secretKeyRef:

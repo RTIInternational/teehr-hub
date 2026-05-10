@@ -23,6 +23,8 @@ spec:
     #     teehr-hub/nodegroup-name: core-a
 
     server:
+      uiConfig:
+        prefectUiApiUrl: https://prefect.${var.hostname}/api
       resources:
         requests:
           cpu: "1"
@@ -47,6 +49,8 @@ spec:
           value: "180"
         - name: PREFECT_SERVER_EVENTS_STREAM_OUT_ENABLED
           value: "false"
+        - name: PREFECT_API_URL
+          value: https://prefect.${var.hostname}/api
 
     # Don't create a secret - use the existing one
     secret:
@@ -56,6 +60,20 @@ spec:
     # Disable built-in PostgreSQL
     postgresql:
       enabled: false
+---
+kind: Deploy
+type: kubernetes
+name: prefect-oidc-proxy
+dependencies:
+  - deploy.secrets
+  - deploy.keycloak-bootstrap
+  - deploy.prefect-server
+environments:
+  - local
+  - remote
+spec:
+  manifestTemplates:
+    - manifests/oauth2-proxy.yaml.tpl
 ---
 kind: Deploy
 type: helm
