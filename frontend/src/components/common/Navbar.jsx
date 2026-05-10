@@ -52,8 +52,8 @@ const Navbar = () => {
         {/* User Profile Section */}
         <div className="d-flex align-items-center">
           {ready && authenticated && isAdmin && (
-            <Link className="btn btn-outline-light btn-sm me-2" to="/admin/api-keys">
-              API Keys
+            <Link className="btn btn-outline-light btn-sm me-2" to="/admin">
+              Admin
             </Link>
           )}
 

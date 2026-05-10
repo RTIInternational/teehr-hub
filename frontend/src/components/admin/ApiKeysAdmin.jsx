@@ -1,13 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Alert, Button, Card, Col, Container, Form, Row, Spinner, Table } from 'react-bootstrap';
-
+import { Alert, Button, Card, Col, Form, Row, Table } from 'react-bootstrap';
 import { apiService } from '../../services/api.js';
-import { useAuth } from '../../hooks/useAuth.js';
 
 const ApiKeysAdmin = () => {
-  const { ready, authenticated, roles } = useAuth();
-  const isAdmin = roles.includes('admin');
-
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [items, setItems] = useState([]);
@@ -35,10 +30,8 @@ const ApiKeysAdmin = () => {
   };
 
   useEffect(() => {
-    if (ready && authenticated && isAdmin) {
-      loadKeys();
-    }
-  }, [ready, authenticated, isAdmin]);
+    loadKeys();
+  }, []);
 
   const onCreate = async (event) => {
     event.preventDefault();
@@ -83,32 +76,9 @@ const ApiKeysAdmin = () => {
     }
   };
 
-  if (!ready) {
-    return (
-      <Container className="py-5 text-center">
-        <Spinner animation="border" role="status" />
-      </Container>
-    );
-  }
-
-  if (!authenticated) {
-    return (
-      <Container className="py-4">
-        <Alert variant="warning">Please login to manage API keys.</Alert>
-      </Container>
-    );
-  }
-
-  if (!isAdmin) {
-    return (
-      <Container className="py-4">
-        <Alert variant="danger">Admin role required.</Alert>
-      </Container>
-    );
-  }
-
   return (
-    <Container className="py-4">
+    <div>
+      <h4 className="mb-3">API Keys</h4>
       <Row className="g-4">
         <Col lg={5}>
           <Card>
@@ -214,7 +184,7 @@ const ApiKeysAdmin = () => {
           </Card>
         </Col>
       </Row>
-    </Container>
+    </div>
   );
 };
 

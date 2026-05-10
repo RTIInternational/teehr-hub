@@ -1,6 +1,9 @@
 import { Container, Alert } from 'react-bootstrap';
 import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
+import AdminHome from './components/admin/AdminHome.jsx';
+import AdminLayout from './components/admin/AdminLayout.jsx';
 import ApiKeysAdmin from './components/admin/ApiKeysAdmin.jsx';
+import KeycloakAdmin from './components/admin/KeycloakAdmin.jsx';
 import { Home, Navbar } from './components/common';
 import { ForecastDashboard } from './components/dashboards/forecast';
 import { Dashboard } from './components/dashboards/retrospective';
@@ -120,13 +123,17 @@ function App() {
               } 
             />
             <Route
-              path="/admin/api-keys"
+              path="/admin"
               element={
                 <AdminRoute>
-                  <ApiKeysAdmin />
+                  <AdminLayout />
                 </AdminRoute>
               }
-            />
+            >
+              <Route index element={<AdminHome />} />
+              <Route path="api-keys" element={<ApiKeysAdmin />} />
+              <Route path="keycloak" element={<KeycloakAdmin />} />
+            </Route>
           </Routes>
         </main>
       </div>

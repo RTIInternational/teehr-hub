@@ -50,7 +50,16 @@ data:
         },
         {
           "name": "admin",
-          "realmRoles": ["admin"]
+          "realmRoles": ["admin"],
+          "clientRoles": {
+            "realm-management": [
+              "manage-users",
+              "query-users",
+              "view-users",
+              "query-groups",
+              "view-realm"
+            ]
+          }
         }
       ],
       "defaultGroups": [
