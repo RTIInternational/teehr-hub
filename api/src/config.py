@@ -70,6 +70,12 @@ class Config:
     ANON_RATE_LIMIT_RPM = int(os.environ.get("ANON_RATE_LIMIT_RPM", "20"))
     AUTH_RATE_LIMIT_RPM = int(os.environ.get("AUTH_RATE_LIMIT_RPM", "120"))
 
+    # Role-based record/page limits
+    ROW_LIMIT_ANON = int(os.environ.get("ROW_LIMIT_ANON", "200"))
+    ROW_LIMIT_API_KEY = int(os.environ.get("ROW_LIMIT_API_KEY", "2000"))
+    ROW_LIMIT_BASIC_USER = int(os.environ.get("ROW_LIMIT_BASIC_USER", "5000"))
+    ROW_LIMIT_AUTH = int(os.environ.get("ROW_LIMIT_AUTH", "10000"))
+
     # Logging
     LOG_LEVEL = os.environ.get("LOG_LEVEL", "INFO")
 

@@ -189,3 +189,35 @@ async def get_admin_identity(
     if "admin" not in identity.roles:
         raise HTTPException(status_code=403, detail="Admin role required")
     return identity
+
+
+def _record_limit_for_identity(identity: AuthIdentity) -> int | None:
+    if "admin" in identity.roles:
+        return None
+    if "basic-user" in identity.roles:
+        return config.ROW_LIMIT_BASIC_USER
+    if identity.auth_type == "api_key":
+        return config.ROW_LIMIT_API_KEY
+    if identity.is_authenticated:
+        return config.ROW_LIMIT_AUTH
+    return config.ROW_LIMIT_ANON
+
+
+def apply_role_record_limit(identity: AuthIdentity, requested_limit: int | None) -> int | None:
+    role_cap = _record_limit_for_identity(identity)
+    if role_cap is None:
+        return requested_limit
+    if requested_limit is None:
+        return role_cap
+    return min(requested_limit, role_cap)
+
+
+def effective_limit_for_request(request: Request, requested_limit: int | None) -> int | None:
+    identity = getattr(request.state, "identity", None)
+    if identity is None:
+        identity = AuthIdentity(
+            subject="anonymous",
+            auth_type="anonymous",
+            roles=["anonymous"],
+        )
+    return apply_role_record_limit(identity, requested_limit)

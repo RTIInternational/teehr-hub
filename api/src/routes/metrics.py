@@ -7,6 +7,7 @@ import time
 
 from fastapi import APIRouter, HTTPException, Query, Request
 from fastapi.responses import JSONResponse
+from ..auth import effective_limit_for_request
 from ..database import (
     execute_query, sanitize_string, trino_catalog, trino_schema
 )
@@ -44,6 +45,8 @@ async def get_collection_items(
     Handles metrics tables. The locations collection has its own endpoint.
     """
     try:
+        limit = effective_limit_for_request(request, limit)
+
         # Use the collection_id as the table name
         sanitized_table = sanitize_string(collection_id)
 

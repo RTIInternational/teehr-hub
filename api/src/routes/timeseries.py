@@ -10,6 +10,7 @@ import pandas as pd
 from fastapi import APIRouter, HTTPException, Query, Request
 from fastapi.responses import JSONResponse
 
+from ..auth import effective_limit_for_request
 from ..database import execute_query, sanitize_string, trino_catalog, trino_schema
 from .utils import create_ogc_geojson_response, prepare_for_serialization
 
@@ -112,6 +113,8 @@ async def get_primary_timeseries_items(
         and grouped timeseries objects; 'geojson' returns an OGC GeoJSON FeatureCollection.
     """
     try:
+        limit = effective_limit_for_request(request, limit)
+
         logger.debug(
             "Primary timeseries called with primary_location_id=%s datetime=%s variable_name=%s configuration_name=%s",
             primary_location_id,
@@ -362,6 +365,8 @@ async def get_secondary_timeseries_items(
     and grouped timeseries objects; 'geojson' returns an OGC GeoJSON FeatureCollection.
     """
     try:
+        limit = effective_limit_for_request(request, limit)
+
         logger.debug(
             "Secondary timeseries called with primary_location_id=%s secondary_location_id=%s datetime=%s reference_time=%s variable_name=%s configuration_name=%s",
             primary_location_id,

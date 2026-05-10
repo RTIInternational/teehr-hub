@@ -107,6 +107,26 @@ spec:
             configMapKeyRef:
               name: teehr-api-config
               key: AUTH_RATE_LIMIT_RPM
+        - name: ROW_LIMIT_ANON
+          valueFrom:
+            configMapKeyRef:
+              name: teehr-api-config
+              key: ROW_LIMIT_ANON
+        - name: ROW_LIMIT_API_KEY
+          valueFrom:
+            configMapKeyRef:
+              name: teehr-api-config
+              key: ROW_LIMIT_API_KEY
+        - name: ROW_LIMIT_BASIC_USER
+          valueFrom:
+            configMapKeyRef:
+              name: teehr-api-config
+              key: ROW_LIMIT_BASIC_USER
+        - name: ROW_LIMIT_AUTH
+          valueFrom:
+            configMapKeyRef:
+              name: teehr-api-config
+              key: ROW_LIMIT_AUTH
         - name: API_KEY_HASH_SALT
           valueFrom:
             secretKeyRef:

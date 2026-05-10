@@ -7,6 +7,7 @@ import time
 from fastapi import APIRouter, HTTPException, Query, Request
 from fastapi.responses import JSONResponse
 
+from ..auth import effective_limit_for_request
 from ..database import execute_query, sanitize_string, trino_catalog, trino_schema
 from .utils import prepare_for_serialization
 
@@ -42,6 +43,8 @@ async def get_crosswalk_items(
     Use primary_location_id_prefix or secondary_location_id_prefix to filter by ID prefix (can be specified multiple times).
     """
     try:
+        limit = effective_limit_for_request(request, limit)
+
         where_conditions = []
 
         if primary_location_id:
