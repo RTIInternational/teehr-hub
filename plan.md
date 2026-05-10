@@ -44,8 +44,9 @@ Last updated: 2026-05-08
 2. [x] Map Keycloak groups to JupyterHub permissions.
 
 ## Phase 5: Iceberg REST Authentication (Priority 2)
-1. [-] Add auth proxy in front of Iceberg REST.
-2. [ ] Add service account flow for Trino-to-Iceberg calls.
+1. [ ] Deferred for now.
+   - Roadmap is documented in `docs/iceberg-auth-storage-roadmap.md`.
+   - Existing scaffold includes `iceberg-rest-auth`, but rollout is paused pending storage-permissions design.
 
 ## Phase 6: Prefect + Grafana (Priority 3)
 1. [ ] Keep hardcoded admin fallback if needed.
