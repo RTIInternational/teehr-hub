@@ -23,6 +23,9 @@ spec:
   localId: teehr-frontend
   buildArgs:
     VITE_API_BASE_URL: "https://api.${var.hostname}"
+    VITE_KEYCLOAK_URL: "https://auth.${var.hostname}"
+    VITE_KEYCLOAK_REALM: "teehr"
+    VITE_KEYCLOAK_CLIENT_ID: "teehr-frontend"
 
 ---
 
@@ -35,6 +38,8 @@ environments:
 
 dependencies:
   - build.teehr-frontend
+  - deploy.teehr-api
+  - deploy.auth-ingress
 
 spec:
 

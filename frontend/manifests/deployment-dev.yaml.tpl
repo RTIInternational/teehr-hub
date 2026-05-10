@@ -34,6 +34,21 @@ spec:
             configMapKeyRef:
               name: teehr-frontend-config
               key: VITE_ALLOWED_HOSTS
+        - name: VITE_KEYCLOAK_URL
+          valueFrom:
+            configMapKeyRef:
+              name: teehr-frontend-config
+              key: VITE_KEYCLOAK_URL
+        - name: VITE_KEYCLOAK_REALM
+          valueFrom:
+            configMapKeyRef:
+              name: teehr-frontend-config
+              key: VITE_KEYCLOAK_REALM
+        - name: VITE_KEYCLOAK_CLIENT_ID
+          valueFrom:
+            configMapKeyRef:
+              name: teehr-frontend-config
+              key: VITE_KEYCLOAK_CLIENT_ID
         resources:
           requests:
             memory: "256Mi"
