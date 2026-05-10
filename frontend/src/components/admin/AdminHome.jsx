@@ -13,6 +13,13 @@ const cards = [
     to: '/admin/keycloak',
     buttonLabel: 'Open Keycloak Section',
   },
+  {
+    title: 'Prefect',
+    description: 'Access Prefect admin console to manage workflows and deployments.',
+    href: `https://prefect.${window.location.hostname.replace('dashboards.', '').replace('api.', '')}`,
+    buttonLabel: 'Open Prefect',
+    isExternal: true,
+  },
 ];
 
 const AdminHome = () => {
@@ -31,9 +38,15 @@ const AdminHome = () => {
                 <h5 className="card-title">{card.title}</h5>
                 <p className="card-text text-muted">{card.description}</p>
                 <div className="mt-auto">
-                  <Link to={card.to} className="btn btn-outline-primary">
-                    {card.buttonLabel}
-                  </Link>
+                  {card.isExternal ? (
+                    <a href={card.href} target="_blank" rel="noopener noreferrer" className="btn btn-outline-primary">
+                      {card.buttonLabel}
+                    </a>
+                  ) : (
+                    <Link to={card.to} className="btn btn-outline-primary">
+                      {card.buttonLabel}
+                    </Link>
+                  )}
                 </div>
               </div>
             </div>
