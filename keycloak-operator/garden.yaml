@@ -1,0 +1,13 @@
+kind: Deploy
+type: kubernetes
+name: keycloak-operator
+description: Install Official Keycloak Operator via OLM subscription manifests
+dependencies:
+  - deploy.olm
+environments:
+  - local
+spec:
+  manifestTemplates:
+    - ./manifests/operatorgroup.yaml.tpl
+  manifestFiles:
+    - ./manifests/subscription.yaml
