@@ -119,7 +119,7 @@ def update_joined_forecast_table(
 
 @flow(
     flow_run_name="update-joined-forecast-table-incremental",
-    timeout_seconds=60 * 60,
+    timeout_seconds=60 * 60 * 2,
     retries=2,
 )
 def update_joined_forecast_table_incremental(
