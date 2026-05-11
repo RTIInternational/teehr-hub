@@ -2,16 +2,14 @@ import Plotly from 'plotly.js-dist-min';
 import { useEffect, useRef, useState } from 'react';
 import { apiService } from '../../../services/api';
 
-const CHART_HEIGHT = 700;
-
-const CompletenessHeatmap = ({ configurationName, variableName, unitName, onHover = null }) => {
+const CompletenessHeatmap = ({ configurationName, variableName, onHover = null }) => {
   const plotRef = useRef(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [plotReady, setPlotReady] = useState(false);
 
   useEffect(() => {
-    if (!configurationName || !variableName || !unitName) return;
+    if (!configurationName || !variableName) return;
     if (!plotRef.current) return;
 
     let cancelled = false;
@@ -22,7 +20,6 @@ const CompletenessHeatmap = ({ configurationName, variableName, unitName, onHove
     apiService.getAggregationHuc8Weekly({
       configuration_name: configurationName,
       variable_name: variableName,
-      unit_name: unitName,
     }).then((data) => {
       if (cancelled) return;
 
@@ -58,9 +55,7 @@ const CompletenessHeatmap = ({ configurationName, variableName, unitName, onHove
         const h = norm(r.spatial_aggregate);
         const p = norm(r.period);
         if (!h || !p) return;
-        const c = r.expected_count > 0
-          ? Math.min((r.actual_count / r.expected_count) * 100, 100)
-          : null;
+        const c = r.completeness != null ? r.completeness : null;
         lookup.set(`${h}||${p}`, c);
       });
 
@@ -102,17 +97,17 @@ const CompletenessHeatmap = ({ configurationName, variableName, unitName, onHove
           },
         ],
         {
-          title: `Primary Timeseries Completeness — ${configurationName} / ${variableName} (${unitName})`,
+          title: `Primary Timeseries Completeness — ${configurationName} / ${variableName}`,
           xaxis: { title: 'Week', tickangle: -45, nticks: 24 },
           yaxis: {
             title: 'Spatial Aggregate',
             showticklabels: false,
             type: 'category',
           },
-          height: CHART_HEIGHT,
+          autosize: true,
           margin: { l: 40, b: 80, t: 50, r: 20 },
         },
-        { responsive: false }
+        { responsive: true }
       );
       if (!cancelled) setPlotReady(true);
     }).catch((err) => {
@@ -125,7 +120,7 @@ const CompletenessHeatmap = ({ configurationName, variableName, unitName, onHove
       cancelled = true;
       if (onHover) onHover(null);
     };
-  }, [configurationName, variableName, unitName]);
+  }, [configurationName, variableName]);
 
   // Attach Plotly hover events once the plot is rendered
   useEffect(() => {
@@ -143,10 +138,10 @@ const CompletenessHeatmap = ({ configurationName, variableName, unitName, onHove
     };
   }, [plotReady, onHover]);
 
-  if (!configurationName || !variableName || !unitName) {
+  if (!configurationName || !variableName) {
     return (
       <div className="d-flex align-items-center justify-content-center h-100 text-muted" style={{ minHeight: '120px' }}>
-        <span>Select a configuration, variable, and unit above to view completeness.</span>
+        <span>Select a configuration and variable above to view completeness.</span>
       </div>
     );
   }
@@ -161,7 +156,7 @@ const CompletenessHeatmap = ({ configurationName, variableName, unitName, onHove
   }
 
   return (
-    <div style={{ position: 'relative', width: '100%' }}>
+    <div style={{ position: 'relative', width: '100%', height: '100%' }}>
       {loading && (
         <div
           className="position-absolute top-50 start-50 translate-middle text-center"
@@ -173,7 +168,7 @@ const CompletenessHeatmap = ({ configurationName, variableName, unitName, onHove
           <div className="small text-muted">Loading completeness data...</div>
         </div>
       )}
-      <div ref={plotRef} style={{ width: '100%', height: `${CHART_HEIGHT}px`, opacity: loading ? 0.3 : 1 }} />
+      <div ref={plotRef} style={{ width: '100%', height: '100%', opacity: loading ? 0.3 : 1 }} />
     </div>
   );
 };

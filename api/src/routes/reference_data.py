@@ -10,7 +10,7 @@ from fastapi import APIRouter, HTTPException, Query, Request
 from fastapi.responses import JSONResponse
 
 from ..database import execute_query, sanitize_string, trino_catalog, trino_schema
-from .utils import prepare_for_serialization
+from .utils import create_ogc_geojson_response, prepare_for_serialization
 
 router = APIRouter()
 
@@ -512,14 +512,13 @@ async def get_aggregation_huc8_weekly_items(
     request: Request,
     configuration_name: str | None = Query(None, description="Filter by configuration name"),
     variable_name: str | None = Query(None, description="Filter by variable name"),
-    unit_name: str | None = Query(None, description="Filter by unit name"),
     limit: int | None = Query(None, ge=1, description="Maximum number of items to return"),
     offset: int | None = Query(None, ge=0, description="Starting index for pagination"),
 ):
     """Get primary timeseries completeness aggregation rows.
 
-    Returns rows with: spatial_aggregate, period, actual_count, num_locations,
-    expected_count, configuration_name, variable_name, unit_name.
+    Returns rows with: spatial_aggregate, period, actual_count,
+    expected_count, completeness, configuration_name, variable_name.
     """
     try:
         where_conditions = []
@@ -529,11 +528,6 @@ async def get_aggregation_huc8_weekly_items(
         if variable_name:
             safe_var = sanitize_string(variable_name)
             where_conditions.append(f"variable_name = '{safe_var}'")
-        if unit_name:
-            # unit_name may contain special chars like ^ and / (e.g. m^3/s)
-            # escape single quotes and build a safe literal
-            escaped_unit = unit_name.replace("'", "''")
-            where_conditions.append(f"unit_name = '{escaped_unit}'")
 
         where_clause = " AND ".join(where_conditions) if where_conditions else "1=1"
 
@@ -548,11 +542,10 @@ async def get_aggregation_huc8_weekly_items(
                 spatial_aggregate,
                 period,
                 actual_count,
-                num_locations,
                 expected_count,
+                completeness,
                 configuration_name,
-                variable_name,
-                unit_name
+                variable_name
             FROM {trino_catalog}.{trino_schema}.configuration_completeness
             WHERE {where_clause}
             ORDER BY spatial_aggregate, period
@@ -586,4 +579,47 @@ async def get_aggregation_huc8_weekly_items(
         raise HTTPException(
             status_code=500,
             detail=f"Failed to load configuration_completeness: {str(e)}",
+        ) from e
+
+
+@router.get("/collections/configuration_completeness/geometries")
+async def get_completeness_geometries(
+    request: Request,
+    configuration_name: str | None = Query(None, description="Filter by configuration name"),
+    variable_name: str | None = Query(None, description="Filter by variable name"),
+):
+    """Get distinct spatial aggregate geometries from the completeness_summary table.
+
+    Returns a GeoJSON FeatureCollection where each feature represents a unique
+    spatial aggregate polygon. Feature properties include 'id' set to the
+    spatial_aggregate value so the heatmap hover highlight filter works.
+    """
+    try:
+        where_conditions = []
+        if configuration_name:
+            safe_cfg = sanitize_string(configuration_name)
+            where_conditions.append(f"configuration_name = '{safe_cfg}'")
+        if variable_name:
+            safe_var = sanitize_string(variable_name)
+            where_conditions.append(f"variable_name = '{safe_var}'")
+
+        where_clause = " AND ".join(where_conditions) if where_conditions else "1=1"
+
+        query = f"""
+            SELECT DISTINCT
+                spatial_aggregate AS id,
+                geometry
+            FROM {trino_catalog}.{trino_schema}.configuration_completeness
+            WHERE {where_clause}
+            AND geometry IS NOT NULL
+            ORDER BY spatial_aggregate
+        """
+
+        df = execute_query(query)
+        return create_ogc_geojson_response(df, str(request.url))
+
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to load completeness geometries: {str(e)}",
         ) from e

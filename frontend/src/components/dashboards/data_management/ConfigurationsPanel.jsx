@@ -8,6 +8,7 @@ const formatDatetime = (val) => {
 
 const FIELD_LABELS = [
   { key: 'description', label: 'Description' },
+  { key: 'unit_name', label: 'Unit' },
   { key: 'timeseries_type', label: 'Type' },
   { key: 'location_id_prefix', label: 'Location Prefix' },
   { key: 'n_locations', label: '# Locations' },
@@ -31,7 +32,6 @@ const formatRange = (min, max) => {
 const ConfigurationsPanel = ({ configurations = [], loading = false, error = null, onSelect = null, onGenerate = null, canGenerate = false }) => {
   const [selectedConfig, setSelectedConfig] = useState('');
   const [selectedVariable, setSelectedVariable] = useState('');
-  const [selectedUnit, setSelectedUnit] = useState('');
 
   if (loading) {
     return (
@@ -72,47 +72,29 @@ const ConfigurationsPanel = ({ configurations = [], loading = false, error = nul
       )].sort()
     : [];
 
-  // Unit names for the selected configuration + variable
-  const unitNames = selectedConfig && selectedVariable
-    ? [...new Set(
-        configurations
-          .filter((c) => c.configuration_name === selectedConfig && c.variable_name === selectedVariable)
-          .map((c) => c.unit_name)
-      )].sort()
-    : [];
-
-  // The matching row for the detail table
-  const cfg = selectedConfig && selectedVariable && selectedUnit
+  // The matching row for the detail table (unit is auto-resolved)
+  const cfg = selectedConfig && selectedVariable
     ? (configurations.find(
         (c) =>
           c.configuration_name === selectedConfig &&
-          c.variable_name === selectedVariable &&
-          c.unit_name === selectedUnit
+          c.variable_name === selectedVariable
       ) ?? null)
     : null;
 
   const handleConfigChange = (value) => {
     setSelectedConfig(value);
     setSelectedVariable('');
-    setSelectedUnit('');
     if (onSelect) onSelect(null);
   };
 
   const handleVariableChange = (value) => {
     setSelectedVariable(value);
-    setSelectedUnit('');
-    if (onSelect) onSelect(null);
-  };
-
-  const handleUnitChange = (value) => {
-    setSelectedUnit(value);
     if (onSelect) {
-      const match = configurations.find(
-        (c) =>
-          c.configuration_name === selectedConfig &&
-          c.variable_name === selectedVariable &&
-          c.unit_name === value
-      ) ?? null;
+      const match = value
+        ? (configurations.find(
+            (c) => c.configuration_name === selectedConfig && c.variable_name === value
+          ) ?? null)
+        : null;
       onSelect(match);
     }
   };
@@ -146,18 +128,6 @@ const ConfigurationsPanel = ({ configurations = [], loading = false, error = nul
             <option key={name} value={name}>{name}</option>
           ))}
         </Form.Select>
-        <Form.Select
-          size="sm"
-          value={selectedUnit}
-          onChange={(e) => handleUnitChange(e.target.value)}
-          aria-label="Select unit"
-          disabled={!selectedVariable}
-        >
-          <option value="">— Select a unit —</option>
-          {unitNames.map((name) => (
-            <option key={name} value={name}>{name}</option>
-          ))}
-        </Form.Select>
       </div>
       <div style={{ overflowY: 'auto', flex: 1 }}>
         {cfg ? (
@@ -177,27 +147,25 @@ const ConfigurationsPanel = ({ configurations = [], loading = false, error = nul
                   </td>
                 </tr>
               ))}
-              {cfg.n_members != null && (
-                <tr>
-                  <th className="table-light" style={{ whiteSpace: 'nowrap', width: '40%' }}># Members</th>
-                  <td>{cfg.n_members}</td>
-                </tr>
-              )}
-              {Array.isArray(cfg.members) && cfg.members.length > 0 && (
-                <tr>
-                  <th className="table-light" style={{ whiteSpace: 'nowrap', verticalAlign: 'top' }}>Members</th>
-                  <td style={{ fontSize: '0.8rem' }}>
-                    {cfg.members.map((m) => (
-                      <span key={m} className="badge bg-secondary me-1 mb-1" style={{ fontWeight: 'normal' }}>{m}</span>
-                    ))}
-                  </td>
-                </tr>
-              )}
+              <tr>
+                <th className="table-light" style={{ whiteSpace: 'nowrap', width: '40%' }}># Members</th>
+                <td>{cfg.n_members ?? '—'}</td>
+              </tr>
+              <tr>
+                <th className="table-light" style={{ whiteSpace: 'nowrap', verticalAlign: 'top' }}>Members</th>
+                <td style={{ fontSize: '0.8rem' }}>
+                  {Array.isArray(cfg.members) && cfg.members.length > 0
+                    ? cfg.members.map((m) => (
+                        <span key={m} className="badge bg-secondary me-1 mb-1" style={{ fontWeight: 'normal' }}>{m}</span>
+                      ))
+                    : '—'}
+                </td>
+              </tr>
             </tbody>
           </Table>
         ) : (
           <div className="d-flex align-items-center justify-content-center h-100 text-muted">
-            <span>Select a configuration, variable, and unit to view details.</span>
+            <span>Select a configuration and variable to view details.</span>
           </div>
         )}
       </div>
