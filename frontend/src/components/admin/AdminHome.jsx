@@ -1,5 +1,8 @@
 import { Link } from 'react-router-dom';
 
+const KEYCLOAK_BASE_URL =
+  import.meta.env.VITE_KEYCLOAK_URL || 'https://auth.teehr.local.app.garden';
+
 const cards = [
   {
     title: 'API Keys',
@@ -8,10 +11,11 @@ const cards = [
     buttonLabel: 'Manage API Keys',
   },
   {
-    title: 'TEEHR Keycloak',
-    description: 'Open Keycloak admin tools to manage users, groups, and clients.',
-    to: '/admin/keycloak',
-    buttonLabel: 'Open Keycloak Section',
+    title: 'Keycloak',
+    description: 'Manage users, groups, clients, and realm settings in the Keycloak admin console.',
+    href: `${KEYCLOAK_BASE_URL}/admin/teehr/console/`,
+    buttonLabel: 'Open Keycloak Admin',
+    isExternal: true,
   },
   {
     title: 'Prefect',
@@ -24,7 +28,7 @@ const cards = [
 
 const AdminHome = () => {
   return (
-    <div>
+    <div className="p-3">
       <h4 className="mb-2">Admin Home</h4>
       <p className="text-muted mb-4">
         Use this workspace to manage platform administration tasks. Additional tools will be added over time.
@@ -32,7 +36,7 @@ const AdminHome = () => {
 
       <div className="row g-3">
         {cards.map((card) => (
-          <div key={card.title} className="col-12 col-md-6">
+          <div key={card.title} className="col-12 col-md-6 col-xl-4">
             <div className="card h-100">
               <div className="card-body d-flex flex-column">
                 <h5 className="card-title">{card.title}</h5>

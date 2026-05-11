@@ -4,6 +4,8 @@ metadata:
   name: keycloak
 spec:
   instances: 1
+  startOptimized: false
+  image: ${actions.build.keycloak-theme.outputs.deploymentImageId}
   db:
     vendor: postgres
     host: keycloak-pg

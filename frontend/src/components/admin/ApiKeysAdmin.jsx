@@ -77,7 +77,7 @@ const ApiKeysAdmin = () => {
   };
 
   return (
-    <div>
+    <div className="p-3">
       <h4 className="mb-3">API Keys</h4>
       <Row className="g-4">
         <Col lg={5}>

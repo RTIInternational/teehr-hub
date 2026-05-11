@@ -11,7 +11,10 @@ const Navbar = () => {
     const pathMap = {
       '/retrospective': 'Retrospective Simulations',
       '/forecast': 'Forecast Analysis',
-      '/data': 'Data Management'
+      '/data': 'Data Management',
+      '/admin': 'Admin Page',
+      '/admin/api-keys': 'API Keys',
+      '/admin/keycloak': 'Keycloak Admin',
     };
 
     if (isHome) return null;

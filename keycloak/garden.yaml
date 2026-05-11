@@ -6,6 +6,7 @@ dependencies:
   - deploy.secrets
   - deploy.keycloak-database
   - deploy.keycloak-operator
+  - build.keycloak-theme
 environments:
   - local
 spec:

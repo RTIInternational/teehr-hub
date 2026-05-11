@@ -59,6 +59,8 @@ spec:
             - jupyter-admin
         JupyterHub:
           authenticator_class: generic-oauth
+          redirect_to_server: false
+          default_url: /hub/spawn
           allow_named_servers: true
           named_server_limit_per_user: 5
         Authenticator:
@@ -235,6 +237,8 @@ spec:
             - admin
         JupyterHub:
           authenticator_class: generic-oauth
+          redirect_to_server: false
+          default_url: /hub/spawn
           allow_named_servers: true
           named_server_limit_per_user: 5
         Authenticator:

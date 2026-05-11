@@ -9,6 +9,7 @@ data:
     {
       "realm": "teehr",
       "enabled": true,
+      "loginTheme": "teehr",
       "registrationAllowed": true,
       "loginWithEmailAllowed": true,
       "duplicateEmailsAllowed": false,

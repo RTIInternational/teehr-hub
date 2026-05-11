@@ -72,8 +72,8 @@ class Config:
 
     # Role-based record/page limits
     ROW_LIMIT_ANON = int(os.environ.get("ROW_LIMIT_ANON", "200"))
-    ROW_LIMIT_API_KEY = int(os.environ.get("ROW_LIMIT_API_KEY", "2000"))
-    ROW_LIMIT_BASIC_USER = int(os.environ.get("ROW_LIMIT_BASIC_USER", "5000"))
+    ROW_LIMIT_API_KEY = int(os.environ.get("ROW_LIMIT_API_KEY", "50000"))
+    ROW_LIMIT_BASIC_USER = int(os.environ.get("ROW_LIMIT_BASIC_USER", "50000"))
     ROW_LIMIT_AUTH = int(os.environ.get("ROW_LIMIT_AUTH", "10000"))
 
     # Logging
