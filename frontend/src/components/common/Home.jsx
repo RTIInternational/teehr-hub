@@ -37,11 +37,11 @@ const Home = () => {
     {
       id: 'data-management',
       title: 'Data Management',
-      description: 'Manage and upload simulation and observation datasets.',
+      description: 'Explore contents of the data warehouse spatially and temporally.',
       features: [
-        'Data upload and validation',
-        'Dataset metadata management',
-        'Quality control tools'
+        'Data summaries by model configuration',
+        'Data summaries by location',
+        'Completeness analysis of timeseries data'
       ],
       path: '/data',
       status: 'available',

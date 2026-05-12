@@ -10,7 +10,7 @@
  * - Table rows show: location id, name, configuration names, variable names,
  *   unit names, and value time range.
  */
-import { useEffect, useState, useCallback, useRef } from 'react';
+import { useEffect, useState, useCallback, useRef, useMemo } from 'react';
 import { Spinner, Alert } from 'react-bootstrap';
 import SimpleMapPanel from './SimpleMapPanel';
 import { apiService } from '../../../services/api';
@@ -212,6 +212,24 @@ const LocationsSummaryTab = ({ isActive = true }) => {
 
   const { sortedRows, handleSort, SortIcon } = useSortableTable(rows, 'primary_location_id', sortValue);
 
+  const [locationIdFilter, setLocationIdFilter]  = useState('');
+  const [locationNameFilter, setLocationNameFilter] = useState('');
+
+  const filteredRows = useMemo(() => {
+    let result = sortedRows;
+    if (locationIdFilter.trim()) {
+      const q = locationIdFilter.trim().toLowerCase();
+      result = result.filter((row) => String(row.primary_location_id ?? '').toLowerCase().includes(q));
+    }
+    if (locationNameFilter.trim()) {
+      const q = locationNameFilter.trim().toLowerCase();
+      result = result.filter((row) => String(row.name ?? '').toLowerCase().includes(q));
+    }
+    return result;
+  }, [sortedRows, locationIdFilter, locationNameFilter]);
+
+  const hasActiveFilter = locationIdFilter || locationNameFilter;
+
   // Load tabular items only on mount (no geometry fetch)
   const fetchRows = useCallback((extraFields = []) => {
     setLoading(true);
@@ -394,6 +412,41 @@ const LocationsSummaryTab = ({ isActive = true }) => {
             </div>
           )}
         </div>
+        {/* Filter bar */}
+        <div style={{ flex: '0 0 auto', padding: '4px 8px', borderBottom: '1px solid #dee2e6', display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+          <span style={{ fontSize: '0.8rem', fontWeight: 600, color: '#495057' }}>Filter:</span>
+          <input
+            type="text"
+            className="form-control form-control-sm"
+            placeholder="Location ID…"
+            value={locationIdFilter}
+            onChange={(e) => setLocationIdFilter(e.target.value)}
+            style={{ width: 150 }}
+          />
+          <input
+            type="text"
+            className="form-control form-control-sm"
+            placeholder="Location name…"
+            value={locationNameFilter}
+            onChange={(e) => setLocationNameFilter(e.target.value)}
+            style={{ width: 150 }}
+          />
+          {hasActiveFilter && (
+            <button
+              className="btn btn-sm btn-outline-secondary"
+              onClick={() => { setLocationIdFilter(''); setLocationNameFilter(''); }}
+              style={{ fontSize: '0.8rem' }}
+            >
+              Clear
+            </button>
+          )}
+          {rows.length > 0 && (
+            <span className="text-muted ms-auto" style={{ fontSize: '0.78rem' }}>
+              {filteredRows.length} / {rows.length} rows
+            </span>
+          )}
+        </div>
+
         {loading && (
           <div className="d-flex align-items-center justify-content-center h-100">
             <Spinner animation="border" variant="primary" role="status">
@@ -433,7 +486,7 @@ const LocationsSummaryTab = ({ isActive = true }) => {
                 </tr>
               </thead>
               <tbody>
-                {sortedRows.map((row, i) => (
+                {filteredRows.map((row, i) => (
                   <tr
                     key={i}
                     onClick={() => handleRowClick(row)}

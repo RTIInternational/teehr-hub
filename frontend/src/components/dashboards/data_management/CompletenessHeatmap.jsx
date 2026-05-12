@@ -100,12 +100,12 @@ const CompletenessHeatmap = ({ configurationName, variableName, onHover = null }
           title: `Primary Timeseries Completeness — ${configurationName} / ${variableName}`,
           xaxis: { title: 'Week', tickangle: -45, nticks: 24 },
           yaxis: {
-            title: 'Spatial Aggregate',
+            title: { text: 'HUC6', standoff: 8 },
             showticklabels: false,
             type: 'category',
           },
           autosize: true,
-          margin: { l: 40, b: 80, t: 50, r: 20 },
+          margin: { l: 60, b: 80, t: 50, r: 20 },
         },
         { responsive: true }
       );

@@ -10,7 +10,7 @@
  *   configurations_by_location and shows them as points on the map.
  * - The selected row is highlighted in the table.
  */
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useMemo } from 'react';
 import { Spinner, Alert } from 'react-bootstrap';
 import SimpleMapPanel from './SimpleMapPanel';
 import { apiService } from '../../../services/api';
@@ -59,6 +59,16 @@ const ConfigurationsSummaryTab = ({ isActive = true }) => {
   const [mapLoading, setMapLoading]     = useState(false);
 
   const { sortedRows, handleSort, SortIcon } = useSortableTable(rows, 'configuration_name', sortValue);
+
+  const [filterText, setFilterText] = useState('');
+
+  const filteredRows = useMemo(() => {
+    if (!filterText.trim()) return sortedRows;
+    const q = filterText.trim().toLowerCase();
+    return sortedRows.filter((row) =>
+      String(row.configuration_name ?? '').toLowerCase().includes(q)
+    );
+  }, [sortedRows, filterText]);
 
   // Load summary table on mount
   useEffect(() => {
@@ -141,6 +151,30 @@ const ConfigurationsSummaryTab = ({ isActive = true }) => {
 
       {/* Table — bottom 2/3 */}
       <div style={{ flex: '1 1 0', minHeight: 0, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+
+        {/* Filter bar */}
+        <div style={{ flex: '0 0 auto', padding: '4px 8px', borderBottom: '1px solid #dee2e6', display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+          <span style={{ fontSize: '0.8rem', fontWeight: 600, color: '#495057' }}>Filter:</span>
+          <input
+            type="text"
+            className="form-control form-control-sm"
+            placeholder="Configuration name…"
+            value={filterText}
+            onChange={(e) => setFilterText(e.target.value)}
+            style={{ width: 220 }}
+          />
+          {filterText && (
+            <button className="btn btn-sm btn-outline-secondary" onClick={() => setFilterText('')} style={{ fontSize: '0.8rem' }}>
+              Clear
+            </button>
+          )}
+          {rows.length > 0 && (
+            <span className="text-muted ms-auto" style={{ fontSize: '0.78rem' }}>
+              {filteredRows.length} / {rows.length} rows
+            </span>
+          )}
+        </div>
+
         {loading && (
           <div className="d-flex align-items-center justify-content-center h-100">
             <Spinner animation="border" variant="primary" role="status">
@@ -182,7 +216,7 @@ const ConfigurationsSummaryTab = ({ isActive = true }) => {
                 </tr>
               </thead>
               <tbody>
-                {sortedRows.map((row, i) => {
+                {filteredRows.map((row, i) => {
                   const key = `${row.configuration_name}||${row.variable_name}`;
                   const isSelected = selectedRow === key;
                   return (

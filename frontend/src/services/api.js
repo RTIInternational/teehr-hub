@@ -220,6 +220,14 @@ export const apiService = {
     return apiCall(`/collections/configuration_completeness/items?${params.toString()}`);
   },
 
+  // Get configurations_by_location as GeoJSON FeatureCollection (includes geometry)
+  getConfigurationsByLocationGeojson: (filters = {}) => {
+    const params = new URLSearchParams();
+    if (filters.configuration_name) params.append('configuration_name', filters.configuration_name);
+    if (filters.primary_location_id) params.append('primary_location_id', filters.primary_location_id);
+    return apiCall(`/collections/configurations_by_location/geojson?${params.toString()}`);
+  },
+
   // Get configurations_by_location as tabular items (no binary geometry)
   getConfigurationsByLocationItems: (filters = {}) => {
     const params = new URLSearchParams();
