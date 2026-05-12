@@ -106,7 +106,7 @@ data:
         <p>Only members of the <strong>prefect-admin</strong> group can access this service.</p>
         
         <div class="button-group">
-          <button class="button button-primary" onclick="window.location.href='https://auth.teehr.local.app.garden/realms/teehr/account';">Manage Account</button>
+          <button class="button button-primary" onclick="window.location.href='https://auth.${var.hostname}/realms/teehr/account';">Manage Account</button>
           <button class="button button-secondary" onclick="window.history.back();">Go Back</button>
         </div>
         
@@ -147,9 +147,16 @@ spec:
           - --http-address=0.0.0.0:4180
           - --upstream=http://prefect-server:4200
           - --redirect-url=https://prefect.${var.hostname}/oauth2/callback
-          - --oidc-issuer-url=http://keycloak-service:8080/realms/teehr
+          # OIDC security: issuer verification + signature validation enabled.
+          # External issuer URL for users (tokens valid everywhere).
+          # Internal URLs for service-to-service (no TLS overhead).
+          # Token validation flow:
+          # 1. User redirected to external login: https://auth.${var.hostname}/realms/teehr
+          # 2. oauth2-proxy exchanges code at internal endpoint: http://keycloak-service:8080/...
+          # 3. oauth2-proxy validates token iss matches external URL
+          # 4. oauth2-proxy validates signature against internal JWKS endpoint
+          - --oidc-issuer-url=https://auth.${var.hostname}/realms/teehr
           - --skip-oidc-discovery=true
-          - --insecure-oidc-skip-issuer-verification=true
           - --login-url=https://auth.${var.hostname}/realms/teehr/protocol/openid-connect/auth
           - --redeem-url=http://keycloak-service:8080/realms/teehr/protocol/openid-connect/token
           - --oidc-jwks-url=http://keycloak-service:8080/realms/teehr/protocol/openid-connect/certs
