@@ -253,7 +253,7 @@ async def timeout_middleware(request: Request, call_next):
         )
     except Exception as e:
         if isinstance(e, HTTPException):
-            return JSONResponse(status_code=e.status_code, content={"detail": e.detail})
+            raise
         logger.error(f"REQUEST ERROR: {request.method} {request.url.path} - {str(e)}")
         return JSONResponse(
             status_code=500, content={"detail": f"Internal server error: {str(e)}"}
