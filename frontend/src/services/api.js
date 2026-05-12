@@ -219,6 +219,35 @@ export const apiService = {
     if (filters.offset) params.append('offset', filters.offset);
     return apiCall(`/collections/configuration_completeness/items?${params.toString()}`);
   },
+
+  // Get configurations_by_location as tabular items (no binary geometry)
+  getConfigurationsByLocationItems: (filters = {}) => {
+    const params = new URLSearchParams();
+    if (filters.configuration_name) params.append('configuration_name', filters.configuration_name);
+    if (filters.limit) params.append('limit', filters.limit);
+    if (filters.offset) params.append('offset', filters.offset);
+    if (Array.isArray(filters.extra_fields)) {
+      filters.extra_fields.forEach((f) => params.append('extra_fields', f));
+    }
+    return apiCall(`/collections/configurations_by_location/items?${params.toString()}`);
+  },
+
+  // Get a single location by id from the locations table
+  // Returns a GeoJSON FeatureCollection with the matching feature
+  getLocationById: (id) => {
+    const params = new URLSearchParams();
+    params.append('id', id);
+    params.append('limit', 1);
+    return apiCall(`/collections/locations/items?${params.toString()}`);
+  },
+
+  // Get configurations_by_location row for a specific primary_location_id
+  getConfigurationsByLocationForId: (primaryLocationId) => {
+    const params = new URLSearchParams();
+    params.append('primary_location_id', primaryLocationId);
+    params.append('limit', 1);
+    return apiCall(`/collections/configurations_by_location/items?${params.toString()}`);
+  },
 };
 
 export default apiService;
