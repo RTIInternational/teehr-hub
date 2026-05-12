@@ -9,7 +9,13 @@ fields.
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import JSONResponse
 
-from ..database import execute_query, get_trino_connection, sanitize_string
+from ..database import (
+    execute_query,
+    get_trino_connection,
+    sanitize_string,
+    trino_catalog,
+    trino_schema,
+)
 
 router = APIRouter()
 
@@ -306,16 +312,16 @@ def get_metrics_table_queryables(table_name: str) -> dict:
     fields.
     """
     try:
-        conn = get_trino_connection()
-        cur = conn.cursor()
+        with get_trino_connection() as conn:
+            cur = conn.cursor()
 
-        # Get table properties from Iceberg metadata
-        query = f"""
-            SELECT key, value FROM "{table_name}$properties"
-            WHERE key IN ('metrics', 'group_by', 'description')
-        """
-        cur.execute(query)
-        results = cur.fetchall()
+            # Get table properties from Iceberg metadata
+            query = f"""
+                SELECT key, value FROM "{table_name}$properties"
+                WHERE key IN ('metrics', 'group_by', 'description')
+            """
+            cur.execute(query)
+            results = cur.fetchall()
 
         properties_meta = {}
         for key, value in results:
@@ -435,15 +441,10 @@ async def get_queryable_values(collection_id: str, property_name: str):
         raise HTTPException(status_code=400, detail="Invalid collection or property name")
 
     try:
-        # Determine catalog and schema from the configured Trino connection
-        conn = get_trino_connection()
-        catalog = getattr(conn, "catalog", "iceberg")
-        schema = getattr(conn, "schema", "teehr")
-
         # Query distinct values
         query = f"""
             SELECT DISTINCT {sanitized_property}
-            FROM {catalog}.{schema}.{sanitized_collection}
+            FROM {trino_catalog}.{trino_schema}.{sanitized_collection}
             WHERE {sanitized_property} IS NOT NULL
             ORDER BY {sanitized_property}
         """
