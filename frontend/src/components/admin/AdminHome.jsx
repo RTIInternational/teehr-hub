@@ -2,6 +2,8 @@ import { Link } from 'react-router-dom';
 
 const KEYCLOAK_BASE_URL =
   import.meta.env.VITE_KEYCLOAK_URL || 'https://auth.teehr.local.app.garden';
+const PREFECT_BASE_URL =
+  import.meta.env.VITE_PREFECT_URL || 'https://prefect.teehr.local.app.garden';
 
 const cards = [
   {
@@ -20,7 +22,7 @@ const cards = [
   {
     title: 'Prefect',
     description: 'Access Prefect admin console to manage workflows and deployments.',
-    href: `https://prefect.${window.location.hostname.replace('dashboards.', '').replace('api.', '')}`,
+    href: PREFECT_BASE_URL,
     buttonLabel: 'Open Prefect',
     isExternal: true,
   },

@@ -39,6 +39,11 @@ spec:
             configMapKeyRef:
               name: teehr-frontend-config
               key: VITE_KEYCLOAK_URL
+        - name: VITE_PREFECT_URL
+          valueFrom:
+            configMapKeyRef:
+              name: teehr-frontend-config
+              key: VITE_PREFECT_URL
         - name: VITE_KEYCLOAK_REALM
           valueFrom:
             configMapKeyRef:
