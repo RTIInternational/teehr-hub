@@ -34,7 +34,7 @@ class Config:
     # Authentication settings
     KEYCLOAK_ISSUER_URL = os.environ.get(
         "KEYCLOAK_ISSUER_URL",
-        "http://auth.teehr.local.app.garden/realms/teehr",
+        "https://auth.teehr.local.app.garden/realms/teehr",
     )
     KEYCLOAK_JWKS_URL = os.environ.get("KEYCLOAK_JWKS_URL", "")
     KEYCLOAK_AUDIENCE = os.environ.get("KEYCLOAK_AUDIENCE", "teehr-api")
