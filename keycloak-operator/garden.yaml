@@ -6,6 +6,7 @@ dependencies:
   - deploy.olm
 environments:
   - local
+  - remote
 spec:
   manifestTemplates:
     - ./manifests/operatorgroup.yaml.tpl

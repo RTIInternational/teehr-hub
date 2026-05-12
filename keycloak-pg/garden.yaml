@@ -6,6 +6,7 @@ dependencies:
   - deploy.secrets
 environments:
   - local
+  - remote
 spec:
   manifestFiles:
   - ./manifests/keycloak-pg.yaml

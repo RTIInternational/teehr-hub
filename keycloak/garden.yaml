@@ -9,6 +9,7 @@ dependencies:
   - build.keycloak-theme
 environments:
   - local
+  - remote
 spec:
   manifestTemplates:
     - ./manifests/keycloak.yaml.tpl

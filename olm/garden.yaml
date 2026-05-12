@@ -4,6 +4,7 @@ name: olm-crds
 description: Install OLM CRDs for local kind
 environments:
   - local
+  - remote
 spec:
   deployCommand:
     - kubectl
@@ -20,6 +21,7 @@ dependencies:
   - deploy.olm-crds
 environments:
   - local
+  - remote
 spec:
   deployCommand:
     - kubectl
