@@ -204,23 +204,21 @@ const LocationsSummaryTab = ({ isActive = true }) => {
 
   const { sortedRows, handleSort, SortIcon } = useSortableTable(rows, 'location_id', sortValue);
 
-  const [locationIdFilter, setLocationIdFilter]  = useState('');
-  const [locationNameFilter, setLocationNameFilter] = useState('');
+  const [filterColumn, setFilterColumn] = useState('');
+  const [filterText, setFilterText] = useState('');
 
   const filteredRows = useMemo(() => {
-    let result = sortedRows;
-    if (locationIdFilter.trim()) {
-      const q = locationIdFilter.trim().toLowerCase();
-      result = result.filter((row) => String(row.location_id ?? '').toLowerCase().includes(q));
+    if (!filterText.trim()) return sortedRows;
+    const q = filterText.trim().toLowerCase();
+    if (filterColumn) {
+      return sortedRows.filter((row) => String(row[filterColumn] ?? '').toLowerCase().includes(q));
     }
-    if (locationNameFilter.trim()) {
-      const q = locationNameFilter.trim().toLowerCase();
-      result = result.filter((row) => String(row.name ?? '').toLowerCase().includes(q));
-    }
-    return result;
-  }, [sortedRows, locationIdFilter, locationNameFilter]);
+    return sortedRows.filter((row) =>
+      activeColumns.some((col) => String(row[col.key] ?? '').toLowerCase().includes(q))
+    );
+  }, [sortedRows, filterText, filterColumn, activeColumns]);
 
-  const hasActiveFilter = locationIdFilter || locationNameFilter;
+  const hasActiveFilter = !!filterText;
 
   // Load tabular items only on mount (no geometry fetch)
   const fetchRows = useCallback((extraFields = []) => {
@@ -501,26 +499,33 @@ const LocationsSummaryTab = ({ isActive = true }) => {
         {/* Filter bar */}
         <div style={{ flex: '0 0 auto', padding: '4px 8px', borderBottom: '1px solid #dee2e6', display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
           <span style={{ fontSize: '0.8rem', fontWeight: 600, color: '#495057' }}>Filter:</span>
+          <select
+            className="form-select form-select-sm"
+            value={filterColumn}
+            onChange={(e) => { setFilterColumn(e.target.value); setFilterText(''); }}
+            style={{ width: 160 }}
+          >
+            <option value="">— All columns —</option>
+            {activeColumns.map((col) => (
+              <option key={col.key} value={col.key}>{col.label}</option>
+            ))}
+          </select>
           <input
             type="text"
             className="form-control form-control-sm"
-            placeholder="Location ID…"
-            value={locationIdFilter}
-            onChange={(e) => setLocationIdFilter(e.target.value)}
-            style={{ width: 150 }}
-          />
-          <input
-            type="text"
-            className="form-control form-control-sm"
-            placeholder="Location name…"
-            value={locationNameFilter}
-            onChange={(e) => setLocationNameFilter(e.target.value)}
-            style={{ width: 150 }}
+            placeholder={
+              filterColumn
+                ? `Filter by ${activeColumns.find((c) => c.key === filterColumn)?.label ?? filterColumn}…`
+                : 'Search all columns…'
+            }
+            value={filterText}
+            onChange={(e) => setFilterText(e.target.value)}
+            style={{ width: 220 }}
           />
           {hasActiveFilter && (
             <button
               className="btn btn-sm btn-outline-secondary"
-              onClick={() => { setLocationIdFilter(''); setLocationNameFilter(''); }}
+              onClick={() => { setFilterText(''); setFilterColumn(''); }}
               style={{ fontSize: '0.8rem' }}
             >
               Clear
