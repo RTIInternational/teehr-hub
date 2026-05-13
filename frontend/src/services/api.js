@@ -224,6 +224,7 @@ export const apiService = {
   getConfigurationsByLocationGeojson: (filters = {}) => {
     const params = new URLSearchParams();
     if (filters.configuration_name) params.append('configuration_name', filters.configuration_name);
+    if (filters.variable_name) params.append('variable_name', filters.variable_name);
     if (filters.primary_location_id) params.append('primary_location_id', filters.primary_location_id);
     return apiCall(`/collections/configurations_by_location/geojson?${params.toString()}`);
   },

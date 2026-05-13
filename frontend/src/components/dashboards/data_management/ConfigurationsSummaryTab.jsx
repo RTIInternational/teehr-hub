@@ -106,7 +106,7 @@ const ConfigurationsSummaryTab = ({ isActive = true }) => {
     setSelectedRow(key);
     setMapLoading(true);
 
-    apiService.getConfigurationsByLocationGeojson({ configuration_name: row.configuration_name })
+    apiService.getConfigurationsByLocationGeojson({ configuration_name: row.configuration_name, variable_name: row.variable_name })
       .then((geojson) => {
         setMapLocations(geojson);
       })

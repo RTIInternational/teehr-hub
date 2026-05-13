@@ -692,6 +692,7 @@ async def get_configurations_by_location_items(
 async def get_configurations_by_location_geojson(
     request: Request,
     configuration_name: str | None = Query(None, description="Filter by configuration name"),
+    variable_name: str | None = Query(None, description="Filter by variable name"),
     primary_location_id: str | None = Query(None, description="Filter by primary location ID"),
 ):
     """Get configurations by location as a GeoJSON FeatureCollection.
@@ -707,6 +708,9 @@ async def get_configurations_by_location_geojson(
         if configuration_name:
             safe_name = sanitize_string(configuration_name)
             where_conditions.append(f"CONTAINS(configuration_names, '{safe_name}')")
+        if variable_name:
+            safe_var = sanitize_string(variable_name)
+            where_conditions.append(f"CONTAINS(variable_names, '{safe_var}')")
         if primary_location_id:
             safe_id = sanitize_string(primary_location_id)
             where_conditions.append(f"primary_location_id = '{safe_id}'")
