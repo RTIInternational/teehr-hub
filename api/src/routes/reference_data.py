@@ -581,6 +581,7 @@ async def get_configurations_by_location_items(
     request: Request,
     configuration_name: str | None = Query(None, description="Filter by configuration name"),
     primary_location_id: str | None = Query(None, description="Filter by primary location ID"),
+    location_id: str | None = Query(None, description="Filter by location ID (alias for primary_location_id)"),
     extra_fields: list[str] | None = Query(None, description="Additional field names to include"),
     limit: int | None = Query(None, ge=1, description="Maximum number of items to return"),
     offset: int | None = Query(None, ge=0, description="Starting index for pagination"),
@@ -615,9 +616,12 @@ async def get_configurations_by_location_items(
         where_conditions = []
         if configuration_name:
             safe_name = sanitize_string(configuration_name)
-            where_conditions.append(f"CONTAINS(configuration_names, '{safe_name}')")
-        if primary_location_id:
-            safe_id = sanitize_string(primary_location_id)
+            where_conditions.append(f"configuration_name = '{safe_name}'")
+
+        # Support both location_id (newer) and primary_location_id (legacy) parameters
+        filter_location_id = location_id or primary_location_id
+        if filter_location_id:
+            safe_id = sanitize_string(filter_location_id)
             where_conditions.append(f"primary_location_id = '{safe_id}'")
 
         where_clause = ("WHERE " + " AND ".join(where_conditions)) if where_conditions else ""
@@ -630,9 +634,9 @@ async def get_configurations_by_location_items(
 
         # Base fields always returned
         base_fields = [
-            "primary_location_id", "name", "configuration_names", "variable_names",
-            "unit_names", "state", "drainage_area_km2", "slope_mean_percent",
-            "min_value_time", "max_value_time",
+            "primary_location_id", "configuration_name", "variable_name",
+            "unit_name", "min_reference_time", "max_reference_time",
+            "min_value_time", "max_value_time", "num_members",
         ]
 
         # Validated extra fields requested by the client
@@ -650,6 +654,7 @@ async def get_configurations_by_location_items(
             {pagination}
         """
 
+        print(f"[DEBUG] Configurations by location query: {query}")
         query_start = time.time()
         df = execute_query(query)
         print(f"Configurations by location items query: {time.time() - query_start:.3f}s")
@@ -658,12 +663,6 @@ async def get_configurations_by_location_items(
                                       "min_value_time", "max_value_time"] if f in df.columns]
         if not df.empty:
             df = prepare_for_serialization(df, datetime_columns=datetime_cols)
-            # Ensure array columns are native Python lists for JSON serialization
-            for col in ["configuration_names", "variable_names", "unit_names"]:
-                if col in df.columns:
-                    df[col] = df[col].apply(
-                        lambda v: list(v) if v is not None and not (isinstance(v, float)) else []
-                    )
         items = df.to_dict(orient="records") if not df.empty else []
 
         response = {
@@ -682,9 +681,200 @@ async def get_configurations_by_location_items(
         return JSONResponse(content=response, media_type="application/json")
 
     except Exception as e:
+        import traceback
+        error_msg = str(e)
+        tb = traceback.format_exc()
+        print(f"[ERROR] Failed to load configurations_by_location:")
+        print(f"Error message: {error_msg}")
+        print(f"Traceback:\n{tb}")
         raise HTTPException(
             status_code=500,
-            detail=f"Failed to load configurations_by_location: {str(e)}",
+            detail=f"Failed to load configurations_by_location: {error_msg}",
+        ) from e
+
+
+@router.get("/collections/configurations_by_location/expanded")
+async def get_configurations_by_location_expanded(
+    request: Request,
+    location_id: str | None = Query(None, description="Filter by location ID"),
+):
+    """Get configurations expanded into individual rows (one per config/variable/unit combo).
+
+    Queries the base row for the given location from configurations_by_location,
+    then expands the configuration_names, variable_names, and unit_names arrays
+    into individual rows in Python.
+    """
+    try:
+        if not location_id:
+            raise ValueError("location_id parameter is required")
+
+        safe_id = sanitize_string(location_id)
+
+        # Each row is already one configuration/variable/unit — no expansion needed
+        query = f"""
+            SELECT
+                primary_location_id,
+                configuration_name,
+                variable_name,
+                unit_name,
+                min_reference_time,
+                max_reference_time,
+                min_value_time,
+                max_value_time,
+                num_members
+            FROM {trino_catalog}.{trino_schema}.configurations_by_location
+            WHERE primary_location_id = '{safe_id}'
+            ORDER BY configuration_name, variable_name, unit_name
+        """
+
+        print(f"[DEBUG] Expanded configurations query: {query}")
+        query_start = time.time()
+        df = execute_query(query)
+        print(f"Configurations by location expanded query: {time.time() - query_start:.3f}s")
+
+        datetime_cols = [c for c in ["min_reference_time", "max_reference_time",
+                                     "min_value_time", "max_value_time"] if c in df.columns]
+        if not df.empty:
+            df = prepare_for_serialization(df, datetime_columns=datetime_cols)
+            df = df.rename(columns={"primary_location_id": "location_id"})
+
+        items = df.to_dict(orient="records") if not df.empty else []
+        response = {
+            "items": items,
+            "numberReturned": len(items),
+            "links": [
+                {"href": str(request.url), "rel": "self", "type": "application/json"},
+                {
+                    "href": "/collections/configurations_by_location",
+                    "rel": "collection",
+                    "type": "application/json",
+                },
+            ],
+        }
+
+        return JSONResponse(content=response, media_type="application/json")
+
+    except Exception as e:
+        import traceback
+        error_msg = str(e)
+        tb = traceback.format_exc()
+        print(f"[ERROR] Failed to load expanded configurations:")
+        print(f"Error message: {error_msg}")
+        print(f"Traceback:\n{tb}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to load expanded configurations: {error_msg}",
+        ) from e
+
+
+@router.get("/collections/configurations_by_location/location-ids")
+async def get_configurations_by_location_ids(
+    configuration_name: str = Query(..., description="Filter by configuration name"),
+    variable_name: str | None = Query(None, description="Filter by variable name"),
+):
+    """Return a distinct list of primary_location_id values for the given configuration and variable."""
+    try:
+        safe_name = sanitize_string(configuration_name)
+        where_conditions = [f"configuration_name = '{safe_name}'"]
+        if variable_name:
+            safe_var = sanitize_string(variable_name)
+            where_conditions.append(f"variable_name = '{safe_var}'")
+        where_clause = " AND ".join(where_conditions)
+
+        query = f"""
+            SELECT DISTINCT primary_location_id
+            FROM {trino_catalog}.{trino_schema}.configurations_by_location
+            WHERE {where_clause}
+            ORDER BY primary_location_id
+        """
+
+        query_start = time.time()
+        df = execute_query(query)
+        print(f"Configurations by location IDs query: {time.time() - query_start:.3f}s, {len(df)} rows")
+
+        return JSONResponse(content={"location_ids": df["primary_location_id"].tolist()})
+
+    except Exception as e:
+        error_msg = str(e)
+        tb = traceback.format_exc()
+        print(f"[ERROR] Failed to load configuration location IDs:")
+        print(f"Error message: {error_msg}")
+        print(f"Traceback:\n{tb}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to load configuration location IDs: {error_msg}",
+        ) from e
+
+
+@router.get("/collections/configurations_by_location/locations-geojson")
+async def get_configurations_by_location_locations_geojson(
+    configuration_name: str = Query(..., description="Filter by configuration name"),
+    variable_name: str | None = Query(None, description="Filter by variable name"),
+):
+    """Return a GeoJSON FeatureCollection of locations for a given configuration + variable.
+
+    Joins configurations_by_location with the locations table to obtain geometry,
+    so all matching locations are returned regardless of count (no URL-length limits).
+    """
+    try:
+        safe_name = sanitize_string(configuration_name)
+        where_conditions = [f"cbl.configuration_name = '{safe_name}'"]
+        if variable_name:
+            safe_var = sanitize_string(variable_name)
+            where_conditions.append(f"cbl.variable_name = '{safe_var}'")
+        where_clause = " AND ".join(where_conditions)
+
+        query = f"""
+            SELECT
+                l.id AS primary_location_id,
+                l.name,
+                round(ST_X(ST_GeomFromBinary(l.geometry)), 8) AS lon,
+                round(ST_Y(ST_GeomFromBinary(l.geometry)), 8) AS lat
+            FROM {trino_catalog}.{trino_schema}.locations l
+            WHERE l.geometry IS NOT NULL
+              AND l.id IN (
+                  SELECT DISTINCT cbl.primary_location_id
+                  FROM {trino_catalog}.{trino_schema}.configurations_by_location cbl
+                  WHERE {where_clause}
+              )
+            ORDER BY l.id
+        """
+
+        query_start = time.time()
+        df = execute_query(query)
+        print(f"Configuration locations-geojson query: {time.time() - query_start:.3f}s, {len(df)} rows")
+
+        features = []
+        for row in df.itertuples(index=False):
+            if row.lon is None or row.lat is None:
+                continue
+            features.append({
+                "type": "Feature",
+                "id": row.primary_location_id,
+                "geometry": {"type": "Point", "coordinates": [row.lon, row.lat]},
+                "properties": {
+                    "primary_location_id": row.primary_location_id,
+                    "name": row.name,
+                },
+            })
+
+        return JSONResponse(
+            content={"type": "FeatureCollection", "features": features},
+            headers={
+                "Content-Type": "application/geo+json",
+                "Content-Crs": "<http://www.opengis.net/def/crs/OGC/1.3/CRS84>",
+            },
+        )
+
+    except Exception as e:
+        error_msg = str(e)
+        tb = traceback.format_exc()
+        print(f"[ERROR] Failed to load configuration locations geojson:")
+        print(f"Error message: {error_msg}")
+        print(f"Traceback:\n{tb}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to load configuration locations geojson: {error_msg}",
         ) from e
 
 
@@ -707,10 +897,10 @@ async def get_configurations_by_location_geojson(
         where_conditions = ["geometry IS NOT NULL"]
         if configuration_name:
             safe_name = sanitize_string(configuration_name)
-            where_conditions.append(f"CONTAINS(configuration_names, '{safe_name}')")
+            where_conditions.append(f"configuration_name = '{safe_name}'")
         if variable_name:
             safe_var = sanitize_string(variable_name)
-            where_conditions.append(f"CONTAINS(variable_names, '{safe_var}')")
+            where_conditions.append(f"variable_name = '{safe_var}'")
         if primary_location_id:
             safe_id = sanitize_string(primary_location_id)
             where_conditions.append(f"primary_location_id = '{safe_id}'")
@@ -720,10 +910,9 @@ async def get_configurations_by_location_geojson(
         query = f"""
             SELECT
                 primary_location_id,
-                name,
-                array_join(configuration_names, ', ') AS configuration_names,
-                array_join(variable_names, ', ') AS variable_names,
-                array_join(unit_names, ', ') AS unit_names,
+                configuration_name,
+                variable_name,
+                unit_name,
                 round(ST_X(ST_GeomFromBinary(geometry)), 8) AS lon,
                 round(ST_Y(ST_GeomFromBinary(geometry)), 8) AS lat
             FROM {trino_catalog}.{trino_schema}.configurations_by_location
@@ -748,10 +937,9 @@ async def get_configurations_by_location_geojson(
                 "geometry": {"type": "Point", "coordinates": [lon, lat]},
                 "properties": {
                     "primary_location_id": row.primary_location_id,
-                    "name": row.name,
-                    "configuration_names": row.configuration_names,
-                    "variable_names": row.variable_names,
-                    "unit_names": row.unit_names,
+                    "configuration_name": row.configuration_name,
+                    "variable_name": row.variable_name,
+                    "unit_name": row.unit_name,
                 },
             })
 
@@ -809,4 +997,102 @@ async def get_completeness_geometries(
         raise HTTPException(
             status_code=500,
             detail=f"Failed to load completeness geometries: {str(e)}",
+        ) from e
+
+
+@router.get("/collections/locations_with_attributes/items")
+async def get_locations_with_attributes_items(
+    request: Request,
+    location_id: str | None = Query(None, description="Filter by location ID"),
+    limit: int | None = Query(None, ge=1, description="Maximum number of items to return"),
+    offset: int | None = Query(None, ge=0, description="Starting index for pagination"),
+    extra_fields: list[str] | None = Query(None, description="Additional field names to include"),
+):
+    """Get locations with attributes as tabular items (no geometry).
+
+    Returns one row per location with attributes pivoted as columns including
+    state_name, drainage_area, slope_mean_percent, rfc, and other location
+    attributes.
+    """
+    # Allowlist of all valid optional fields to prevent SQL injection
+    ALLOWED_EXTRA_FIELDS = {
+        'state', 'drainage_area_km2', 'slope_mean_percent', 'site_type_code',
+        'state_name', 'county', 'county_name', 'nws_region', 'wfo', 'rfc',
+        'rfc_action_flow_cms', 'rfc_minor_flow_cms', 'rfc_moderate_flow_cms',
+        'rfc_major_flow_cms', 'nwm30_calb', 'disturbance_index', 'gagesII_class',
+        'huc2', 'huc4', 'huc6', 'huc8', 'huc10', 'huc12', 'drainage_area',
+        'elev_mean_m', 'relief_ratio', 'stream_order', 'sinuousity',
+        'topo_wetness_index', 'runoff_ratio', 'runoff_mean_mm', 'bfi_mean',
+        'horton_percent', 'pcpn_mean_mm', 'pcpn_percent_snow', 'temp_mean_c',
+        'q10_cms', 'q50_cms', 'q90_cms', 'max_record', 'first_year', 'last_year',
+        'season_index', 'percent_imperv', 'percent_irrig', 'percent_developed',
+        'percent_canals', 'ndams', 'ndams_major', 'ndams_major_100km2',
+        'ndams_100km2', 'dam_dist_nearest_km', 'storage_max_Mlkm2',
+        'storage_normal_Mlkm2', 'withdrawals_Mlkm2', 'aggecoregion', 'ecoregion_L2',
+        'epa_ecoregion_l1', 'epa_ecoregion_l2', 'iana_timezone', 'timezone',
+    }
+
+    try:
+        where_conditions = []
+        if location_id:
+            safe_id = sanitize_string(location_id)
+            where_conditions.append(f"location_id = '{safe_id}'")
+
+        where_clause = ("WHERE " + " AND ".join(where_conditions)) if where_conditions else ""
+
+        pagination = ""
+        if offset is not None:
+            pagination += f" OFFSET {offset}"
+        if limit is not None:
+            pagination += f" LIMIT {limit}"
+
+        # Base fields always returned
+        base_fields = [
+            "location_id", "name", "state_name", "drainage_area",
+            "slope_mean_percent", "rfc",
+        ]
+
+        # Validated extra fields requested by the client
+        safe_extras = [f for f in (extra_fields or []) if f in ALLOWED_EXTRA_FIELDS]
+        # Deduplicate while preserving order
+        all_fields = list(dict.fromkeys(base_fields + safe_extras))
+        select_clause = ",\n                ".join(all_fields)
+
+        query = f"""
+            SELECT
+                {select_clause}
+            FROM {trino_catalog}.{trino_schema}.locations_with_attributes
+            {where_clause}
+            ORDER BY location_id
+            {pagination}
+        """
+
+        query_start = time.time()
+        df = execute_query(query)
+        print(f"Locations with attributes items query: {time.time() - query_start:.3f}s")
+
+        if not df.empty:
+            df = prepare_for_serialization(df, datetime_columns=[])
+
+        items = df.to_dict(orient="records") if not df.empty else []
+
+        response = {
+            "items": items,
+            "numberReturned": len(items),
+            "links": [
+                {"href": str(request.url), "rel": "self", "type": "application/json"},
+                {
+                    "href": "/collections/locations_with_attributes",
+                    "rel": "collection",
+                    "type": "application/json",
+                },
+            ],
+        }
+
+        return JSONResponse(content=response, media_type="application/json")
+
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to load locations_with_attributes: {str(e)}",
         ) from e

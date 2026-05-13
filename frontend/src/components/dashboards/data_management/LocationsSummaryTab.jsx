@@ -5,10 +5,9 @@
  *
  * Behaviour
  * ---------
- * - Loads tabular rows from configurations_by_location on mount.
+ * - Loads tabular rows from locations_with_attributes on mount.
  * - Clicking a table row plots that single location as a point on the map.
- * - Table rows show: location id, name, configuration names, variable names,
- *   unit names, and value time range.
+ * - Table rows show: location id, name, and various location attributes.
  */
 import { useEffect, useState, useCallback, useRef, useMemo } from 'react';
 import { Spinner, Alert } from 'react-bootstrap';
@@ -24,7 +23,6 @@ const fmt = (val) => {
 
 // Returns a raw sortable value for a column key
 const sortValue = (row, key) => {
-  if (key === 'min_value_time' || key === 'max_value_time') return row[key] ?? '';
   return String(row[key] ?? '').toLowerCase();
 };
 
@@ -39,13 +37,12 @@ const parseArrayProp = (val) => {
 
 // Default columns always shown
 const DEFAULT_COLUMNS = [
-  { key: 'primary_location_id', label: 'Location ID' },
-  { key: 'name',                label: 'Name' },
-  { key: 'state',               label: 'State' },
-  { key: 'drainage_area_km2',   label: 'Drainage Area (km²)' },
-  { key: 'slope_mean_percent',  label: 'Mean Slope (%)' },
-  { key: 'min_value_time',      label: 'Value Time Min' },
-  { key: 'max_value_time',      label: 'Value Time Max' },
+  { key: 'location_id',        label: 'Location ID' },
+  { key: 'name',               label: 'Name' },
+  { key: 'state_name',         label: 'State' },
+  { key: 'drainage_area',      label: 'Drainage Area' },
+  { key: 'slope_mean_percent', label: 'Mean Slope (%)' },
+  { key: 'rfc',                label: 'RFC' },
 ];
 
 // All optional columns the user can add
@@ -122,24 +119,12 @@ const OPTIONAL_COLUMNS = [
 
 // Popup content for map hover
 const makePopupHTML = (props) => {
-  const cfgNames = [...parseArrayProp(props.configuration_names)].sort((a, b) => a.localeCompare(b));
-  const varNames  = [...parseArrayProp(props.variable_names)].sort((a, b) => a.localeCompare(b));
-  const unitNames = [...parseArrayProp(props.unit_names)].sort((a, b) => a.localeCompare(b));
-
-  const toLines = (arr) => arr.length
-    ? arr.map((n) => `<div style="padding-left:8px;">${n}</div>`).join('')
-    : '<div style="padding-left:8px;">—</div>';
-
   return `
     <div style="padding:6px 10px;font-size:0.83rem;line-height:1.5;max-height:260px;overflow-y:auto;">
       <div style="font-weight:600;margin-bottom:2px;">${props.name || '—'}</div>
-      <div><strong>ID:</strong> ${props.primary_location_id || '—'}</div>
-      <div><strong>Configurations:</strong></div>
-      ${toLines(cfgNames)}
-      <div style="margin-top:4px;"><strong>Variables:</strong></div>
-      ${toLines(varNames)}
-      <div style="margin-top:4px;"><strong>Units:</strong></div>
-      ${toLines(unitNames)}
+      <div><strong>ID:</strong> ${props.location_id || '—'}</div>
+      ${props.state_name ? `<div><strong>State:</strong> ${props.state_name}</div>` : ''}
+      ${props.rfc ? `<div><strong>RFC:</strong> ${props.rfc}</div>` : ''}
     </div>
   `;
 };
@@ -154,6 +139,13 @@ const LocationsSummaryTab = ({ isActive = true }) => {
   const [loading, setLoading]           = useState(false);
   const [error, setError]               = useState(null);
   const [selectedId, setSelectedId]     = useState(null);
+
+  // Side panel state for configurations
+  const [sidePanelOpen, setSidePanelOpen] = useState(false);
+  const [sidePanelLocationId, setSidePanelLocationId] = useState(null);
+  const [sidePanelConfigs, setSidePanelConfigs] = useState([]);
+  const [sidePanelLoading, setSidePanelLoading] = useState(false);
+  const [sidePanelError, setSidePanelError] = useState(null);
 
   // Column picker state
   const [activeColumns, setActiveColumns]   = useState(DEFAULT_COLUMNS);
@@ -192,7 +184,7 @@ const LocationsSummaryTab = ({ isActive = true }) => {
       .map((c) => c.key);
     setLoading(true);
     setError(null);
-    apiService.getConfigurationsByLocationItems({ extra_fields: extraKeys })
+    apiService.getLocationsWithAttributesItems({ extra_fields: extraKeys })
       .then((itemsData) => {
         const items = Array.isArray(itemsData)
           ? itemsData
@@ -210,7 +202,7 @@ const LocationsSummaryTab = ({ isActive = true }) => {
   // Already-added optional keys (to show as added in the picker)
   const addedOptionalKeys = new Set(activeColumns.map((c) => c.key));
 
-  const { sortedRows, handleSort, SortIcon } = useSortableTable(rows, 'primary_location_id', sortValue);
+  const { sortedRows, handleSort, SortIcon } = useSortableTable(rows, 'location_id', sortValue);
 
   const [locationIdFilter, setLocationIdFilter]  = useState('');
   const [locationNameFilter, setLocationNameFilter] = useState('');
@@ -219,7 +211,7 @@ const LocationsSummaryTab = ({ isActive = true }) => {
     let result = sortedRows;
     if (locationIdFilter.trim()) {
       const q = locationIdFilter.trim().toLowerCase();
-      result = result.filter((row) => String(row.primary_location_id ?? '').toLowerCase().includes(q));
+      result = result.filter((row) => String(row.location_id ?? '').toLowerCase().includes(q));
     }
     if (locationNameFilter.trim()) {
       const q = locationNameFilter.trim().toLowerCase();
@@ -234,7 +226,7 @@ const LocationsSummaryTab = ({ isActive = true }) => {
   const fetchRows = useCallback((extraFields = []) => {
     setLoading(true);
     setError(null);
-    apiService.getConfigurationsByLocationItems({ extra_fields: extraFields })
+    apiService.getLocationsWithAttributesItems({ extra_fields: extraFields })
       .then((itemsData) => {
         const items = Array.isArray(itemsData)
           ? itemsData
@@ -250,7 +242,7 @@ const LocationsSummaryTab = ({ isActive = true }) => {
   // On row click: fetch geometry from the locations table and full row data from
   // configurations_by_location in parallel, then merge for the map popup.
   const handleRowClick = useCallback((row) => {
-    if (selectedId === row.primary_location_id) {
+    if (selectedId === row.location_id) {
       setSelectedId(null);
       setGeojson(null);
       setBasinGeojson(null);
@@ -258,34 +250,29 @@ const LocationsSummaryTab = ({ isActive = true }) => {
       setNoGeometry(false);
       return;
     }
-    setSelectedId(row.primary_location_id);
+    setSelectedId(row.location_id);
     setBasinChecked(false);
     setNoGeometry(false);
-    const basinId = row.primary_location_id.replace(/^usgs-/, 'usgsbasin-');
+    const basinId = row.location_id.replace(/^usgs-/, 'usgsbasin-');
     Promise.all([
-      apiService.getLocationById(row.primary_location_id),
-      apiService.getConfigurationsByLocationForId(row.primary_location_id),
+      apiService.getLocationById(row.location_id),
       apiService.getLocationById(basinId).catch(() => null),
     ])
-      .then(([locationData, cblData, basinData]) => {
+      .then(([locationData, basinData]) => {
         const feature = locationData?.features?.[0];
         if (!feature) {
           setNoGeometry(true);
           setBasinChecked(true);
           return;
         }
-        const cblRow = Array.isArray(cblData?.items) ? cblData.items[0] : null;
         const merged = {
           type: 'FeatureCollection',
           features: [{
             ...feature,
             properties: {
               ...feature.properties,
-              primary_location_id: row.primary_location_id,
-              name: cblRow?.name ?? row.name,
-              configuration_names: cblRow?.configuration_names ?? row.configuration_names,
-              variable_names: cblRow?.variable_names ?? row.variable_names,
-              unit_names: cblRow?.unit_names ?? row.unit_names,
+              location_id: row.location_id,
+              name: row.name,
             },
           }],
         };
@@ -297,31 +284,130 @@ const LocationsSummaryTab = ({ isActive = true }) => {
       .catch(() => { setBasinChecked(true); });
   }, [selectedId]);
 
+  // Handle click on map point — fetch configurations for that location
+  const handleMapPointClick = useCallback((properties) => {
+    const locId = properties.location_id;
+    console.log('[DEBUG] Map point clicked with location_id:', locId, 'full properties:', properties);
+    setSidePanelLocationId(locId);
+    setSidePanelOpen(true);
+    setSidePanelLoading(true);
+    setSidePanelError(null);
+    apiService.getConfigurationsByLocationId(locId)
+      .then((data) => {
+        console.log('[DEBUG] Configurations received:', data);
+        const items = Array.isArray(data)
+          ? data
+          : Array.isArray(data.items) ? data.items : [];
+        setSidePanelConfigs(items);
+      })
+      .catch((err) => {
+        console.error('[ERROR] Failed to load configurations:', err);
+        setSidePanelError(err.message);
+      })
+      .finally(() => setSidePanelLoading(false));
+  }, []);
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0 }}>
 
-      {/* Map — top 1/3 */}
-      <div style={{ flex: '1 1 0', minHeight: 0, position: 'relative' }}>
-        <SimpleMapPanel
-          locations={geojson}
-          basinLocations={basinGeojson}
-          getPopupHTML={makePopupHTML}
-          isActive={isActive}
-        />
-        {!selectedId && (
-          <div
-            className="position-absolute top-50 start-50 translate-middle text-center text-muted"
-            style={{ zIndex: 5, pointerEvents: 'none', background: 'rgba(255,255,255,0.7)', borderRadius: 6, padding: '6px 12px' }}
-          >
-            <small>Click a location row below to view it on the map</small>
-          </div>
-        )}
-        {selectedId && noGeometry && (
-          <div
-            className="position-absolute top-50 start-50 translate-middle text-center text-muted"
-            style={{ zIndex: 5, pointerEvents: 'none', background: 'rgba(255,255,255,0.82)', borderRadius: 6, padding: '6px 12px' }}
-          >
-            <small><i className="bi bi-exclamation-circle me-1" />No geometry found for this location</small>
+      {/* Map + Side Panel — top 1/3 */}
+      <div style={{ flex: '1 1 0', minHeight: 0, display: 'flex', position: 'relative' }}>
+        {/* Map */}
+        <div style={{ flex: sidePanelOpen ? '1 1 0' : '1 1 100%', minWidth: 0, minHeight: 0, position: 'relative' }}>
+          <SimpleMapPanel
+            locations={geojson}
+            basinLocations={basinGeojson}
+            getPopupHTML={makePopupHTML}
+            onPointClick={handleMapPointClick}
+            isActive={isActive}
+          />
+          {!selectedId && (
+            <div
+              className="position-absolute top-50 start-50 translate-middle text-center text-muted"
+              style={{ zIndex: 5, pointerEvents: 'none', background: 'rgba(255,255,255,0.7)', borderRadius: 6, padding: '6px 12px' }}
+            >
+              <small>Click a location row below to view it on the map</small>
+            </div>
+          )}
+          {selectedId && noGeometry && (
+            <div
+              className="position-absolute top-50 start-50 translate-middle text-center text-muted"
+              style={{ zIndex: 5, pointerEvents: 'none', background: 'rgba(255,255,255,0.82)', borderRadius: 6, padding: '6px 12px' }}
+            >
+              <small><i className="bi bi-exclamation-circle me-1" />No geometry found for this location</small>
+            </div>
+          )}
+        </div>
+
+        {/* Side panel for configurations */}
+        {sidePanelOpen && (
+          <div style={{ flex: '0 0 50%', minHeight: 0, borderLeft: '1px solid #dee2e6', display: 'flex', flexDirection: 'column', background: '#fff' }}>
+            {/* Header */}
+            <div style={{ flex: '0 0 auto', padding: '8px 12px', borderBottom: '1px solid #dee2e6', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <strong style={{ fontSize: '0.9rem' }}>Configurations</strong>
+              <button
+                type="button"
+                className="btn-close"
+                style={{ padding: 0 }}
+                onClick={() => setSidePanelOpen(false)}
+                aria-label="Close"
+              />
+            </div>
+
+            {/* Content */}
+            {sidePanelLoading && (
+              <div className="d-flex align-items-center justify-content-center h-100">
+                <Spinner animation="border" variant="primary" role="status" style={{ width: '1.5rem', height: '1.5rem' }}>
+                  <span className="visually-hidden">Loading…</span>
+                </Spinner>
+              </div>
+            )}
+
+            {sidePanelError && (
+              <Alert variant="danger" className="m-2 mb-0" style={{ flex: '0 0 auto', fontSize: '0.8rem' }}>
+                <i className="bi bi-exclamation-triangle-fill me-2" />
+                {sidePanelError}
+              </Alert>
+            )}
+
+            {!sidePanelLoading && !sidePanelError && sidePanelConfigs.length === 0 && (
+              <div className="d-flex align-items-center justify-content-center h-100 text-muted">
+                <small>No configurations found</small>
+              </div>
+            )}
+
+            {!sidePanelLoading && !sidePanelError && sidePanelConfigs.length > 0 && (
+              <div style={{ flex: '1 1 0', minHeight: 0, overflowY: 'auto' }}>
+                <table className="table table-sm table-bordered mb-0" style={{ fontSize: '0.75rem' }}>
+                  <thead className="table-light sticky-top">
+                    <tr>
+                      <th style={{ whiteSpace: 'nowrap', verticalAlign: 'middle' }}>Configuration</th>
+                      <th style={{ whiteSpace: 'nowrap', verticalAlign: 'middle' }}>Variable</th>
+                      <th style={{ whiteSpace: 'nowrap', verticalAlign: 'middle' }}>Unit</th>
+                      <th style={{ whiteSpace: 'nowrap', verticalAlign: 'middle' }}>Ref Min</th>
+                      <th style={{ whiteSpace: 'nowrap', verticalAlign: 'middle' }}>Ref Max</th>
+                      <th style={{ whiteSpace: 'nowrap', verticalAlign: 'middle' }}>Val Min</th>
+                      <th style={{ whiteSpace: 'nowrap', verticalAlign: 'middle' }}>Val Max</th>
+                      <th style={{ whiteSpace: 'nowrap', verticalAlign: 'middle' }}># Members</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {sidePanelConfigs.map((config, i) => (
+                      <tr key={i}>
+                        <td title={config.configuration_name}>{config.configuration_name}</td>
+                        <td title={config.variable_name}>{config.variable_name}</td>
+                        <td title={config.unit_name}>{config.unit_name}</td>
+                        <td>{fmt(config.min_reference_time)}</td>
+                        <td>{fmt(config.max_reference_time)}</td>
+                        <td>{fmt(config.min_value_time)}</td>
+                        <td>{fmt(config.max_value_time)}</td>
+                        <td>{config.num_members ?? '—'}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </div>
         )}
       </div>
@@ -491,12 +577,11 @@ const LocationsSummaryTab = ({ isActive = true }) => {
                     key={i}
                     onClick={() => handleRowClick(row)}
                     style={{ cursor: 'pointer' }}
-                    className={selectedId === row.primary_location_id ? 'table-primary' : ''}
+                    className={selectedId === row.location_id ? 'table-primary' : ''}
                   >
                     {activeColumns.map((c) => {
                       let val;
-                      if (c.key === 'min_value_time' || c.key === 'max_value_time' ||
-                          c.key === 'min_reference_time' || c.key === 'max_reference_time') {
+                      if (c.key === 'min_reference_time' || c.key === 'max_reference_time') {
                         val = fmt(row[c.key]);
                       } else {
                         val = row[c.key] ?? '—';

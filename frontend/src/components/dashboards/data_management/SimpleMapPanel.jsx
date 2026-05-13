@@ -35,6 +35,7 @@ const SimpleMapPanel = ({
   getPopupHTML = null,
   showOverlayToggle = false,
   onOverlayToggle = null,
+  onPointClick = null,
   isActive = true,
 }) => {
   const mapContainer = useRef(null);
@@ -138,10 +139,18 @@ const SimpleMapPanel = ({
       }, 100);
     };
 
+    const handleClick = (e) => {
+      if (onPointClick) {
+        const feature = e.features[0];
+        onPointClick(feature.properties);
+      }
+    };
+
     // Remove existing layer / source
     if (m.getLayer('locations-layer')) {
       m.off('mouseenter', 'locations-layer', handleEnter);
       m.off('mouseleave', 'locations-layer', handleLeave);
+      m.off('click', 'locations-layer', handleClick);
       m.removeLayer('locations-layer');
     }
     if (m.getSource('locations')) m.removeSource('locations');
@@ -177,6 +186,7 @@ const SimpleMapPanel = ({
 
     m.on('mouseenter', 'locations-layer', handleEnter);
     m.on('mouseleave', 'locations-layer', handleLeave);
+    m.on('click', 'locations-layer', handleClick);
 
     // Fit map to feature extent — flyTo for a single point, fitBounds for many
     if (valid.length === 1) {
@@ -199,12 +209,13 @@ const SimpleMapPanel = ({
         if (m.getLayer && m.getLayer('locations-layer')) {
           m.off('mouseenter', 'locations-layer', handleEnter);
           m.off('mouseleave', 'locations-layer', handleLeave);
+          m.off('click', 'locations-layer', handleClick);
           m.removeLayer('locations-layer');
         }
         if (m.getSource && m.getSource('locations')) m.removeSource('locations');
       } catch { /* silent */ }
     };
-  }, [mapLoaded, locations, getPopupHTML]);
+  }, [mapLoaded, locations, getPopupHTML, onPointClick]);
 
   // ── 4. Basin polygon layer (dedicated, separate from overlay system) ──────
   useEffect(() => {

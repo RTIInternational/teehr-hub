@@ -3,7 +3,7 @@
  *
  * Three tabs:
  *  1. Configurations Summary  — map + configs_summary table
- *  2. Locations Summary       — map + configurations_by_location table
+ *  2. Locations Summary       — map + locations_with_attributes table
  *  3. Configuration Completeness — map with polygon overlay + completeness heatmap
  *
  * All tab contents are lazy-mounted (on first visit) and kept mounted thereafter

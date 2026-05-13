@@ -95,7 +95,7 @@ const ConfigurationsSummaryTab = ({ isActive = true }) => {
   }, []);
 
   // Fetch locations for the clicked row
-  const handleRowClick = useCallback((row) => {
+  const handleRowClick = useCallback(async (row) => {
     const key = `${row.configuration_name}||${row.variable_name}`;
     if (selectedRow === key) {
       // Deselect
@@ -106,15 +106,20 @@ const ConfigurationsSummaryTab = ({ isActive = true }) => {
     setSelectedRow(key);
     setMapLoading(true);
 
-    apiService.getConfigurationsByLocationGeojson({ configuration_name: row.configuration_name, variable_name: row.variable_name })
-      .then((geojson) => {
-        setMapLocations(geojson);
-      })
-      .catch((err) => {
-        console.error('ConfigurationsSummaryTab: Failed to load locations:', err);
-        setMapLocations(null);
-      })
-      .finally(() => setMapLoading(false));
+    try {
+      // Single backend call: JOIN configurations_by_location with locations table.
+      // Avoids URL-length limits that arise from passing thousands of IDs as query params.
+      const geojson = await apiService.getConfigurationLocationsGeojson({
+        configuration_name: row.configuration_name,
+        variable_name: row.variable_name,
+      });
+      setMapLocations(geojson);
+    } catch (err) {
+      console.error('ConfigurationsSummaryTab: Failed to load locations:', err);
+      setMapLocations(null);
+    } finally {
+      setMapLoading(false);
+    }
   }, [selectedRow]);
 
   return (
