@@ -502,7 +502,7 @@ async def get_location_attribute_items(
 
 
 @router.get("/collections/configuration_completeness/items")
-async def get_aggregation_huc8_weekly_items(
+async def get_configuration_completeness_items(
     request: Request,
     configuration_name: str | None = Query(None, description="Filter by configuration name"),
     variable_name: str | None = Query(None, description="Filter by variable name"),
@@ -548,7 +548,7 @@ async def get_aggregation_huc8_weekly_items(
 
         query_start = time.time()
         df = execute_query(query)
-        print(f"Aggregation HUC8 weekly query: {time.time() - query_start:.3f}s")
+        print(f"Configuration completeness query: {time.time() - query_start:.3f}s")
 
         if not df.empty:
             df = prepare_for_serialization(df, datetime_columns=["period"])

@@ -210,8 +210,8 @@ export const apiService = {
     return apiCall(`/collections/attributes/items?${params.toString()}`);
   },
 
-  // Get HUC8 weekly aggregation (completeness) data
-  getAggregationHuc8Weekly: (filters = {}) => {
+  // Get configuration completeness heatmap data
+  getCompletenessHeatmap: (filters = {}) => {
     const params = new URLSearchParams();
     if (filters.configuration_name) params.append('configuration_name', filters.configuration_name);
     if (filters.variable_name) params.append('variable_name', filters.variable_name);

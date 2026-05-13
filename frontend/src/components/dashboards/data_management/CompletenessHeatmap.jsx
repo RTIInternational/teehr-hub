@@ -17,7 +17,7 @@ const CompletenessHeatmap = ({ configurationName, variableName, onHover = null }
     setError(null);
     setPlotReady(false);
 
-    apiService.getAggregationHuc8Weekly({
+    apiService.getCompletenessHeatmap({
       configuration_name: configurationName,
       variable_name: variableName,
     }).then((data) => {
@@ -34,19 +34,19 @@ const CompletenessHeatmap = ({ configurationName, variableName, onHover = null }
 
       // Collect unique sorted huc8s and periods
       const periodSet = new Set();
-      const huc8Set = new Set();
+      const spatialAggregateSet = new Set();
       rows.forEach((r) => {
         periodSet.add(norm(r.period));
-        huc8Set.add(norm(r.spatial_aggregate));
+        spatialAggregateSet.add(norm(r.spatial_aggregate));
       });
       // Remove any blank keys that came from nulls
       periodSet.delete('');
-      huc8Set.delete('');
+      spatialAggregateSet.delete('');
 
       const periods = [...periodSet].sort();
-      const huc8s = [...huc8Set].sort();
+      const spatialAggregates = [...spatialAggregateSet].sort();
 
-      console.debug('[Heatmap] rows:', rows.length, '| unique huc8s:', huc8s.length, '| unique periods:', periods.length);
+      console.debug('[Heatmap] rows:', rows.length, '| unique spatial aggregates:', spatialAggregates.length, '| unique periods:', periods.length);
       if (rows.length > 0) console.debug('[Heatmap] sample row:', rows[0]);
 
       // Build lookup using normalised keys
@@ -59,10 +59,10 @@ const CompletenessHeatmap = ({ configurationName, variableName, onHover = null }
         lookup.set(`${h}||${p}`, c);
       });
 
-      // Sort huc8s ascending alphabetically, matching Python's pivot.sort_index()
-      const sortedHuc8s = [...huc8s].sort();
+      // Sort spatial aggregates ascending alphabetically
+      const sortedSpatialAggregates = [...spatialAggregates].sort();
 
-      const z = sortedHuc8s.map((h) =>
+      const z = sortedSpatialAggregates.map((h) =>
         periods.map((p) => {
           const v = lookup.get(`${h}||${p}`);
           return v != null ? v : null;
@@ -79,7 +79,7 @@ const CompletenessHeatmap = ({ configurationName, variableName, onHover = null }
             type: 'heatmap',
             z,
             x: xLabels,
-            y: sortedHuc8s,
+            y: sortedSpatialAggregates,
             zmin: 0,
             zmax: 100,
             colorscale: [
@@ -100,7 +100,7 @@ const CompletenessHeatmap = ({ configurationName, variableName, onHover = null }
           title: `Primary Timeseries Completeness — ${configurationName} / ${variableName}`,
           xaxis: { title: 'Week', tickangle: -45, nticks: 24 },
           yaxis: {
-            title: { text: 'HUC6', standoff: 8 },
+            title: { text: 'Spatial Aggregate', standoff: 8 },
             showticklabels: false,
             type: 'category',
           },
