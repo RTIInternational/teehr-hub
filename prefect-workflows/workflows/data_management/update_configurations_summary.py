@@ -6,13 +6,13 @@ from prefect.cache_policies import NO_CACHE
 from prefect import task, flow, get_run_logger
 
 import teehr
-from workflows.utils.common_utils import initialize_evaluation, set_table_properties, table_exists
+from workflows.utils.common_utils import initialize_evaluation
+from data_utils import write_to_warehouse
 
 logging.getLogger("teehr").setLevel(logging.INFO)
 
 GROUPBY = ["configuration_name", "variable_name"]
 OUTPUT_TABLE_NAME = "configurations_summary"
-UNIQUENESS_FIELDS = ["configuration_name", "variable_name"]
 
 
 @task(cache_policy=NO_CACHE)
@@ -103,16 +103,9 @@ def update_configurations_summary_table(
         timeseries_type="secondary"
     )
     result_sdf = primary_sdf.unionByName(secondary_sdf)
-    write_mode = (
-        "overwrite"
-        if table_exists(ev=ev, table_name=OUTPUT_TABLE_NAME)
-        else "create_or_replace"
+
+    write_to_warehouse(
+        ev=ev,
+        sdf=result_sdf,
+        table_name=OUTPUT_TABLE_NAME
     )
-    logger.info(f"Writing primary and secondary configuration summary to the warehouse...")
-    ev._write.to_warehouse(
-        source_data=result_sdf,
-        table_name=OUTPUT_TABLE_NAME,
-        write_mode=write_mode,
-        uniqueness_fields=UNIQUENESS_FIELDS,
-    )
-    logger.info(f"Finished writing configuration summary to the warehouse.")
