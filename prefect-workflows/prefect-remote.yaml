@@ -733,7 +733,7 @@ deployments:
     work_pool: *work_pool
     schedule:
       cron: "0 9,21 * * *"
-      active: false
+      active: true
 
   - name: update-forecast-metrics-table
     version:
