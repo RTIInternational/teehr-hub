@@ -1,5 +1,3 @@
-from pathlib import Path
-from typing import Union
 import logging
 
 from prefect.cache_policies import NO_CACHE
@@ -11,9 +9,8 @@ from data_utils import write_to_warehouse
 
 logging.getLogger("teehr").setLevel(logging.INFO)
 
-GROUPBY = ["configuration_name", "variable_name"]
 OUTPUT_TABLE_NAME = "configurations_summary"
-# UNIQUENESS_FIELDS = ["primary_location_id", "configuration_name", "variable_name"]
+
 
 @task(cache_policy=NO_CACHE)
 def summarize_primary_locations(
@@ -73,8 +70,8 @@ def summarize_secondary_locations(
 )
 def update_locations_summary(
     start_spark_cluster: bool = True,
-    executor_instances: int = 64,
-    executor_cores: int = 2,
+    executor_instances: int = 48,
+    executor_cores: int = 4,
     executor_memory: str = "32g",
 ) -> None:
     """Create the locations summary table."""
