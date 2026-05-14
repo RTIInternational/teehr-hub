@@ -1,4 +1,6 @@
 import logging
+from typing import Union
+from pathlib import Path
 
 from prefect.cache_policies import NO_CACHE
 from prefect import task, flow, get_run_logger
@@ -9,7 +11,7 @@ from data_utils import write_to_warehouse
 
 logging.getLogger("teehr").setLevel(logging.INFO)
 
-OUTPUT_TABLE_NAME = "configurations_summary"
+OUTPUT_TABLE_NAME = "configurations_by_location"
 
 
 @task(cache_policy=NO_CACHE)
@@ -69,6 +71,7 @@ def summarize_secondary_locations(
     timeout_seconds=60 * 60
 )
 def update_locations_summary_table(
+    temp_dir_path: Union[str, Path],
     start_spark_cluster: bool = True,
     executor_instances: int = 48,
     executor_cores: int = 4,
@@ -76,6 +79,7 @@ def update_locations_summary_table(
 ) -> None:
     """Create the locations summary table."""
     ev = initialize_evaluation(
+        temp_dir_path=temp_dir_path,
         start_spark_cluster=start_spark_cluster,
         executor_instances=executor_instances,
         executor_cores=executor_cores,

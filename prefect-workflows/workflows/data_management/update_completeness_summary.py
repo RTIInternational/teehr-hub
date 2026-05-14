@@ -1,4 +1,6 @@
 import logging
+from typing import Union
+from pathlib import Path
 
 from prefect.cache_policies import NO_CACHE
 from prefect import task, flow, get_run_logger
@@ -65,6 +67,7 @@ def calculate_primary_completeness(
     timeout_seconds=60 * 60
 )
 def update_completeness_summary_table(
+    temp_dir_path: Union[str, Path],
     start_spark_cluster: bool = True,
     executor_instances: int = 32,
     executor_cores: int = 4,
@@ -82,6 +85,7 @@ def update_completeness_summary_table(
         f"Updating completeness summary table with period='{period}' and spatial_agg='{spatial_agg}'..."
     )
     ev = initialize_evaluation(
+        temp_dir_path=temp_dir_path,
         start_spark_cluster=start_spark_cluster,
         executor_instances=executor_instances,
         executor_cores=executor_cores,
@@ -89,7 +93,7 @@ def update_completeness_summary_table(
     )
     completeness_sdf = calculate_primary_completeness(ev, period, spatial_agg)
     write_to_warehouse(
+        ev=ev,
         sdf=completeness_sdf,
-        table_name=OUTPUT_TABLE_NAME,
-        mode="overwrite"
+        table_name=OUTPUT_TABLE_NAME
     )
