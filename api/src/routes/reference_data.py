@@ -404,7 +404,9 @@ async def get_location_attribute_items(
     prefix: str | None = Query(
         None, description="Filter by location ID prefix (e.g., 'usgs', 'nwm')"
     ),
-    attribute_name: str | None = Query(None, description="Filter by attribute name"),
+    attribute_name: list[str] | None = Query(
+        None, description="Filter by attribute name(s) - can be specified multiple times"
+    ),
     limit: int | None = Query(
         None, ge=1, description="Maximum number of items to return (omit to return all)"
     ),
@@ -421,7 +423,7 @@ async def get_location_attribute_items(
     - Get all attributes for a specific location
     - Get all attributes for multiple locations (repeat location_id parameter)
     - Get all attributes for locations with a specific prefix (e.g., 'usgs')
-    - Get a specific attribute across all locations
+    - Get one or more specific attributes across all locations (repeat attribute_name)
     - Query attribute values without geometry overhead
     """
     try:
@@ -437,8 +439,8 @@ async def get_location_attribute_items(
             where_conditions.append(f"location_id LIKE '{safe_prefix}-%'")
 
         if attribute_name:
-            safe_attr = sanitize_string(attribute_name)
-            where_conditions.append(f"attribute_name = '{safe_attr}'")
+            safe_attrs = [f"'{sanitize_string(a)}'" for a in attribute_name]
+            where_conditions.append(f"attribute_name IN ({', '.join(safe_attrs)})")
 
         where_clause = " AND ".join(where_conditions) if where_conditions else "1=1"
 

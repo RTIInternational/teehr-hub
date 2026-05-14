@@ -40,82 +40,23 @@ const DEFAULT_COLUMNS = [
   { key: 'location_id',        label: 'Location ID' },
   { key: 'name',               label: 'Name' },
   { key: 'state_name',         label: 'State' },
-  { key: 'drainage_area',      label: 'Drainage Area' },
+  { key: 'drainage_area_km2',  label: 'Drainage Area (km²)' },
   { key: 'slope_mean_percent', label: 'Mean Slope (%)' },
   { key: 'rfc',                label: 'RFC' },
 ];
 
-// All optional columns the user can add
-const OPTIONAL_COLUMNS = [
-  { key: 'min_reference_time',    label: 'Reference Time Min' },
-  { key: 'max_reference_time',    label: 'Reference Time Max' },
-  { key: 'num_timeseries',        label: '# Timeseries' },
-  { key: 'is_active',             label: 'Active' },
-  { key: 'has_inst_discharge',    label: 'Inst Discharge' },
-  { key: 'has_inst_stage',        label: 'Inst Stage' },
-  { key: 'has_mean_daily_discharge', label: 'Mean Daily Discharge' },
-  { key: 'has_max_daily_discharge',  label: 'Max Daily Discharge' },
-  { key: 'has_mean_daily_stage',  label: 'Mean Daily Stage' },
-  { key: 'has_max_daily_stage',   label: 'Max Daily Stage' },
-  { key: 'site_type_code',        label: 'Site Type' },
-  { key: 'state_name',            label: 'State Name' },
-  { key: 'county',                label: 'County' },
-  { key: 'county_name',           label: 'County Name' },
-  { key: 'nws_region',            label: 'NWS Region' },
-  { key: 'wfo',                   label: 'WFO' },
-  { key: 'rfc',                   label: 'RFC' },
-  { key: 'rfc_action_flow_cms',   label: 'RFC Action Flow (cms)' },
-  { key: 'rfc_minor_flow_cms',    label: 'RFC Minor Flow (cms)' },
-  { key: 'rfc_moderate_flow_cms', label: 'RFC Moderate Flow (cms)' },
-  { key: 'rfc_major_flow_cms',    label: 'RFC Major Flow (cms)' },
-  { key: 'nwm30_calb',            label: 'NWM30 Calibrated' },
-  { key: 'disturbance_index',     label: 'Disturbance Index' },
-  { key: 'gagesII_class',         label: 'Gages II Class' },
-  { key: 'huc2',                  label: 'HUC2' },
-  { key: 'huc4',                  label: 'HUC4' },
-  { key: 'huc6',                  label: 'HUC6' },
-  { key: 'huc8',                  label: 'HUC8' },
-  { key: 'huc10',                 label: 'HUC10' },
-  { key: 'huc12',                 label: 'HUC12' },
-  { key: 'drainage_area',         label: 'Drainage Area (native)' },
-  { key: 'elev_mean_m',           label: 'Mean Elevation (m)' },
-  { key: 'relief_ratio',          label: 'Relief Ratio' },
-  { key: 'stream_order',          label: 'Stream Order' },
-  { key: 'sinuousity',            label: 'Sinuosity' },
-  { key: 'topo_wetness_index',    label: 'Topo Wetness Index' },
-  { key: 'runoff_ratio',          label: 'Runoff Ratio' },
-  { key: 'runoff_mean_mm',        label: 'Mean Runoff (mm)' },
-  { key: 'bfi_mean',              label: 'BFI Mean' },
-  { key: 'horton_percent',        label: 'Horton (%)' },
-  { key: 'pcpn_mean_mm',          label: 'Mean Precip (mm)' },
-  { key: 'pcpn_percent_snow',     label: 'Precip Snow (%)' },
-  { key: 'temp_mean_c',           label: 'Mean Temp (°C)' },
-  { key: 'q10_cms',               label: 'Q10 (cms)' },
-  { key: 'q50_cms',               label: 'Q50 (cms)' },
-  { key: 'q90_cms',               label: 'Q90 (cms)' },
-  { key: 'max_record',            label: 'Max Record' },
-  { key: 'first_year',            label: 'First Year' },
-  { key: 'last_year',             label: 'Last Year' },
-  { key: 'season_index',          label: 'Season Index' },
-  { key: 'percent_imperv',        label: 'Imperv (%)' },
-  { key: 'percent_irrig',         label: 'Irrigated (%)' },
-  { key: 'percent_developed',     label: 'Developed (%)' },
-  { key: 'percent_canals',        label: 'Canals (%)' },
-  { key: 'ndams',                 label: 'Dams' },
-  { key: 'ndams_major',           label: 'Major Dams' },
-  { key: 'ndams_major_100km2',    label: 'Major Dams/100km²' },
-  { key: 'ndams_100km2',          label: 'Dams/100km²' },
-  { key: 'dam_dist_nearest_km',   label: 'Nearest Dam (km)' },
-  { key: 'storage_max_Mlkm2',     label: 'Max Storage (Ml/km²)' },
-  { key: 'storage_normal_Mlkm2',  label: 'Normal Storage (Ml/km²)' },
-  { key: 'withdrawals_Mlkm2',     label: 'Withdrawals (Ml/km²)' },
-  { key: 'aggecoregion',          label: 'Agg Ecoregion' },
-  { key: 'ecoregion_L2',          label: 'Ecoregion L2' },
-  { key: 'epa_ecoregion_l1',      label: 'EPA Ecoregion L1' },
-  { key: 'epa_ecoregion_l2',      label: 'EPA Ecoregion L2' },
-  { key: 'iana_timezone',         label: 'IANA Timezone' },
-  { key: 'timezone',              label: 'Timezone' },
-];
+// Default attribute names fetched from location_attributes on initial load
+const DEFAULT_ATTRIBUTE_NAMES = ['state_name', 'drainage_area_km2', 'slope_mean_percent', 'rfc'];
+
+// Pivot EAV rows [{location_id, attribute_name, value}] into a map keyed by location_id
+const pivotAttributes = (items) => {
+  const map = {};
+  (items || []).forEach((item) => {
+    if (!map[item.location_id]) map[item.location_id] = {};
+    map[item.location_id][item.attribute_name] = item.value;
+  });
+  return map;
+};
 
 // Popup content for map hover
 const makePopupHTML = (props) => {
@@ -149,9 +90,24 @@ const LocationsSummaryTab = ({ isActive = true }) => {
 
   // Column picker state
   const [activeColumns, setActiveColumns]   = useState(DEFAULT_COLUMNS);
+  const [availableAttributes, setAvailableAttributes] = useState([]);
   const [pickerOpen, setPickerOpen]         = useState(false);
   const [checkedKeys, setCheckedKeys]       = useState(new Set());
   const pickerRef                           = useRef(null);
+
+  // Load available attribute names from the attributes table on mount
+  useEffect(() => {
+    apiService.getAttributes()
+      .then((data) => {
+        const defaultKeys = new Set(DEFAULT_COLUMNS.map((c) => c.key));
+        const attrs = (data?.items || [])
+          .filter((item) => !defaultKeys.has(item.name))
+          .map((item) => ({ key: item.name, label: item.description || item.name }))
+          .sort((a, b) => a.label.localeCompare(b.label));
+        setAvailableAttributes(attrs);
+      })
+      .catch(() => { /* non-fatal: picker will be empty */ });
+  }, []);
 
   // Close picker when clicking outside
   useEffect(() => {
@@ -170,7 +126,7 @@ const LocationsSummaryTab = ({ isActive = true }) => {
 
   const handleAddToTable = () => {
     if (checkedKeys.size === 0) return;
-    const toAdd = OPTIONAL_COLUMNS.filter(
+    const toAdd = availableAttributes.filter(
       (c) => checkedKeys.has(c.key) && !activeColumns.find((a) => a.key === c.key)
     );
     if (toAdd.length === 0) { setPickerOpen(false); return; }
@@ -178,21 +134,11 @@ const LocationsSummaryTab = ({ isActive = true }) => {
     setActiveColumns(newColumns);
     setCheckedKeys(new Set());
     setPickerOpen(false);
-    // Re-fetch data with all required fields
-    const extraKeys = newColumns
+    // Re-fetch with updated set of attribute names
+    const extraAttributeNames = newColumns
       .filter((c) => !DEFAULT_COLUMNS.find((d) => d.key === c.key))
       .map((c) => c.key);
-    setLoading(true);
-    setError(null);
-    apiService.getLocationsWithAttributesItems({ extra_fields: extraKeys })
-      .then((itemsData) => {
-        const items = Array.isArray(itemsData)
-          ? itemsData
-          : Array.isArray(itemsData.items) ? itemsData.items : [];
-        setRows(items);
-      })
-      .catch((err) => setError(err.message))
-      .finally(() => setLoading(false));
+    fetchRows(extraAttributeNames);
   };
 
   const handleRemoveColumn = (key) => {
@@ -220,16 +166,26 @@ const LocationsSummaryTab = ({ isActive = true }) => {
 
   const hasActiveFilter = !!filterText;
 
-  // Load tabular items only on mount (no geometry fetch)
-  const fetchRows = useCallback((extraFields = []) => {
+  // Load tabular rows by fetching locations (id + name) and location_attributes
+  // for the given attribute names, then pivoting and joining in the frontend.
+  const fetchRows = useCallback((extraAttributeNames = []) => {
+    const attributeNames = [...DEFAULT_ATTRIBUTE_NAMES, ...extraAttributeNames];
     setLoading(true);
     setError(null);
-    apiService.getLocationsWithAttributesItems({ extra_fields: extraFields })
-      .then((itemsData) => {
-        const items = Array.isArray(itemsData)
-          ? itemsData
-          : Array.isArray(itemsData.items) ? itemsData.items : [];
-        setRows(items);
+    Promise.all([
+      apiService.getLocationIdNames('usgs', 5000),
+      apiService.getLocationAttributesByNames(attributeNames),
+    ])
+      .then(([locationsData, attrsData]) => {
+        const locItems = locationsData?.items || [];
+        const attrItems = attrsData?.items || [];
+        const attrMap = pivotAttributes(attrItems);
+        const joined = locItems.map((loc) => ({
+          location_id: loc.id,
+          name: loc.name,
+          ...(attrMap[loc.id] || {}),
+        }));
+        setRows(joined);
       })
       .catch((err) => setError(err.message))
       .finally(() => setLoading(false));
@@ -462,7 +418,7 @@ const LocationsSummaryTab = ({ isActive = true }) => {
                 Select columns to add
               </div>
               <div style={{ overflowY: 'auto', flex: 1, padding: '4px 0' }}>
-                {[...OPTIONAL_COLUMNS].sort((a, b) => a.label.localeCompare(b.label)).map((c) => {
+                {availableAttributes.map((c) => {
                   const alreadyAdded = addedOptionalKeys.has(c.key);
                   return (
                     <label

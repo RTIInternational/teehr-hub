@@ -29,6 +29,9 @@ async def get_locations_items(
     include_attributes: bool = Query(
         False, description="Include pivoted location attributes as properties"
     ),
+    include_geometry: bool = Query(
+        True, description="Include geometry column. Set false to return plain JSON items with only id and name."
+    ),
     limit: int | None = Query(
         None, ge=1, description="Maximum number of items to return (omit to return all)"
     ),
@@ -40,6 +43,7 @@ async def get_locations_items(
 
     By default returns just location id, name, and geometry.
     Set include_attributes=true to include all location attributes as properties.
+    Set include_geometry=false to return plain JSON items with only id and name (no geometry).
     Use id to filter by one or more location IDs (repeat the parameter for multiple).
     Use prefix to filter by location ID prefix (e.g., 'usgs', 'nwm').
     If both id and prefix are provided, both filters are applied.
@@ -68,6 +72,15 @@ async def get_locations_items(
                 FROM {trino_catalog}.{trino_schema}.locations l
                 LEFT JOIN {trino_catalog}.{trino_schema}.location_attributes la
                     ON l.id = la.location_id
+                WHERE {where_clause}
+            """
+        elif not include_geometry:
+            # Tabular query: only id and name, no geometry
+            base_query = f"""
+                SELECT
+                    l.id,
+                    l.name
+                FROM {trino_catalog}.{trino_schema}.locations l
                 WHERE {where_clause}
             """
         else:
@@ -129,7 +142,7 @@ async def get_locations_items(
         # Pivot attributes if requested, otherwise df is already paginated
         if include_attributes:
             # First, separate location columns from attribute columns
-            location_cols = df.columns.difference(["attribute_name", "attribute_value"]) 
+            location_cols = df.columns.difference(["attribute_name", "attribute_value"])
             locations_df = df[location_cols].drop_duplicates(subset=["id"])
 
             # Pivot attributes if they exist
@@ -156,6 +169,16 @@ async def get_locations_items(
             df = df.iloc[start:end]
 
         print(f"Processing {len(df)} location records")
+
+        if not include_geometry and not include_attributes:
+            # Return plain JSON items (no geometry, no GeoJSON wrapper)
+            df = prepare_for_serialization(df)
+            items = df.to_dict(orient="records") if not df.empty else []
+            return JSONResponse(content={
+                "items": items,
+                "numberReturned": len(items),
+                "links": [{"href": str(request.url), "rel": "self", "type": "application/json"}],
+            })
 
         df = prepare_for_serialization(df)
         geojson = create_ogc_geojson_response(

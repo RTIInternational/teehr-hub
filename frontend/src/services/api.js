@@ -194,6 +194,15 @@ export const apiService = {
     return apiCall(`/collections/locations/items?${params.toString()}`);
   },
 
+  // Get location id + name (no geometry) filtered by prefix, returns {items: [{id, name}]}
+  getLocationIdNames: (prefix, limit = 5000) => {
+    const params = new URLSearchParams();
+    if (prefix) params.append('prefix', prefix);
+    params.append('include_geometry', 'false');
+    params.append('limit', limit);
+    return apiCall(`/collections/locations/items?${params.toString()}`);
+  },
+
   // // Get distinct spatial aggregate geometries for the completeness overlay map layer
   // getCompletenessGeometries: (filters = {}) => {
   //   const params = new URLSearchParams();
@@ -220,15 +229,13 @@ export const apiService = {
     return apiCall(`/collections/configuration_completeness/items?${params.toString()}`);
   },
 
-  // Get locations_with_attributes as tabular items
-  getLocationsWithAttributesItems: (filters = {}) => {
+  // Get location attributes for specified attribute names (EAV rows, one per location+name)
+  // Returns {items: [{location_id, attribute_name, value}, ...]}
+  getLocationAttributesByNames: (attributeNames = [], limit = null) => {
     const params = new URLSearchParams();
-    if (filters.limit) params.append('limit', filters.limit);
-    if (filters.offset) params.append('offset', filters.offset);
-    if (Array.isArray(filters.extra_fields)) {
-      filters.extra_fields.forEach((f) => params.append('extra_fields', f));
-    }
-    return apiCall(`/collections/locations_with_attributes/items?${params.toString()}`);
+    attributeNames.forEach((name) => params.append('attribute_name', name));
+    if (limit != null) params.append('limit', limit);
+    return apiCall(`/collections/location_attributes/items?${params.toString()}`);
   },
 
   // Get a single location by id from the locations table
