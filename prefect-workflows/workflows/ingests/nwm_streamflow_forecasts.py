@@ -19,7 +19,7 @@ from teehr.fetching.const import (
     NWM_HAWAII_VARIABLE_MAPPER,
     VARIABLE_NAME
 )
-from teehr.models.fetching.utils import TimeseriesTypeEnum
+from teehr.fetching.models.utils import TimeseriesTypeEnum
 from workflows.utils.common_utils import initialize_evaluation
 
 # Start up a local Dask cluster
