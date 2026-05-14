@@ -73,16 +73,11 @@ def summarize_configurations_by_timeseries_type(
 def update_configurations_summary_table(
     temp_dir_path: Union[str, Path],
     start_spark_cluster: bool = True,
-    executor_instances: int = 64,
-    executor_cores: int = 2,
+    executor_instances: int = 32,
+    executor_cores: int = 4,
     executor_memory: str = "32g"
 ) -> None:
-    """Create the configurations summary table
-
-    Notes
-    -----
-    - Currently, the configurations summary table is re-created each time.
-    """
+    """Create the configurations summary table."""
     logger = get_run_logger()
 
     ev = initialize_evaluation(

@@ -570,6 +570,15 @@ async def get_configuration_completeness_items(
         return JSONResponse(content=response, media_type="application/json")
 
     except Exception as e:
+        if "TABLE_NOT_FOUND" in str(e) or "does not exist" in str(e).lower():
+            empty_response = {
+                "items": [],
+                "numberReturned": 0,
+                "links": [
+                    {"href": str(request.url), "rel": "self", "type": "application/json"},
+                ],
+            }
+            return JSONResponse(content=empty_response, media_type="application/json")
         raise HTTPException(
             status_code=500,
             detail=f"Failed to load configuration_completeness: {str(e)}",
@@ -994,6 +1003,9 @@ async def get_completeness_geometries(
         return create_ogc_geojson_response(df, str(request.url))
 
     except Exception as e:
+        if "TABLE_NOT_FOUND" in str(e) or "does not exist" in str(e).lower():
+            empty_fc = {"type": "FeatureCollection", "features": [], "numberMatched": 0, "numberReturned": 0}
+            return JSONResponse(content=empty_fc, media_type="application/json")
         raise HTTPException(
             status_code=500,
             detail=f"Failed to load completeness geometries: {str(e)}",

@@ -43,13 +43,22 @@ const CompletenessTab = ({ isActive = true }) => {
       return;
     }
     apiService
-      .getCompletenessGeometries({
-        configuration_name: committedCfg.configuration_name,
-        variable_name: committedCfg.variable_name,
-      })
+      .getLocationsByPrefix('huc6')
       .then((data) => setOverlayGeometries(data))
       .catch((err) => console.error('CompletenessTab: Failed to load overlay geometries:', err));
   }, [committedCfg]);
+
+  // Resolve a heatmap spatial_aggregate value to the matching location id field
+  const handleHeatmapHover = useCallback((spatialAggregate) => {
+    if (!spatialAggregate || !overlayGeometries?.features) {
+      setHoveredSpatialAggregate(null);
+      return;
+    }
+    const feature = overlayGeometries.features.find(
+      (f) => f.properties?.id === spatialAggregate
+    );
+    setHoveredSpatialAggregate(feature?.properties?.id ?? null);
+  }, [overlayGeometries]);
 
   const handleGenerate = useCallback(() => {
     if (!canGenerate) return;
@@ -121,7 +130,7 @@ const CompletenessTab = ({ isActive = true }) => {
           <CompletenessHeatmap
             configurationName={committedCfg?.configuration_name}
             variableName={committedCfg?.variable_name}
-            onHover={setHoveredSpatialAggregate}
+            onHover={handleHeatmapHover}
           />
         </div>
       </div>
