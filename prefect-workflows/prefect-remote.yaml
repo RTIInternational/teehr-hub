@@ -786,7 +786,7 @@ deployments:
       collision_strategy: "CANCEL_NEW"
     description: Calculate data completeness summary statistics and update the completeness summary table
     entrypoint: workflows/data_management/update_completeness_summary.py:update_completeness_summary_table
-    parameters: {"temp_dir_path": *temp_dir_path, "start_spark_cluster": false}
+    parameters: {"temp_dir_path": *temp_dir_path, "start_spark_cluster": true}
     work_pool: *work_pool
     # schedule:
     #   cron: "0 9,21 * * *"
@@ -800,7 +800,7 @@ deployments:
       collision_strategy: "CANCEL_NEW"
     description: Calculate location summary statistics and update the locations summary table
     entrypoint: workflows/data_management/update_locations_summary.py:update_locations_summary_table
-    parameters: {"temp_dir_path": *temp_dir_path, "start_spark_cluster": false}
+    parameters: {"temp_dir_path": *temp_dir_path, "start_spark_cluster": true}
     work_pool: *work_pool
     # schedule:
     #   cron: "0 9,21 * * *"
@@ -814,7 +814,7 @@ deployments:
       collision_strategy: "CANCEL_NEW"
     description: Calculate configuration summary statistics and update the configuration summary table
     entrypoint: workflows/data_management/update_configurations_summary.py:update_configurations_summary_table
-    parameters: {"temp_dir_path": *temp_dir_path, "start_spark_cluster": false}
+    parameters: {"temp_dir_path": *temp_dir_path, "start_spark_cluster": true}
     work_pool: *work_pool
     # schedule:
     #   cron: "0 9,21 * * *"
