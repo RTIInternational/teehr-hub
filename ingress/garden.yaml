@@ -87,6 +87,7 @@ dependencies:
   - deploy.keycloak-bootstrap
 environments:
   - local
+  - remote
 ---
 kind: Deploy
 type: kubernetes
