@@ -44,35 +44,23 @@ spec:
                   name: teehr-api-secrets
                   key: client-secret
             - name: SMTP_HOST
-              valueFrom:
-                secretKeyRef:
-                  name: keycloak-secrets
-                  key: smtp-host
+              value: "${var.smtp.host}"
             - name: SMTP_PORT
-              valueFrom:
-                secretKeyRef:
-                  name: keycloak-secrets
-                  key: smtp-port
+              value: "${var.smtp.port}"
             - name: SMTP_FROM
               valueFrom:
                 secretKeyRef:
                   name: keycloak-secrets
                   key: smtp-from
             - name: SMTP_FROM_DISPLAY_NAME
-              valueFrom:
-                secretKeyRef:
-                  name: keycloak-secrets
-                  key: smtp-from-display-name
+              value: "${var.smtp.fromDisplayName}"
             - name: SMTP_REPLY_TO
               valueFrom:
                 secretKeyRef:
                   name: keycloak-secrets
                   key: smtp-reply-to
             - name: SMTP_REPLY_TO_DISPLAY_NAME
-              valueFrom:
-                secretKeyRef:
-                  name: keycloak-secrets
-                  key: smtp-reply-to-display-name
+              value: "${var.smtp.replyToDisplayName}"
             - name: SMTP_USERNAME
               valueFrom:
                 secretKeyRef:
@@ -84,15 +72,9 @@ spec:
                   name: keycloak-secrets
                   key: smtp-password
             - name: SMTP_STARTTLS
-              valueFrom:
-                secretKeyRef:
-                  name: keycloak-secrets
-                  key: smtp-starttls
+              value: "${var.smtp.starttls}"
             - name: SMTP_SSL
-              valueFrom:
-                secretKeyRef:
-                  name: keycloak-secrets
-                  key: smtp-ssl
+              value: "${var.smtp.ssl}"
             - name: IMPORT_FILES_LOCATIONS
               value: /config/*
             - name: IMPORT_VARSUBSTITUTION_ENABLED

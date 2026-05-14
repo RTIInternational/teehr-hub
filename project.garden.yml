@@ -4,6 +4,13 @@ name: teehr-hub
 defaultEnvironment: local
 
 variables:
+  smtp:
+    host: smtp.gmail.com
+    port: "587"
+    fromDisplayName: TEEHR Hub
+    replyToDisplayName: TEEHR Support
+    starttls: "true"
+    ssl: "false"
 
 environments:
   - name: local
