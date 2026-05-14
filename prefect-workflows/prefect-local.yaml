@@ -546,3 +546,27 @@ deployments:
     entrypoint: workflows/maintenance/prefect_cleanup.py:rm_completed_flow_runs
     parameters: {"age_limit_days": 14}
     work_pool: *work_pool
+
+  - name: update-completeness-summary
+    version:
+    tags: []
+    description: Calculate data completeness summary statistics and update the completeness summary table
+    entrypoint: workflows/data_management/update_completeness_summary.py:update_completeness_summary_table
+    parameters: {"temp_dir_path": *temp_dir_path, "start_spark_cluster": false}
+    work_pool: *work_pool
+
+  - name: update-locations-summary
+    version:
+    tags: []
+    description: Calculate location summary statistics and update the locations summary table
+    entrypoint: workflows/data_management/update_locations_summary.py:update_locations_summary_table
+    parameters: {"temp_dir_path": *temp_dir_path, "start_spark_cluster": false}
+    work_pool: *work_pool
+
+  - name: update-configuration-summary
+    version:
+    tags: []
+    description: Calculate configuration summary statistics and update the configuration summary table
+    entrypoint: workflows/data_management/update_configurations_summary.py:update_configurations_summary_table
+    parameters: {"temp_dir_path": *temp_dir_path, "start_spark_cluster": false}
+    work_pool: *work_pool

@@ -68,7 +68,7 @@ def summarize_secondary_locations(
     flow_run_name="update-locations-summary-table",
     timeout_seconds=60 * 60
 )
-def update_locations_summary(
+def update_locations_summary_table(
     start_spark_cluster: bool = True,
     executor_instances: int = 48,
     executor_cores: int = 4,
