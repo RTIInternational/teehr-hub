@@ -203,14 +203,6 @@ export const apiService = {
     return apiCall(`/collections/locations/items?${params.toString()}`);
   },
 
-  // // Get distinct spatial aggregate geometries for the completeness overlay map layer
-  // getCompletenessGeometries: (filters = {}) => {
-  //   const params = new URLSearchParams();
-  //   if (filters.configuration_name) params.append('configuration_name', filters.configuration_name);
-  //   if (filters.variable_name) params.append('variable_name', filters.variable_name);
-  //   return apiCall(`/collections/configuration_completeness/geometries?${params.toString()}`);
-  // },
-
   // Get attribute definitions (name, description, type, updated_at, etc.)
   getAttributes: (limit = 1000, offset = 0) => {
     const params = new URLSearchParams();
