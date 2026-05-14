@@ -59,7 +59,7 @@ def _initialize_joined_forecast_evaluation(
 
 @flow(
     flow_run_name="update-joined-forecast-table",
-    timeout_seconds=60 * 60 * 3,
+    timeout_seconds=60 * 60 * 6,
     retries=2
 )
 def update_joined_forecast_table(
