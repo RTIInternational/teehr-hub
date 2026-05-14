@@ -775,4 +775,4 @@ deployments:
     work_pool: *work_pool
     schedule:
       cron: "15 3 * * *"
-      active: true
+      active: false

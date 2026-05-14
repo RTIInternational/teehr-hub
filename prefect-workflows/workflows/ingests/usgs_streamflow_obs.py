@@ -10,7 +10,7 @@ from prefect.futures import wait
 import pandas as pd
 
 from teehr import Configuration
-from teehr.models.fetching.utils import (
+from teehr.fetching.models.utils import (
     USGSChunkByEnum,
     USGSServiceEnum,
 )
