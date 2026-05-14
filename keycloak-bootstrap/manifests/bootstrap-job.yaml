@@ -44,23 +44,35 @@ spec:
                   name: teehr-api-secrets
                   key: client-secret
             - name: SMTP_HOST
-              value: "${var.smtp.host}"
+              valueFrom:
+                configMapKeyRef:
+                  name: keycloak-smtp-config
+                  key: smtp-host
             - name: SMTP_PORT
-              value: "${var.smtp.port}"
+              valueFrom:
+                configMapKeyRef:
+                  name: keycloak-smtp-config
+                  key: smtp-port
             - name: SMTP_FROM
               valueFrom:
                 secretKeyRef:
                   name: keycloak-secrets
                   key: smtp-from
             - name: SMTP_FROM_DISPLAY_NAME
-              value: "${var.smtp.fromDisplayName}"
+              valueFrom:
+                configMapKeyRef:
+                  name: keycloak-smtp-config
+                  key: smtp-from-display-name
             - name: SMTP_REPLY_TO
               valueFrom:
                 secretKeyRef:
                   name: keycloak-secrets
                   key: smtp-reply-to
             - name: SMTP_REPLY_TO_DISPLAY_NAME
-              value: "${var.smtp.replyToDisplayName}"
+              valueFrom:
+                configMapKeyRef:
+                  name: keycloak-smtp-config
+                  key: smtp-reply-to-display-name
             - name: SMTP_USERNAME
               valueFrom:
                 secretKeyRef:
@@ -72,11 +84,17 @@ spec:
                   name: keycloak-secrets
                   key: smtp-password
             - name: SMTP_STARTTLS
-              value: "${var.smtp.starttls}"
+              valueFrom:
+                configMapKeyRef:
+                  name: keycloak-smtp-config
+                  key: smtp-starttls
             - name: SMTP_SSL
-              value: "${var.smtp.ssl}"
+              valueFrom:
+                configMapKeyRef:
+                  name: keycloak-smtp-config
+                  key: smtp-ssl
             - name: IMPORT_FILES_LOCATIONS
-              value: /config/*
+              value: /config/*.json
             - name: IMPORT_VARSUBSTITUTION_ENABLED
               value: "true"
             - name: KEYCLOAK_AVAILABILITYCHECK_ENABLED
@@ -94,3 +112,6 @@ spec:
         - name: keycloak-bootstrap-config
           configMap:
             name: keycloak-realm-bootstrap
+            items:
+              - key: teehr-realm.json
+                path: teehr-realm.json

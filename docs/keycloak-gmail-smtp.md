@@ -32,14 +32,10 @@ The secrets deploy action now includes an optional varfile:
 
 That means Garden merges the private values automatically, and you can continue using normal commands like `garden deploy`.
 
-Required keys:
-- `smtp-host`: `smtp.gmail.com`
-- `smtp-port`: `587`
+Required secret keys:
 - `smtp-from`: sender address shown to users
 - `smtp-username`: Gmail address
 - `smtp-password`: Gmail app password
-- `smtp-starttls`: `true`
-- `smtp-ssl`: `false`
 
 Optional but recommended:
 - `smtp-from-display-name`
@@ -49,11 +45,12 @@ Optional but recommended:
 ## 3) Bootstrap wiring in this repo
 
 Already wired:
-- SMTP values flow from `keycloak-secrets` into the keycloak bootstrap job env.
+- Non-sensitive SMTP settings (`host`, `port`, display names, TLS flags) are rendered into the `keycloak-realm-bootstrap` ConfigMap.
+- SMTP credentials and addresses come from `keycloak-secrets` into bootstrap job env.
 - Realm import sets `verifyEmail: true` and configures `smtpServer` from env vars.
 
 Files:
-- `keycloak-bootstrap/manifests/bootstrap-job.yaml.tpl`
+- `keycloak-bootstrap/manifests/bootstrap-job.yaml`
 - `keycloak-bootstrap/manifests/realm-configmap.yaml.tpl`
 
 ## 4) Deploy changes
