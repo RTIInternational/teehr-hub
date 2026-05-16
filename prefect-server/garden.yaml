@@ -34,15 +34,15 @@ spec:
           memory: 4Gi
       env:
         - name: PREFECT_SERVER_DATABASE_SQLALCHEMY_POOL_SIZE
-          value: "30"
+          value: "20"
         - name: PREFECT_SERVER_DATABASE_SQLALCHEMY_MAX_OVERFLOW
-          value: "60"
+          value: "20"
         - name: PREFECT_SERVER_DATABASE_SQLALCHEMY_POOL_TIMEOUT
-          value: "60"
+          value: "90"
         - name: PREFECT_SERVER_DATABASE_CONNECTION_TIMEOUT
-          value: "10"
+          value: "15"
         - name: PREFECT_SERVER_DATABASE_TIMEOUT
-          value: "30"
+          value: "60"
         - name: PREFECT_SERVER_CONCURRENCY_MAXIMUM_CONCURRENCY_SLOT_WAIT_SECONDS
           value: "180"
         - name: PREFECT_DEPLOYMENT_CONCURRENCY_SLOT_WAIT_SECONDS
@@ -58,9 +58,9 @@ spec:
         - name: PREFECT_SERVER_SERVICES_DB_VACUUM_RETENTION_PERIOD
           value: "1209600"
         - name: PREFECT_SERVER_SERVICES_DB_VACUUM_LOOP_SECONDS
-          value: "3600"
+          value: "1800"
         - name: PREFECT_SERVER_SERVICES_DB_VACUUM_BATCH_SIZE
-          value: "200"
+          value: "50"
 
     # Don't create a secret - use the existing one
     secret:
