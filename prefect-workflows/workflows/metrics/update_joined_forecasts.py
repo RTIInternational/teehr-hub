@@ -36,6 +36,25 @@ FORECAST_CONFIGURATION_NAMES = [
 DEFAULT_SHUFFLE_PARTITIONS = 256
 DEFAULT_INCREMENTAL_LOOKBACK_HOURS = 2
 JOINED_FORECAST_CHECKPOINT_NAME = "fcst_joined_timeseries"
+WAREHOUSE_TABLE_PREFIX = "iceberg.teehr"
+
+
+def _initial_backfill_write_mode(
+    ev,
+    table_name: str,
+    replace_existing_table: bool,
+) -> str:
+    """Choose first-write behavior for staged backfills.
+
+    If the target table already exists and replacement is not explicitly requested,
+    start in append mode so chunked runs can safely accumulate data across
+    configuration subsets.
+    """
+    if replace_existing_table:
+        return "create_or_replace"
+
+    table_exists = ev.spark.catalog.tableExists(f"{WAREHOUSE_TABLE_PREFIX}.{table_name}")
+    return "append" if table_exists else "create_or_replace"
 
 
 def _initialize_joined_forecast_evaluation(
@@ -70,6 +89,7 @@ def update_joined_forecast_table(
     executor_cores: int = 4,
     executor_memory: str = "32g",
     batch_size_months: int = 24,
+    replace_existing_table: bool = True,
 ) -> None:
     """Create the joined forecast table using bounded backfill batches.
 
@@ -94,11 +114,13 @@ def update_joined_forecast_table(
         return
 
     logger.info("Writing %s joined forecast backfill batches.", len(batches))
+    first_write_mode = _initial_backfill_write_mode(
+        ev=ev,
+        table_name=JOINED_FORECAST_TABLE_NAME,
+        replace_existing_table=replace_existing_table,
+    )
     for index, batch in enumerate(batches):
-        if index == 0:
-            write_mode = "create_or_replace"
-        else:
-            write_mode = "append"
+        write_mode = first_write_mode if index == 0 else "append"
 
         write_joined_forecast_batch(
             ev=ev,
@@ -132,6 +154,7 @@ def update_joined_forecast_table_incremental(
     batch_size_months: int = 1,
     safety_lookback_hours: int = DEFAULT_INCREMENTAL_LOOKBACK_HOURS,
     changed_since: Union[str, datetime, None] = None,
+    replace_existing_table_on_backfill_fallback: bool = False,
 ) -> None:
     """Incrementally upsert joined forecast batches affected by source changes."""
     logger = get_run_logger()
@@ -164,11 +187,15 @@ def update_joined_forecast_table_incremental(
             forecast_configuration_names=forecast_configuration_names,
             batch_size_months=batch_size_months,
         )
+
+        first_write_mode = _initial_backfill_write_mode(
+            ev=ev,
+            table_name=JOINED_FORECAST_TABLE_NAME,
+            replace_existing_table=replace_existing_table_on_backfill_fallback,
+        )
+
         for index, batch in enumerate(batches):
-            if index == 0:
-                write_mode = "create_or_replace"
-            else:
-                write_mode = "append"
+            write_mode = first_write_mode if index == 0 else "append"
 
             write_joined_forecast_batch(
                 ev=ev,
