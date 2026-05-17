@@ -175,8 +175,11 @@ def plan_backfill_batches(
             SELECT
                 configuration_name,
                 add_months(
-                    date_trunc('month', value_time),
-                    -pmod(month(value_time) - 1, {batch_size_months})
+                    DATE '1970-01-01',
+                    CAST(floor(
+                        months_between(date_trunc('month', value_time), DATE '1970-01-01')
+                        / {batch_size_months}
+                    ) AS INT) * {batch_size_months}
                 ) AS batch_month,
                 MIN(reference_time) AS batch_min_reference_time,
                 MAX(reference_time) AS batch_max_reference_time,
@@ -188,8 +191,11 @@ def plan_backfill_batches(
             GROUP BY
                 configuration_name,
                 add_months(
-                    date_trunc('month', value_time),
-                    -pmod(month(value_time) - 1, {batch_size_months})
+                    DATE '1970-01-01',
+                    CAST(floor(
+                        months_between(date_trunc('month', value_time), DATE '1970-01-01')
+                        / {batch_size_months}
+                    ) AS INT) * {batch_size_months}
                 )
             ORDER BY configuration_name, batch_month
         """
@@ -344,8 +350,11 @@ def plan_incremental_batches(
         batch_select = f"""
             s.configuration_name AS configuration_name,
             add_months(
-                date_trunc('month', s.value_time),
-                -pmod(month(s.value_time) - 1, {batch_size_months})
+                DATE '1970-01-01',
+                CAST(floor(
+                    months_between(date_trunc('month', s.value_time), DATE '1970-01-01')
+                    / {batch_size_months}
+                ) AS INT) * {batch_size_months}
             ) AS batch_month,
             MIN(s.reference_time) AS batch_min_reference_time,
             MAX(s.reference_time) AS batch_max_reference_time,
@@ -356,8 +365,11 @@ def plan_incremental_batches(
         batch_group_by = f"""
             s.configuration_name,
             add_months(
-                date_trunc('month', s.value_time),
-                -pmod(month(s.value_time) - 1, {batch_size_months})
+                DATE '1970-01-01',
+                CAST(floor(
+                    months_between(date_trunc('month', s.value_time), DATE '1970-01-01')
+                    / {batch_size_months}
+                ) AS INT) * {batch_size_months}
             )
         """
         batch_order_by = "configuration_name, batch_month"
