@@ -76,6 +76,19 @@ def _initialize_joined_forecast_evaluation(
     )
 
 
+def _batch_progress_message(batch: dict, index: int, total: int, write_mode: str) -> str:
+    """Build a compact per-batch progress message."""
+    return (
+        "Batch "
+        f"{index}/{total} "
+        f"config={batch.get('configuration_name')} "
+        f"batch_month={batch.get('batch_month')} "
+        f"rows={batch.get('batch_row_count')} "
+        f"value_time=[{batch.get('batch_min_value_time')}, {batch.get('batch_max_value_time')}] "
+        f"mode={write_mode}"
+    )
+
+
 @flow(
     flow_run_name="update-joined-forecast-table",
     timeout_seconds=60 * 60 * 6,
@@ -119,8 +132,14 @@ def update_joined_forecast_table(
         table_name=JOINED_FORECAST_TABLE_NAME,
         replace_existing_table=replace_existing_table,
     )
+    logger.info(
+        "Backfill execution mode selected: first_write_mode=%s replace_existing_table=%s",
+        first_write_mode,
+        replace_existing_table,
+    )
     for index, batch in enumerate(batches):
         write_mode = first_write_mode if index == 0 else "append"
+        logger.info(_batch_progress_message(batch, index + 1, len(batches), write_mode))
 
         write_joined_forecast_batch(
             ev=ev,
@@ -193,9 +212,15 @@ def update_joined_forecast_table_incremental(
             table_name=JOINED_FORECAST_TABLE_NAME,
             replace_existing_table=replace_existing_table_on_backfill_fallback,
         )
+        logger.info(
+            "Incremental fallback execution mode selected: first_write_mode=%s replace_existing_table_on_backfill_fallback=%s",
+            first_write_mode,
+            replace_existing_table_on_backfill_fallback,
+        )
 
         for index, batch in enumerate(batches):
             write_mode = first_write_mode if index == 0 else "append"
+            logger.info(_batch_progress_message(batch, index + 1, len(batches), write_mode))
 
             write_joined_forecast_batch(
                 ev=ev,
@@ -226,7 +251,8 @@ def update_joined_forecast_table_incremental(
         return
 
     logger.info("Writing %s joined forecast incremental batches.", len(batches))
-    for batch in batches:
+    for index, batch in enumerate(batches):
+        logger.info(_batch_progress_message(batch, index + 1, len(batches), "upsert"))
         write_joined_forecast_batch(
             ev=ev,
             batch=batch,
