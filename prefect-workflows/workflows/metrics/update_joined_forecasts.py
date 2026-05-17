@@ -101,7 +101,7 @@ def update_joined_forecast_table(
     executor_instances: int = 24,
     executor_cores: int = 4,
     executor_memory: str = "32g",
-    batch_size_months: int = 1,
+    batch_size_months: int = 3,
     replace_existing_table: bool = True,
 ) -> None:
     """Create the joined forecast table using bounded backfill batches.
