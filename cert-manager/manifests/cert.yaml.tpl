@@ -62,3 +62,29 @@ spec:
     name: letsencrypt-prod
     kind: ClusterIssuer
   secretName: dashboards.${var.hostname}-tls
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: ${var.hostname}-auth-cert
+spec:
+  commonName: auth.${var.hostname}
+  dnsNames:
+  - auth.${var.hostname}
+  issuerRef:
+    name: letsencrypt-prod
+    kind: ClusterIssuer
+  secretName: auth.${var.hostname}-tls
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: ${var.hostname}-prefect-cert
+spec:
+  commonName: prefect.${var.hostname}
+  dnsNames:
+  - prefect.${var.hostname}
+  issuerRef:
+    name: letsencrypt-prod
+    kind: ClusterIssuer
+  secretName: prefect.${var.hostname}-tls

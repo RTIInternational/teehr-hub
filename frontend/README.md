@@ -56,10 +56,12 @@ src/
 
 ## Environment Variables
 
-Create a `.env` file in the project root to configure the API endpoint:
+Create a `.env` file in the project root to configure the API endpoint and external service URLs:
 
 ```
 VITE_API_URL=http://localhost:8000
+VITE_KEYCLOAK_URL=https://auth.teehr.local.app.garden
+VITE_PREFECT_URL=https://prefect.teehr.local.app.garden
 ```
 
 Note: Environment variables must be prefixed with `VITE_` to be accessible in the client.

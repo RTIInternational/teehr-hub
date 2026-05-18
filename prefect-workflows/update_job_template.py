@@ -87,6 +87,7 @@ async def update_kubernetes_pool():
                     "job_watch_timeout_seconds": {
                         "type": "integer",
                         "title": "Job Watch Timeout Seconds",
+                        "default": 900,
                         "description": "Number of seconds to wait for each event emitted by a job before timing out. If not set, the worker will wait for each event indefinitely."
                     },
                     "pod_watch_timeout_seconds": {
@@ -94,6 +95,12 @@ async def update_kubernetes_pool():
                         "title": "Pod Watch Timeout Seconds",
                         "default": 60,
                         "description": "Number of seconds to watch for pod creation before timing out."
+                    },
+                    "active_deadline_seconds": {
+                        "type": "integer",
+                        "title": "Active Deadline Seconds",
+                        "default": 21600,
+                        "description": "Maximum number of seconds a Kubernetes job is allowed to run before the cluster terminates it."
                     },
                     "cpu_request": {
                         "type": "string",
@@ -226,7 +233,7 @@ async def update_kubernetes_pool():
                             }
                         },
                         "backoffLimit": 0,
-                        "activeDeadlineSeconds": 7200,
+                        "activeDeadlineSeconds": "{{ active_deadline_seconds }}",
                         "ttlSecondsAfterFinished": "{{ finished_job_ttl }}"
                     },
                     "metadata": {

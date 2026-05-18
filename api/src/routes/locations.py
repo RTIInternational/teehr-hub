@@ -7,6 +7,7 @@ import time
 from fastapi import APIRouter, HTTPException, Query, Request
 from fastapi.responses import JSONResponse
 
+from ..auth import effective_limit_for_request
 from ..config import config
 from ..database import execute_query, sanitize_string, trino_catalog, trino_schema
 from .utils import create_ogc_geojson_response, prepare_for_serialization
@@ -45,6 +46,8 @@ async def get_locations_items(
     If both id and prefix are provided, both filters are applied.
     """
     try:
+        limit = effective_limit_for_request(request, limit)
+
         # Build WHERE conditions
         where_conditions = []
 
