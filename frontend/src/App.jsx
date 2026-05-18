@@ -115,6 +115,16 @@ function App() {
               path="/data"
               element={
                 <RequireAuth>
+                  <DataDashboardProvider>
+                    <DataDashboard />
+                  </DataDashboardProvider>
+                </RequireAuth>
+              }
+            />
+            <Route
+              path="/data"
+              element={
+                <RequireAuth>
                   <Container className="mt-5 text-center">
                     <Alert variant="info">
                       <Alert.Heading>Data Management</Alert.Heading>
