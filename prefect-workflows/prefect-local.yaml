@@ -28,6 +28,7 @@ definitions:
       image_pull_policy: Always
       namespace: "{{ $TEEHR_NAMESPACE }}"
       finished_job_ttl: 300
+      job_watch_timeout_seconds: 900
       pod_watch_timeout_seconds: 300
       env:
         PREFECT_LOGGING_LEVEL: *log_level

@@ -70,6 +70,7 @@ This should create all the services in the cluster.  To test, open a browser and
 127.0.0.1       dashboards.teehr.local.app.garden
 127.0.0.1       api.teehr.local.app.garden
 127.0.0.1       panel.teehr.local.app.garden
+127.0.0.1       prefect.teehr.local.app.garden
 ```
 
 ### Load Test Data to Warehouse
@@ -82,14 +83,7 @@ Loading data is a little fractured depending on what data you are loading.  For 
 - `examples/02_create_joined_timeseries.ipynb`
 - `examples/03_generate_basic_metrics.ipynb`
 
-3) To load some recent (but not too recent forecasts).  This involves port forwarding the Prefect service to localhost, going to Prefect in the browser and executing a couple of workflows.
-
-```bash
-kubectl config use-context kind-kind
-kubectl port-forward -n teehr-hub svc/prefect-server 4200:4200
-```
-
-Open your browser and go to http://localhost:4200.  Navigate to `Deployments`.
+3) To load some recent (but not too recent forecasts), go to the Prefect UI at `https://prefect.teehr.local.app.garden` and log in with a Keycloak user in the `admin` group. Navigate to `Deployments`.
 
 1) Click on `ingest-usgs-streamflow-obs`.  In the upper right corner select Run > Custom Run.  Change the num_lookback_days to 10, toggle `start_spark_cluster` off, and Submit.  Monitor the run through the browser UI.  When done, proceed to the next one.
 

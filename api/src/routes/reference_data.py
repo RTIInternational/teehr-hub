@@ -9,6 +9,7 @@ import time
 from fastapi import APIRouter, HTTPException, Query, Request
 from fastapi.responses import JSONResponse
 
+from ..auth import effective_limit_for_request
 from ..database import execute_query, sanitize_string, trino_catalog, trino_schema
 from .utils import create_ogc_geojson_response, prepare_for_serialization
 
@@ -33,6 +34,8 @@ async def get_configuration_items(
     'usgs_observations') with their type (primary or secondary) and description.
     """
     try:
+        limit = effective_limit_for_request(request, limit)
+
         where_conditions = []
 
         if name:
@@ -202,6 +205,8 @@ async def get_unit_items(
     conversion factors or descriptions.
     """
     try:
+        limit = effective_limit_for_request(request, limit)
+
         where_conditions = []
 
         if name:
@@ -272,6 +277,8 @@ async def get_variable_items(
     with their descriptions.
     """
     try:
+        limit = effective_limit_for_request(request, limit)
+
         where_conditions = []
 
         if name:
@@ -342,6 +349,8 @@ async def get_attribute_items(
     'state', 'huc8') with their descriptions.
     """
     try:
+        limit = effective_limit_for_request(request, limit)
+
         where_conditions = []
 
         if name:
@@ -427,6 +436,8 @@ async def get_location_attribute_items(
     - Query attribute values without geometry overhead
     """
     try:
+        limit = effective_limit_for_request(request, limit)
+
         where_conditions = []
 
         if location_id:

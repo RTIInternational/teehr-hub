@@ -67,7 +67,7 @@ def execute_query(
         max_rows: Maximum number of rows to return (only applied if specified)
         retry_count: Current retry attempt
     """
-    logger.info(
+    logger.debug(
         f"Executing query (attempt {retry_count + 1}/{MAX_RETRIES + 1}): "
         f"{query}"
     )
@@ -75,7 +75,7 @@ def execute_query(
     # Only add LIMIT clause if max_rows is explicitly specified
     if max_rows and "LIMIT" not in query.upper():
         query = f"{query} LIMIT {max_rows}"
-        logger.info(f"Added LIMIT {max_rows} to query")
+        logger.debug(f"Added LIMIT {max_rows} to query")
 
     try:
         with get_trino_connection() as conn:
@@ -83,7 +83,7 @@ def execute_query(
             df = pd.read_sql(query, conn)
             query_time = time.time() - query_start
 
-            logger.info(
+            logger.debug(
                 f"Query completed in {query_time:.3f} seconds, "
                 f"returned {len(df)} rows"
             )
@@ -101,8 +101,9 @@ def execute_query(
 
         # Retry logic for transient errors
         if retry_count < MAX_RETRIES and should_retry_error(e):
-            logger.info(f"Retrying query in {RETRY_DELAY} seconds...")
-            time.sleep(RETRY_DELAY)
+            delay = RETRY_DELAY * (2 ** retry_count)
+            logger.info(f"Retrying query in {delay} seconds...")
+            time.sleep(delay)
             return execute_query(query, max_rows, retry_count + 1)
         else:
             raise e
@@ -114,9 +115,12 @@ def should_retry_error(error: Exception) -> bool:
 
     # Retry on common transient errors
     transient_errors = [
+        "all connection attempts failed",
+        "failed to establish a new connection",
         "connection reset",
         "connection timeout",
         "connection refused",
+        "max retries exceeded",
         "temporary failure",
         "server busy"
     ]

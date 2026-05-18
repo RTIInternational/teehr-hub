@@ -1,0 +1,34 @@
+kind: Deploy
+type: kubernetes
+name: keycloak-realm-config
+description: Deploy Keycloak realm bootstrap ConfigMap
+dependencies:
+  - deploy.keycloak
+  - deploy.secrets
+environments:
+  - local
+  - remote
+spec:
+  manifestTemplates:
+    - ./manifests/realm-configmap.yaml.tpl
+    - ./manifests/smtp-configmap.yaml.tpl
+---
+kind: Deploy
+type: exec
+name: keycloak-bootstrap
+description: Bootstrap Keycloak realm, groups, and clients using keycloak-config-cli
+dependencies:
+  - deploy.keycloak
+  - deploy.secrets
+  - deploy.keycloak-realm-config
+environments:
+  - local
+  - remote
+spec:
+  deployCommand:
+    - bash
+    - -c
+    - >-
+      kubectl -n "${environment.namespace}" delete job keycloak-bootstrap --ignore-not-found=true &&
+      kubectl -n "${environment.namespace}" apply -f ./manifests/bootstrap-job.yaml &&
+      kubectl -n "${environment.namespace}" wait --for=condition=Complete job/keycloak-bootstrap --timeout=300s

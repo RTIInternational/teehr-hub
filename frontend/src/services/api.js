@@ -1,21 +1,48 @@
 // API configuration - OGC-compliant endpoints
+import { ensureFreshToken, getKeycloak } from '../auth/keycloak';
+
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8000';
+const API_KEY = import.meta.env.VITE_API_KEY || '';
 
 // Helper function for API calls
 const apiCall = async (endpoint, options = {}) => {
   try {
     const url = `${API_BASE_URL}${endpoint}`;
+    const refreshedToken = await ensureFreshToken();
+    const token = refreshedToken || getKeycloak().token || null;
+    const { headers: extraHeaders = {}, ...restOptions } = options;
+    const authHeaders = {
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      ...(!token && API_KEY ? { 'X-API-Key': API_KEY } : {}),
+    };
 
     const response = await fetch(url, {
       headers: {
         'Accept': 'application/json',
-        ...options.headers,
+        ...authHeaders,
+        ...extraHeaders,
       },
-      ...options,
+      ...restOptions,
     });
 
+    if (response.status === 204) {
+      return null;
+    }
+
     if (!response.ok) {
-      throw new Error(`API Error: ${response.status} ${response.statusText}`);
+      let detail = '';
+      try {
+        const errorBody = await response.json();
+        detail = errorBody?.detail ? ` - ${errorBody.detail}` : '';
+      } catch {
+        detail = '';
+      }
+      throw new Error(`API Error: ${response.status} ${response.statusText}${detail}`);
+    }
+
+    const contentType = (response.headers.get('content-type') || '').toLowerCase();
+    if (!contentType.includes('json')) {
+      return null;
     }
 
     const data = await response.json();
@@ -185,6 +212,22 @@ export const apiService = {
 
   // Health check
   healthCheck: () => apiCall('/health'),
+
+  // Auth info
+  getMe: () => apiCall('/auth/me'),
+
+  // API key management (admin JWT required)
+  listApiKeys: () => apiCall('/auth/api-keys'),
+  createApiKey: (name, scopes = []) =>
+    apiCall('/auth/api-keys', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name, scopes }),
+    }),
+  revokeApiKey: (keyId) =>
+    apiCall(`/auth/api-keys/${encodeURIComponent(keyId)}`, {
+      method: 'DELETE',
+    }),
 
   // Get locations filtered by ID prefix, returns GeoJSON FeatureCollection
   getLocationsByPrefix: (prefix, limit = 5000) => {

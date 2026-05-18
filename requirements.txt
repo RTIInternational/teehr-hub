@@ -10,3 +10,4 @@ hvplot
 jupyter_bokeh
 nbconvert
 watchfiles
+requests
