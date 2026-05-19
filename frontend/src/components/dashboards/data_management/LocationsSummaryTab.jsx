@@ -243,22 +243,19 @@ const LocationsSummaryTab = ({ isActive = true }) => {
   // Handle click on map point — fetch configurations for that location
   const handleMapPointClick = useCallback((properties) => {
     const locId = properties.location_id;
-    console.log('[DEBUG] Map point clicked with location_id:', locId, 'full properties:', properties);
     setSidePanelLocationId(locId);
     setSidePanelOpen(true);
     setSidePanelLoading(true);
     setSidePanelError(null);
     apiService.getConfigurationsByLocationId(locId)
       .then((data) => {
-        console.log('[DEBUG] Configurations received:', data);
         const items = Array.isArray(data)
           ? data
           : Array.isArray(data.items) ? data.items : [];
         setSidePanelConfigs(items);
       })
       .catch((err) => {
-        console.error('[ERROR] Failed to load configurations:', err);
-        setSidePanelError(err.message);
+        setSidePanelError(err?.message || 'Failed to load configurations.');
       })
       .finally(() => setSidePanelLoading(false));
   }, []);
