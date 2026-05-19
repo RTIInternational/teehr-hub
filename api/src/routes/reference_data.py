@@ -780,10 +780,10 @@ async def get_configurations_by_location_expanded(
     then expands the configuration_names, variable_names, and unit_names arrays
     into individual rows in Python.
     """
-    try:
-        if not location_id:
-            raise ValueError("location_id parameter is required")
+    if not location_id:
+        raise HTTPException(status_code=400, detail="location_id parameter is required")
 
+    try:
         safe_id = sanitize_string(location_id)
 
         # Each row is already one configuration/variable/unit — no expansion needed
