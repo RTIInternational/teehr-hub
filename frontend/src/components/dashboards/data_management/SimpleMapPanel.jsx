@@ -353,7 +353,7 @@ const SimpleMapPanel = ({
     return () => {
       try { removeOverlay(); } catch { /* silent */ }
     };
-  }, [mapLoaded, overlayLocations]);
+  }, [mapLoaded, overlayLocations, overlayVisible]);
 
   // ── 5. Toggle overlay visibility ─────────────────────────────────────────
   useEffect(() => {
