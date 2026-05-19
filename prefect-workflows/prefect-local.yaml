@@ -564,7 +564,7 @@ deployments:
     parameters: {"temp_dir_path": *temp_dir_path, "start_spark_cluster": false}
     work_pool: *work_pool
 
-  - name: update-configuration-summary
+  - name: update-configurations-summary
     version:
     tags: []
     description: Calculate configuration summary statistics and update the configuration summary table

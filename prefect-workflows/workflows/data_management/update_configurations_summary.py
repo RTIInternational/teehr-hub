@@ -67,7 +67,7 @@ def summarize_configurations_by_timeseries_type(
 
 
 @flow(
-    flow_run_name="update-forecast-metrics-table",
+    flow_run_name="update-configurations-summary-table",
     timeout_seconds=60 * 60
 )
 def update_configurations_summary_table(

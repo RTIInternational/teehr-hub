@@ -807,7 +807,7 @@ deployments:
     #   cron: "0 9,21 * * *"
     #   active: true
 
-  - name: update-configuration-summary
+  - name: update-configurations-summary
     version:
     tags: []
     concurrency_limit: 1
