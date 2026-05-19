@@ -289,30 +289,6 @@ export const apiService = {
     return apiCall(`/collections/configurations_by_location/expanded?${params.toString()}`);
   },
 
-  // Get configurations_by_location row for a specific primary_location_id
-  getConfigurationsByLocationForId: (primaryLocationId) => {
-    const params = new URLSearchParams();
-    params.append('primary_location_id', primaryLocationId);
-    params.append('limit', 1);
-    return apiCall(`/collections/configurations_by_location/items?${params.toString()}`);
-  },
-
-  // Step 1: Get distinct location IDs from configurations_by_location for a configuration + variable
-  getConfigurationLocationIds: (filters = {}) => {
-    const params = new URLSearchParams();
-    if (filters.configuration_name) params.append('configuration_name', filters.configuration_name);
-    if (filters.variable_name) params.append('variable_name', filters.variable_name);
-    return apiCall(`/collections/configurations_by_location/location-ids?${params.toString()}`);
-  },
-
-  // Step 2: Get GeoJSON features from the locations table for a list of location IDs
-  getLocationsByIds: (ids, limit = 5000) => {
-    const params = new URLSearchParams();
-    ids.forEach((id) => params.append('id', id));
-    params.append('limit', limit);
-    return apiCall(`/collections/locations/items?${params.toString()}`);
-  },
-
   // Get GeoJSON for all locations matching a configuration + variable via a backend JOIN (no URL-length limit)
   getConfigurationLocationsGeojson: (filters = {}) => {
     const params = new URLSearchParams();
