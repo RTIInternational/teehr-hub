@@ -120,7 +120,7 @@ const CompletenessHeatmap = ({ configurationName, variableName, onHover = null }
       cancelled = true;
       if (onHover) onHover(null);
     };
-  }, [configurationName, variableName]);
+  }, [configurationName, variableName, onHover]);
 
   // Attach Plotly hover events once the plot is rendered
   useEffect(() => {
