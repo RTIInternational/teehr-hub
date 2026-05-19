@@ -355,7 +355,7 @@ const SimpleMapPanel = ({
     };
   }, [mapLoaded, overlayLocations, overlayVisible]);
 
-  // ── 5. Toggle overlay visibility ─────────────────────────────────────────
+  // ── 6. Toggle overlay visibility ─────────────────────────────────────────
   useEffect(() => {
     if (!mapLoaded || !map.current) return;
     const visibility = overlayVisible ? 'visible' : 'none';
@@ -366,7 +366,7 @@ const SimpleMapPanel = ({
     });
   }, [mapLoaded, overlayVisible]);
 
-  // ── 6. Update hovered overlay highlight filter ────────────────────────────
+  // ── 7. Update hovered overlay highlight filter ────────────────────────────
   useEffect(() => {
     if (!mapLoaded || !map.current) return;
     if (!map.current.getLayer('overlay-highlight')) return;

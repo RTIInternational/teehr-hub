@@ -5,7 +5,8 @@
  *
  * Behaviour
  * ---------
- * - Loads available configurations from configurations_summary for the dropdowns.
+ * - This is hardcoded for the usgs_observations configuration_name and variable_name.
+ *   In the future this could load available configurations from configurations_summary for the dropdowns.
  * - "Generate" fetches overlay polygon geometries and passes them to the map,
  *   and passes configuration_name / variable_name to the heatmap.
  * - Heatmap hover updates hoveredSpatialAggregate → highlights the matching
