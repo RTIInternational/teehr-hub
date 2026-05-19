@@ -5,6 +5,7 @@ These are lookup/domain tables used to validate and describe timeseries data.
 """
 
 import time
+import traceback
 
 from fastapi import APIRouter, HTTPException, Query, Request
 from fastapi.responses import JSONResponse
@@ -703,7 +704,6 @@ async def get_configurations_by_location_items(
         return JSONResponse(content=response, media_type="application/json")
 
     except Exception as e:
-        import traceback
         error_msg = str(e)
         tb = traceback.format_exc()
         print(f"[ERROR] Failed to load configurations_by_location:")
@@ -777,7 +777,6 @@ async def get_configurations_by_location_expanded(
         return JSONResponse(content=response, media_type="application/json")
 
     except Exception as e:
-        import traceback
         error_msg = str(e)
         tb = traceback.format_exc()
         print(f"[ERROR] Failed to load expanded configurations:")

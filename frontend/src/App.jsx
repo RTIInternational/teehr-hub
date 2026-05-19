@@ -122,19 +122,6 @@ function App() {
               }
             />
             <Route
-              path="/data"
-              element={
-                <RequireAuth>
-                  <Container className="mt-5 text-center">
-                    <Alert variant="info">
-                      <Alert.Heading>Data Management</Alert.Heading>
-                      <p>Coming Soon</p>
-                    </Alert>
-                  </Container>
-                </RequireAuth>
-              }
-            />
-            <Route
               path="/admin"
               element={
                 <AdminRoute>

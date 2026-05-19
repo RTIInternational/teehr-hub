@@ -41,6 +41,11 @@ const SimpleMapPanel = ({
   const mapContainer = useRef(null);
   const map = useRef(null);
   const popup = useRef(null);
+  const overPopupRef = useRef(false);
+  const popupElementRef = useRef(null);
+  const popupListenersBoundRef = useRef(false);
+  const popupEnterHandlerRef = useRef(null);
+  const popupLeaveHandlerRef = useRef(null);
   const [mapLoaded, setMapLoaded] = useState(false);
 
   // ── 1. Initialize map once ──────────────────────────────────────────────
@@ -61,6 +66,14 @@ const SimpleMapPanel = ({
       maxWidth: '320px',
     });
 
+    popupEnterHandlerRef.current = () => {
+      overPopupRef.current = true;
+    };
+    popupLeaveHandlerRef.current = () => {
+      overPopupRef.current = false;
+      popup.current?.remove();
+    };
+
     map.current.on('load', () => {
       map.current.addSource('osm', {
         type: 'raster',
@@ -72,6 +85,17 @@ const SimpleMapPanel = ({
     });
 
     return () => {
+      const popupEl = popupElementRef.current;
+      const onEnter = popupEnterHandlerRef.current;
+      const onLeave = popupLeaveHandlerRef.current;
+      if (popupEl && onEnter && onLeave) {
+        popupEl.removeEventListener('mouseenter', onEnter);
+        popupEl.removeEventListener('mouseleave', onLeave);
+      }
+      popupElementRef.current = null;
+      popupListenersBoundRef.current = false;
+      popupEnterHandlerRef.current = null;
+      popupLeaveHandlerRef.current = null;
       map.current?.remove();
       map.current = null;
       setMapLoaded(false);
@@ -105,8 +129,16 @@ const SimpleMapPanel = ({
       );
     });
 
-    // Track whether the cursor is over the popup element itself
-    let overPopup = false;
+    const bindPopupHoverListeners = () => {
+      const el = popup.current?.getElement();
+      const onEnter = popupEnterHandlerRef.current;
+      const onLeave = popupLeaveHandlerRef.current;
+      if (!el || popupListenersBoundRef.current || !onEnter || !onLeave) return;
+      el.addEventListener('mouseenter', onEnter);
+      el.addEventListener('mouseleave', onLeave);
+      popupElementRef.current = el;
+      popupListenersBoundRef.current = true;
+    };
 
     // Event handlers (defined here so cleanup can remove exact same refs)
     const handleEnter = (e) => {
@@ -119,23 +151,14 @@ const SimpleMapPanel = ({
              <strong>${feature.properties.name || feature.properties.primary_location_id || ''}</strong>
            </div>`;
       popup.current.setLngLat(coordinates).setHTML(html).addTo(m);
-
-      // Attach mouse listeners to the popup DOM element so it persists on hover
-      const el = popup.current.getElement();
-      if (el) {
-        el.addEventListener('mouseenter', () => { overPopup = true; });
-        el.addEventListener('mouseleave', () => {
-          overPopup = false;
-          popup.current.remove();
-        });
-      }
+      bindPopupHoverListeners();
     };
 
     const handleLeave = () => {
       m.getCanvas().style.cursor = '';
       // Delay removal so cursor has time to enter the popup element
       setTimeout(() => {
-        if (!overPopup) popup.current.remove();
+        if (!overPopupRef.current) popup.current.remove();
       }, 100);
     };
 
