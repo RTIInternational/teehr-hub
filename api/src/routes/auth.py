@@ -27,7 +27,7 @@ async def list_api_keys(
     request: Request,
     identity: AuthIdentity = Depends(get_admin_identity),
 ):
-    keys = await request.app.state.api_key_store.list_keys(identity.subject)
+    keys = await request.app.state.api_key_store.list_keys()
     return {"items": keys}
 
 
