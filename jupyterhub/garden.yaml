@@ -112,7 +112,7 @@ spec:
         TEEHR_DOWNLOAD_API_KEY:
           valueFrom:
             secretKeyRef:
-              name: keycloak-secrets
+              name: jupyter-user-secrets
               key: api-key
         REMOTE_CATALOG_TYPE: ${var.iceberg.catalogType}
         REMOTE_CATALOG_REST_URI: ${var.iceberg.catalogUri}
