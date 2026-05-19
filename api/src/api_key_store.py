@@ -101,7 +101,7 @@ class ApiKeyStore:
             roles=["api-key"],
         )
 
-    async def list_keys(self, owner_sub: str):
+    async def list_keys(self):
         if self._pool is None:
             raise RuntimeError("API key store is not initialized")
 
@@ -110,10 +110,8 @@ class ApiKeyStore:
                 """
                 SELECT id, name, scopes, created_at, revoked_at
                 FROM api_keys
-                WHERE owner_sub = $1
                 ORDER BY created_at DESC
-                """,
-                owner_sub,
+                """
             )
 
         return [
