@@ -21,7 +21,7 @@ def summarize_primary_locations(
     """Summarize primary locations."""
     logger = get_run_logger()
     logger.info(
-        f"Summarizing primary locations into a spark dataframe..."
+        "Summarizing primary locations into a spark dataframe..."
     )
     return ev.spark.sql("""
         SELECT
@@ -46,7 +46,7 @@ def summarize_secondary_locations(
     """Summarize secondary locations."""
     logger = get_run_logger()
     logger.info(
-        f"Summarizing secondary locations into a spark dataframe..."
+        "Summarizing secondary locations into a spark dataframe..."
     )
     return ev.spark.sql("""
         SELECT

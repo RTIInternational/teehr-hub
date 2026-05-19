@@ -88,7 +88,7 @@ def update_configurations_summary_table(
         executor_memory=executor_memory,
     )
 
-    logger.info(f"Summarizing configurations for each timeseries table...")
+    logger.info("Summarizing configurations for each timeseries table...")
     primary_sdf = summarize_configurations_by_timeseries_type(
         ev=ev,
         timeseries_type="primary"
