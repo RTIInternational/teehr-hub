@@ -23,16 +23,18 @@ const fmt = (val) => {
 
 // Returns a raw sortable value for a column key
 const sortValue = (row, key) => {
-  return String(row[key] ?? '').toLowerCase();
-};
+  const value = row[key];
 
-// Parse a field that MapLibre may have serialized to a JSON string
-const parseArrayProp = (val) => {
-  if (Array.isArray(val)) return val;
-  if (typeof val === 'string') {
-    try { const p = JSON.parse(val); return Array.isArray(p) ? p : [val]; } catch { return [val]; }
-  }
-  return val ? [String(val)] : [];
+  if (value == null) return '';
+  if (typeof value === 'number') return value;
+
+  const stringValue = String(value).trim();
+  if (stringValue === '') return '';
+
+  const numericValue = Number(stringValue);
+  if (!Number.isNaN(numericValue)) return numericValue;
+
+  return stringValue.toLowerCase();
 };
 
 // Default columns always shown
