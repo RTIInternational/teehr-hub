@@ -110,7 +110,6 @@ class ApiKeyStore:
                 """
                 SELECT id, name, scopes, created_at, revoked_at
                 FROM api_keys
-                WHERE owner_sub = $1
                 ORDER BY created_at DESC
                 """,
                 owner_sub,
