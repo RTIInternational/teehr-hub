@@ -238,11 +238,11 @@ export const apiService = {
   },
 
   // Get location id + name (no geometry) filtered by prefix, returns {items: [{id, name}]}
-  getLocationIdNames: (prefix, limit = 5000) => {
+  getLocationIdNames: (prefix, limit = null) => {
     const params = new URLSearchParams();
     if (prefix) params.append('prefix', prefix);
     params.append('include_geometry', 'false');
-    params.append('limit', limit);
+    if (limit != null) params.append('limit', limit);
     return apiCall(`/collections/locations/items?${params.toString()}`);
   },
 

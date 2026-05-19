@@ -175,7 +175,7 @@ const LocationsSummaryTab = ({ isActive = true }) => {
     setLoading(true);
     setError(null);
     Promise.all([
-      apiService.getLocationIdNames('usgs', 5000),
+      apiService.getLocationIdNames('usgs'),
       apiService.getLocationAttributesByNames(attributeNames),
     ])
       .then(([locationsData, attrsData]) => {
