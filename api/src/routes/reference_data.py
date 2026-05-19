@@ -112,6 +112,8 @@ async def get_configurations_summary_items(
     time ranges, location counts, and associated variable/unit metadata.
     """
     try:
+        limit = effective_limit_for_request(request, limit)
+
         where_conditions = []
 
         if configuration_name:
@@ -529,6 +531,8 @@ async def get_configuration_completeness_items(
     expected_count, completeness, configuration_name, variable_name.
     """
     try:
+        limit = effective_limit_for_request(request, limit)
+
         where_conditions = []
         if configuration_name:
             safe_cfg = sanitize_string(configuration_name)
@@ -603,7 +607,6 @@ async def get_configuration_completeness_items(
 async def get_configurations_by_location_items(
     request: Request,
     configuration_name: str | None = Query(None, description="Filter by configuration name"),
-    primary_location_id: str | None = Query(None, description="Filter by primary location ID"),
     location_id: str | None = Query(None, description="Filter by location ID (alias for primary_location_id)"),
     extra_fields: list[str] | None = Query(None, description="Additional field names to include"),
     limit: int | None = Query(None, ge=1, description="Maximum number of items to return"),
@@ -690,15 +693,15 @@ async def get_configurations_by_location_items(
     ALLOWED_EXTRA_FIELDS = set(ALLOWED_EXTRA_FIELD_SQL)
 
     try:
+        limit = effective_limit_for_request(request, limit)
+
         where_conditions = []
         if configuration_name:
             safe_name = sanitize_string(configuration_name)
             where_conditions.append(f"configuration_name = '{safe_name}'")
 
-        # Support both location_id (newer) and primary_location_id (legacy) parameters
-        filter_location_id = location_id or primary_location_id
-        if filter_location_id:
-            safe_id = sanitize_string(filter_location_id)
+        if location_id:
+            safe_id = sanitize_string(location_id)
             where_conditions.append(f"primary_location_id = '{safe_id}'")
 
         where_clause = ("WHERE " + " AND ".join(where_conditions)) if where_conditions else ""
@@ -955,7 +958,6 @@ async def get_configurations_by_location_locations_geojson(
 
 @router.get("/collections/configurations_by_location/geojson")
 async def get_configurations_by_location_geojson(
-    request: Request,
     configuration_name: str | None = Query(None, description="Filter by configuration name"),
     variable_name: str | None = Query(None, description="Filter by variable name"),
     primary_location_id: str | None = Query(None, description="Filter by primary location ID"),
