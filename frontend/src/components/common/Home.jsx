@@ -4,37 +4,6 @@ import { Link } from 'react-router-dom';
 const Home = () => {
   const dashboards = [
     {
-      id: 'retrospective-simulations',
-      title: 'Retrospective Simulations',
-      description: 'Analyze and compare historical simulation data with observed values. Explore metrics, timeseries, and spatial patterns.',
-      features: [
-        'Interactive maps with simulation metrics',
-        'Time series visualization and comparison',
-        'Statistical performance metrics',
-        'Multi-configuration analysis'
-      ],
-      path: '/retrospective',
-      status: 'available',
-      image: '/api/static/preview-retrospective.png', // placeholder
-      color: 'primary'
-    },
-    // Future dashboards can be added here
-    {
-      id: 'forecast-analysis',
-      title: 'Forecast Analysis',
-      description: 'Real-time forecast analysis and validation tools for operational and research data streams.',
-      features: [
-        'Live forecast data',
-        'Forecast vs observation comparison',
-        'Lead time analysis'
-      ],
-      path: '/forecast',
-      status: 'available',
-      image: '/api/static/preview-forecast.png', // placeholder
-      color: 'secondary'
-    },
-
-    {
       id: 'data-management',
       title: 'Data Management',
       description: 'Explore contents of the data warehouse spatially and temporally.',
@@ -49,6 +18,37 @@ const Home = () => {
       color: 'success'
     },
 
+    {
+      id: 'retrospective-simulations',
+      title: 'Retrospective Simulations',
+      description: 'Analyze and compare historical simulation data with observed values. Explore metrics, timeseries, and spatial patterns.',
+      features: [
+        'Interactive maps with simulation metrics',
+        'Time series visualization and comparison',
+        'Statistical performance metrics',
+        'Multi-configuration analysis'
+      ],
+      path: '/retrospective',
+      status: 'available',
+      image: '/api/static/preview-retrospective.png', // placeholder
+      color: 'primary'
+    },
+
+    {
+      id: 'forecast-analysis',
+      title: 'Forecast Analysis',
+      description: 'Real-time forecast analysis and validation tools for operational and research data streams.',
+      features: [
+        'Live forecast data',
+        'Forecast vs observation comparison',
+        'Lead time analysis'
+      ],
+      path: '/forecast',
+      status: 'available',
+      image: '/api/static/preview-forecast.png', // placeholder
+      color: 'secondary'
+    },
+    // Future dashboards
     {
       id: 'retrospective-model-comparisons',
       title: 'Retrospective Model Comparisons',
