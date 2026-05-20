@@ -42,7 +42,7 @@ const TimeseriesControls = ({
   return (
     <div className="h-100 d-flex flex-column">
       <Form className="flex-grow-1">
-        <Row className="g-2 h-100">
+        <Row className="g-2 align-content-start">
           {/* Configuration - Multi-select */}
           <Col md={6}>
             <Form.Group>
