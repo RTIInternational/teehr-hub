@@ -83,13 +83,10 @@ const LocationsSummaryTab = ({ isActive = true }) => {
   const [error, setError] = useState(null);
   const [selectedId, setSelectedId] = useState(null);
 
-  // Side panel state for configurations
-  const [sidePanelOpen, setSidePanelOpen] = useState(false);
   const [sidePanelConfigs, setSidePanelConfigs] = useState([]);
   const [sidePanelLoading, setSidePanelLoading] = useState(false);
   const [sidePanelError, setSidePanelError] = useState(null);
 
-  // Column picker state
   const [activeColumns, setActiveColumns] = useState(DEFAULT_COLUMNS);
   const [availableAttributes, setAvailableAttributes] = useState([]);
   const [pickerOpen, setPickerOpen] = useState(false);
@@ -98,7 +95,6 @@ const LocationsSummaryTab = ({ isActive = true }) => {
   const [filterText, setFilterText] = useState('');
   const pickerRef = useRef(null);
 
-  // Load available attribute names from the attributes table on mount
   useEffect(() => {
     apiService.getAttributes()
       .then((data) => {
@@ -109,10 +105,9 @@ const LocationsSummaryTab = ({ isActive = true }) => {
           .sort((a, b) => a.label.localeCompare(b.label));
         setAvailableAttributes(attrs);
       })
-      .catch(() => { /* non-fatal: picker will be empty */ });
+      .catch(() => { /* non-fatal */ });
   }, []);
 
-  // Close picker when clicking outside
   useEffect(() => {
     const handler = (e) => {
       if (pickerRef.current && !pickerRef.current.contains(e.target)) setPickerOpen(false);
@@ -151,8 +146,12 @@ const LocationsSummaryTab = ({ isActive = true }) => {
   };
 
   const addedOptionalKeys = new Set(activeColumns.map((c) => c.key));
-
   const { sortedRows, handleSort, SortIcon } = useSortableTable(rows, 'location_id', sortValue);
+
+  const selectedLocationRow = useMemo(
+    () => rows.find((row) => row.location_id === selectedId) ?? null,
+    [rows, selectedId]
+  );
 
   const filteredRows = useMemo(() => {
     if (!filterText.trim()) return sortedRows;
@@ -167,8 +166,6 @@ const LocationsSummaryTab = ({ isActive = true }) => {
 
   const hasActiveFilter = !!filterText;
 
-  // Load tabular rows by fetching locations (id + name) and location_attributes
-  // for the given attribute names, then pivoting and joining in the frontend.
   const fetchRows = useCallback((extraAttributeNames = []) => {
     const attributeNames = [...DEFAULT_ATTRIBUTE_NAMES, ...extraAttributeNames];
     setLoading(true);
@@ -194,18 +191,38 @@ const LocationsSummaryTab = ({ isActive = true }) => {
 
   useEffect(() => { fetchRows(); }, [fetchRows]);
 
-  // On row click: fetch geometry from the locations table and full row data from
-  // configurations_by_location in parallel, then merge for the map popup.
+  const loadConfigurationsForLocation = useCallback((locationId) => {
+    setSidePanelLoading(true);
+    setSidePanelError(null);
+    setSidePanelConfigs([]);
+    apiService.getConfigurationsByLocationId(locationId)
+      .then((data) => {
+        const items = Array.isArray(data)
+          ? data
+          : Array.isArray(data.items) ? data.items : [];
+        setSidePanelConfigs(items);
+      })
+      .catch((err) => {
+        setSidePanelError(err?.message || 'Failed to load configurations.');
+      })
+      .finally(() => setSidePanelLoading(false));
+  }, []);
+
   const handleRowClick = useCallback((row) => {
     if (selectedId === row.location_id) {
       setSelectedId(null);
       setGeojson(null);
       setBasinGeojson(null);
       setNoGeometry(false);
+      setSidePanelConfigs([]);
+      setSidePanelLoading(false);
+      setSidePanelError(null);
       return;
     }
+
     setSelectedId(row.location_id);
     setNoGeometry(false);
+
     const basinId = row.location_id.replace(/^usgs-/, 'usgsbasin-');
     Promise.all([
       apiService.getLocationById(row.location_id),
@@ -235,37 +252,19 @@ const LocationsSummaryTab = ({ isActive = true }) => {
       .catch(() => {
         setNoGeometry(true);
       });
-  }, [selectedId]);
 
-  // Handle click on map point — fetch configurations for that location
-  const handleMapPointClick = useCallback((properties) => {
-    const locId = properties.location_id;
-    setSidePanelOpen(true);
-    setSidePanelLoading(true);
-    setSidePanelError(null);
-    apiService.getConfigurationsByLocationId(locId)
-      .then((data) => {
-        const items = Array.isArray(data)
-          ? data
-          : Array.isArray(data.items) ? data.items : [];
-        setSidePanelConfigs(items);
-      })
-      .catch((err) => {
-        setSidePanelError(err?.message || 'Failed to load configurations.');
-      })
-      .finally(() => setSidePanelLoading(false));
-  }, []);
+    loadConfigurationsForLocation(row.location_id);
+  }, [selectedId, loadConfigurationsForLocation]);
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0, gap: '12px' }}>
-      <div style={{ flex: '1 1 0', minHeight: 0, display: 'flex', position: 'relative' }}>
-        <div style={{ flex: sidePanelOpen ? '1 1 0' : '1 1 100%', minWidth: 0, minHeight: 0, position: 'relative' }}>
+      <div style={{ flex: '1 1 0', minHeight: 0, display: 'flex', gap: '12px' }}>
+        <div style={{ flex: '1 1 0', minWidth: 0, minHeight: 0, position: 'relative' }}>
           <DashboardPanel bodyStyle={{ padding: '12px', position: 'relative' }}>
             <SimpleMapPanel
               locations={geojson}
               basinLocations={basinGeojson}
               getPopupHTML={makePopupHTML}
-              onPointClick={handleMapPointClick}
               isActive={isActive}
             />
             {!selectedId && (
@@ -287,45 +286,48 @@ const LocationsSummaryTab = ({ isActive = true }) => {
           </DashboardPanel>
         </div>
 
-        {sidePanelOpen && (
-          <div style={{ flex: '0 0 50%', minHeight: 0, marginLeft: '12px' }}>
-            <DashboardPanel
-              header={(
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12 }}>
-                  <strong style={{ fontSize: '0.9rem' }}>Configurations</strong>
-                  <button
-                    type="button"
-                    className="btn-close"
-                    style={{ padding: 0 }}
-                    onClick={() => setSidePanelOpen(false)}
-                    aria-label="Close"
-                  />
+        <div style={{ flex: '0 0 50%', minWidth: 0, minHeight: 0 }}>
+          <DashboardPanel
+            header={(
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                <strong style={{ fontSize: '0.9rem' }}>Configurations</strong>
+                {selectedLocationRow ? (
+                  <div style={{ fontSize: '0.78rem', color: '#6c757d', lineHeight: 1.3 }}>
+                    <span>{selectedLocationRow.name || 'Unnamed location'}</span>
+                    <span className="mx-1">•</span>
+                    <span>{selectedLocationRow.location_id}</span>
+                  </div>
+                ) : (
+                  <div style={{ fontSize: '0.78rem', color: '#6c757d', lineHeight: 1.3 }}>
+                    Select a location from the table below.
+                  </div>
+                )}
+              </div>
+            )}
+            bodyStyle={{ padding: 0 }}
+          >
+            <div style={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0 }}>
+              {!selectedId ? (
+                <div className="d-flex align-items-center justify-content-center flex-grow-1 text-muted">
+                  <div className="text-center">
+                    <div style={{ fontSize: '3rem' }}>📍</div>
+                    <h5>Select a Location</h5>
+                    <p>Click a location row below to view its configurations.</p>
+                  </div>
                 </div>
-              )}
-              bodyStyle={{ padding: 0 }}
-            >
-              {sidePanelLoading && (
-                <div className="d-flex align-items-center justify-content-center h-100">
-                  <Spinner animation="border" variant="primary" role="status" style={{ width: '1.5rem', height: '1.5rem' }}>
-                    <span className="visually-hidden">Loading…</span>
-                  </Spinner>
+              ) : sidePanelLoading ? (
+                <div className="d-flex align-items-center justify-content-center flex-grow-1">
+                  <div className="text-center">
+                    <Spinner animation="border" variant="primary" />
+                    <div className="mt-2 small text-muted">Loading configurations...</div>
+                  </div>
                 </div>
-              )}
-
-              {sidePanelError && (
-                <Alert variant="danger" className="m-3 mb-0" style={{ flex: '0 0 auto', fontSize: '0.8rem' }}>
+              ) : sidePanelError ? (
+                <Alert variant="danger" className="m-3">
                   <i className="bi bi-exclamation-triangle-fill me-2" />
                   {sidePanelError}
                 </Alert>
-              )}
-
-              {!sidePanelLoading && !sidePanelError && sidePanelConfigs.length === 0 && (
-                <div className="d-flex align-items-center justify-content-center h-100 text-muted">
-                  <small>No configurations found</small>
-                </div>
-              )}
-
-              {!sidePanelLoading && !sidePanelError && sidePanelConfigs.length > 0 && (
+              ) : sidePanelConfigs.length > 0 ? (
                 <div style={{ flex: '1 1 0', minHeight: 0, overflowY: 'auto', padding: '12px' }}>
                   <table className="table table-sm table-bordered mb-0" style={{ fontSize: '0.75rem' }}>
                     <thead className="table-light sticky-top">
@@ -356,10 +358,18 @@ const LocationsSummaryTab = ({ isActive = true }) => {
                     </tbody>
                   </table>
                 </div>
+              ) : (
+                <div className="d-flex align-items-center justify-content-center flex-grow-1 text-muted">
+                  <div className="text-center">
+                    <div style={{ fontSize: '2rem' }}>🗂️</div>
+                    <h6 className="mb-1">No Configurations</h6>
+                    <p className="small mb-0">This location does not have any configurations.</p>
+                  </div>
+                </div>
               )}
-            </DashboardPanel>
-          </div>
-        )}
+            </div>
+          </DashboardPanel>
+        </div>
       </div>
 
       <div style={{ flex: '1 1 0', minHeight: 0 }}>
