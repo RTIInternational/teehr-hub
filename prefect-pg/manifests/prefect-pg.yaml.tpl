@@ -77,7 +77,7 @@ spec:
           resources:
             requests:
               cpu: "2"
-              memory: 4Gi
+              memory: "${environment.name == 'local' ? '1Gi' : '4Gi'}"
             limits:
               cpu: "4"
               memory: 8Gi
