@@ -114,7 +114,7 @@ const CompletenessTab = ({ isActive = true }) => {
       {/* Map + Heatmap side-by-side */}
       <div style={{ flex: '1 1 0', minHeight: 0, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
 
-        <DashboardPanel bodyStyle={{ padding: '12px', position: 'relative' }}>
+        <DashboardPanel bodyStyle={{ padding: 0, position: 'relative' }}>
           <SimpleMapPanel
             overlayLocations={overlayGeometries}
             overlayVisible={overlayVisible}

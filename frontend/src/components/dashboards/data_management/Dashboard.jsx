@@ -80,9 +80,6 @@ const Dashboard = () => {
               inset: 0,
               display: activeTab === 'configurations' ? 'flex' : 'none',
               flexDirection: 'column',
-              border: '1px solid #dee2e6',
-              borderRadius: '6px',
-              overflow: 'hidden',
             }}
           >
             <ConfigurationsSummaryTab isActive={activeTab === 'configurations'} />
@@ -96,9 +93,6 @@ const Dashboard = () => {
               inset: 0,
               display: activeTab === 'locations' ? 'flex' : 'none',
               flexDirection: 'column',
-              border: '1px solid #dee2e6',
-              borderRadius: '6px',
-              overflow: 'hidden',
             }}
           >
             <LocationsSummaryTab isActive={activeTab === 'locations'} />
@@ -112,9 +106,6 @@ const Dashboard = () => {
               inset: 0,
               display: activeTab === 'completeness' ? 'flex' : 'none',
               flexDirection: 'column',
-              border: '1px solid #dee2e6',
-              borderRadius: '6px',
-              overflow: 'hidden',
             }}
           >
             <CompletenessTab isActive={activeTab === 'completeness'} />

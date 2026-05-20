@@ -16,6 +16,7 @@ import SimpleMapPanel from './SimpleMapPanel';
 import { apiService } from '../../../services/api';
 import { useSortableTable } from '../../../hooks/useSortableTable.jsx';
 import { DashboardPanel } from '../../common/dashboard';
+import SharedDataTable from '../../common/SharedDataTable';
 
 // ── Helpers ────────────────────────────────────────────────────────────────
 const fmt = (val) => {
@@ -126,7 +127,7 @@ const ConfigurationsSummaryTab = ({ isActive = true }) => {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0, gap: '12px' }}>
       <div style={{ flex: '1 1 0', minHeight: 0 }}>
-        <DashboardPanel bodyStyle={{ padding: '12px', position: 'relative' }}>
+        <DashboardPanel bodyStyle={{ padding: 0, position: 'relative' }}>
           <SimpleMapPanel
             locations={mapLocations}
             getPopupHTML={makePopupHTML}
@@ -202,56 +203,51 @@ const ConfigurationsSummaryTab = ({ isActive = true }) => {
             )}
 
             {!loading && !error && rows.length > 0 && (
-              <div style={{ overflowY: 'auto', flex: 1, padding: '12px' }}>
-                <table className="table table-sm table-bordered table-hover mb-0" style={{ fontSize: '0.82rem' }}>
-                  <thead className="table-light sticky-top">
-                    <tr>
-                      {COLUMNS.map((c) => {
-                        return (
-                          <th
-                            key={c.key}
-                            onClick={() => handleSort(c.key)}
-                            style={{ whiteSpace: 'nowrap', verticalAlign: 'middle', cursor: 'pointer', userSelect: 'none' }}
-                            title={`Sort by ${c.label}`}
-                          >
-                            {c.label}<SortIcon colKey={c.key} />
-                          </th>
-                        );
-                      })}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {filteredRows.map((row, i) => {
-                      const key = `${row.configuration_name}||${row.variable_name}`;
-                      const isSelected = selectedRow === key;
-                      return (
-                        <tr
-                          key={i}
-                          onClick={() => handleRowClick(row)}
-                          style={{ cursor: 'pointer', background: isSelected ? '#cfe2ff' : undefined }}
-                          className={isSelected ? 'table-primary' : ''}
-                        >
-                          {COLUMNS.map((c) => {
-                            let val;
-                            if (['min_value_time', 'max_value_time', 'min_reference_time', 'max_reference_time'].includes(c.key)) {
-                              val = fmt(row[c.key]);
-                            } else {
-                              val = row[c.key] ?? '—';
-                            }
-                            return (
-                              <td key={c.key} style={{ verticalAlign: 'middle', maxWidth: 260, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={String(val)}>
-                                {c.key === 'configuration_name' && isSelected
-                                  ? <strong>{val}</strong>
-                                  : String(val)}
-                              </td>
-                            );
-                          })}
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
+              <SharedDataTable
+                headers={COLUMNS}
+                rows={filteredRows}
+                getHeaderKey={(column) => column.key}
+                renderHeaderCell={(column) => (
+                  <>
+                    {column.label}
+                    <SortIcon colKey={column.key} />
+                  </>
+                )}
+                getHeaderProps={(column) => ({
+                  onClick: () => handleSort(column.key),
+                  style: { whiteSpace: 'nowrap', verticalAlign: 'middle', cursor: 'pointer', userSelect: 'none' },
+                  title: `Sort by ${column.label}`,
+                })}
+                getRowProps={(row) => {
+                  const key = `${row.configuration_name}||${row.variable_name}`;
+                  const isSelected = selectedRow === key;
+                  return {
+                    onClick: () => handleRowClick(row),
+                    style: { cursor: 'pointer', background: isSelected ? '#cfe2ff' : undefined },
+                    className: isSelected ? 'table-primary' : '',
+                  };
+                }}
+                renderCell={(row, column) => {
+                  const key = `${row.configuration_name}||${row.variable_name}`;
+                  const isSelected = selectedRow === key;
+                  const value = ['min_value_time', 'max_value_time', 'min_reference_time', 'max_reference_time'].includes(column.key)
+                    ? fmt(row[column.key])
+                    : (row[column.key] ?? '—');
+
+                  return column.key === 'configuration_name' && isSelected
+                    ? <strong>{value}</strong>
+                    : String(value);
+                }}
+                getCellProps={(row, column) => {
+                  const value = ['min_value_time', 'max_value_time', 'min_reference_time', 'max_reference_time'].includes(column.key)
+                    ? fmt(row[column.key])
+                    : (row[column.key] ?? '—');
+                  return {
+                    style: { verticalAlign: 'middle', maxWidth: 260, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' },
+                    title: String(value),
+                  };
+                }}
+              />
             )}
           </div>
         </DashboardPanel>

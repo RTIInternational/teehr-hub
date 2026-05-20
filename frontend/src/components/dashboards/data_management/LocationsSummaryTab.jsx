@@ -15,6 +15,7 @@ import SimpleMapPanel from './SimpleMapPanel';
 import { apiService } from '../../../services/api';
 import { useSortableTable } from '../../../hooks/useSortableTable.jsx';
 import { DashboardPanel } from '../../common/dashboard';
+import SharedDataTable from '../../common/SharedDataTable';
 
 // ── Helpers ────────────────────────────────────────────────────────────────
 const fmt = (val) => {
@@ -46,6 +47,17 @@ const DEFAULT_COLUMNS = [
   { key: 'drainage_area_km2',  label: 'Drainage Area (km²)' },
   { key: 'slope_mean_percent', label: 'Mean Slope (%)' },
   { key: 'rfc',                label: 'RFC' },
+];
+
+const SIDE_PANEL_COLUMNS = [
+  { key: 'configuration_name', label: 'Configuration' },
+  { key: 'variable_name', label: 'Variable' },
+  { key: 'unit_name', label: 'Unit' },
+  { key: 'min_reference_time', label: 'Ref Min' },
+  { key: 'max_reference_time', label: 'Ref Max' },
+  { key: 'min_value_time', label: 'Val Min' },
+  { key: 'max_value_time', label: 'Val Max' },
+  { key: 'num_members', label: '# Members' },
 ];
 
 // Default attribute names fetched from location_attributes on initial load
@@ -147,6 +159,11 @@ const LocationsSummaryTab = ({ isActive = true }) => {
 
   const addedOptionalKeys = new Set(activeColumns.map((c) => c.key));
   const { sortedRows, handleSort, SortIcon } = useSortableTable(rows, 'location_id', sortValue);
+  const {
+    sortedRows: sortedSidePanelConfigs,
+    handleSort: handleSidePanelSort,
+    SortIcon: SidePanelSortIcon,
+  } = useSortableTable(sidePanelConfigs, 'configuration_name', sortValue);
 
   const selectedLocationRow = useMemo(
     () => rows.find((row) => row.location_id === selectedId) ?? null,
@@ -260,7 +277,7 @@ const LocationsSummaryTab = ({ isActive = true }) => {
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0, gap: '12px' }}>
       <div style={{ flex: '1 1 0', minHeight: 0, display: 'flex', gap: '12px' }}>
         <div style={{ flex: '1 1 0', minWidth: 0, minHeight: 0, position: 'relative' }}>
-          <DashboardPanel bodyStyle={{ padding: '12px', position: 'relative' }}>
+          <DashboardPanel bodyStyle={{ padding: 0, position: 'relative' }}>
             <SimpleMapPanel
               locations={geojson}
               basinLocations={basinGeojson}
@@ -328,36 +345,38 @@ const LocationsSummaryTab = ({ isActive = true }) => {
                   {sidePanelError}
                 </Alert>
               ) : sidePanelConfigs.length > 0 ? (
-                <div style={{ flex: '1 1 0', minHeight: 0, overflowY: 'auto', padding: '12px' }}>
-                  <table className="table table-sm table-bordered mb-0" style={{ fontSize: '0.75rem' }}>
-                    <thead className="table-light sticky-top">
-                      <tr>
-                        <th style={{ whiteSpace: 'nowrap', verticalAlign: 'middle' }}>Configuration</th>
-                        <th style={{ whiteSpace: 'nowrap', verticalAlign: 'middle' }}>Variable</th>
-                        <th style={{ whiteSpace: 'nowrap', verticalAlign: 'middle' }}>Unit</th>
-                        <th style={{ whiteSpace: 'nowrap', verticalAlign: 'middle' }}>Ref Min</th>
-                        <th style={{ whiteSpace: 'nowrap', verticalAlign: 'middle' }}>Ref Max</th>
-                        <th style={{ whiteSpace: 'nowrap', verticalAlign: 'middle' }}>Val Min</th>
-                        <th style={{ whiteSpace: 'nowrap', verticalAlign: 'middle' }}>Val Max</th>
-                        <th style={{ whiteSpace: 'nowrap', verticalAlign: 'middle' }}># Members</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {sidePanelConfigs.map((config, i) => (
-                        <tr key={i}>
-                          <td title={config.configuration_name}>{config.configuration_name}</td>
-                          <td title={config.variable_name}>{config.variable_name}</td>
-                          <td title={config.unit_name}>{config.unit_name}</td>
-                          <td>{fmt(config.min_reference_time)}</td>
-                          <td>{fmt(config.max_reference_time)}</td>
-                          <td>{fmt(config.min_value_time)}</td>
-                          <td>{fmt(config.max_value_time)}</td>
-                          <td>{config.num_members ?? '—'}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
+                <SharedDataTable
+                  headers={SIDE_PANEL_COLUMNS}
+                  rows={sortedSidePanelConfigs}
+                  wrapperStyle={{ flex: '1 1 0', minHeight: 0, overflowY: 'auto' }}
+                  tableClassName="table table-sm table-bordered mb-0"
+                  tableStyle={{ fontSize: '0.75rem' }}
+                  getHeaderKey={(column) => column.key}
+                  renderHeaderCell={(column) => (
+                    <>
+                      {column.label}
+                      <SidePanelSortIcon colKey={column.key} />
+                    </>
+                  )}
+                  getHeaderProps={(column) => ({
+                    onClick: () => handleSidePanelSort(column.key),
+                    style: { whiteSpace: 'nowrap', verticalAlign: 'middle', cursor: 'pointer', userSelect: 'none' },
+                    title: `Sort by ${column.label}`,
+                  })}
+                  renderCell={(row, column) => {
+                    if (column.key === 'min_reference_time' || column.key === 'max_reference_time' || column.key === 'min_value_time' || column.key === 'max_value_time') {
+                      return fmt(row[column.key]);
+                    }
+                    return row[column.key] ?? '—';
+                  }}
+                  getCellProps={(row, column) => {
+                    const value = row[column.key] ?? '—';
+                    if (column.key === 'configuration_name' || column.key === 'variable_name' || column.key === 'unit_name') {
+                      return { title: String(value) };
+                    }
+                    return {};
+                  }}
+                />
               ) : (
                 <div className="d-flex align-items-center justify-content-center flex-grow-1 text-muted">
                   <div className="text-center">
@@ -517,58 +536,49 @@ const LocationsSummaryTab = ({ isActive = true }) => {
             )}
 
             {!loading && !error && rows.length > 0 && (
-              <div style={{ overflowX: 'auto', overflowY: 'auto', flex: 1, padding: '12px' }}>
-                <table className="table table-sm table-bordered table-hover mb-0" style={{ fontSize: '0.82rem' }}>
-                  <thead className="table-light sticky-top">
-                    <tr>
-                      {activeColumns.map((c) => (
-                        <th
-                          key={c.key}
-                          onClick={() => handleSort(c.key)}
-                          style={{ whiteSpace: 'nowrap', verticalAlign: 'middle', cursor: 'pointer', userSelect: 'none' }}
-                          title={`Sort by ${c.label}`}
-                        >
-                          {c.label}<SortIcon colKey={c.key} />
-                        </th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {filteredRows.map((row, i) => (
-                      <tr
-                        key={i}
-                        onClick={() => handleRowClick(row)}
-                        style={{ cursor: 'pointer' }}
-                        className={selectedId === row.location_id ? 'table-primary' : ''}
-                      >
-                        {activeColumns.map((c) => {
-                          let val;
-                          if (c.key === 'min_reference_time' || c.key === 'max_reference_time') {
-                            val = fmt(row[c.key]);
-                          } else {
-                            val = row[c.key] ?? '—';
-                          }
-                          return (
-                            <td
-                              key={c.key}
-                              style={{
-                                verticalAlign: 'middle',
-                                maxWidth: 280,
-                                overflow: 'hidden',
-                                textOverflow: 'ellipsis',
-                                whiteSpace: 'nowrap',
-                              }}
-                              title={String(val)}
-                            >
-                              {String(val)}
-                            </td>
-                          );
-                        })}
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+              <SharedDataTable
+                headers={activeColumns}
+                rows={filteredRows}
+                wrapperStyle={{ overflowX: 'auto', overflowY: 'auto', flex: 1 }}
+                getHeaderKey={(column) => column.key}
+                renderHeaderCell={(column) => (
+                  <>
+                    {column.label}
+                    <SortIcon colKey={column.key} />
+                  </>
+                )}
+                getHeaderProps={(column) => ({
+                  onClick: () => handleSort(column.key),
+                  style: { whiteSpace: 'nowrap', verticalAlign: 'middle', cursor: 'pointer', userSelect: 'none' },
+                  title: `Sort by ${column.label}`,
+                })}
+                getRowProps={(row) => ({
+                  onClick: () => handleRowClick(row),
+                  style: { cursor: 'pointer' },
+                  className: selectedId === row.location_id ? 'table-primary' : '',
+                })}
+                renderCell={(row, column) => {
+                  if (column.key === 'min_reference_time' || column.key === 'max_reference_time') {
+                    return String(fmt(row[column.key]));
+                  }
+                  return String(row[column.key] ?? '—');
+                }}
+                getCellProps={(row, column) => {
+                  const value = column.key === 'min_reference_time' || column.key === 'max_reference_time'
+                    ? fmt(row[column.key])
+                    : (row[column.key] ?? '—');
+                  return {
+                    style: {
+                      verticalAlign: 'middle',
+                      maxWidth: 280,
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                      whiteSpace: 'nowrap',
+                    },
+                    title: String(value),
+                  };
+                }}
+              />
             )}
           </div>
         </DashboardPanel>

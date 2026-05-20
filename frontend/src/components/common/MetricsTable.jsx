@@ -3,6 +3,7 @@ import Plotly from 'plotly.js-dist-min';
 import { useState, useMemo, useRef, useEffect, useCallback } from 'react';
 import { Button, ButtonGroup, Form } from 'react-bootstrap';
 import MultiSelectDropdown from './MultiSelectDropdown';
+import SharedDataTable from './SharedDataTable';
 import './MetricsTable.css';
 
 const MetricsTable = ({ 
@@ -599,57 +600,56 @@ const MetricsTable = ({
               </button>
             </div>
           )}
-          
-          <table className="metrics-table pivoted-table">
-            <thead>
-              <tr>
-                {headers.map((header, index) => {
-                  const isGroupByColumn = index < (tableProperties?.group_by?.length || 0);
-                  
-                  return (
-                    <th key={index} 
-                        className={isGroupByColumn ? 'group-by-header' : 'metric-header'}
-                        style={{ minWidth: '120px' }}
-                    >
-                      <div 
-                        className="sortable-header"
-                        onClick={() => handleSort(index, header)}
-                        style={{ 
-                          cursor: 'pointer', 
-                          display: 'flex', 
-                          alignItems: 'center', 
-                          justifyContent: 'space-between',
-                          userSelect: 'none',
-                          padding: '8px 4px'
-                        }}
-                      >
-                        <span>{header}</span>
-                        <span className="sort-indicator" style={{ display: 'flex', flexDirection: 'column', fontSize: '10px', lineHeight: '8px', marginLeft: '4px' }}>
-                          <span style={{ 
-                            color: sortConfig.column === index && sortConfig.direction === 'asc' ? '#0d6efd' : '#ccc'
-                          }}>▲</span>
-                          <span style={{ 
-                            color: sortConfig.column === index && sortConfig.direction === 'desc' ? '#0d6efd' : '#ccc'
-                          }}>▼</span>
-                        </span>
-                      </div>
-                    </th>
-                  );
-                })}
-              </tr>
-            </thead>
-            <tbody>
-              {processedRows.map((row, rowIndex) => (
-                <tr key={rowIndex} className={rowIndex % 2 === 0 ? 'even' : 'odd'}>
-                  {row.map((cell, cellIndex) => (
-                    <td key={cellIndex} className={cellIndex < (tableProperties?.group_by?.length || 0) ? 'group-by-cell' : 'metric-cell'}>
-                      {cell}
-                    </td>
-                  ))}
-                </tr>
-              ))}
-            </tbody>
-          </table>
+
+          <SharedDataTable
+            headers={headers}
+            rows={processedRows}
+            wrapperClassName=""
+            wrapperStyle={{ overflowX: 'visible', overflowY: 'visible', flex: 0 }}
+            tableClassName="metrics-table pivoted-table"
+            tableStyle={{}}
+            theadClassName=""
+            getHeaderProps={(_header, index) => {
+              const isGroupByColumn = index < (tableProperties?.group_by?.length || 0);
+              return {
+                className: isGroupByColumn ? 'group-by-header' : 'metric-header',
+                style: { minWidth: '120px' },
+              };
+            }}
+            renderHeaderCell={(header, index) => (
+              <div
+                className="sortable-header"
+                onClick={() => handleSort(index, header)}
+                style={{
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  userSelect: 'none',
+                  padding: 0,
+                }}
+              >
+                <span>{header}</span>
+                <span
+                  className="sort-indicator"
+                  style={{
+                    opacity: sortConfig.column === index ? 1 : 0.3,
+                    fontSize: '0.7rem',
+                    marginLeft: '3px',
+                  }}
+                >
+                  {sortConfig.column === index
+                    ? (sortConfig.direction === 'asc' ? '▲' : '▼')
+                    : '⇅'}
+                </span>
+              </div>
+            )}
+            getRowClassName={(_row, rowIndex) => (rowIndex % 2 === 0 ? 'even' : 'odd')}
+            renderCell={(row, _header, _rowIndex, cellIndex) => row[cellIndex]}
+            getCellProps={(_row, _header, _rowIndex, cellIndex) => ({
+              className: cellIndex < (tableProperties?.group_by?.length || 0) ? 'group-by-cell' : 'metric-cell',
+            })}
+          />
         </div>
       )}
     </div>
