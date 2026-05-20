@@ -76,7 +76,7 @@ spec:
   
   values:
     server:
-      workers: 2
+      workers: "${environment.name == 'local' ? 1 : 2}"
 
     coordinator:
       # nodeSelector:
