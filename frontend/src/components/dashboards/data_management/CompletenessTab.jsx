@@ -18,6 +18,7 @@ import { Form } from 'react-bootstrap';
 import SimpleMapPanel from './SimpleMapPanel';
 import CompletenessHeatmap from './CompletenessHeatmap';
 import { apiService } from '../../../services/api';
+import { DashboardPanel } from '../../common/dashboard';
 
 const CONFIG_OPTIONS = ['usgs_observations'];
 const VARIABLE_OPTIONS = ['streamflow_hourly_inst'];
@@ -40,7 +41,6 @@ const CompletenessTab = ({ isActive = true }) => {
   // Load overlay geometries when committed configuration changes
   useEffect(() => {
     if (!committedCfg) {
-      setOverlayGeometries(null);
       return;
     }
     apiService
@@ -68,7 +68,7 @@ const CompletenessTab = ({ isActive = true }) => {
   }, [canGenerate, selectedCfg, selectedVar]);
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0 }}>
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0, gap: '12px' }}>
 
       {/* Selector bar */}
       <div
@@ -112,10 +112,9 @@ const CompletenessTab = ({ isActive = true }) => {
       </div>
 
       {/* Map + Heatmap side-by-side */}
-      <div style={{ flex: '1 1 0', minHeight: 0, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 0 }}>
+      <div style={{ flex: '1 1 0', minHeight: 0, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
 
-        {/* Map */}
-        <div style={{ borderRight: '1px solid #dee2e6', position: 'relative' }}>
+        <DashboardPanel bodyStyle={{ padding: '12px', position: 'relative' }}>
           <SimpleMapPanel
             overlayLocations={overlayGeometries}
             overlayVisible={overlayVisible}
@@ -124,16 +123,15 @@ const CompletenessTab = ({ isActive = true }) => {
             onOverlayToggle={() => setOverlayVisible((v) => !v)}
             isActive={isActive}
           />
-        </div>
+        </DashboardPanel>
 
-        {/* Heatmap */}
-        <div style={{ overflow: 'hidden' }}>
+        <DashboardPanel bodyStyle={{ padding: '12px' }}>
           <CompletenessHeatmap
             configurationName={committedCfg?.configuration_name}
             variableName={committedCfg?.variable_name}
             onHover={handleHeatmapHover}
           />
-        </div>
+        </DashboardPanel>
       </div>
     </div>
   );

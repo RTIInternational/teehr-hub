@@ -13,108 +13,115 @@ const CompletenessHeatmap = ({ configurationName, variableName, onHover = null }
     if (!plotRef.current) return;
 
     let cancelled = false;
-    setLoading(true);
-    setError(null);
-    setPlotReady(false);
+    const loadHeatmap = async () => {
+      setLoading(true);
+      setError(null);
+      setPlotReady(false);
 
-    apiService.getCompletenessHeatmap({
-      configuration_name: configurationName,
-      variable_name: variableName,
-    }).then((data) => {
-      if (cancelled) return;
+      try {
+        const data = await apiService.getCompletenessHeatmap({
+          configuration_name: configurationName,
+          variable_name: variableName,
+        });
 
-      const rows = data.items || [];
-      if (rows.length === 0) {
-        Plotly.purge(plotRef.current);
-        return;
-      }
+        if (cancelled) return;
 
-      // Normalise values to trimmed strings to avoid type/whitespace mismatches
-      const norm = (v) => (v == null ? '' : String(v).trim());
+        const rows = data.items || [];
+        if (rows.length === 0) {
+          Plotly.purge(plotRef.current);
+          setPlotReady(false);
+          return;
+        }
 
-      // Collect unique sorted huc8s and periods
-      const periodSet = new Set();
-      const spatialAggregateSet = new Set();
-      rows.forEach((r) => {
-        periodSet.add(norm(r.period));
-        spatialAggregateSet.add(norm(r.spatial_aggregate));
-      });
-      // Remove any blank keys that came from nulls
-      periodSet.delete('');
-      spatialAggregateSet.delete('');
+        // Normalise values to trimmed strings to avoid type/whitespace mismatches
+        const norm = (v) => (v == null ? '' : String(v).trim());
 
-      const periods = [...periodSet].sort();
-      const spatialAggregates = [...spatialAggregateSet].sort();
+        // Collect unique sorted aggregation units and periods
+        const periodSet = new Set();
+        const spatialAggregateSet = new Set();
+        rows.forEach((r) => {
+          periodSet.add(norm(r.period));
+          spatialAggregateSet.add(norm(r.spatial_aggregate));
+        });
+        // Remove any blank keys that came from nulls
+        periodSet.delete('');
+        spatialAggregateSet.delete('');
 
-      console.debug('[Heatmap] rows:', rows.length, '| unique spatial aggregates:', spatialAggregates.length, '| unique periods:', periods.length);
-      if (rows.length > 0) console.debug('[Heatmap] sample row:', rows[0]);
+        const periods = [...periodSet].sort();
+        const spatialAggregates = [...spatialAggregateSet].sort();
 
-      // Build lookup using normalised keys
-      const lookup = new Map();
-      rows.forEach((r) => {
-        const h = norm(r.spatial_aggregate);
-        const p = norm(r.period);
-        if (!h || !p) return;
-        const c = r.completeness != null ? r.completeness : null;
-        lookup.set(`${h}||${p}`, c);
-      });
+        console.debug('[Heatmap] rows:', rows.length, '| unique spatial aggregates:', spatialAggregates.length, '| unique periods:', periods.length);
+        if (rows.length > 0) console.debug('[Heatmap] sample row:', rows[0]);
 
-      // Sort spatial aggregates ascending alphabetically
-      const sortedSpatialAggregates = [...spatialAggregates].sort();
+        // Build lookup using normalised keys
+        const lookup = new Map();
+        rows.forEach((r) => {
+          const h = norm(r.spatial_aggregate);
+          const p = norm(r.period);
+          if (!h || !p) return;
+          const c = r.completeness != null ? r.completeness : null;
+          lookup.set(`${h}||${p}`, c);
+        });
 
-      const z = sortedSpatialAggregates.map((h) =>
-        periods.map((p) => {
-          const v = lookup.get(`${h}||${p}`);
-          return v != null ? v : null;
-        })
-      );
+        // Sort spatial aggregates ascending alphabetically
+        const sortedSpatialAggregates = [...spatialAggregates].sort();
 
-      // Use first 10 chars of period as x-axis label (date portion only)
-      const xLabels = periods.map((p) => p.slice(0, 10));
+        const z = sortedSpatialAggregates.map((h) =>
+          periods.map((p) => {
+            const v = lookup.get(`${h}||${p}`);
+            return v != null ? v : null;
+          })
+        );
 
-      Plotly.react(
-        plotRef.current,
-        [
+        // Use first 10 chars of period as x-axis label (date portion only)
+        const xLabels = periods.map((p) => p.slice(0, 10));
+
+        Plotly.react(
+          plotRef.current,
+          [
+            {
+              type: 'heatmap',
+              z,
+              x: xLabels,
+              y: sortedSpatialAggregates,
+              zmin: 0,
+              zmax: 100,
+              colorscale: [
+                  [0.0,  '#fd0de9'],
+                  [0.2,  '#ca0ef3'],
+                  [0.4,  '#970ef9'],
+                  [0.6,  '#640efc'],
+                  [0.8,  '#380ffd'],
+                  [1.0,  '#0d6efd'],
+              ],
+              colorbar: { title: 'Completeness (%)' },
+              opacity: 0.85,
+              hovertemplate:
+                'Spatial Aggregate: %{y}<br>Period: %{x}<br>Completeness: %{z:.1f}%<extra></extra>',
+            },
+          ],
           {
-            type: 'heatmap',
-            z,
-            x: xLabels,
-            y: sortedSpatialAggregates,
-            zmin: 0,
-            zmax: 100,
-            colorscale: [
-                [0.0,  '#fd0de9'],
-                [0.2,  '#ca0ef3'],
-                [0.4,  '#970ef9'],
-                [0.6,  '#640efc'],
-                [0.8,  '#380ffd'],
-                [1.0,  '#0d6efd'],
-            ],
-            colorbar: { title: 'Completeness (%)' },
-            opacity: 0.85,
-            hovertemplate:
-              'Spatial Aggregate: %{y}<br>Period: %{x}<br>Completeness: %{z:.1f}%<extra></extra>',
+            title: `Primary Timeseries Completeness — ${configurationName} / ${variableName}`,
+            xaxis: { title: 'Week', tickangle: -45, nticks: 24 },
+            yaxis: {
+              title: { text: 'Spatial Aggregate', standoff: 8 },
+              showticklabels: false,
+              type: 'category',
+            },
+            autosize: true,
+            margin: { l: 60, b: 80, t: 50, r: 20 },
           },
-        ],
-        {
-          title: `Primary Timeseries Completeness — ${configurationName} / ${variableName}`,
-          xaxis: { title: 'Week', tickangle: -45, nticks: 24 },
-          yaxis: {
-            title: { text: 'Spatial Aggregate', standoff: 8 },
-            showticklabels: false,
-            type: 'category',
-          },
-          autosize: true,
-          margin: { l: 60, b: 80, t: 50, r: 20 },
-        },
-        { responsive: true }
-      );
-      if (!cancelled) setPlotReady(true);
-    }).catch((err) => {
-      if (!cancelled) setError(err.message);
-    }).finally(() => {
-      if (!cancelled) setLoading(false);
-    });
+          { responsive: true }
+        );
+        if (!cancelled) setPlotReady(true);
+      } catch (err) {
+        if (!cancelled) setError(err.message);
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    };
+
+    void loadHeatmap();
 
     return () => {
       cancelled = true;

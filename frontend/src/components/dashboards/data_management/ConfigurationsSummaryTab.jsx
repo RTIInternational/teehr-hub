@@ -15,6 +15,7 @@ import { Spinner, Alert } from 'react-bootstrap';
 import SimpleMapPanel from './SimpleMapPanel';
 import { apiService } from '../../../services/api';
 import { useSortableTable } from '../../../hooks/useSortableTable.jsx';
+import { DashboardPanel } from '../../common/dashboard';
 
 // ── Helpers ────────────────────────────────────────────────────────────────
 const fmt = (val) => {
@@ -123,136 +124,137 @@ const ConfigurationsSummaryTab = ({ isActive = true }) => {
   }, [selectedRow]);
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0 }}>
-
-      {/* Map — top 1/3 */}
-      <div style={{ flex: '1 1 0', minHeight: 0, position: 'relative' }}>
-        <SimpleMapPanel
-          locations={mapLocations}
-          getPopupHTML={makePopupHTML}
-          isActive={isActive}
-        />
-        {mapLoading && (
-          <div
-            className="position-absolute top-50 start-50 translate-middle text-center"
-            style={{ zIndex: 10 }}
-          >
-            <div className="spinner-border spinner-border-sm text-primary" role="status" />
-            <div className="small text-muted mt-1">Loading locations…</div>
-          </div>
-        )}
-        {!selectedRow && !mapLoading && (
-          <div
-            className="position-absolute top-50 start-50 translate-middle text-center text-muted"
-            style={{ zIndex: 5, pointerEvents: 'none', background: 'rgba(255,255,255,0.7)', borderRadius: 6, padding: '6px 12px' }}
-          >
-            <small>Click a configuration row below to view its locations</small>
-          </div>
-        )}
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0, gap: '12px' }}>
+      <div style={{ flex: '1 1 0', minHeight: 0 }}>
+        <DashboardPanel bodyStyle={{ padding: '12px', position: 'relative' }}>
+          <SimpleMapPanel
+            locations={mapLocations}
+            getPopupHTML={makePopupHTML}
+            isActive={isActive}
+          />
+          {mapLoading && (
+            <div
+              className="position-absolute top-50 start-50 translate-middle text-center"
+              style={{ zIndex: 10 }}
+            >
+              <div className="spinner-border spinner-border-sm text-primary" role="status" />
+              <div className="small text-muted mt-1">Loading locations…</div>
+            </div>
+          )}
+          {!selectedRow && !mapLoading && (
+            <div
+              className="position-absolute top-50 start-50 translate-middle text-center text-muted"
+              style={{ zIndex: 5, pointerEvents: 'none', background: 'rgba(255,255,255,0.7)', borderRadius: 6, padding: '6px 12px' }}
+            >
+              <small>Click a configuration row below to view its locations</small>
+            </div>
+          )}
+        </DashboardPanel>
       </div>
 
-      {/* Divider */}
-      <div style={{ flex: '0 0 1px', background: '#dee2e6' }} />
-
-      {/* Table — bottom 2/3 */}
-      <div style={{ flex: '1 1 0', minHeight: 0, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
-
-        {/* Filter bar */}
-        <div style={{ flex: '0 0 auto', padding: '4px 8px', borderBottom: '1px solid #dee2e6', display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-          <span style={{ fontSize: '0.8rem', fontWeight: 600, color: '#495057' }}>Filter:</span>
-          <input
-            type="text"
-            className="form-control form-control-sm"
-            placeholder="Configuration name…"
-            value={filterText}
-            onChange={(e) => setFilterText(e.target.value)}
-            style={{ width: 220 }}
-          />
-          {filterText && (
-            <button className="btn btn-sm btn-outline-secondary" onClick={() => setFilterText('')} style={{ fontSize: '0.8rem' }}>
-              Clear
-            </button>
+      <div style={{ flex: '1.3 1 0', minHeight: 0 }}>
+        <DashboardPanel
+          header={(
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+              <span style={{ fontSize: '0.8rem', fontWeight: 600, color: '#495057' }}>Filter:</span>
+              <input
+                type="text"
+                className="form-control form-control-sm"
+                placeholder="Configuration name…"
+                value={filterText}
+                onChange={(e) => setFilterText(e.target.value)}
+                style={{ width: 220 }}
+              />
+              {filterText && (
+                <button className="btn btn-sm btn-outline-secondary" onClick={() => setFilterText('')} style={{ fontSize: '0.8rem' }}>
+                  Clear
+                </button>
+              )}
+              {rows.length > 0 && (
+                <span className="text-muted ms-auto" style={{ fontSize: '0.78rem' }}>
+                  {filteredRows.length} / {rows.length} rows
+                </span>
+              )}
+            </div>
           )}
-          {rows.length > 0 && (
-            <span className="text-muted ms-auto" style={{ fontSize: '0.78rem' }}>
-              {filteredRows.length} / {rows.length} rows
-            </span>
-          )}
-        </div>
+          bodyStyle={{ padding: 0 }}
+        >
+          <div style={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0 }}>
+            {loading && (
+              <div className="d-flex align-items-center justify-content-center h-100">
+                <Spinner animation="border" variant="primary" role="status">
+                  <span className="visually-hidden">Loading configurations…</span>
+                </Spinner>
+              </div>
+            )}
 
-        {loading && (
-          <div className="d-flex align-items-center justify-content-center h-100">
-            <Spinner animation="border" variant="primary" role="status">
-              <span className="visually-hidden">Loading configurations…</span>
-            </Spinner>
-          </div>
-        )}
+            {error && (
+              <Alert variant="danger" className="m-3 mb-0">
+                <i className="bi bi-exclamation-triangle-fill me-2" />
+                {error}
+              </Alert>
+            )}
 
-        {error && (
-          <Alert variant="danger" className="m-2">
-            <i className="bi bi-exclamation-triangle-fill me-2" />
-            {error}
-          </Alert>
-        )}
+            {!loading && !error && rows.length === 0 && (
+              <div className="d-flex align-items-center justify-content-center h-100 text-muted">
+                <span>No configurations available.</span>
+              </div>
+            )}
 
-        {!loading && !error && rows.length === 0 && (
-          <div className="d-flex align-items-center justify-content-center h-100 text-muted">
-            <span>No configurations available.</span>
-          </div>
-        )}
-
-        {!loading && !error && rows.length > 0 && (
-          <div style={{ overflowY: 'auto', flex: 1 }}>
-            <table className="table table-sm table-bordered table-hover mb-0" style={{ fontSize: '0.82rem' }}>
-              <thead className="table-light sticky-top">
-                <tr>
-                  {COLUMNS.map((c) => {
-                    return (
-                      <th
-                        key={c.key}
-                        onClick={() => handleSort(c.key)}
-                        style={{ whiteSpace: 'nowrap', verticalAlign: 'middle', cursor: 'pointer', userSelect: 'none' }}
-                        title={`Sort by ${c.label}`}
-                      >
-                        {c.label}<SortIcon colKey={c.key} />
-                      </th>
-                    );
-                  })}
-                </tr>
-              </thead>
-              <tbody>
-                {filteredRows.map((row, i) => {
-                  const key = `${row.configuration_name}||${row.variable_name}`;
-                  const isSelected = selectedRow === key;
-                  return (
-                    <tr
-                      key={i}
-                      onClick={() => handleRowClick(row)}
-                      style={{ cursor: 'pointer', background: isSelected ? '#cfe2ff' : undefined }}
-                      className={isSelected ? 'table-primary' : ''}
-                    >
+            {!loading && !error && rows.length > 0 && (
+              <div style={{ overflowY: 'auto', flex: 1, padding: '12px' }}>
+                <table className="table table-sm table-bordered table-hover mb-0" style={{ fontSize: '0.82rem' }}>
+                  <thead className="table-light sticky-top">
+                    <tr>
                       {COLUMNS.map((c) => {
-                        let val;
-                        if (['min_value_time', 'max_value_time', 'min_reference_time', 'max_reference_time'].includes(c.key)) {
-                          val = fmt(row[c.key]);
-                        } else {
-                          val = row[c.key] ?? '—';
-                        }
                         return (
-                          <td key={c.key} style={{ verticalAlign: 'middle', maxWidth: 260, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={String(val)}>
-                            {c.key === 'configuration_name' && isSelected
-                              ? <strong>{val}</strong>
-                              : String(val)}
-                          </td>
+                          <th
+                            key={c.key}
+                            onClick={() => handleSort(c.key)}
+                            style={{ whiteSpace: 'nowrap', verticalAlign: 'middle', cursor: 'pointer', userSelect: 'none' }}
+                            title={`Sort by ${c.label}`}
+                          >
+                            {c.label}<SortIcon colKey={c.key} />
+                          </th>
                         );
                       })}
                     </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+                  </thead>
+                  <tbody>
+                    {filteredRows.map((row, i) => {
+                      const key = `${row.configuration_name}||${row.variable_name}`;
+                      const isSelected = selectedRow === key;
+                      return (
+                        <tr
+                          key={i}
+                          onClick={() => handleRowClick(row)}
+                          style={{ cursor: 'pointer', background: isSelected ? '#cfe2ff' : undefined }}
+                          className={isSelected ? 'table-primary' : ''}
+                        >
+                          {COLUMNS.map((c) => {
+                            let val;
+                            if (['min_value_time', 'max_value_time', 'min_reference_time', 'max_reference_time'].includes(c.key)) {
+                              val = fmt(row[c.key]);
+                            } else {
+                              val = row[c.key] ?? '—';
+                            }
+                            return (
+                              <td key={c.key} style={{ verticalAlign: 'middle', maxWidth: 260, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={String(val)}>
+                                {c.key === 'configuration_name' && isSelected
+                                  ? <strong>{val}</strong>
+                                  : String(val)}
+                              </td>
+                            );
+                          })}
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </div>
-        )}
+        </DashboardPanel>
       </div>
     </div>
   );
