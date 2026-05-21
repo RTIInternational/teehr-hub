@@ -44,7 +44,7 @@ const Dashboard = () => {
   }, [initializeForecastData]);
   
   return (
-    <div className="d-flex flex-column" style={{ height: 'calc(100vh - 56px)' }}>
+    <div className="d-flex flex-column" style={{ height: 'calc(100dvh - 56px)', minHeight: 0 }}>
       {/* Height adjusted for navbar (Bootstrap navbar is typically 56px) */}
       
       <div className="container-fluid flex-grow-1 p-0">
@@ -53,10 +53,11 @@ const Dashboard = () => {
           style={{
             display: 'grid',
             gridTemplateColumns: '1fr 1fr',
-            gridTemplateRows: 'auto 12vh 1fr auto', // Changed last row to auto for flexible metrics height
+            gridTemplateRows: 'auto minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1.1fr)',
             gap: '12px',
             padding: '12px',
             height: '100%',
+            minHeight: 0,
             overflow: 'hidden'
           }}
         >
@@ -92,7 +93,8 @@ const Dashboard = () => {
               border: '1px solid #e0e0e0',
               borderRadius: '8px',
               overflow: 'hidden',
-              position: 'relative'
+              position: 'relative',
+              minHeight: 0
             }}
           >
             <MapComponent
@@ -110,7 +112,8 @@ const Dashboard = () => {
           <div 
             style={{
               gridColumn: '2 / 3',
-              gridRow: state.error ? '2 / 3' : '1 / 2'
+              gridRow: state.error ? '2 / 3' : '1 / 2',
+              minHeight: 0
             }}
           >
             <LocationCard 
@@ -127,7 +130,8 @@ const Dashboard = () => {
               gridRow: state.error ? '3 / 4' : '2 / 4', // Keep same positioning
               border: '1px solid #e0e0e0',
               borderRadius: '8px',
-              overflow: 'hidden'
+              overflow: 'hidden',
+              minHeight: 0
             }}
           >
             {state.selectedLocation ? (
@@ -161,7 +165,7 @@ const Dashboard = () => {
               gridRow: state.error ? '5 / 6' : '4 / 5', // Bottom row
               border: '1px solid #e0e0e0',
               borderRadius: '8px',
-              height: '400px', // Fixed height
+              minHeight: 0,
               display: 'flex',
               flexDirection: 'column',
               overflow: 'hidden' // Prevent the panel itself from overflowing

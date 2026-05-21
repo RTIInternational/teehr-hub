@@ -6,10 +6,12 @@ import ApiKeysAdmin from './components/admin/ApiKeysAdmin.jsx';
 import KeycloakAdmin from './components/admin/KeycloakAdmin.jsx';
 import { Home, Navbar } from './components/common';
 import { ForecastDashboard } from './components/dashboards/forecast';
+import { DataDashboard } from './components/dashboards/data_management';
 import { Dashboard } from './components/dashboards/retrospective';
 import { ForecastDashboardProvider } from './context/ForecastDashboardContext.jsx';
 import { RetrospectiveDashboardProvider } from './context/RetrospectiveDashboardContext.jsx';
 import { useAuth } from './hooks/useAuth.js';
+import { DataDashboardProvider } from './context/DataDashboardContext.jsx';
 import 'bootstrap/dist/css/bootstrap.min.css';
 import './App.css';
 
@@ -88,39 +90,36 @@ function App() {
             <Route path="/" element={<Home />} />
             {/* Redirect old dashboard route to retrospective */}
             <Route path="/dashboard" element={<Navigate to="/retrospective" replace />} />
-            <Route 
-              path="/retrospective" 
+            <Route
+              path="/retrospective"
               element={
                 <RequireAuth>
                   <RetrospectiveDashboardProvider>
                     <Dashboard />
                   </RetrospectiveDashboardProvider>
                 </RequireAuth>
-              } 
+              }
             />
             {/* Future routes */}
-            <Route 
-              path="/forecast" 
+            <Route
+              path="/forecast"
               element={
                 <RequireAuth>
                   <ForecastDashboardProvider>
                     <ForecastDashboard />
                   </ForecastDashboardProvider>
                 </RequireAuth>
-              } 
+              }
             />
-            <Route 
-              path="/data" 
+            <Route
+              path="/data"
               element={
                 <RequireAuth>
-                  <Container className="mt-5 text-center">
-                    <Alert variant="info">
-                      <Alert.Heading>Data Management</Alert.Heading>
-                      <p>Coming Soon</p>
-                    </Alert>
-                  </Container>
+                  <DataDashboardProvider>
+                    <DataDashboard />
+                  </DataDashboardProvider>
                 </RequireAuth>
-              } 
+              }
             />
             <Route
               path="/admin"

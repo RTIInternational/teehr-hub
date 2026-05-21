@@ -4,6 +4,21 @@ import { Link } from 'react-router-dom';
 const Home = () => {
   const dashboards = [
     {
+      id: 'data-management',
+      title: 'Data Availability',
+      description: 'Explore contents of the data warehouse spatially and temporally.',
+      features: [
+        'Data summaries by model configuration',
+        'Data summaries by location',
+        'Completeness analysis of timeseries data'
+      ],
+      path: '/data',
+      status: 'available',
+      image: '/api/static/preview-data.png', // placeholder
+      color: 'success'
+    },
+
+    {
       id: 'retrospective-simulations',
       title: 'Retrospective Simulations',
       description: 'Analyze and compare historical simulation data with observed values. Explore metrics, timeseries, and spatial patterns.',
@@ -18,7 +33,7 @@ const Home = () => {
       image: '/api/static/preview-retrospective.png', // placeholder
       color: 'primary'
     },
-    // Future dashboards can be added here
+
     {
       id: 'forecast-analysis',
       title: 'Forecast Analysis',
@@ -33,22 +48,7 @@ const Home = () => {
       image: '/api/static/preview-forecast.png', // placeholder
       color: 'secondary'
     },
-
-    {
-      id: 'data-management',
-      title: 'Data Management',
-      description: 'Manage and upload simulation and observation datasets.',
-      features: [
-        'Data upload and validation',
-        'Dataset metadata management',
-        'Quality control tools'
-      ],
-      path: '/data',
-      status: 'coming-soon',
-      image: '/api/static/preview-data.png', // placeholder
-      color: 'success'
-    },
-
+    // Future dashboards
     {
       id: 'retrospective-model-comparisons',
       title: 'Retrospective Model Comparisons',
@@ -102,7 +102,7 @@ const Home = () => {
       image: '/api/static/preview-data.png', // placeholder
       color: 'success'
     },
-    
+
     {
       id: 'post-event',
       title: 'Post Flood Event Evaluations',
@@ -213,7 +213,7 @@ const Home = () => {
             <Col lg={8}>
               <h1 className="display-4 mb-3">TEEHR Dashboard Hub</h1>
               <p className="lead">
-                Tools for Exploratory Evaluation in Hydrologic Research. 
+                Tools for Exploratory Evaluation in Hydrologic Research.
                 Choose from our collection of specialized dashboards for hydrologic data analysis.
               </p>
             </Col>
@@ -235,7 +235,7 @@ const Home = () => {
             </Col>
           ))}
         </Row>
-        
+
         {/* Footer Info */}
         <Row className="mt-5 pt-4 border-top">
           <Col className="text-center text-muted">

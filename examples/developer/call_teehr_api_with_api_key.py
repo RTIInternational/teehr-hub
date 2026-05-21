@@ -18,7 +18,7 @@ import urllib3
 
 
 API_URL = os.getenv("TEEHR_API_URL", "https://api.teehr.local.app.garden")
-API_KEY = os.getenv("TEEHR_API_KEY", "thk_OteEVJb4uonO-CvfUSwi3BLXJiA5UZ0NF9r3y2xWrHc")
+API_KEY = os.getenv("TEEHR_API_KEY", "INSERT KEY HERE")
 SKIP_SSL_VERIFY = "local" in API_URL
 
 if SKIP_SSL_VERIFY:
