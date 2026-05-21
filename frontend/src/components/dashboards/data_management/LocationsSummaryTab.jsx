@@ -105,6 +105,7 @@ const LocationsSummaryTab = ({ isActive = true }) => {
   const [checkedKeys, setCheckedKeys] = useState(new Set());
   const [filterColumn, setFilterColumn] = useState('');
   const [filterText, setFilterText] = useState('');
+  const [pickerMenuStyle, setPickerMenuStyle] = useState({});
   const pickerRef = useRef(null);
 
   useEffect(() => {
@@ -127,6 +128,44 @@ const LocationsSummaryTab = ({ isActive = true }) => {
     document.addEventListener('mousedown', handler);
     return () => document.removeEventListener('mousedown', handler);
   }, []);
+
+  useEffect(() => {
+    if (!pickerOpen || !pickerRef.current) {
+      setPickerMenuStyle({});
+      return;
+    }
+
+    const updatePickerMenuStyle = () => {
+      const rect = pickerRef.current.getBoundingClientRect();
+      const viewportHeight = window.innerHeight || document.documentElement.clientHeight;
+      const viewportWidth = window.innerWidth || document.documentElement.clientWidth;
+      const menuWidth = Math.min(340, Math.max(280, viewportWidth - 24));
+      const spaceBelow = viewportHeight - rect.bottom - 12;
+      const spaceAbove = rect.top - 12;
+      const keepOpeningDownward = viewportWidth < 1400 || viewportHeight < 900;
+      const openUpward = !keepOpeningDownward && spaceBelow < 260 && spaceAbove > spaceBelow;
+      const availableHeight = openUpward ? spaceAbove : spaceBelow;
+
+      setPickerMenuStyle({
+        top: openUpward ? 'auto' : '100%',
+        bottom: openUpward ? '100%' : 'auto',
+        marginTop: openUpward ? 0 : 2,
+        marginBottom: openUpward ? 2 : 0,
+        width: `${menuWidth}px`,
+        maxHeight: `${Math.max(180, Math.min(availableHeight, keepOpeningDownward ? 240 : 360))}px`,
+        maxWidth: `calc(100vw - 24px)`,
+      });
+    };
+
+    updatePickerMenuStyle();
+    window.addEventListener('resize', updatePickerMenuStyle);
+    window.addEventListener('scroll', updatePickerMenuStyle, true);
+
+    return () => {
+      window.removeEventListener('resize', updatePickerMenuStyle);
+      window.removeEventListener('scroll', updatePickerMenuStyle, true);
+    };
+  }, [pickerOpen]);
 
   const toggleCheck = (key) => setCheckedKeys((prev) => {
     const next = new Set(prev);
@@ -427,16 +466,18 @@ const LocationsSummaryTab = ({ isActive = true }) => {
                     border: '1px solid #dee2e6',
                     borderRadius: 6,
                     boxShadow: '0 4px 16px rgba(0,0,0,0.15)',
-                    width: 340,
-                    maxHeight: 360,
+                    width: 'min(340px, calc(100vw - 24px))',
+                    maxHeight: 'min(360px, calc(100dvh - 24px))',
                     display: 'flex',
                     flexDirection: 'column',
+                    overflow: 'hidden',
+                    ...pickerMenuStyle,
                   }}
                 >
                   <div style={{ padding: '6px 10px', borderBottom: '1px solid #dee2e6', fontWeight: 600, fontSize: '0.82rem' }}>
                     Select columns to add
                   </div>
-                  <div style={{ overflowY: 'auto', flex: 1, padding: '4px 0' }}>
+                  <div style={{ overflowY: 'auto', flex: '1 1 auto', minHeight: 0, padding: '4px 0' }}>
                     {availableAttributes.map((c) => {
                       const alreadyAdded = addedOptionalKeys.has(c.key);
                       return (
@@ -464,7 +505,7 @@ const LocationsSummaryTab = ({ isActive = true }) => {
                       );
                     })}
                   </div>
-                  <div style={{ padding: '6px 10px', borderTop: '1px solid #dee2e6', display: 'flex', justifyContent: 'flex-end', gap: 6 }}>
+                  <div style={{ padding: '6px 10px', borderTop: '1px solid #dee2e6', display: 'flex', justifyContent: 'flex-end', gap: 6, flexWrap: 'wrap' }}>
                     <button className="btn btn-sm btn-outline-secondary" onClick={() => { setCheckedKeys(new Set()); setPickerOpen(false); }}>Cancel</button>
                     <button className="btn btn-sm btn-primary" onClick={handleAddToTable} disabled={checkedKeys.size === 0}>Add to table</button>
                   </div>

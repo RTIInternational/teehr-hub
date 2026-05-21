@@ -575,7 +575,7 @@ const MetricsTable = ({
           </div>
         </div>
       ) : currentViewMode === 'plot' && hasLeadTimeBin ? (
-        <div key="plot-view" className="metrics-plot-container" style={{ height: '400px', padding: '10px' }}>
+        <div key="plot-view" className="metrics-plot-container" style={{ height: '100%', minHeight: 0, padding: '10px', display: 'flex' }}>
           <div ref={plotRef} style={{ width: '100%', height: '100%' }} />
         </div>
       ) : (
