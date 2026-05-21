@@ -11,7 +11,7 @@ const Navbar = () => {
     const pathMap = {
       '/retrospective': 'Retrospective Simulations',
       '/forecast': 'Forecast Analysis',
-      '/data': 'Data Management',
+      '/data': 'Data Availability',
       '/admin': 'Admin Page',
       '/admin/api-keys': 'API Keys',
       '/admin/keycloak': 'Keycloak Admin',
@@ -39,19 +39,19 @@ const Navbar = () => {
     <nav className="navbar navbar-expand-lg navbar-dark bg-primary">
       <div className="container-fluid px-4 d-flex align-items-center">
         <Link className="navbar-brand me-3" to="/">
-          <img 
-            src="/teehr.png" 
-            alt="TEEHR Dashboard" 
-            height="32" 
+          <img
+            src="/teehr.png"
+            alt="TEEHR Dashboard"
+            height="32"
             className="d-inline-block align-text-top"
           />
         </Link>
-        
+
         {/* Breadcrumb Navigation */}
         <div className="flex-grow-1 d-flex align-items-center">
           {getBreadcrumbs()}
         </div>
-        
+
         {/* User Profile Section */}
         <div className="d-flex align-items-center">
           {ready && authenticated && isAdmin && (

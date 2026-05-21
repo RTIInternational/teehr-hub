@@ -5,7 +5,7 @@ const Home = () => {
   const dashboards = [
     {
       id: 'data-management',
-      title: 'Data Management',
+      title: 'Data Availability',
       description: 'Explore contents of the data warehouse spatially and temporally.',
       features: [
         'Data summaries by model configuration',
