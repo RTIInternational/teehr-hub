@@ -1,7 +1,7 @@
 import { Duration } from 'luxon';
 import Plotly from 'plotly.js-dist-min';
 import { useState, useMemo, useRef, useEffect, useCallback } from 'react';
-import { Button, ButtonGroup, Form } from 'react-bootstrap';
+import { Button, ButtonGroup } from 'react-bootstrap';
 import MultiSelectDropdown from './MultiSelectDropdown';
 import SharedDataTable from './SharedDataTable';
 import './MetricsTable.css';
@@ -66,25 +66,6 @@ const MetricsTable = ({
     }
     setSortConfig({ column: columnIndex, direction });
   };
-  
-
-  // Checkbox filter function for group_by columns
-  const handleCheckboxFilterChange = (columnIndex, value, checked) => {
-    setFilters(prev => {
-      const currentFilter = prev[columnIndex] || [];
-      if (checked) {
-        return {
-          ...prev,
-          [columnIndex]: [...currentFilter, value]
-        };
-      } else {
-        return {
-          ...prev,
-          [columnIndex]: currentFilter.filter(v => v !== value)
-        };
-      }
-    });
-  };
 
   // Clear all filters
   const clearFilters = () => {
@@ -97,24 +78,6 @@ const MetricsTable = ({
       setSelectedMetrics(tableProperties.metrics.slice());
     }
   }, [tableProperties]);
-  
-  // Handle metrics filter change
-  const handleMetricFilterChange = (metric, checked) => {
-    setSelectedMetrics(prev => {
-      if (checked) {
-        return [...prev, metric];
-      } else {
-        return prev.filter(m => m !== metric);
-      }
-    });
-  };
-  
-  // Clear all metrics filters
-  const clearMetricsFilter = () => {
-    if (tableProperties?.metrics?.length > 0) {
-      setSelectedMetrics(tableProperties.metrics.slice());
-    }
-  };
   
   // Memoized lead time bin field detection
   const leadTimeBinField = useMemo(() => {
@@ -243,6 +206,11 @@ const MetricsTable = ({
     const filteredRows = filterRows(rawRows);
     return sortRows(filteredRows, headers);
   }, [rawRows, filterRows, sortRows, headers]);
+
+  const hasActiveFilters = useMemo(
+    () => Object.values(filters).some(f => Array.isArray(f) ? f.length > 0 : f),
+    [filters]
+  );
   
   // Prepare data for plotting
   const plotData = useMemo(() => {
@@ -484,7 +452,7 @@ const MetricsTable = ({
         <div className="metrics-table-header">
           <h3>{title}</h3>
           <div className="d-flex align-items-center gap-2">
-            <span className="metrics-count">({processedRows.length} rows{Object.values(filters).some(f => Array.isArray(f) ? f.length > 0 : f) ? ` of ${rawRows.length}` : ''})</span>
+            <span className="metrics-count">({processedRows.length} rows{hasActiveFilters ? ` of ${rawRows.length}` : ''})</span>
           </div>
         </div>
       )}
@@ -513,7 +481,7 @@ const MetricsTable = ({
               📈 Plot
             </Button>
           </ButtonGroup>
-          <span className="metrics-count small text-muted">({processedRows.length} rows{Object.values(filters).some(f => Array.isArray(f) ? f.length > 0 : f) ? ` of ${rawRows.length}` : ''})</span>
+          <span className="metrics-count small text-muted">({processedRows.length} rows{hasActiveFilters ? ` of ${rawRows.length}` : ''})</span>
         </div>
       )}
       
@@ -557,7 +525,7 @@ const MetricsTable = ({
             })}
             
             {/* Active filters summary and clear all */}
-            {Object.keys(filters).length > 0 && Object.values(filters).some(f => Array.isArray(f) ? f.length > 0 : f) && (
+            {Object.keys(filters).length > 0 && hasActiveFilters && (
               <div className="col-12 mt-2">
                 <div className="alert alert-info py-2 d-flex justify-content-between align-items-center mb-0">
                   <span>
@@ -581,7 +549,7 @@ const MetricsTable = ({
       ) : (
         <div key="table-view" className="metrics-table-wrapper" style={{ display: 'flex', flexDirection: 'column', minHeight: 0 }}>
           {/* Existing filter controls display */}
-          {Object.keys(filters).length > 0 && Object.values(filters).some(f => Array.isArray(f) ? f.length > 0 : f) && (
+          {Object.keys(filters).length > 0 && hasActiveFilters && (
             <div className="filter-controls" style={{ 
               padding: '8px 12px', 
               backgroundColor: '#f8f9fa', 

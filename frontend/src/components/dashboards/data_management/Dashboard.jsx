@@ -35,7 +35,7 @@ const Dashboard = () => {
   return (
     <div
       className="d-flex flex-column"
-      style={{ height: 'calc(100vh - 56px)', overflow: 'hidden', padding: '12px', gap: '8px' }}
+      style={{ height: 'calc(100dvh - 56px)', overflow: 'hidden', padding: '12px', gap: '8px' }}
     >
       {/* Global error alert */}
       {state.error && (

@@ -1,24 +1,21 @@
 import { useEffect } from 'react';
 import { useForecastDashboard, ActionTypes } from '../../../context/ForecastDashboardContext.jsx';
-import { useForecastData } from './useForecastData';
-import ForecastTimeseriesFilters from './ForecastTimeseriesControls';
+import { useForecastLocationSelection, useForecastFilters } from '../../../hooks/useForecastDataFetching';
+import { LocationMetrics, LocationCard } from '../../common';
 import { 
   MapComponent, 
   TimeseriesComponent, 
   MapFilterButton
 } from '../../common/dashboard';
-import { LocationMetrics, LocationCard } from '../../common';
 import { getMetricLabel } from '../../common/dashboard/utils.js';
-import { useForecastLocationSelection, useForecastFilters } from '../../../hooks/useForecastDataFetching';
+import ForecastTimeseriesFilters from './ForecastTimeseriesControls';
+import { useForecastData } from './useForecastData';
 
 const Dashboard = () => {
   const { state, dispatch } = useForecastDashboard();
-  const { initializeForecastData } = useForecastData();
-  const { selectLocation } = useForecastLocationSelection();
-  const { loadLocations } = useForecastData();
+  const { initializeForecastData, loadLocations, loadTimeseries, loadLocationMetrics } = useForecastData();
+  const { selectLocation, selectedLocation } = useForecastLocationSelection();
   const { mapFilters, updateMapFilters, timeseriesFilters, updateTimeseriesFilters } = useForecastFilters();
-  const { loadTimeseries, loadLocationMetrics } = useForecastData();
-  const { selectedLocation } = useForecastLocationSelection();
   
   // Create dashboard-specific components with injected dependencies
   const ForecastMapFilterButton = () => (
@@ -177,8 +174,10 @@ const Dashboard = () => {
                 locationMetrics={state.locationMetrics}
                 metricsLoading={state.metricsLoading}
                 error={state.error}
-                loadLocationMetrics={loadLocationMetrics}                tableProperties={state.tableProperties}
-                defaultTable="fcst_metrics_by_location"              />
+                loadLocationMetrics={loadLocationMetrics}
+                tableProperties={state.tableProperties}
+                defaultTable="fcst_metrics_by_location"
+              />
             ) : (
               <div className="d-flex align-items-center justify-content-center h-100 text-muted">
                 <div className="text-center">

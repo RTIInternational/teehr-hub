@@ -1,24 +1,21 @@
 import { useEffect } from 'react';
 import { useRetrospectiveDashboard, ActionTypes } from '../../../context/RetrospectiveDashboardContext.jsx';
-import { useRetrospectiveData } from './useRetrospectiveData';
+import { useRetrospectiveLocationSelection, useRetrospectiveFilters } from '../../../hooks/useRetrospectiveDataFetching';
+import { LocationMetrics, LocationCard } from '../../common';
 import { 
   MapComponent, 
   TimeseriesComponent, 
   MapFilterButton, 
   TimeseriesControls 
 } from '../../common/dashboard';
-import { LocationMetrics, LocationCard } from '../../common';
 import { getMetricLabel } from '../../common/dashboard/utils.js';
-import { useRetrospectiveLocationSelection, useRetrospectiveFilters } from '../../../hooks/useRetrospectiveDataFetching';
+import { useRetrospectiveData } from './useRetrospectiveData';
 
 const Dashboard = () => {
   const { state, dispatch } = useRetrospectiveDashboard();
-  const { initializeRetrospectiveData } = useRetrospectiveData();
-  const { selectLocation } = useRetrospectiveLocationSelection();
-  const { loadLocations } = useRetrospectiveData();
+  const { initializeRetrospectiveData, loadLocations, loadTimeseries, loadLocationMetrics } = useRetrospectiveData();
+  const { selectLocation, selectedLocation } = useRetrospectiveLocationSelection();
   const { mapFilters, updateMapFilters, timeseriesFilters, updateTimeseriesFilters } = useRetrospectiveFilters();
-  const { loadTimeseries, loadLocationMetrics } = useRetrospectiveData();
-  const { selectedLocation } = useRetrospectiveLocationSelection();
   
   // Create dashboard-specific components with injected dependencies
   const RetrospectiveMapFilterButton = () => (
@@ -42,23 +39,11 @@ const Dashboard = () => {
     />
   );
   
-  // Debug: Log state changes
-  useEffect(() => {
-    console.log('Dashboard state updated:', {
-      configurationsLength: state.configurations?.length,
-      variablesLength: state.variables?.length,
-      metricsLength: state.metrics?.length,
-      error: state.error
-    });
-  }, [state.configurations, state.variables, state.metrics, state.error]);
-  
   // Load initial data when component mounts
   useEffect(() => {
     const initializeData = async () => {
       try {
-        console.log('Dashboard: Starting data initialization...');
         await initializeRetrospectiveData();
-        console.log('Dashboard: Data initialization completed');
       } catch (error) {
         console.error('Dashboard: Error during initialization:', error);
       }
@@ -194,8 +179,10 @@ const Dashboard = () => {
                 locationMetrics={state.locationMetrics}
                 metricsLoading={state.metricsLoading}
                 error={state.error}
-                loadLocationMetrics={loadLocationMetrics}                tableProperties={state.tableProperties}
-                defaultTable="sim_metrics_by_location"              />
+                loadLocationMetrics={loadLocationMetrics}
+                tableProperties={state.tableProperties}
+                defaultTable="sim_metrics_by_location"
+              />
             ) : (
               <div className="d-flex align-items-center justify-content-center h-100 text-muted">
                 <div className="text-center">

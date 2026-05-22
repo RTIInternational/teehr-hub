@@ -11,11 +11,11 @@
  */
 import { useEffect, useState, useCallback, useRef, useMemo } from 'react';
 import { Spinner, Alert } from 'react-bootstrap';
-import SimpleMapPanel from './SimpleMapPanel';
-import { apiService } from '../../../services/api';
 import { useSortableTable } from '../../../hooks/useSortableTable.jsx';
+import { apiService } from '../../../services/api';
 import { DashboardPanel } from '../../common/dashboard';
 import SharedDataTable from '../../common/SharedDataTable';
+import SimpleMapPanel from './SimpleMapPanel';
 
 // ── Helpers ────────────────────────────────────────────────────────────────
 const fmt = (val) => {
@@ -131,7 +131,6 @@ const LocationsSummaryTab = ({ isActive = true }) => {
 
   useEffect(() => {
     if (!pickerOpen || !pickerRef.current) {
-      setPickerMenuStyle({});
       return;
     }
 
