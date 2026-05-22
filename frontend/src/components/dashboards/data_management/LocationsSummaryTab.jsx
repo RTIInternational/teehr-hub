@@ -388,8 +388,8 @@ const LocationsSummaryTab = ({ isActive = true }) => {
                   headers={SIDE_PANEL_COLUMNS}
                   rows={sortedSidePanelConfigs}
                   wrapperStyle={{ flex: '1 1 0', minHeight: 0, overflowY: 'auto' }}
-                  tableClassName="table table-sm table-bordered mb-0"
-                  tableStyle={{ fontSize: '0.75rem' }}
+                  tableClassName="table table-sm table-bordered table-hover mb-0"
+                  tableStyle={{ fontSize: '0.82rem' }}
                   getHeaderKey={(column) => column.key}
                   renderHeaderCell={(column) => (
                     <>

@@ -606,13 +606,11 @@ const MetricsTable = ({
             rows={processedRows}
             wrapperClassName=""
             wrapperStyle={{ flex: '1 1 auto', minHeight: 0, overflow: 'auto' }}
-            tableClassName="metrics-table pivoted-table"
-            tableStyle={{}}
-            theadClassName=""
-            getHeaderProps={(_header, index) => {
-              const isGroupByColumn = index < (tableProperties?.group_by?.length || 0);
+            tableClassName="table table-sm table-bordered table-hover mb-0 metrics-table"
+            tableStyle={{ fontSize: '0.82rem' }}
+            theadClassName="table-light sticky-top"
+            getHeaderProps={(_header, _index) => {
               return {
-                className: isGroupByColumn ? 'group-by-header' : 'metric-header',
                 style: { minWidth: '120px' },
               };
             }}
@@ -644,7 +642,6 @@ const MetricsTable = ({
                 </span>
               </div>
             )}
-            getRowClassName={(_row, rowIndex) => (rowIndex % 2 === 0 ? 'even' : 'odd')}
             renderCell={(row, _header, _rowIndex, cellIndex) => row[cellIndex]}
             getCellProps={(_row, _header, _rowIndex, cellIndex) => ({
               className: cellIndex < (tableProperties?.group_by?.length || 0) ? 'group-by-cell' : 'metric-cell',
