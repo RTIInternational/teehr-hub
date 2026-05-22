@@ -579,7 +579,7 @@ const MetricsTable = ({
           <div ref={plotRef} style={{ width: '100%', height: '100%' }} />
         </div>
       ) : (
-        <div key="table-view" className="metrics-table-wrapper" style={{ overflowX: 'auto' }}>
+        <div key="table-view" className="metrics-table-wrapper" style={{ display: 'flex', flexDirection: 'column', minHeight: 0 }}>
           {/* Existing filter controls display */}
           {Object.keys(filters).length > 0 && Object.values(filters).some(f => Array.isArray(f) ? f.length > 0 : f) && (
             <div className="filter-controls" style={{ 
@@ -605,7 +605,7 @@ const MetricsTable = ({
             headers={headers}
             rows={processedRows}
             wrapperClassName=""
-            wrapperStyle={{ overflowX: 'visible', overflowY: 'visible', flex: 0 }}
+            wrapperStyle={{ flex: '1 1 auto', minHeight: 0, overflow: 'auto' }}
             tableClassName="metrics-table pivoted-table"
             tableStyle={{}}
             theadClassName=""

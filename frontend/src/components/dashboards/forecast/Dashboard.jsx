@@ -47,7 +47,7 @@ const Dashboard = () => {
     <div className="d-flex flex-column" style={{ height: 'calc(100dvh - 56px)', minHeight: 0 }}>
       {/* Height adjusted for navbar (Bootstrap navbar is typically 56px) */}
       
-      <div className="container-fluid flex-grow-1 p-0">
+      <div className="container-fluid flex-grow-1 p-0" style={{ minHeight: 0, overflow: 'hidden' }}>
         <div 
           className="dashboard-grid h-100" 
           style={{
