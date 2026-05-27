@@ -146,7 +146,8 @@ const retrospectiveDashboardReducer = (state, action) => {
       };
       
     case ActionTypes.UPDATE_MAP_FILTERS:
-      // Also sync configuration and variable to timeseries filters
+      // Keep map display and default timeseries filters aligned.
+      // NOTE: This behavior is intentionally mirrored in ForecastDashboardContext.
       const mapTimeseriesSync = {};
       if (action.payload.configuration !== undefined) {
         // Sync map configuration to timeseries configurations array

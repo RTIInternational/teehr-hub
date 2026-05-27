@@ -176,11 +176,35 @@ const forecastDashboardReducer = (state, action) => {
     }
       
     case ActionTypes.UPDATE_MAP_FILTERS:
+      // Keep timeseries defaults in sync with map display filters.
+      // This mirrors retrospective behavior where map filter changes reset
+      // the default timeseries selections.
+      const mapTimeseriesSync = {};
+      if (action.payload.configuration !== undefined) {
+        mapTimeseriesSync.secondary = {
+          ...state.timeseriesFilters.secondary,
+          configurations: action.payload.configuration ? [action.payload.configuration] : []
+        };
+      }
+      if (action.payload.variable !== undefined) {
+        mapTimeseriesSync.primary = {
+          ...state.timeseriesFilters.primary,
+          variables: action.payload.variable ? [action.payload.variable] : []
+        };
+        mapTimeseriesSync.secondary = {
+          ...(mapTimeseriesSync.secondary || state.timeseriesFilters.secondary),
+          variables: action.payload.variable ? [action.payload.variable] : []
+        };
+      }
       return {
         ...state,
         mapFilters: {
           ...state.mapFilters,
           ...action.payload
+        },
+        timeseriesFilters: {
+          ...state.timeseriesFilters,
+          ...mapTimeseriesSync
         }
       };
       
