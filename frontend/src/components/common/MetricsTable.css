@@ -1,8 +1,8 @@
 .metrics-table-container {
-  border: 1px solid #e0e0e0;
-  border-radius: 8px;
-  background-color: white;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  border: 0;
+  border-radius: 0;
+  background-color: transparent;
+  box-shadow: none;
   overflow: hidden;
   display: flex;
   flex-direction: column;
@@ -88,18 +88,6 @@
   box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.25);
 }
 
-/* Styles for pivoted table headers */
-.group-by-header {
-  background-color: #e3f2fd !important;
-  color: #1976d2 !important;
-  border-right: 2px solid #bbdefb;
-}
-
-.metric-header {
-  background-color: #f3e5f5 !important;
-  color: #7b1fa2 !important;
-}
-
 .metrics-table th {
   z-index: 1;
 }
@@ -111,26 +99,17 @@
   vertical-align: middle;
 }
 
-/* Styles for pivoted table cells */
+/* Keep subtle semantic distinction for grouped columns without changing header theme */
 .group-by-cell {
   background-color: #f8f9fa;
   font-weight: 500;
   border-right: 1px solid #e0e0e0;
-  color: #1976d2;
 }
 
 .metric-cell {
   color: #333;
   text-align: right;
   font-family: 'Courier New', monospace;
-}
-
-.metrics-table tr.even {
-  background-color: #fafafa;
-}
-
-.metrics-table tr.odd {
-  background-color: white;
 }
 
 .metrics-table tr:hover {

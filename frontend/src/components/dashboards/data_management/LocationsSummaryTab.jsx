@@ -11,11 +11,11 @@
  */
 import { useEffect, useState, useCallback, useRef, useMemo } from 'react';
 import { Spinner, Alert } from 'react-bootstrap';
-import SimpleMapPanel from './SimpleMapPanel';
-import { apiService } from '../../../services/api';
 import { useSortableTable } from '../../../hooks/useSortableTable.jsx';
+import { apiService } from '../../../services/api';
 import { DashboardPanel } from '../../common/dashboard';
 import SharedDataTable from '../../common/SharedDataTable';
+import SimpleMapPanel from './SimpleMapPanel';
 
 // ── Helpers ────────────────────────────────────────────────────────────────
 const fmt = (val) => {
@@ -131,7 +131,6 @@ const LocationsSummaryTab = ({ isActive = true }) => {
 
   useEffect(() => {
     if (!pickerOpen || !pickerRef.current) {
-      setPickerMenuStyle({});
       return;
     }
 
@@ -388,8 +387,8 @@ const LocationsSummaryTab = ({ isActive = true }) => {
                   headers={SIDE_PANEL_COLUMNS}
                   rows={sortedSidePanelConfigs}
                   wrapperStyle={{ flex: '1 1 0', minHeight: 0, overflowY: 'auto' }}
-                  tableClassName="table table-sm table-bordered mb-0"
-                  tableStyle={{ fontSize: '0.75rem' }}
+                  tableClassName="table table-sm table-bordered table-hover mb-0"
+                  tableStyle={{ fontSize: '0.82rem' }}
                   getHeaderKey={(column) => column.key}
                   renderHeaderCell={(column) => (
                     <>
