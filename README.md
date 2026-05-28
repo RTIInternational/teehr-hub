@@ -54,6 +54,8 @@ After you have the dependencies above installed you should be able to create a k
 ./kind/create_kind_cluster.sh 
 ```
 
+NOTE: From this point on, some operations will expect additional secrets to be provided by the developer. These are typically provided in `secrets/secrets.local.private.yaml` ([example](https://github.com/RTIInternational/teehr-hub/blob/main/secrets/secrets.local.private.yaml.example)). Coordinate with the team for internal development standards.
+
 If the kind cluster creation is successful, you can then run the following to deploy the application to the local cluster:
 ```bash
 garden deploy
