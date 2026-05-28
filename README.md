@@ -104,15 +104,15 @@ Loading data is a little fractured depending on what data you are loading.  For 
 - `02_create_joined_timeseries.ipynb`
 - `03_generate_basic_metrics.ipynb`
 
-3) To load some recent (but not too recent forecasts), go to the Prefect UI at `https://prefect.teehr.local.app.garden` and log in with a Keycloak user in the `admin` group. Navigate to `Deployments`.
+4) To load some recent (but not too recent forecasts), go to the Prefect UI at `https://prefect.teehr.local.app.garden` and log in with a Keycloak user in the `admin` group. Navigate to `Deployments`.
 
-1) Click on `ingest-usgs-streamflow-obs`.  In the upper right corner select Run > Custom Run.  Change the num_lookback_days to 10 and Submit.  Monitor the run through the browser UI.  When done, proceed to the next one.
+5) Click on `ingest-usgs-streamflow-obs`.  In the upper right corner select Run > Custom Run.  Change the num_lookback_days to 10 and Submit.  Monitor the run through the browser UI.  When done, proceed to the next one.
 
-2) Click on `ingest-nwm-medium-range-streamflow-forecasts`. In the upper right corner select Run > Custom Run.  Change the `end_dt` to a date approximately 9 days prior to today, remove the `Z` from the end of the `end_dt` string (TEEHR expects a tz-naive datetime), and Submit.  Monitor the run through the browser UI.  When done, proceed to the next one.
+6) Click on `ingest-nwm-medium-range-streamflow-forecasts`. In the upper right corner select Run > Custom Run.  Change the `end_dt` to a date approximately 9 days prior to today, remove the `Z` from the end of the `end_dt` string (TEEHR expects a tz-naive datetime), and Submit.  Monitor the run through the browser UI.  When done, proceed to the next one.
 
-3) Click on `update-joined-forecast-table`. In the upper right corner select Run > Custom Run. Submit.
+7) Click on `update-joined-forecast-table`. In the upper right corner select Run > Custom Run. Submit.
 
-4) Click on `update-forecast-metrics-table`. In the upper right corner select Run > Custom Run. Submit.
+8) Click on `update-forecast-metrics-table`. In the upper right corner select Run > Custom Run. Submit.
 
 Now go to `https://dashboards.teehr.local.app.garden`.  You should be able to go to both the retrospective and forecast dashboards and see some data.
 
