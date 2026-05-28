@@ -106,13 +106,13 @@ Loading data is a little fractured depending on what data you are loading.  For 
 
 3) To load some recent (but not too recent forecasts), go to the Prefect UI at `https://prefect.teehr.local.app.garden` and log in with a Keycloak user in the `admin` group. Navigate to `Deployments`.
 
-1) Click on `ingest-usgs-streamflow-obs`.  In the upper right corner select Run > Custom Run.  Change the num_lookback_days to 10, toggle `start_spark_cluster` off, and Submit.  Monitor the run through the browser UI.  When done, proceed to the next one.
+1) Click on `ingest-usgs-streamflow-obs`.  In the upper right corner select Run > Custom Run.  Change the num_lookback_days to 10 and Submit.  Monitor the run through the browser UI.  When done, proceed to the next one.
 
-2) Click on `ingest-nwm-medium-range-streamflow-forecasts`. In the upper right corner select Run > Custom Run.  Change the end_dt to a date approximately 9 days prior to today, toggle `start_spark_cluster` off, and Submit.  Monitor the run through the browser UI.  When done, proceed to the next one.
+2) Click on `ingest-nwm-medium-range-streamflow-forecasts`. In the upper right corner select Run > Custom Run.  Change the end_dt to a date approximately 9 days prior to today and Submit.  Monitor the run through the browser UI.  When done, proceed to the next one.
 
-3) Click on `update-joined-forecast-table`. In the upper right corner select Run > Custom Run. Toggle `start_spark_cluster` off, and Submit.
+3) Click on `update-joined-forecast-table`. In the upper right corner select Run > Custom Run. Submit.
 
-4) Click on `update-forecast-metrics-table`. In the upper right corner select Run > Custom Run. Toggle `start_spark_cluster` off, and Submit.
+4) Click on `update-forecast-metrics-table`. In the upper right corner select Run > Custom Run. Submit.
 
 Now go to `https://dashboards.teehr.local.app.garden`.  You should be able to go to both the retrospective and forecast dashboards and see some data.
 
