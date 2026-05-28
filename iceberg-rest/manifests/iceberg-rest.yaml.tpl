@@ -13,7 +13,7 @@ metadata:
     app: iceberg-rest
   name: iceberg-rest
 spec:
-  replicas: 1
+  replicas: 2
   selector:
     matchLabels:
       app: iceberg-rest
