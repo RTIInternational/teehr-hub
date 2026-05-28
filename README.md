@@ -73,10 +73,27 @@ This should create all the services in the cluster.  To test, open a browser and
 127.0.0.1       prefect.teehr.local.app.garden
 ```
 
+### Create Keycloak User
+The local development environment includes no users by default.  To create a user for testing:
+
+1) In a browser, navigate to `auth.teehr.local.app.garden`.
+2) Log in to keycloak using username `admin` and password `admin123`.
+3) Activate the `teehr` realm (`Manage realms` > `teehr`).
+4) Open the `Users` panel under `Manage` in the sidebar.
+5) Click `Add user`.
+6) Enable `Email verified`.  Enter the following (only username really matters, but enter something for all):
+- username: `user`
+- email: `user@teehr.org`
+- first: `firstname`
+- last: `lastname`
+7) Click `Join Groups`, check all groups, and click `Join`.  Click `Create` to create the user.
+8) You should now be in the details for the new user. Click the `Credentials` tab. Click `Set password`. Enter `password` in both boxes, uncheck `Temporary`, and click `Save`.  Confirm `Save password` in the dialog box.
+9) The user should now be available for use in all following steps.
+
 ### Load Test Data to Warehouse
 Loading data is a little fractured depending on what data you are loading.  For the purpose of developing there are 2 different types of data that can be loaded. Regardless, you first need to create an Iceberg warehouse in the KinD cluster, then load some data.
 
-1) To create the Iceberg warehouse and load some historic simulation data, start by going to the JupyterHub environment `hub.teehr.local.app.garden` and logging in with username: `user` and password: `password`.
+1) To create the Iceberg warehouse and load some historic simulation data, start by going to the JupyterHub environment `hub.teehr.local.app.garden` and logging in with username: `user` and password: `password` (if unavailable, see [Create Keycloak User](#create-keycloak-user))
 
 2) Copy the following notebooks to JupyterHub and run them in order.  This will create an Iceberg data warehouse in the KinD cluster and populate it with historic observations and simulations for 10 sites.
 - `examples/01_setup_minio_warehouse.ipynb`
