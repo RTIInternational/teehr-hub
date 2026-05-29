@@ -85,6 +85,8 @@ const PlotlyChart = ({ primaryData, secondaryData, selectedLocation, filters, he
         const maxOpacity = 1.0;
         return minOpacity + (index / (sortedRefTimes.length - 1)) * (maxOpacity - minOpacity);
       };
+
+      const getLegendGroup = (configName) => `forecast:${configName || 'unknown'}`;
       
       secondaryData.forEach(series => {
         if (series?.timeseries?.length > 0) {
@@ -94,7 +96,7 @@ const PlotlyChart = ({ primaryData, secondaryData, selectedLocation, filters, he
             const configName = series.configuration_name;
             
             // Display trace name with reference_time details in hover, but keep legend simple
-            let traceName = configName;
+            const traceName = configName;
             let hoverName = configName;
             if (series.reference_time && series.reference_time !== 'null') {
               // Format reference_time for display (e.g., "2024-01-15T00:00" -> "01/15 00:00")
@@ -119,6 +121,7 @@ const PlotlyChart = ({ primaryData, secondaryData, selectedLocation, filters, he
               x: series.timeseries.map(d => d.value_time),
               y: series.timeseries.map(d => d.value),
               name: traceName,
+              legendgroup: getLegendGroup(configName),
               type: 'scatter',
               mode: 'lines',
               line: { 
@@ -180,6 +183,7 @@ const PlotlyChart = ({ primaryData, secondaryData, selectedLocation, filters, he
         y: 0.95,
         xanchor: 'left',
         yanchor: 'top',
+        groupclick: 'togglegroup',
         bgcolor: 'rgba(255, 255, 255, 0.8)',
         bordercolor: '#999',
         borderwidth: 0
