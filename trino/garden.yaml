@@ -14,6 +14,9 @@ spec:
     version: 1.41.0
   
   values:
+    server:
+      workers: 1
+
     # coordinator:
     #   nodeSelector:
     #     teehr-hub/nodegroup-name: core-a

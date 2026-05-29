@@ -6,7 +6,7 @@ metadata:
     app: teehr-api
     component: backend
 spec:
-  replicas: 2
+  replicas: ${environment.name == 'local' ? 1 : 2}
   selector:
     matchLabels:
       app: teehr-api
