@@ -79,7 +79,7 @@ spec:
   
   values:
     server:
-      workers: 2
+      workers: "${environment.name == 'local' ? 1 : 2}"
 
     coordinator:
       # nodeSelector:
@@ -87,7 +87,7 @@ spec:
       resources:
         requests:
           cpu: 1
-          memory: 4Gi
+          memory: "${environment.name == 'local' ? '1Gi' : '4Gi'}"
         limits:
           cpu: 2
           memory: 8Gi
@@ -98,7 +98,7 @@ spec:
       resources:
         requests:
           cpu: 1
-          memory: 4Gi
+          memory: "${environment.name == 'local' ? '1Gi' : '4Gi'}"
         limits:
           cpu: 2
           memory: 8Gi
