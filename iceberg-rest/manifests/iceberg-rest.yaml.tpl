@@ -13,7 +13,7 @@ metadata:
     app: iceberg-rest
   name: iceberg-rest
 spec:
-  replicas: ${environment.name == 'local' ? 1 : 2}
+  replicas: ${environment.name == 'local' ? 1 : 1}
   selector:
     matchLabels:
       app: iceberg-rest
