@@ -1,0 +1,10 @@
+kind: Build
+type: container
+name: keycloak-theme
+
+spec:
+  dockerfile: Dockerfile
+
+environments:
+  - local
+  - remote

@@ -103,7 +103,7 @@ const LocationMetrics = ({
           )}
         </div>
       </Card.Header>
-      <Card.Body className="p-0 flex-grow-1" style={{ overflow: 'auto' }}>
+      <Card.Body className="p-0 flex-grow-1" style={{ overflow: 'hidden', minHeight: 0 }}>
         <MetricsTable
           metrics={locationMetrics}
           loading={metricsLoading}

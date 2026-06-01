@@ -54,6 +54,8 @@ After you have the dependencies above installed you should be able to create a k
 ./kind/create_kind_cluster.sh 
 ```
 
+NOTE: From this point on, some operations will expect additional secrets to be provided by the developer. These are typically provided in `secrets/secrets.local.private.yaml` ([example](https://github.com/RTIInternational/teehr-hub/blob/main/secrets/secrets.local.private.yaml.example)). Coordinate with the team for internal development standards.
+
 If the kind cluster creation is successful, you can then run the following to deploy the application to the local cluster:
 ```bash
 garden deploy
@@ -70,34 +72,47 @@ This should create all the services in the cluster.  To test, open a browser and
 127.0.0.1       dashboards.teehr.local.app.garden
 127.0.0.1       api.teehr.local.app.garden
 127.0.0.1       panel.teehr.local.app.garden
+127.0.0.1       prefect.teehr.local.app.garden
 ```
+
+### Create Keycloak User
+The local development environment includes no users by default.  To create a user for testing:
+
+1) In a browser, navigate to `auth.teehr.local.app.garden`.
+2) Log in to keycloak using username `admin` and password `admin123`.
+3) Activate the `teehr` realm (`Manage realms` > `teehr`).
+4) Open the `Users` panel under `Manage` in the sidebar.
+5) Click `Add user`.
+6) Enable `Email verified`.  Enter the following (only username really matters, but enter something for all):
+- username: `user`
+- email: `user@teehr.org`
+- first: `firstname`
+- last: `lastname`
+7) Click `Join Groups`, check all groups, and click `Join`.  Click `Create` to create the user.
+8) You should now be in the details for the new user. Click the `Credentials` tab. Click `Set password`. Enter `password` in both boxes, uncheck `Temporary`, and click `Save`.  Confirm `Save password` in the dialog box.
+9) The user should now be available for use in all following steps.
 
 ### Load Test Data to Warehouse
 Loading data is a little fractured depending on what data you are loading.  For the purpose of developing there are 2 different types of data that can be loaded. Regardless, you first need to create an Iceberg warehouse in the KinD cluster, then load some data.
 
-1) To create the Iceberg warehouse and load some historic simulation data, start by going to the JupyterHub environment `hub.teehr.local.app.garden` and logging in with username: `user` and password: `password`.
+1) To create the Iceberg warehouse and load some historic simulation data, start by going to the JupyterHub environment `hub.teehr.local.app.garden` and logging in with username: `user` and password: `password` (if unavailable, see [Create Keycloak User](#create-keycloak-user))
 
-2) Copy the following notebooks to JupyterHub and run them in order.  This will create an Iceberg data warehouse in the KinD cluster and populate it with historic observations and simulations for 10 sites.
-- `examples/01_setup_minio_warehouse.ipynb`
-- `examples/02_create_joined_timeseries.ipynb`
-- `examples/03_generate_basic_metrics.ipynb`
+2) Copy the contents of `examples/developer` to JupyterHub.  Note that the local_data folder and its contents will have to be uploaded as separate operations (i.e. create a folder manually, upload the file(s), and move into the folder).
 
-3) To load some recent (but not too recent forecasts).  This involves port forwarding the Prefect service to localhost, going to Prefect in the browser and executing a couple of workflows.
+3) Run the following notebooks in order.  This will create an Iceberg data warehouse in the KinD cluster and populate it with historic observations and simulations for 10 sites.
+- `01_setup_minio_warehouse.ipynb`
+- `02_create_joined_timeseries.ipynb`
+- `03_generate_basic_metrics.ipynb`
 
-```bash
-kubectl config use-context kind-kind
-kubectl port-forward -n teehr-hub svc/prefect-server 4200:4200
-```
+4) To load some recent (but not too recent forecasts), go to the Prefect UI at `https://prefect.teehr.local.app.garden` and log in with a Keycloak user in the `admin` group. Navigate to `Deployments`.
 
-Open your browser and go to http://localhost:4200.  Navigate to `Deployments`.
+5) Click on `ingest-usgs-streamflow-obs`.  In the upper right corner select Run > Custom Run.  Change the num_lookback_days to 10 and Submit.  Monitor the run through the browser UI.  When done, proceed to the next one.
 
-1) Click on `ingest-usgs-streamflow-obs`.  In the upper right corner select Run > Custom Run.  Change the num_lookback_days to 10, toggle `start_spark_cluster` off, and Submit.  Monitor the run through the browser UI.  When done, proceed to the next one.
+6) Click on `ingest-nwm-medium-range-streamflow-forecasts`. In the upper right corner select Run > Custom Run.  Change the `end_dt` to a date approximately 9 days prior to today, remove the `Z` from the end of the `end_dt` string (TEEHR expects a tz-naive datetime), and Submit.  Monitor the run through the browser UI.  When done, proceed to the next one.
 
-2) Click on `ingest-nwm-medium-range-streamflow-forecasts`. In the upper right corner select Run > Custom Run.  Change the end_dt to a date approximately 9 days prior to today, toggle `start_spark_cluster` off, and Submit.  Monitor the run through the browser UI.  When done, proceed to the next one.
+7) Click on `update-joined-forecast-table`. In the upper right corner select Run > Custom Run. Submit.
 
-3) Click on `update-joined-forecast-table`. In the upper right corner select Run > Custom Run. Toggle `start_spark_cluster` off, and Submit.
-
-4) Click on `update-forecast-metrics-table`. In the upper right corner select Run > Custom Run. Toggle `start_spark_cluster` off, and Submit.
+8) Click on `update-forecast-metrics-table`. In the upper right corner select Run > Custom Run. Submit.
 
 Now go to `https://dashboards.teehr.local.app.garden`.  You should be able to go to both the retrospective and forecast dashboards and see some data.
 

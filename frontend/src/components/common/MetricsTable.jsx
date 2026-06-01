@@ -1,8 +1,9 @@
 import { Duration } from 'luxon';
 import Plotly from 'plotly.js-dist-min';
 import { useState, useMemo, useRef, useEffect, useCallback } from 'react';
-import { Button, ButtonGroup, Form } from 'react-bootstrap';
+import { Button, ButtonGroup } from 'react-bootstrap';
 import MultiSelectDropdown from './MultiSelectDropdown';
+import SharedDataTable from './SharedDataTable';
 import './MetricsTable.css';
 
 const MetricsTable = ({ 
@@ -65,25 +66,6 @@ const MetricsTable = ({
     }
     setSortConfig({ column: columnIndex, direction });
   };
-  
-
-  // Checkbox filter function for group_by columns
-  const handleCheckboxFilterChange = (columnIndex, value, checked) => {
-    setFilters(prev => {
-      const currentFilter = prev[columnIndex] || [];
-      if (checked) {
-        return {
-          ...prev,
-          [columnIndex]: [...currentFilter, value]
-        };
-      } else {
-        return {
-          ...prev,
-          [columnIndex]: currentFilter.filter(v => v !== value)
-        };
-      }
-    });
-  };
 
   // Clear all filters
   const clearFilters = () => {
@@ -96,24 +78,6 @@ const MetricsTable = ({
       setSelectedMetrics(tableProperties.metrics.slice());
     }
   }, [tableProperties]);
-  
-  // Handle metrics filter change
-  const handleMetricFilterChange = (metric, checked) => {
-    setSelectedMetrics(prev => {
-      if (checked) {
-        return [...prev, metric];
-      } else {
-        return prev.filter(m => m !== metric);
-      }
-    });
-  };
-  
-  // Clear all metrics filters
-  const clearMetricsFilter = () => {
-    if (tableProperties?.metrics?.length > 0) {
-      setSelectedMetrics(tableProperties.metrics.slice());
-    }
-  };
   
   // Memoized lead time bin field detection
   const leadTimeBinField = useMemo(() => {
@@ -242,6 +206,11 @@ const MetricsTable = ({
     const filteredRows = filterRows(rawRows);
     return sortRows(filteredRows, headers);
   }, [rawRows, filterRows, sortRows, headers]);
+
+  const hasActiveFilters = useMemo(
+    () => Object.values(filters).some(f => Array.isArray(f) ? f.length > 0 : f),
+    [filters]
+  );
   
   // Prepare data for plotting
   const plotData = useMemo(() => {
@@ -483,7 +452,7 @@ const MetricsTable = ({
         <div className="metrics-table-header">
           <h3>{title}</h3>
           <div className="d-flex align-items-center gap-2">
-            <span className="metrics-count">({processedRows.length} rows{Object.values(filters).some(f => Array.isArray(f) ? f.length > 0 : f) ? ` of ${rawRows.length}` : ''})</span>
+            <span className="metrics-count">({processedRows.length} rows{hasActiveFilters ? ` of ${rawRows.length}` : ''})</span>
           </div>
         </div>
       )}
@@ -512,7 +481,7 @@ const MetricsTable = ({
               📈 Plot
             </Button>
           </ButtonGroup>
-          <span className="metrics-count small text-muted">({processedRows.length} rows{Object.values(filters).some(f => Array.isArray(f) ? f.length > 0 : f) ? ` of ${rawRows.length}` : ''})</span>
+          <span className="metrics-count small text-muted">({processedRows.length} rows{hasActiveFilters ? ` of ${rawRows.length}` : ''})</span>
         </div>
       )}
       
@@ -556,7 +525,7 @@ const MetricsTable = ({
             })}
             
             {/* Active filters summary and clear all */}
-            {Object.keys(filters).length > 0 && Object.values(filters).some(f => Array.isArray(f) ? f.length > 0 : f) && (
+            {Object.keys(filters).length > 0 && hasActiveFilters && (
               <div className="col-12 mt-2">
                 <div className="alert alert-info py-2 d-flex justify-content-between align-items-center mb-0">
                   <span>
@@ -574,13 +543,13 @@ const MetricsTable = ({
           </div>
         </div>
       ) : currentViewMode === 'plot' && hasLeadTimeBin ? (
-        <div key="plot-view" className="metrics-plot-container" style={{ height: '400px', padding: '10px' }}>
+        <div key="plot-view" className="metrics-plot-container" style={{ height: '100%', minHeight: 0, padding: '10px', display: 'flex' }}>
           <div ref={plotRef} style={{ width: '100%', height: '100%' }} />
         </div>
       ) : (
-        <div key="table-view" className="metrics-table-wrapper" style={{ overflowX: 'auto' }}>
+        <div key="table-view" className="metrics-table-wrapper" style={{ display: 'flex', flexDirection: 'column', minHeight: 0 }}>
           {/* Existing filter controls display */}
-          {Object.keys(filters).length > 0 && Object.values(filters).some(f => Array.isArray(f) ? f.length > 0 : f) && (
+          {Object.keys(filters).length > 0 && hasActiveFilters && (
             <div className="filter-controls" style={{ 
               padding: '8px 12px', 
               backgroundColor: '#f8f9fa', 
@@ -599,57 +568,53 @@ const MetricsTable = ({
               </button>
             </div>
           )}
-          
-          <table className="metrics-table pivoted-table">
-            <thead>
-              <tr>
-                {headers.map((header, index) => {
-                  const isGroupByColumn = index < (tableProperties?.group_by?.length || 0);
-                  
-                  return (
-                    <th key={index} 
-                        className={isGroupByColumn ? 'group-by-header' : 'metric-header'}
-                        style={{ minWidth: '120px' }}
-                    >
-                      <div 
-                        className="sortable-header"
-                        onClick={() => handleSort(index, header)}
-                        style={{ 
-                          cursor: 'pointer', 
-                          display: 'flex', 
-                          alignItems: 'center', 
-                          justifyContent: 'space-between',
-                          userSelect: 'none',
-                          padding: '8px 4px'
-                        }}
-                      >
-                        <span>{header}</span>
-                        <span className="sort-indicator" style={{ display: 'flex', flexDirection: 'column', fontSize: '10px', lineHeight: '8px', marginLeft: '4px' }}>
-                          <span style={{ 
-                            color: sortConfig.column === index && sortConfig.direction === 'asc' ? '#0d6efd' : '#ccc'
-                          }}>▲</span>
-                          <span style={{ 
-                            color: sortConfig.column === index && sortConfig.direction === 'desc' ? '#0d6efd' : '#ccc'
-                          }}>▼</span>
-                        </span>
-                      </div>
-                    </th>
-                  );
-                })}
-              </tr>
-            </thead>
-            <tbody>
-              {processedRows.map((row, rowIndex) => (
-                <tr key={rowIndex} className={rowIndex % 2 === 0 ? 'even' : 'odd'}>
-                  {row.map((cell, cellIndex) => (
-                    <td key={cellIndex} className={cellIndex < (tableProperties?.group_by?.length || 0) ? 'group-by-cell' : 'metric-cell'}>
-                      {cell}
-                    </td>
-                  ))}
-                </tr>
-              ))}
-            </tbody>
-          </table>
+
+          <SharedDataTable
+            headers={headers}
+            rows={processedRows}
+            wrapperClassName=""
+            wrapperStyle={{ flex: '1 1 auto', minHeight: 0, overflow: 'auto' }}
+            tableClassName="table table-sm table-bordered table-hover mb-0 metrics-table"
+            tableStyle={{ fontSize: '0.82rem' }}
+            theadClassName="table-light sticky-top"
+            getHeaderProps={(_header, _index) => {
+              return {
+                style: { minWidth: '120px' },
+              };
+            }}
+            renderHeaderCell={(header, index) => (
+              <div
+                className="sortable-header"
+                onClick={() => handleSort(index, header)}
+                style={{
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  userSelect: 'none',
+                  padding: 0,
+                }}
+              >
+                <span>{header}</span>
+                <span
+                  className="sort-indicator"
+                  style={{
+                    opacity: sortConfig.column === index ? 1 : 0.3,
+                    fontSize: '0.7rem',
+                    marginLeft: '3px',
+                  }}
+                >
+                  {sortConfig.column === index
+                    ? (sortConfig.direction === 'asc' ? '▲' : '▼')
+                    : '⇅'}
+                </span>
+              </div>
+            )}
+            renderCell={(row, _header, _rowIndex, cellIndex) => row[cellIndex]}
+            getCellProps={(_row, _header, _rowIndex, cellIndex) => ({
+              className: cellIndex < (tableProperties?.group_by?.length || 0) ? 'group-by-cell' : 'metric-cell',
+            })}
+          />
         </div>
       )}
     </div>

@@ -22,7 +22,9 @@ def initialize_evaluation(
     executor_instances: int = 4,
     executor_cores: int = 7,
     executor_memory: str = "50g",
-    update_configs: Dict[str, str] = None
+    update_configs: Dict[str, str] = None,
+    enable_gcs: bool = False,
+    gcs_project_id: str = None
 ) -> teehr.Evaluation:
     """Initialize a Teehr Evaluation object."""
     logger = get_run_logger()
@@ -42,7 +44,9 @@ def initialize_evaluation(
         executor_instances=executor_instances,
         executor_cores=executor_cores,
         executor_memory=executor_memory,
-        update_configs=default_configs
+        update_configs=default_configs,
+        enable_gcs=enable_gcs,
+        gcs_project_id=gcs_project_id
     )
     ev = RemoteReadWriteEvaluation(
         spark=spark,

@@ -4,7 +4,7 @@ from pathlib import Path
 
 import teehr
 from teehr.fetching.usgs.usgs import usgs_to_parquet
-from teehr.models.fetching.utils import (
+from teehr.fetching.models.utils import (
     USGSChunkByEnum,
     USGSServiceEnum,
 )

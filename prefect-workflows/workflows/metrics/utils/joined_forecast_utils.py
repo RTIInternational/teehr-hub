@@ -51,6 +51,87 @@ def _deserialize_timestamp(value: Any) -> datetime | None:
     return pd.Timestamp(value).to_pydatetime()
 
 
+def _log_plan_summary(
+    logger,
+    plan_name: str,
+    rows: list[dict[str, Any]],
+    forecast_configuration_names: list[str],
+    batch_size_months: int,
+    changed_since: datetime | None = None,
+) -> None:
+    """Emit compact planner diagnostics for run visibility."""
+    logger.info(
+        "%s planner inputs: config_count=%s batch_size_months=%s changed_since=%s",
+        plan_name,
+        len(forecast_configuration_names),
+        batch_size_months,
+        _serialize_timestamp(changed_since),
+    )
+
+    if not rows:
+        logger.info("%s planner produced no batches.", plan_name)
+        return
+
+    plan_df = pd.DataFrame(rows)
+
+    if "batch_row_count" in plan_df.columns:
+        total_planned_rows = int(plan_df["batch_row_count"].fillna(0).sum())
+    else:
+        total_planned_rows = 0
+
+    active_configurations = set(plan_df["configuration_name"].dropna().astype(str).tolist())
+    requested_configurations = set(forecast_configuration_names)
+    missing_configurations = sorted(requested_configurations - active_configurations)
+
+    min_value_time = _serialize_timestamp(plan_df["batch_min_value_time"].min())
+    max_value_time = _serialize_timestamp(plan_df["batch_max_value_time"].max())
+
+    logger.info(
+        "%s planner summary: batches=%s total_planned_rows=%s active_configurations=%s value_time_window=[%s, %s]",
+        plan_name,
+        len(rows),
+        total_planned_rows,
+        len(active_configurations),
+        min_value_time,
+        max_value_time,
+    )
+
+    by_config = (
+        plan_df.groupby("configuration_name", dropna=False)
+        .agg(
+            batch_count=("configuration_name", "size"),
+            planned_rows=("batch_row_count", "sum"),
+            min_value_time=("batch_min_value_time", "min"),
+            max_value_time=("batch_max_value_time", "max"),
+        )
+        .reset_index()
+        .sort_values(["planned_rows", "batch_count"], ascending=False)
+    )
+
+    preview_records = by_config.head(10).to_dict("records")
+    logger.info("%s planner by-configuration preview (top 10 by rows): %s", plan_name, preview_records)
+
+    if missing_configurations:
+        logger.info(
+            "%s planner missing requested configurations: %s",
+            plan_name,
+            missing_configurations,
+        )
+
+    batch_preview = (
+        plan_df[[
+            "configuration_name",
+            "batch_month",
+            "batch_min_value_time",
+            "batch_max_value_time",
+            "batch_row_count",
+        ]]
+        .head(10)
+        .to_dict("records")
+    )
+    logger.info("%s planner batch preview (first 10): %s", plan_name, batch_preview)
+
+
 @task(cache_policy=NO_CACHE)
 def plan_backfill_batches(
     ev: teehr.Evaluation,
@@ -66,6 +147,12 @@ def plan_backfill_batches(
 
     if batch_size_months < 1:
         raise ValueError("batch_size_months must be at least 1.")
+
+    logger.info(
+        "Backfill planner starting: config_count=%s batch_size_months=%s",
+        len(forecast_configuration_names),
+        batch_size_months,
+    )
 
     config_names_sql = _format_config_names(forecast_configuration_names)
     if batch_size_months == 1:
@@ -88,8 +175,11 @@ def plan_backfill_batches(
             SELECT
                 configuration_name,
                 add_months(
-                    date_trunc('month', value_time),
-                    -pmod(month(value_time) - 1, {batch_size_months})
+                    DATE '1970-01-01',
+                    CAST(floor(
+                        months_between(date_trunc('month', value_time), DATE '1970-01-01')
+                        / {batch_size_months}
+                    ) AS INT) * {batch_size_months}
                 ) AS batch_month,
                 MIN(reference_time) AS batch_min_reference_time,
                 MAX(reference_time) AS batch_max_reference_time,
@@ -101,14 +191,23 @@ def plan_backfill_batches(
             GROUP BY
                 configuration_name,
                 add_months(
-                    date_trunc('month', value_time),
-                    -pmod(month(value_time) - 1, {batch_size_months})
+                    DATE '1970-01-01',
+                    CAST(floor(
+                        months_between(date_trunc('month', value_time), DATE '1970-01-01')
+                        / {batch_size_months}
+                    ) AS INT) * {batch_size_months}
                 )
             ORDER BY configuration_name, batch_month
         """
 
     rows = ev.spark.sql(query).toPandas().to_dict("records")
-    logger.info("Planned %s backfill batches.", len(rows))
+    _log_plan_summary(
+        logger=logger,
+        plan_name="Backfill",
+        rows=rows,
+        forecast_configuration_names=forecast_configuration_names,
+        batch_size_months=batch_size_months,
+    )
     return rows
 
 
@@ -225,6 +324,13 @@ def plan_incremental_batches(
     if batch_size_months < 1:
         raise ValueError("batch_size_months must be at least 1.")
 
+    logger.info(
+        "Incremental planner starting: config_count=%s batch_size_months=%s changed_since=%s",
+        len(forecast_configuration_names),
+        batch_size_months,
+        _serialize_timestamp(changed_since),
+    )
+
     changed_since_literal = pd.Timestamp(changed_since).isoformat(sep=" ")
     config_names_sql = _format_config_names(forecast_configuration_names)
 
@@ -244,8 +350,11 @@ def plan_incremental_batches(
         batch_select = f"""
             s.configuration_name AS configuration_name,
             add_months(
-                date_trunc('month', s.value_time),
-                -pmod(month(s.value_time) - 1, {batch_size_months})
+                DATE '1970-01-01',
+                CAST(floor(
+                    months_between(date_trunc('month', s.value_time), DATE '1970-01-01')
+                    / {batch_size_months}
+                ) AS INT) * {batch_size_months}
             ) AS batch_month,
             MIN(s.reference_time) AS batch_min_reference_time,
             MAX(s.reference_time) AS batch_max_reference_time,
@@ -256,8 +365,11 @@ def plan_incremental_batches(
         batch_group_by = f"""
             s.configuration_name,
             add_months(
-                date_trunc('month', s.value_time),
-                -pmod(month(s.value_time) - 1, {batch_size_months})
+                DATE '1970-01-01',
+                CAST(floor(
+                    months_between(date_trunc('month', s.value_time), DATE '1970-01-01')
+                    / {batch_size_months}
+                ) AS INT) * {batch_size_months}
             )
         """
         batch_order_by = "configuration_name, batch_month"
@@ -310,7 +422,14 @@ def plan_incremental_batches(
     """
 
     rows = ev.spark.sql(query).toPandas().to_dict("records")
-    logger.info("Planned %s incremental batches.", len(rows))
+    _log_plan_summary(
+        logger=logger,
+        plan_name="Incremental",
+        rows=rows,
+        forecast_configuration_names=forecast_configuration_names,
+        batch_size_months=batch_size_months,
+        changed_since=changed_since,
+    )
     return rows
 
 

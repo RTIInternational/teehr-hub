@@ -1,24 +1,21 @@
 import { useEffect } from 'react';
 import { useRetrospectiveDashboard, ActionTypes } from '../../../context/RetrospectiveDashboardContext.jsx';
-import { useRetrospectiveData } from './useRetrospectiveData';
+import { useRetrospectiveLocationSelection, useRetrospectiveFilters } from '../../../hooks/useRetrospectiveDataFetching';
+import { LocationMetrics, LocationCard } from '../../common';
 import { 
   MapComponent, 
   TimeseriesComponent, 
   MapFilterButton, 
   TimeseriesControls 
 } from '../../common/dashboard';
-import { LocationMetrics, LocationCard } from '../../common';
 import { getMetricLabel } from '../../common/dashboard/utils.js';
-import { useRetrospectiveLocationSelection, useRetrospectiveFilters } from '../../../hooks/useRetrospectiveDataFetching';
+import { useRetrospectiveData } from './useRetrospectiveData';
 
 const Dashboard = () => {
   const { state, dispatch } = useRetrospectiveDashboard();
-  const { initializeRetrospectiveData } = useRetrospectiveData();
-  const { selectLocation } = useRetrospectiveLocationSelection();
-  const { loadLocations } = useRetrospectiveData();
+  const { initializeRetrospectiveData, loadLocations, loadTimeseries, loadLocationMetrics } = useRetrospectiveData();
+  const { selectLocation, selectedLocation } = useRetrospectiveLocationSelection();
   const { mapFilters, updateMapFilters, timeseriesFilters, updateTimeseriesFilters } = useRetrospectiveFilters();
-  const { loadTimeseries, loadLocationMetrics } = useRetrospectiveData();
-  const { selectedLocation } = useRetrospectiveLocationSelection();
   
   // Create dashboard-specific components with injected dependencies
   const RetrospectiveMapFilterButton = () => (
@@ -42,23 +39,11 @@ const Dashboard = () => {
     />
   );
   
-  // Debug: Log state changes
-  useEffect(() => {
-    console.log('Dashboard state updated:', {
-      configurationsLength: state.configurations?.length,
-      variablesLength: state.variables?.length,
-      metricsLength: state.metrics?.length,
-      error: state.error
-    });
-  }, [state.configurations, state.variables, state.metrics, state.error]);
-  
   // Load initial data when component mounts
   useEffect(() => {
     const initializeData = async () => {
       try {
-        console.log('Dashboard: Starting data initialization...');
         await initializeRetrospectiveData();
-        console.log('Dashboard: Data initialization completed');
       } catch (error) {
         console.error('Dashboard: Error during initialization:', error);
       }
@@ -68,19 +53,20 @@ const Dashboard = () => {
   }, [initializeRetrospectiveData]);
   
   return (
-    <div className="d-flex flex-column" style={{ height: 'calc(100vh - 56px)' }}>
+    <div className="d-flex flex-column" style={{ height: 'calc(100dvh - 56px)', minHeight: 0 }}>
       {/* Height adjusted for navbar (Bootstrap navbar is typically 56px) */}
       
-      <div className="container-fluid flex-grow-1 p-0">
+      <div className="container-fluid flex-grow-1 p-0" style={{ minHeight: 0, overflow: 'hidden' }}>
         <div 
           className="dashboard-grid h-100" 
           style={{
             display: 'grid',
             gridTemplateColumns: '1fr 1fr',
-            gridTemplateRows: 'auto 12vh 1fr auto', // Changed last row to auto for flexible metrics height
+            gridTemplateRows: 'auto minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1.1fr)',
             gap: '12px',
             padding: '12px',
             height: '100%',
+            minHeight: 0,
             overflow: 'hidden'
           }}
         >
@@ -116,7 +102,8 @@ const Dashboard = () => {
               border: '1px solid #e0e0e0',
               borderRadius: '8px',
               overflow: 'hidden',
-              position: 'relative'
+              position: 'relative',
+              minHeight: 0
             }}
           >
             <MapComponent
@@ -134,7 +121,8 @@ const Dashboard = () => {
           <div 
             style={{
               gridColumn: '2 / 3',
-              gridRow: state.error ? '2 / 3' : '1 / 2'
+              gridRow: state.error ? '2 / 3' : '1 / 2',
+              minHeight: 0
             }}
           >
             <LocationCard 
@@ -151,7 +139,8 @@ const Dashboard = () => {
               gridRow: state.error ? '3 / 4' : '2 / 4',
               border: '1px solid #e0e0e0',
               borderRadius: '8px',
-              overflow: 'hidden'
+              overflow: 'hidden',
+              minHeight: 0
             }}
           >
             {state.selectedLocation ? (
@@ -178,7 +167,7 @@ const Dashboard = () => {
               gridRow: state.error ? '5 / 6' : '4 / 5', // Bottom row
               border: '1px solid #e0e0e0',
               borderRadius: '8px',
-              height: '400px', // Fixed height
+              minHeight: 0,
               display: 'flex',
               flexDirection: 'column',
               overflow: 'hidden' // Prevent the panel itself from overflowing
@@ -190,8 +179,10 @@ const Dashboard = () => {
                 locationMetrics={state.locationMetrics}
                 metricsLoading={state.metricsLoading}
                 error={state.error}
-                loadLocationMetrics={loadLocationMetrics}                tableProperties={state.tableProperties}
-                defaultTable="sim_metrics_by_location"              />
+                loadLocationMetrics={loadLocationMetrics}
+                tableProperties={state.tableProperties}
+                defaultTable="sim_metrics_by_location"
+              />
             ) : (
               <div className="d-flex align-items-center justify-content-center h-100 text-muted">
                 <div className="text-center">

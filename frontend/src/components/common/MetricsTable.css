@@ -1,12 +1,13 @@
 .metrics-table-container {
-  border: 1px solid #e0e0e0;
-  border-radius: 8px;
-  background-color: white;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  border: 0;
+  border-radius: 0;
+  background-color: transparent;
+  box-shadow: none;
   overflow: hidden;
   display: flex;
   flex-direction: column;
   height: 100%;
+  min-height: 0;
 }
 
 .metrics-table-header {
@@ -32,7 +33,9 @@
 }
 
 .metrics-table-wrapper {
-  max-height: 400px;
+  flex: 1 1 auto;
+  min-height: 0;
+  max-height: none;
   overflow-y: auto;
   overflow-x: auto; /* Enable horizontal scroll for wide pivoted tables */
 }
@@ -40,20 +43,21 @@
 .metrics-table {
   width: 100%;
   border-collapse: collapse;
-  font-size: 0.9rem;
+  font-size: 0.82rem;
   min-width: 600px; /* Ensure table has minimum width */
 }
 
 .metrics-table th {
   background-color: #f8f9fa;
-  padding: 12px 16px;
+  padding: 0.35rem 0.5rem;
   text-align: left;
   font-weight: 600;
   color: #555;
-  border-bottom: 2px solid #e0e0e0;
+  border-bottom: 1px solid #dee2e6;
   position: sticky;
   top: 0;
   white-space: nowrap; /* Prevent header text wrapping */
+  vertical-align: middle;
   z-index: 1;
 }
 
@@ -84,48 +88,28 @@
   box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.25);
 }
 
-/* Styles for pivoted table headers */
-.group-by-header {
-  background-color: #e3f2fd !important;
-  color: #1976d2 !important;
-  border-right: 2px solid #bbdefb;
-}
-
-.metric-header {
-  background-color: #f3e5f5 !important;
-  color: #7b1fa2 !important;
-}
-
 .metrics-table th {
   z-index: 1;
 }
 
 .metrics-table td {
-  padding: 10px 16px;
+  padding: 0.3rem 0.5rem;
   border-bottom: 1px solid #f0f0f0;
   white-space: nowrap; /* Prevent cell content wrapping */
+  vertical-align: middle;
 }
 
-/* Styles for pivoted table cells */
+/* Keep subtle semantic distinction for grouped columns without changing header theme */
 .group-by-cell {
   background-color: #f8f9fa;
   font-weight: 500;
   border-right: 1px solid #e0e0e0;
-  color: #1976d2;
 }
 
 .metric-cell {
   color: #333;
   text-align: right;
   font-family: 'Courier New', monospace;
-}
-
-.metrics-table tr.even {
-  background-color: #fafafa;
-}
-
-.metrics-table tr.odd {
-  background-color: white;
 }
 
 .metrics-table tr:hover {

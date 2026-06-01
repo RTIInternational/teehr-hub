@@ -16,6 +16,7 @@ environments:
 dependencies:
   - deploy.secrets
   - deploy.jupyter-serviceaccount
+  - deploy.keycloak-bootstrap
   - build.teehr-jupyter-driver-image-edge
   - build.teehr-spark-executor-image
 
@@ -39,17 +40,44 @@ spec:
       # baseUrl: /jupyter
 
       config:
-        DummyAuthenticator:
-          password: password
+        GenericOAuthenticator:
+          login_service: Keycloak
+          oauth_callback_url: https://hub.${var.hostname}/hub/oauth_callback
+          authorize_url: https://auth.${var.hostname}/realms/teehr/protocol/openid-connect/auth
+          token_url: http://keycloak-service:8080/realms/teehr/protocol/openid-connect/token
+          userdata_url: http://keycloak-service:8080/realms/teehr/protocol/openid-connect/userinfo
+          logout_redirect_url: https://auth.${var.hostname}/realms/teehr/protocol/openid-connect/logout?client_id=jupyterhub&post_logout_redirect_uri=https%3A%2F%2Fhub.${var.hostname}
+          username_claim: preferred_username
+          manage_groups: true
+          scope:
+            - openid
+            - profile
+            - email
+          claim_groups_key: groups
+          allowed_groups:
+            - jupyter-user
+            - jupyter-admin
         JupyterHub:
-          authenticator_class: dummy
+          authenticator_class: generic-oauth
+          redirect_to_server: false
+          default_url: /hub/spawn
           allow_named_servers: true
           named_server_limit_per_user: 5
         Authenticator:
-          admin_users:
-            - admin
-          allowed_users:
-            - user
+          manage_groups: true
+          admin_groups:
+            - jupyter-admin
+      extraEnv:
+        OAUTH_CLIENT_ID:
+          valueFrom:
+            secretKeyRef:
+              name: jupyterhub
+              key: OAUTH_CLIENT_ID
+        OAUTH_CLIENT_SECRET:
+          valueFrom:
+            secretKeyRef:
+              name: jupyterhub
+              key: OAUTH_CLIENT_SECRET
 
       extraConfig:
         spark-config: |
@@ -66,7 +94,6 @@ spec:
         name: ${actions.build.teehr-jupyter-driver-image-edge.outputs.deploymentImageName}
         tag: ${actions.build.teehr-jupyter-driver-image-edge.version}
         pullPolicy: Always
-      defaultUrl: "/lab"
       networkPolicy:
       # ToDo: Investigate this.  Implications, etc.
         enabled: false
@@ -82,6 +109,11 @@ spec:
         TEEHR_SPARK_IMAGE: ${actions.build.teehr-spark-executor-image.outputs.deploymentImageId}
         TEEHR_NAMESPACE: ${environment.namespace}
         AWS_REGION: us-east-2
+        TEEHR_DOWNLOAD_API_KEY:
+          valueFrom:
+            secretKeyRef:
+              name: jupyter-user-secrets
+              key: api-key
         REMOTE_CATALOG_TYPE: ${var.iceberg.catalogType}
         REMOTE_CATALOG_REST_URI: ${var.iceberg.catalogUri}
         REMOTE_WAREHOUSE_S3_PATH: ${var.iceberg.catalogWarehouse}
@@ -167,6 +199,7 @@ environments:
 dependencies:
   - deploy.secrets
   - deploy.jupyter-serviceaccount
+  - deploy.keycloak-bootstrap
   - build.teehr-jupyter-driver-image-edge
   - build.teehr-spark-executor-image
   - build.teehr-jupyter-driver-image-stable
@@ -190,20 +223,33 @@ spec:
       nodeSelector:
         teehr-hub/nodegroup-name: core-a
       config:
-        GitHubOAuthenticator:
-          oauth_callback_url: https://hub.teehr.rtiamanzi.org/hub/oauth_callback
-          allowed_organizations:
-            - rtiinternational:teehr-hub-users
+        GenericOAuthenticator:
+          login_service: Keycloak
+          oauth_callback_url: https://hub.${var.hostname}/hub/oauth_callback
+          authorize_url: https://auth.${var.hostname}/realms/teehr/protocol/openid-connect/auth
+          token_url: http://keycloak-service:8080/realms/teehr/protocol/openid-connect/token
+          userdata_url: http://keycloak-service:8080/realms/teehr/protocol/openid-connect/userinfo
+          logout_redirect_url: https://auth.${var.hostname}/realms/teehr/protocol/openid-connect/logout?client_id=jupyterhub&post_logout_redirect_uri=https%3A%2F%2Fhub.${var.hostname}
+          username_claim: preferred_username
+          manage_groups: true
           scope:
-            - read:org
+            - openid
+            - profile
+            - email
+          claim_groups_key: groups
+          allowed_groups:
+            - jupyter-user
+            - jupyter-admin
         JupyterHub:
-          authenticator_class: github
+          authenticator_class: generic-oauth
+          redirect_to_server: false
+          default_url: /hub/spawn
           allow_named_servers: true
           named_server_limit_per_user: 5
         Authenticator:
-          admin_users:
-            - mgdenno
-            - slamont
+          manage_groups: true
+          admin_groups:
+            - jupyter-admin
       extraEnv:
         OAUTH_CLIENT_ID:
           valueFrom:
@@ -230,7 +276,6 @@ spec:
         name: ${actions.build.teehr-jupyter-driver-image-edge.outputs.deploymentImageName}
         tag: ${actions.build.teehr-jupyter-driver-image-edge.version}
         pullPolicy: ${environment.name == 'local' ? 'Always':'IfNotPresent'}
-      defaultUrl: "/lab"
       networkPolicy:
         enabled: false
       uid: 1000
@@ -275,7 +320,7 @@ spec:
                   "new_browser_tab": False
               }
             }
-      
+
       profileList:
       # TEEHR Project (default - uses base node groups)
       - display_name: "TEEHR Project"

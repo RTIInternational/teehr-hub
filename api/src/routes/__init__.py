@@ -5,6 +5,7 @@ Main router combining all sub-routers.
 from fastapi import APIRouter
 
 from . import (
+    auth,
     crosswalks,
     locations,
     metrics,
@@ -18,6 +19,7 @@ from . import (
 router = APIRouter()
 
 # Include all sub-routers
+router.include_router(auth.router)
 router.include_router(ogc_foundation.router, tags=["OGC API"])
 router.include_router(locations.router, tags=["Locations"])
 router.include_router(crosswalks.router, tags=["Crosswalks"])

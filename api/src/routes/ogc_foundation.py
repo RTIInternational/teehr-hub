@@ -396,6 +396,24 @@ async def get_collections():
             ],
             itemType="record",
         ),
+        Collection(
+            id="locations_with_attributes",
+            title="Locations with Attributes",
+            description="Location data with attributes pivoted as columns (location_id, name, state_name, drainage_area, slope_mean_percent, rfc, etc.)",
+            links=[
+                Link(
+                    href="/collections/locations_with_attributes",
+                    rel="self",
+                    type="application/json",
+                ),
+                Link(
+                    href="/collections/locations_with_attributes/items",
+                    rel="items",
+                    type="application/json",
+                ),
+            ],
+            itemType="record",
+        ),
     ]
 
     return CollectionsResponse(

@@ -4,13 +4,20 @@ name: teehr-hub
 defaultEnvironment: local
 
 variables:
+  smtp:
+    host: smtp.gmail.com
+    port: "587"
+    fromDisplayName: TEEHR Hub
+    replyToDisplayName: TEEHR Support
+    starttls: "true"
+    ssl: "false"
 
 environments:
   - name: local
     defaultNamespace: ${project.name}
     variables:
       hostname: teehr.local.app.garden
-      devTeehrVersion: c9ef70be902f6c1a2c39330d48e95aea763273c6
+      devTeehrVersion: f6371633c0faeddfcbef965acd3fe6d7fdeb943b
       stableTeehrVersion: place-holder # Needed for sync to work for some reason.
       iceberg:
         inCluster: "true"
@@ -30,8 +37,8 @@ environments:
     defaultNamespace: ${project.name}
     variables:
       hostname: teehr.rtiamanzi.org
-      devTeehrVersion: c9ef70be902f6c1a2c39330d48e95aea763273c6
-      stableTeehrVersion: v0.6.2
+      devTeehrVersion: f6371633c0faeddfcbef965acd3fe6d7fdeb943b
+      stableTeehrVersion: v0.6.4
       previousTeehrVersion: v0.5.3
       iceberg:
         inCluster: "false"

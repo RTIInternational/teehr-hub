@@ -61,7 +61,7 @@ spec:
         resources:
           requests:
             cpu: 500m
-            memory: 512Mi
+            memory: "${environment.name == 'local' ? '256Mi' : '512Mi'}"
           limits:
             cpu: 1000m
             memory: 1Gi
