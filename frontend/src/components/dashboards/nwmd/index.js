@@ -1,2 +1,2 @@
-export { default as ForecastDashboard } from './Dashboard.jsx';
-export { useForecastData } from './useForecastData';
+export { default as NwmdDashboard } from './Dashboard.jsx';
+export { useNwmdData } from './useNwmdData';

@@ -1,11 +1,11 @@
 import { useCallback } from 'react';
-import { useForecastDashboard, ActionTypes } from '../context/ForecastDashboardContext.jsx';
+import { useNwmdDashboard, ActionTypes } from '../context/NwmdDashboardContext.jsx';
 import { apiService } from '../services/api';
 import { extractTableProperties } from '../utils/ogcTransformers';
 
-// Custom hooks for forecast dashboard data fetching
-export const useForecastDataFetching = () => {
-  const { dispatch } = useForecastDashboard();
+// Custom hooks for nwmd dashboard data fetching
+export const useNwmdDataFetching = () => {
+  const { dispatch } = useNwmdDashboard();
   
   // Load configurations (distinct values from database)
   const loadConfigurations = useCallback(async (table) => {
@@ -67,7 +67,7 @@ export const useForecastDataFetching = () => {
       
       dispatch({ type: ActionTypes.SET_LOCATIONS, payload: locations });
     } catch (error) {
-      console.error('useForecastDataFetching: Error loading locations:', error);
+      console.error('useNwmdDataFetching: Error loading locations:', error);
       dispatch({ type: ActionTypes.SET_LOADING, payload: { locations: false } });
       dispatch({ type: ActionTypes.SET_ERROR, payload: `Failed to load locations: ${error.message}` });
     }
@@ -201,8 +201,8 @@ export const useForecastDataFetching = () => {
 };
 
 // Custom hook for filter management
-export const useForecastFilters = () => {
-  const { state, dispatch } = useForecastDashboard();
+export const useNwmdFilters = () => {
+  const { state, dispatch } = useNwmdDashboard();
   
   const updateMapFilters = useCallback((filters) => {
     dispatch({ type: ActionTypes.UPDATE_MAP_FILTERS, payload: filters });
@@ -221,8 +221,8 @@ export const useForecastFilters = () => {
 };
 
 // Custom hook for location selection
-export const useForecastLocationSelection = () => {
-  const { state, dispatch } = useForecastDashboard();
+export const useNwmdLocationSelection = () => {
+  const { state, dispatch } = useNwmdDashboard();
   
   const selectLocation = useCallback((location) => {
     dispatch({ type: ActionTypes.SELECT_LOCATION, payload: location });

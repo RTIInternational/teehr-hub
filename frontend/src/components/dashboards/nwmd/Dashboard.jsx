@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
-import { useForecastDashboard, ActionTypes } from '../../../context/ForecastDashboardContext.jsx';
-import { useForecastLocationSelection, useForecastFilters } from '../../../hooks/useForecastDataFetching';
+import { useNwmdDashboard, ActionTypes } from '../../../context/NwmdDashboardContext.jsx';
+import { useNwmdLocationSelection, useNwmdFilters } from '../../../hooks/useNwmdDataFetching';
 import { LocationMetrics, LocationCard } from '../../common';
 import { 
   MapComponent, 
@@ -8,17 +8,16 @@ import {
   MapFilterButton
 } from '../../common/dashboard';
 import { getMetricLabel } from '../../common/dashboard/utils.js';
-import ForecastTimeseriesFilters from './ForecastTimeseriesControls';
-import { useForecastData } from './useForecastData';
+import { useNwmdData } from './useNwmdData';
 
 const Dashboard = () => {
-  const { state, dispatch } = useForecastDashboard();
-  const { initializeForecastData, loadLocations, loadTimeseries, loadLocationMetrics } = useForecastData();
-  const { selectLocation, selectedLocation } = useForecastLocationSelection();
-  const { mapFilters, updateMapFilters, timeseriesFilters, updateTimeseriesFilters } = useForecastFilters();
+  const { state, dispatch } = useNwmdDashboard();
+  const { initializeNwmdData, loadLocations, loadTimeseries, loadLocationMetrics } = useNwmdData();
+  const { selectLocation, selectedLocation } = useNwmdLocationSelection();
+  const { mapFilters, updateMapFilters, timeseriesFilters, updateTimeseriesFilters } = useNwmdFilters();
   
   // Create dashboard-specific components with injected dependencies
-  const ForecastMapFilterButton = () => (
+  const NwmdMapFilterButton = () => (
     <MapFilterButton
       state={state}
       mapFilters={mapFilters}
@@ -31,14 +30,14 @@ const Dashboard = () => {
   useEffect(() => {
     const initializeData = async () => {
       try {
-        await initializeForecastData();
+        await initializeNwmdData();
       } catch (error) {
-        console.error('Forecast Dashboard: Error during initialization:', error);
+        console.error('Nwmd Dashboard: Error during initialization:', error);
       }
     };
     
     initializeData();
-  }, [initializeForecastData]);
+  }, [initializeNwmdData]);
   
   return (
     <div className="d-flex flex-column" style={{ height: 'calc(100dvh - 56px)', minHeight: 0 }}>
@@ -100,7 +99,7 @@ const Dashboard = () => {
               ActionTypes={ActionTypes}
               selectLocation={selectLocation}
               loadLocations={loadLocations}
-              MapFilterButton={ForecastMapFilterButton}
+              MapFilterButton={NwmdMapFilterButton}
               getMetricLabel={getMetricLabel}
             />
           </div>
@@ -120,7 +119,7 @@ const Dashboard = () => {
           </div>
 
           {/* Timeseries Panel - Middle Right */}
-          <div 
+          {/* <div 
             className="timeseries-panel" 
             style={{
               gridColumn: '2 / 3',
@@ -134,7 +133,7 @@ const Dashboard = () => {
             {state.selectedLocation ? (
               <TimeseriesComponent
                 state={state}
-                TimeseriesControls={ForecastTimeseriesFilters}
+                TimeseriesControls={NwmdTimeseriesFilters}
                 timeseriesControlsProps={{
                   state,
                   timeseriesFilters,
@@ -152,7 +151,7 @@ const Dashboard = () => {
                 </div>
               </div>
             )}
-          </div>
+          </div> */}
 
           {/* Metrics Panel - Full Width Bottom */}
           <div 
@@ -176,7 +175,7 @@ const Dashboard = () => {
                 error={state.error}
                 loadLocationMetrics={loadLocationMetrics}
                 tableProperties={state.tableProperties}
-                defaultTable="fcst_metrics_by_location"
+                defaultTable="nwmd_metrics_by_location"
               />
             ) : (
               <div className="d-flex align-items-center justify-content-center h-100 text-muted">

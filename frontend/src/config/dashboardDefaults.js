@@ -37,6 +37,17 @@ export const DATA_DASHBOARD_DEFAULTS = {
   // Placeholder for future default configuration/variable selections
 };
 
+export const NWMD_DASHBOARD_DEFAULTS = {
+  // Preferred default configuration for forecasts
+  preferredConfiguration: 'nwm30_medium_range',
+
+  // Preferred default variable
+  preferredVariable: 'streamflow_hourly_inst',
+
+  // Default metric for map coloring
+  defaultMetricName: 'relative_bias'
+};
+
 /**
  * Helper function to select the best default from available options
  * @param {string|null} preferred - The preferred default value

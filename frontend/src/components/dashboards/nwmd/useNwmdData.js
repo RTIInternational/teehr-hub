@@ -1,69 +1,69 @@
 import { useCallback } from 'react';
-import { useForecastDataFetching } from '../../../hooks/useForecastDataFetching';
+import { useNwmdDataFetching } from '../../../hooks/useNwmdDataFetching';
 
 /**
- * Dashboard-specific hook for forecast data
- * Handles the forecast_metrics_by_location table specifically
+ * Dashboard-specific hook for nwmd data
+ * Handles the nwmd_metrics_by_location table specifically
  */
-export const useForecastData = () => {
-  const { loadConfigurations, loadVariables, loadTableProperties, loadLocations, loadTimeseries, loadLocationMetrics, ...otherHooks } = useForecastDataFetching();
+export const useNwmdData = () => {
+  const { loadConfigurations, loadVariables, loadTableProperties, loadLocations, loadTimeseries, loadLocationMetrics, ...otherHooks } = useNwmdDataFetching();
   
-  // Table names for forecast dashboard
-  const TABLE_NAMES = ['fcst_metrics_by_location', 'fcst_metrics_by_lead_time_bins'];
+  // Table names for nwmd dashboard
+  const TABLE_NAMES = ['nwmd_metrics_by_location'];
   
-  // Load configurations for forecast metrics
-  const loadForecastConfigurations = useCallback(async () => {
+  // Load configurations for nwmd metrics
+  const loadNwmdConfigurations = useCallback(async () => {
     return loadConfigurations(TABLE_NAMES[0]); // Use location table for configurations
   }, [loadConfigurations]);
   
-  // Load variables for forecast metrics  
-  const loadForecastVariables = useCallback(async () => {
+  // Load variables for nwmd metrics  
+  const loadNwmdVariables = useCallback(async () => {
     return loadVariables(TABLE_NAMES[0]); // Use location table for variables
   }, [loadVariables]);
   
-  // Load table properties for forecast metrics
-  const loadForecastTableProperties = useCallback(async () => {
+  // Load table properties for nwmd metrics
+  const loadNwmdTableProperties = useCallback(async () => {
     return loadTableProperties(TABLE_NAMES);
   }, [loadTableProperties]);
 
-  // Load locations with forecast table context
-  const loadForecastLocations = useCallback(async (filters = {}) => {
+  // Load locations with nwmd table context
+  const loadNwmdLocations = useCallback(async (filters = {}) => {
     return loadLocations(filters, TABLE_NAMES[0]); // Use location table for map
   }, [loadLocations]);
 
-  // Load timeseries with forecast table context  
-  const loadForecastTimeseries = useCallback(async (filters = {}) => {
+  // Load timeseries with nwmd table context  
+  const loadNwmdTimeseries = useCallback(async (filters = {}) => {
     return loadTimeseries({ ...filters, table: TABLE_NAMES[0] }); // Use location table for timeseries
   }, [loadTimeseries]);
   
-  // Load location metrics with forecast table context
-  const loadForecastLocationMetrics = useCallback(async (primaryLocationId, selectedTable = TABLE_NAMES[0]) => {
+  // Load location metrics with nwmd table context
+  const loadNwmdLocationMetrics = useCallback(async (primaryLocationId, selectedTable = TABLE_NAMES[0]) => {
     return loadLocationMetrics(primaryLocationId, selectedTable);
   }, [loadLocationMetrics]);
   
-  // Initialize all forecast data
-  const initializeForecastData = useCallback(async () => {
+  // Initialize all nwmd data
+  const initializeNwmdData = useCallback(async () => {
     try {
       await Promise.all([
-        loadForecastConfigurations(),
-        loadForecastVariables(), 
-        loadForecastTableProperties()
+        loadNwmdConfigurations(),
+        loadNwmdVariables(), 
+        loadNwmdTableProperties()
       ]);
     } catch (error) {
-      console.error('Failed to initialize forecast data:', error);
+      console.error('Failed to initialize nwmd data:', error);
       throw error;
     }
-  }, [loadForecastConfigurations, loadForecastVariables, loadForecastTableProperties]);
+  }, [loadNwmdConfigurations, loadNwmdVariables, loadNwmdTableProperties]);
   
   return {
     ...otherHooks,
-    loadConfigurations: loadForecastConfigurations,
-    loadVariables: loadForecastVariables,
-    loadTableProperties: loadForecastTableProperties,
-    loadLocations: loadForecastLocations,
-    loadTimeseries: loadForecastTimeseries,
-    loadLocationMetrics: loadForecastLocationMetrics,
-    initializeForecastData,
+    loadConfigurations: loadNwmdConfigurations,
+    loadVariables: loadNwmdVariables,
+    loadTableProperties: loadNwmdTableProperties,
+    loadLocations: loadNwmdLocations,
+    loadTimeseries: loadNwmdTimeseries,
+    loadLocationMetrics: loadNwmdLocationMetrics,
+    initializeNwmdData: initializeNwmdData,
     tableName: TABLE_NAMES[0], // Default to location table
     tableNames: TABLE_NAMES
   };

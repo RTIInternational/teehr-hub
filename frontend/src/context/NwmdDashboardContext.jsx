@@ -1,6 +1,6 @@
 /* eslint-disable react-refresh/only-export-components */
 import { createContext, useContext, useReducer } from 'react';
-import { FORECAST_DASHBOARD_DEFAULTS, selectDefault } from '../config/dashboardDefaults';
+import { NWMD_DASHBOARD_DEFAULTS, selectDefault } from '../config/dashboardDefaults';
 
 // Dynamic date helpers - returns dates for 10 days ago through today
 const getTenDaysAgo = () => {
@@ -14,8 +14,8 @@ const getToday = () => {
   return date.toISOString().slice(0, 16); // Format: YYYY-MM-DDTHH:MM
 };
 
-// Initial state for forecast dashboard  
-const initialForecastState = {
+// Initial state for nwmd dashboard  
+const initialNwmdState = {
   // Data
   locations: { features: [] },
   configurations: [],
@@ -29,7 +29,7 @@ const initialForecastState = {
     metricName: 'relative_bias'
   },
   
-  // Timeseries filters (forecast-specific defaults)
+  // Timeseries filters (nwmd-specific defaults)
   timeseriesFilters: {
     primary: {
       variables: [],
@@ -105,7 +105,7 @@ export const ActionTypes = {
 };
 
 // Reducer function (same logic as retrospective)
-const forecastDashboardReducer = (state, action) => {
+const nwmdDashboardReducer = (state, action) => {
   switch (action.type) {
     case ActionTypes.SET_LOCATIONS:
       return {
@@ -116,7 +116,7 @@ const forecastDashboardReducer = (state, action) => {
       
     case ActionTypes.SET_CONFIGURATIONS: {
       const configurations = Array.isArray(action.payload) ? action.payload : [];
-      const defaultConfig = selectDefault(FORECAST_DASHBOARD_DEFAULTS.preferredConfiguration, configurations);
+      const defaultConfig = selectDefault(NWMD_DASHBOARD_DEFAULTS.preferredConfiguration, configurations);
       return {
         ...state,
         configurations,
@@ -139,7 +139,7 @@ const forecastDashboardReducer = (state, action) => {
       
     case ActionTypes.SET_VARIABLES: {
       const variables = Array.isArray(action.payload) ? action.payload : [];
-      const defaultVariable = selectDefault(FORECAST_DASHBOARD_DEFAULTS.preferredVariable, variables);
+      const defaultVariable = selectDefault(NWMD_DASHBOARD_DEFAULTS.preferredVariable, variables);
       return {
         ...state,
         variables,
@@ -357,26 +357,26 @@ const forecastDashboardReducer = (state, action) => {
 };
 
 // Create context
-const ForecastDashboardContext = createContext();
+const NwmdDashboardContext = createContext();
 
 // Provider component
-export const ForecastDashboardProvider = ({ children }) => {
-  const [state, dispatch] = useReducer(forecastDashboardReducer, initialForecastState);
+export const NwmdDashboardProvider = ({ children }) => {
+  const [state, dispatch] = useReducer(nwmdDashboardReducer, initialNwmdState);
   
   return (
-    <ForecastDashboardContext.Provider value={{ state, dispatch }}>
+    <NwmdDashboardContext.Provider value={{ state, dispatch }}>
       {children}
-    </ForecastDashboardContext.Provider>
+    </NwmdDashboardContext.Provider>
   );
 };
 
 // Hook to use the context
-export const useForecastDashboard = () => {
-  const context = useContext(ForecastDashboardContext);
+export const useNwmdDashboard = () => {
+  const context = useContext(NwmdDashboardContext);
   if (!context) {
-    throw new Error('useForecastDashboard must be used within a ForecastDashboardProvider');
+    throw new Error('useNwmdDashboard must be used within a NwmdDashboardProvider');
   }
   return context;
 };
 
-export default ForecastDashboardContext;
+export default NwmdDashboardContext;
