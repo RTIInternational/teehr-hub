@@ -1,4 +1,4 @@
-import { useCallback } from 'react';
+import { useCallback, useMemo } from 'react';
 import { useNwmdDashboard, ActionTypes } from '../context/NwmdDashboardContext.jsx';
 import { apiService } from '../services/api';
 import { extractTableProperties } from '../utils/ogcTransformers';
@@ -235,5 +235,43 @@ export const useNwmdLocationSelection = () => {
   return {
     selectedLocation: state.selectedLocation,
     selectLocation
+  };
+};
+
+// Derive visible locations from already-filtered locations and current map viewport bounds.
+export const useNwmdVisibleLocations = () => {
+  const { state } = useNwmdDashboard();
+
+  const visibleLocations = useMemo(() => {
+    const features = state.locations?.features || [];
+    const bounds = state.mapViewportBounds;
+
+    if (!bounds) return features;
+
+    const { west, south, east, north } = bounds;
+    if (![west, south, east, north].every((value) => Number.isFinite(value))) {
+      return features;
+    }
+
+    return features.filter((feature) => {
+      const coords = feature?.geometry?.coordinates;
+      if (!Array.isArray(coords) || coords.length < 2) return false;
+
+      const [lon, lat] = coords;
+      if (!Number.isFinite(lon) || !Number.isFinite(lat)) return false;
+
+      // Handle anti-meridian crossing when west > east.
+      const inLonRange = west <= east
+        ? lon >= west && lon <= east
+        : lon >= west || lon <= east;
+
+      const inLatRange = lat >= south && lat <= north;
+      return inLonRange && inLatRange;
+    });
+  }, [state.locations, state.mapViewportBounds]);
+
+  return {
+    visibleLocations,
+    mapViewportBounds: state.mapViewportBounds
   };
 };

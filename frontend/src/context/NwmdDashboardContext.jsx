@@ -21,6 +21,7 @@ const initialNwmdState = {
   configurations: [],
   variables: [],
   tableProperties: {}, // Will contain { "table_name": { metrics: [], group_by: [], description: "" } }
+  mapViewportBounds: null,
   
   // Map filters (original structure)
   mapFilters: {
@@ -98,6 +99,7 @@ export const ActionTypes = {
   
   // Map state
   SET_MAP_LOADED: 'SET_MAP_LOADED',
+  SET_MAP_VIEWPORT_BOUNDS: 'SET_MAP_VIEWPORT_BOUNDS',
   
   // Error handling
   SET_ERROR: 'SET_ERROR',
@@ -175,7 +177,7 @@ const nwmdDashboardReducer = (state, action) => {
       };
     }
       
-    case ActionTypes.UPDATE_MAP_FILTERS:
+    case ActionTypes.UPDATE_MAP_FILTERS: {
       // Keep timeseries defaults in sync with map display filters.
       // This mirrors retrospective behavior where map filter changes reset
       // the default timeseries selections.
@@ -207,6 +209,7 @@ const nwmdDashboardReducer = (state, action) => {
           ...mapTimeseriesSync
         }
       };
+    }
       
     case ActionTypes.UPDATE_TIMESERIES_FILTERS: {
       // Support both nested ({ primary, secondary }) and legacy flat payloads.
@@ -323,6 +326,12 @@ const nwmdDashboardReducer = (state, action) => {
       return {
         ...state,
         mapLoaded: action.payload
+      };
+
+    case ActionTypes.SET_MAP_VIEWPORT_BOUNDS:
+      return {
+        ...state,
+        mapViewportBounds: action.payload || null
       };
       
     case ActionTypes.SET_ERROR:

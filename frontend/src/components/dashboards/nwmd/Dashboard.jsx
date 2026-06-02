@@ -1,14 +1,14 @@
-import { useEffect } from 'react';
+import { useCallback, useEffect } from 'react';
 import { useNwmdDashboard, ActionTypes } from '../../../context/NwmdDashboardContext.jsx';
 import { useNwmdLocationSelection, useNwmdFilters } from '../../../hooks/useNwmdDataFetching';
 import { LocationMetrics, LocationCard } from '../../common';
-import { 
-  MapComponent, 
+import {
   TimeseriesComponent, 
   MapFilterButton
 } from '../../common/dashboard';
 import { getMetricLabel } from '../../common/dashboard/utils.js';
 import { useNwmdData } from './useNwmdData';
+import { NwmdMapComponent } from './NwmdMapComponent.jsx'
 
 const Dashboard = () => {
   const { state, dispatch } = useNwmdDashboard();
@@ -25,6 +25,13 @@ const Dashboard = () => {
       loadLocations={loadLocations}
     />
   );
+
+  const handleViewportBoundsChange = useCallback((bounds) => {
+    dispatch({
+      type: ActionTypes.SET_MAP_VIEWPORT_BOUNDS,
+      payload: bounds
+    });
+  }, [dispatch]);
   
   // Load initial data when component mounts
   useEffect(() => {
@@ -93,7 +100,7 @@ const Dashboard = () => {
               minHeight: 0
             }}
           >
-            <MapComponent
+            <NwmdMapComponent
               state={state}
               dispatch={dispatch}
               ActionTypes={ActionTypes}
@@ -101,6 +108,7 @@ const Dashboard = () => {
               loadLocations={loadLocations}
               MapFilterButton={NwmdMapFilterButton}
               getMetricLabel={getMetricLabel}
+              onViewportBoundsChange={handleViewportBoundsChange}
             />
           </div>
 
