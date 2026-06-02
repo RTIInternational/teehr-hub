@@ -3,7 +3,7 @@ import { useAuth } from '../../hooks/useAuth.js';
 
 const Navbar = () => {
   const location = useLocation();
-  const isHome = location.pathname === '/';
+  const isHome = location.pathname === '/hub';
   const { ready, authenticated, username, roles, login, signup, logout } = useAuth();
   const isAdmin = roles.includes('admin');
 
@@ -23,7 +23,7 @@ const Navbar = () => {
       <nav aria-label="breadcrumb">
         <ol className="breadcrumb mb-0 bg-transparent">
           <li className="breadcrumb-item">
-            <Link to="/" className="text-light text-decoration-none">
+            <Link to="/hub" className="text-light text-decoration-none">
               Dashboard Hub
             </Link>
           </li>
@@ -38,7 +38,7 @@ const Navbar = () => {
   return (
     <nav className="navbar navbar-expand-lg navbar-dark bg-primary">
       <div className="container-fluid px-4 d-flex align-items-center">
-        <Link className="navbar-brand me-3" to="/">
+        <Link className="navbar-brand me-3" to="/hub">
           <img
             src="/teehr.png"
             alt="TEEHR Dashboard"

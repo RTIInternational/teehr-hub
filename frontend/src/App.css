@@ -191,3 +191,88 @@ main {
   transform: none;
   box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
 }
+
+/* Welcome Page Styles */
+.welcome-page {
+  background:
+    radial-gradient(circle at 85% 15%, rgba(13, 110, 253, 0.12), transparent 40%),
+    radial-gradient(circle at 15% 80%, rgba(25, 135, 84, 0.1), transparent 35%),
+    #f8f9fa;
+}
+
+.welcome-hero {
+  background: linear-gradient(125deg, #0d6efd 0%, #0b5ed7 40%, #198754 100%);
+  border-bottom-left-radius: 1.5rem;
+  border-bottom-right-radius: 1.5rem;
+}
+
+.welcome-logo {
+  height: 58px;
+  width: auto;
+  background: rgba(255, 255, 255, 0.95);
+  border-radius: 0.6rem;
+  padding: 0.4rem 0.6rem;
+}
+
+.welcome-ciroh-logo {
+  height: 58px;
+  width: auto;
+  border-radius: 0.6rem;
+  background: rgba(255, 255, 255, 0.95);
+  padding: 0.2rem;
+}
+
+.welcome-link-nav .nav-link {
+  color: #fff;
+  border: 1px solid rgba(255, 255, 255, 0.45);
+  margin-right: 0.5rem;
+  margin-bottom: 0.5rem;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.welcome-link-nav .nav-link:hover,
+.welcome-link-nav .nav-link:focus {
+  color: #fff;
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.welcome-link-nav .nav-link.active {
+  background-color: rgba(255, 255, 255, 0.95);
+  color: #0d6efd;
+  border-color: rgba(255, 255, 255, 0.95);
+}
+
+.welcome-funding-table {
+  background: rgba(255, 255, 255, 0.85);
+  border-radius: 0.5rem;
+}
+
+.welcome-funding-logo-cell {
+  width: 200px;
+}
+
+.welcome-funding-logo {
+  max-width: 160px;
+  width: 100%;
+  height: auto;
+}
+
+@media (max-width: 768px) {
+  .welcome-hero {
+    border-bottom-left-radius: 0.9rem;
+    border-bottom-right-radius: 0.9rem;
+  }
+
+  .welcome-logo,
+  .welcome-ciroh-logo {
+    height: 48px;
+  }
+
+  .welcome-funding-logo-cell {
+    width: 110px;
+  }
+
+  .welcome-funding-logo {
+    max-width: 90px;
+  }
+}

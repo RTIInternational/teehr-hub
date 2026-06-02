@@ -1,247 +1,129 @@
-import { Container, Row, Col, Card, Button } from 'react-bootstrap';
+import { Container, Row, Col, Card, Button, Nav } from 'react-bootstrap';
 import { Link } from 'react-router-dom';
+import { useAuth } from '../../hooks/useAuth.js';
 
 const Home = () => {
-  const dashboards = [
-    {
-      id: 'data-management',
-      title: 'Data Availability',
-      description: 'Explore contents of the data warehouse spatially and temporally.',
-      features: [
-        'Data summaries by model configuration',
-        'Data summaries by location',
-        'Completeness analysis of timeseries data'
-      ],
-      path: '/data',
-      status: 'available',
-      image: '/api/static/preview-data.png', // placeholder
-      color: 'success'
-    },
-
-    {
-      id: 'retrospective-simulations',
-      title: 'Retrospective Simulations',
-      description: 'Analyze and compare historical simulation data with observed values. Explore metrics, timeseries, and spatial patterns.',
-      features: [
-        'Interactive maps with simulation metrics',
-        'Time series visualization and comparison',
-        'Statistical performance metrics',
-        'Multi-configuration analysis'
-      ],
-      path: '/retrospective',
-      status: 'available',
-      image: '/api/static/preview-retrospective.png', // placeholder
-      color: 'primary'
-    },
-
-    {
-      id: 'forecast-analysis',
-      title: 'Forecast Analysis',
-      description: 'Real-time forecast analysis and validation tools for operational and research data streams.',
-      features: [
-        'Live forecast data',
-        'Forecast vs observation comparison',
-        'Lead time analysis'
-      ],
-      path: '/forecast',
-      status: 'available',
-      image: '/api/static/preview-forecast.png', // placeholder
-      color: 'secondary'
-    },
-    // Future dashboards
-    {
-      id: 'retrospective-model-comparisons',
-      title: 'Retrospective Model Comparisons',
-      description: 'Evaluate multiple historical simulations compared to a baseline, considering sampling uncertainty.',
-      features: [
-        'Probability of improvement of alternative models over a baseline.',
-        'Interactive maps, heatmaps and plots',
-        'Aggregated and detailed summaries',
-        'Filter by physical, geographical, temporal or hydrologic attributes to see trends'
-      ],
-      path: '/retrospective-model-comparisons',
-      status: 'coming-soon',
-      image: '/api/static/preview-data.png', // placeholder
-      color: 'primary'
-    },
-
-    {
-      id: 'forecast-flood-protection',
-      title: 'Deterministic Forecast Evaluation for Flood Protection',
-      description: 'Evaluate deterministic forecasts for flood protection applications.',
-      features: [
-        'Event-based evaluation',
-        'Evaluate event peak and timing',
-        'Categorical metrics',
-        'Variable flood thresholds',
-        'Interactive maps and plots',
-        'Warning and lead time assessments',
-        'Sampling uncertainty estimated'
-      ],
-      path: '/forecast-flood-protection',
-      status: 'coming-soon',
-      image: '/api/static/preview-data.png', // placeholder
-      color: 'secondary'
-    },
-
-    {
-      id: 'forecast-water-supply',
-      title: 'Ensemble Forecast Evaluation for Water Supply',
-      description: 'Evaluate ensemble forecasts for water supply applications.',
-      features: [
-        'Continuous and seasonal evaluation',
-        'Ensemble metrics',
-        'Evaluate low flows, low flow duration',
-        'Variable low flow thresholds',
-        'Interactive maps and plots',
-        'Filter by physical, geographical, temporal or hydrologic attributes to see trends',
-        'Sampling uncertainty estimated'
-      ],
-      path: '/forecast-water-supply',
-      status: 'coming-soon',
-      image: '/api/static/preview-data.png', // placeholder
-      color: 'success'
-    },
-
-    {
-      id: 'post-event',
-      title: 'Post Flood Event Evaluations',
-      description: 'Evaluate ensemble forecasts for water supply applications.',
-      features: [
-        'Interactive precipitation and streamflow error maps',
-        'Spaghetti plots of streamflow forecasts with associated precipitation forecasts',
-        'Cycle by cycle error heatmaps',
-        'Cycle by cycle time series plots highlighting warning time'
-      ],
-      path: '/post-event',
-      status: 'coming-soon',
-      image: '/api/static/preview-data.png', // placeholder
-      color: 'primary'
-    },
-
-    {
-      id: 'deterministic-forecast-dam-safety',
-      title: 'Deterministic Forecast Evaluation for Dam Safety and Hydropower',
-      description: 'Real-time forecast analysis for dam safety and hydropower applications.',
-      features: [
-        'Check back later for details',
-      ],
-      path: '/forecast',
-      status: 'coming-soon',
-      image: '/api/static/preview-forecast.png', // placeholder
-      color: 'secondary'
-    },
-
-    {
-      id: 'deterministic-forecast-water-supply',
-      title: 'Deterministic Forecast Evaluation for Water Supply',
-      description: 'Real-time forecast analysis for water supply applications.',
-      features: [
-        'Check back later for details',
-      ],
-      path: '/data',
-      status: 'coming-soon',
-      image: '/api/static/preview-data.png', // placeholder
-      color: 'success'
-    },
-
-  ];
-
-  const getCardComponent = (dashboard) => {
-    if (dashboard.status === 'available') {
-      return (
-        <Link to={dashboard.path} style={{ textDecoration: 'none' }}>
-          <Card className="h-100 dashboard-card dashboard-card-available" style={{ cursor: 'pointer' }}>
-            <Card.Header className={`bg-${dashboard.color} text-white`}>
-              <Card.Title className="mb-0">{dashboard.title}</Card.Title>
-            </Card.Header>
-            <Card.Body className="d-flex flex-column">
-              <Card.Text>{dashboard.description}</Card.Text>
-              <div className="features-list mb-3">
-                <strong>Features:</strong>
-                <ul className="mt-2">
-                  {dashboard.features.map((feature, idx) => (
-                    <li key={idx}>{feature}</li>
-                  ))}
-                </ul>
-              </div>
-              <div className="mt-auto">
-                <Button variant={dashboard.color} className="w-100">
-                  Open Dashboard
-                </Button>
-              </div>
-            </Card.Body>
-          </Card>
-        </Link>
-      );
-    } else {
-      return (
-        <Card className="h-100 dashboard-card dashboard-card-disabled">
-          <Card.Header className={`bg-${dashboard.color} text-white opacity-75`}>
-            <Card.Title className="mb-0">
-              {dashboard.title}
-              <span className="badge bg-warning text-dark ms-2">Coming Soon</span>
-            </Card.Title>
-          </Card.Header>
-          <Card.Body className="d-flex flex-column">
-            <Card.Text className="text-muted">{dashboard.description}</Card.Text>
-            <div className="features-list mb-3">
-              <strong className="text-muted">Planned Features:</strong>
-              <ul className="mt-2 text-muted">
-                {dashboard.features.map((feature, idx) => (
-                  <li key={idx}>{feature}</li>
-                ))}
-              </ul>
-            </div>
-            <div className="mt-auto">
-              <Button variant="outline-secondary" disabled className="w-100">
-                Coming Soon
-              </Button>
-            </div>
-          </Card.Body>
-        </Card>
-      );
-    }
-  };
+  const { signup } = useAuth();
 
   return (
-    <div className="home-page">
-      {/* Hero Section */}
-      <div className="hero-section bg-primary text-white py-5 mb-4">
+    <div className="home-page welcome-page">
+      <div className="hero-section welcome-hero text-white py-5">
         <Container>
+          <Row className="align-items-center mb-3">
+            <Col xs={12} lg={8}>
+              <div className="d-flex flex-wrap align-items-center gap-3">
+                <Link to="/" aria-label="TEEHR welcome page">
+                  <img src="/teehr.png" alt="TEEHR logo" className="welcome-logo" />
+                </Link>
+                <img
+                  src="https://raw.githubusercontent.com/RTIInternational/teehr/main/docs/images/readme/CIROHLogo_200x200.png"
+                  alt="CIROH logo"
+                  className="welcome-ciroh-logo"
+                />
+              </div>
+            </Col>
+            <Col xs={12} lg={4} className="mt-3 mt-lg-0">
+              <div className="d-grid gap-2 d-sm-flex justify-content-lg-end">
+                <Button
+                  variant="success"
+                  onClick={() => signup(`${window.location.origin}/hub`)}
+                >
+                  Sign Up for Dashboards
+                </Button>
+                <Button
+                  as="a"
+                  href="mailto:ciroh.teehr@gmail.com"
+                  variant="outline-light"
+                >
+                  Request Access
+                </Button>
+              </div>
+            </Col>
+          </Row>
+
+          <Row className="mb-4">
+            <Col>
+              <Nav className="welcome-link-nav flex-wrap" variant="pills">
+                <Nav.Item>
+                  <Nav.Link as={Link} to="/hub">Dashboard Hub</Nav.Link>
+                </Nav.Item>
+                <Nav.Item>
+                  <Nav.Link href="https://github.com/RTIInternational/teehr" target="_blank" rel="noreferrer">TEEHR-Python Repo</Nav.Link>
+                </Nav.Item>
+                <Nav.Item>
+                  <Nav.Link href="https://github.com/RTIInternational/teehr-hub" target="_blank" rel="noreferrer">TEEHR-Hub Repo</Nav.Link>
+                </Nav.Item>
+                <Nav.Item>
+                  <Nav.Link href="https://hub.teehr.rtiamanzi.org/hub/spawn" target="_blank" rel="noreferrer">TEEHR-Hub Deployment</Nav.Link>
+                </Nav.Item>
+              </Nav>
+            </Col>
+          </Row>
+
           <Row className="justify-content-center text-center">
-            <Col lg={8}>
-              <h1 className="display-4 mb-3">TEEHR Dashboard Hub</h1>
-              <p className="lead">
-                Tools for Exploratory Evaluation in Hydrologic Research.
-                Choose from our collection of specialized dashboards for hydrologic data analysis.
+            <Col lg={10}>
+              <h1 className="display-4 mb-3">Welcome to TEEHR-Cloud</h1>
+              <p className="lead mb-0">
+                Facilitating continental-scale evaluation of historical and real-time hydrologic data at scale.
               </p>
             </Col>
           </Row>
         </Container>
       </div>
 
-      {/* Dashboard Cards */}
-      <Container>
-        <Row className="mb-4">
-          <Col>
-            <h2 className="text-center mb-4">Available Dashboards</h2>
+      <Container className="py-4 py-lg-5">
+        <Row>
+          <Col lg={10} className="mx-auto">
+            <Card className="shadow-sm border-0">
+              <Card.Body className="p-4 p-lg-5">
+                <h3 className="mb-3">The TEEHR-Cloud Framework</h3>
+                <p className="text-muted mb-4">
+                  TEEHR-Cloud connects data pipelines, warehouse infrastructure, and analysis interfaces so hydrologic teams can evaluate historical simulations and real-time forecasts in one coordinated ecosystem.
+                </p>
+
+                <section className="mb-4">
+                  <h4 className="h5 mb-2">1. Framework Overview</h4>
+                  <p className="mb-0">
+                    The framework combines the TEEHR-Python package, cloud infrastructure, and user-facing tools to support end-to-end evaluation workflows. This includes transforming heterogeneous data sources into consistent schemas, enabling reproducible analysis, and delivering results through notebooks and dashboards.
+                  </p>
+                </section>
+
+                <section className="mb-4">
+                  <h4 className="h5 mb-2">2. Data Warehouse</h4>
+                  <p className="mb-0">
+                    The warehouse is the core integration layer for model, observation, and derived evaluation products. It enables scalable storage, query performance for continental datasets, and standardized access patterns used across notebooks, services, and dashboards.
+                  </p>
+                </section>
+
+                <section>
+                  <h4 className="h5 mb-2">3. Services and Evaluation Manager</h4>
+                  <p className="mb-0">
+                    Platform services orchestrate workflows and expose analysis capabilities. The Evaluation Manager pattern organizes repeatable evaluation runs, tracks configurations, and helps teams compare methods and outcomes with greater transparency.
+                  </p>
+                </section>
+              </Card.Body>
+            </Card>
           </Col>
         </Row>
-        <Row className="g-4">
-          {dashboards.map((dashboard) => (
-            <Col key={dashboard.id} lg={4} md={6} sm={12}>
-              {getCardComponent(dashboard)}
-            </Col>
-          ))}
-        </Row>
 
-        {/* Footer Info */}
-        <Row className="mt-5 pt-4 border-top">
-          <Col className="text-center text-muted">
-            <p>
-              <strong>TEEHR</strong> - Tools for Exploratory Evaluation in Hydrologic Research.
-            </p>
+        <Row className="mt-4 pb-4">
+          <Col lg={10} className="mx-auto">
+            <table className="table table-borderless align-middle welcome-funding-table mb-0">
+              <tbody>
+                <tr>
+                  <td className="welcome-funding-logo-cell">
+                    <img
+                      src="https://github.com/RTIInternational/teehr/blob/main/docs/images/readme/CIROHLogo_200x200.png?raw=true"
+                      alt="CIROH logo"
+                      className="welcome-funding-logo"
+                    />
+                  </td>
+                  <td>
+                    Funding for this project was provided by the National Oceanic & Atmospheric Administration (NOAA), awarded to the Cooperative Institute for Research to Operations in Hydrology (CIROH) through the NOAA Cooperative Agreement with The University of Alabama (NA22NWS4320003).
+                  </td>
+                </tr>
+              </tbody>
+            </table>
           </Col>
         </Row>
       </Container>

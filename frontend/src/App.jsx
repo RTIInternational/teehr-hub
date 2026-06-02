@@ -4,14 +4,14 @@ import AdminHome from './components/admin/AdminHome.jsx';
 import AdminLayout from './components/admin/AdminLayout.jsx';
 import ApiKeysAdmin from './components/admin/ApiKeysAdmin.jsx';
 import KeycloakAdmin from './components/admin/KeycloakAdmin.jsx';
-import { Home, Navbar } from './components/common';
-import { ForecastDashboard } from './components/dashboards/forecast';
+import { Home, DashboardsHome, Navbar } from './components/common';
 import { DataDashboard } from './components/dashboards/data_management';
+import { ForecastDashboard } from './components/dashboards/forecast';
 import { Dashboard } from './components/dashboards/retrospective';
+import { DataDashboardProvider } from './context/DataDashboardContext.jsx';
 import { ForecastDashboardProvider } from './context/ForecastDashboardContext.jsx';
 import { RetrospectiveDashboardProvider } from './context/RetrospectiveDashboardContext.jsx';
 import { useAuth } from './hooks/useAuth.js';
-import { DataDashboardProvider } from './context/DataDashboardContext.jsx';
 import 'bootstrap/dist/css/bootstrap.min.css';
 import './App.css';
 
@@ -63,7 +63,7 @@ const AdminRoute = ({ children }) => {
   }
 
   if (!authenticated) {
-    return <Navigate to="/" replace />;
+    return <Navigate to="/hub" replace />;
   }
 
   if (!roles.includes('admin')) {
@@ -80,62 +80,72 @@ const AdminRoute = ({ children }) => {
   return children;
 };
 
+const AppRoutes = () => {
+  const location = useLocation();
+  const showNavbar = location.pathname !== '/';
+
+  return (
+    <div className="App">
+      {showNavbar && <Navbar />}
+      <main>
+        <Routes>
+          <Route path="/" element={<Home />} />
+          <Route path="/hub" element={<DashboardsHome />} />
+          {/* Redirect old dashboard route to retrospective */}
+          <Route path="/dashboard" element={<Navigate to="/retrospective" replace />} />
+          <Route
+            path="/retrospective"
+            element={
+              <RequireAuth>
+                <RetrospectiveDashboardProvider>
+                  <Dashboard />
+                </RetrospectiveDashboardProvider>
+              </RequireAuth>
+            }
+          />
+          {/* Future routes */}
+          <Route
+            path="/forecast"
+            element={
+              <RequireAuth>
+                <ForecastDashboardProvider>
+                  <ForecastDashboard />
+                </ForecastDashboardProvider>
+              </RequireAuth>
+            }
+          />
+          <Route
+            path="/data"
+            element={
+              <RequireAuth>
+                <DataDashboardProvider>
+                  <DataDashboard />
+                </DataDashboardProvider>
+              </RequireAuth>
+            }
+          />
+          <Route
+            path="/admin"
+            element={
+              <AdminRoute>
+                <AdminLayout />
+              </AdminRoute>
+            }
+          >
+            <Route index element={<AdminHome />} />
+            <Route path="api-keys" element={<ApiKeysAdmin />} />
+            <Route path="keycloak" element={<KeycloakAdmin />} />
+          </Route>
+        </Routes>
+      </main>
+    </div>
+  );
+};
+
 function App() {
   return (
     <Router>
-      <div className="App">
-        <Navbar />
-        <main>
-          <Routes>
-            <Route path="/" element={<Home />} />
-            {/* Redirect old dashboard route to retrospective */}
-            <Route path="/dashboard" element={<Navigate to="/retrospective" replace />} />
-            <Route
-              path="/retrospective"
-              element={
-                <RequireAuth>
-                  <RetrospectiveDashboardProvider>
-                    <Dashboard />
-                  </RetrospectiveDashboardProvider>
-                </RequireAuth>
-              }
-            />
-            {/* Future routes */}
-            <Route
-              path="/forecast"
-              element={
-                <RequireAuth>
-                  <ForecastDashboardProvider>
-                    <ForecastDashboard />
-                  </ForecastDashboardProvider>
-                </RequireAuth>
-              }
-            />
-            <Route
-              path="/data"
-              element={
-                <RequireAuth>
-                  <DataDashboardProvider>
-                    <DataDashboard />
-                  </DataDashboardProvider>
-                </RequireAuth>
-              }
-            />
-            <Route
-              path="/admin"
-              element={
-                <AdminRoute>
-                  <AdminLayout />
-                </AdminRoute>
-              }
-            >
-              <Route index element={<AdminHome />} />
-              <Route path="api-keys" element={<ApiKeysAdmin />} />
-              <Route path="keycloak" element={<KeycloakAdmin />} />
-            </Route>
-          </Routes>
-        </main>
-      </div>
+      <AppRoutes />
     </Router>
   );
 }
