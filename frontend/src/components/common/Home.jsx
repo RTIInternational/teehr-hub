@@ -63,7 +63,7 @@ const Home = () => {
                 <Card.Body className="p-4 p-lg-5">
                 <h3 className="mb-3">The TEEHR-Cloud Framework</h3>
                 <p className="text-muted mb-4">
-                  TEEHR-Cloud (Tools for Exploratory Evaluation in Hydrologic Research) is a cloud-based Evaluation Platform that supports standardized evaluations and provide “evaluation-ready” datasets, dashboards, and analytics capabilities.
+                  TEEHR-Cloud (Tools for Exploratory Evaluation in Hydrologic Research) is a cloud-based Evaluation Platform that supports standardized evaluations and provides “evaluation-ready” datasets, dashboards, and analytics capabilities.
                 </p>
 
                 <Accordion className="mb-2">
