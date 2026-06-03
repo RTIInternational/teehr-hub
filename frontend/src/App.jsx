@@ -81,12 +81,9 @@ const AdminRoute = ({ children }) => {
 };
 
 const AppRoutes = () => {
-  const location = useLocation();
-  const showNavbar = location.pathname !== '/';
-
   return (
     <div className="App">
-      {showNavbar && <Navbar />}
+      <Navbar />
       <main>
         <Routes>
           <Route path="/" element={<Home />} />

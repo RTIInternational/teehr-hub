@@ -1,48 +1,21 @@
-import { Container, Row, Col, Card, Button, Nav } from 'react-bootstrap';
+import { Container, Row, Col, Card, Button, Nav, Accordion } from 'react-bootstrap';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth.js';
+import teehrCloudVennDiagram from '../../assets/teehr-cloud-venn-diagram.png';
+import teehrIcebergDiagram from '../../assets/data-model-iceberg.png';
+import teehrCloudServicesDiagram from '../../assets/cloud-services-image.png';
+import teehrDashboardsDiagram from '../../assets/dashboard-snippet-image.png';
 
 const Home = () => {
-  const { signup } = useAuth();
+  const { authenticated, roles } = useAuth();
+  const canViewHubDeployment = authenticated && roles.includes('jupyter-user');
 
   return (
     <div className="home-page welcome-page">
       <div className="hero-section welcome-hero text-white py-5">
         <Container>
-          <Row className="align-items-center mb-3">
-            <Col xs={12} lg={8}>
-              <div className="d-flex flex-wrap align-items-center gap-3">
-                <Link to="/" aria-label="TEEHR welcome page">
-                  <img src="/teehr.png" alt="TEEHR logo" className="welcome-logo" />
-                </Link>
-                <img
-                  src="https://raw.githubusercontent.com/RTIInternational/teehr/main/docs/images/readme/CIROHLogo_200x200.png"
-                  alt="CIROH logo"
-                  className="welcome-ciroh-logo"
-                />
-              </div>
-            </Col>
-            <Col xs={12} lg={4} className="mt-3 mt-lg-0">
-              <div className="d-grid gap-2 d-sm-flex justify-content-lg-end">
-                <Button
-                  variant="success"
-                  onClick={() => signup(`${window.location.origin}/hub`)}
-                >
-                  Sign Up for Dashboards
-                </Button>
-                <Button
-                  as="a"
-                  href="mailto:ciroh.teehr@gmail.com"
-                  variant="outline-light"
-                >
-                  Request Access
-                </Button>
-              </div>
-            </Col>
-          </Row>
-
-          <Row className="mb-4">
-            <Col>
+          <Row className="mb-4 align-items-center g-3">
+            <Col xs={12} lg>
               <Nav className="welcome-link-nav flex-wrap" variant="pills">
                 <Nav.Item>
                   <Nav.Link as={Link} to="/hub">Dashboard Hub</Nav.Link>
@@ -53,10 +26,21 @@ const Home = () => {
                 <Nav.Item>
                   <Nav.Link href="https://github.com/RTIInternational/teehr-hub" target="_blank" rel="noreferrer">TEEHR-Hub Repo</Nav.Link>
                 </Nav.Item>
-                <Nav.Item>
-                  <Nav.Link href="https://hub.teehr.rtiamanzi.org/hub/spawn" target="_blank" rel="noreferrer">TEEHR-Hub Deployment</Nav.Link>
-                </Nav.Item>
+                {canViewHubDeployment && (
+                  <Nav.Item>
+                    <Nav.Link href="https://hub.teehr.rtiamanzi.org/hub/spawn" target="_blank" rel="noreferrer">TEEHR-Hub Deployment</Nav.Link>
+                  </Nav.Item>
+                )}
               </Nav>
+            </Col>
+            <Col xs={12} lg="auto" className="text-lg-end">
+              <Button
+                as="a"
+                href="mailto:ciroh.teehr@gmail.com"
+                variant="outline-light"
+              >
+                Contact Us
+              </Button>
             </Col>
           </Row>
 
@@ -64,69 +48,192 @@ const Home = () => {
             <Col lg={10}>
               <h1 className="display-4 mb-3">Welcome to TEEHR-Cloud</h1>
               <p className="lead mb-0">
-                Facilitating continental-scale evaluation of historical and real-time hydrologic data at scale.
+                Facilitating continental-scale evaluation of historical and real-time hydrologic data.
               </p>
             </Col>
           </Row>
         </Container>
       </div>
 
-      <Container className="py-4 py-lg-5">
-        <Row>
-          <Col lg={10} className="mx-auto">
-            <Card className="shadow-sm border-0">
-              <Card.Body className="p-4 p-lg-5">
+      <div className="welcome-main-content">
+        <Container className="py-4 py-lg-5">
+          <Row>
+            <Col lg={10} className="mx-auto">
+              <Card className="shadow-sm border-0">
+                <Card.Body className="p-4 p-lg-5">
                 <h3 className="mb-3">The TEEHR-Cloud Framework</h3>
                 <p className="text-muted mb-4">
-                  TEEHR-Cloud connects data pipelines, warehouse infrastructure, and analysis interfaces so hydrologic teams can evaluate historical simulations and real-time forecasts in one coordinated ecosystem.
+                  TEEHR-Cloud (Tools for Exploratory Evaluation in Hydrologic Research) is a cloud-based Evaluation Platform that supports standardized evaluations and provide “evaluation-ready” datasets, dashboards, and analytics capabilities.
                 </p>
 
-                <section className="mb-4">
-                  <h4 className="h5 mb-2">1. Framework Overview</h4>
-                  <p className="mb-0">
-                    The framework combines the TEEHR-Python package, cloud infrastructure, and user-facing tools to support end-to-end evaluation workflows. This includes transforming heterogeneous data sources into consistent schemas, enabling reproducible analysis, and delivering results through notebooks and dashboards.
-                  </p>
-                </section>
+                <Accordion className="mb-2">
+                  <Accordion.Item eventKey="overview">
+                    <Accordion.Header>Overview</Accordion.Header>
+                    <Accordion.Body>
+                      <p className="mb-0">
+                        The framework combines the TEEHR-Python package, cloud infrastructure, and user-facing tools to support end-to-end evaluation workflows. This includes transforming heterogeneous data sources into consistent schemas, enabling reproducible analysis, and delivering results through notebooks and dashboards.
+                      </p>
+                      <div className="text-center mt-3">
+                        <img
+                          src={teehrCloudVennDiagram}
+                          alt="TEEHR-Cloud Venn diagram"
+                          className="img-fluid welcome-overview-diagram"
+                        />
+                      </div>
+                    </Accordion.Body>
+                  </Accordion.Item>
 
-                <section className="mb-4">
-                  <h4 className="h5 mb-2">2. Data Warehouse</h4>
-                  <p className="mb-0">
-                    The warehouse is the core integration layer for model, observation, and derived evaluation products. It enables scalable storage, query performance for continental datasets, and standardized access patterns used across notebooks, services, and dashboards.
-                  </p>
-                </section>
+                  <Accordion.Item eventKey="teehr-python">
+                    <Accordion.Header>TEEHR-Python Package</Accordion.Header>
+                    <Accordion.Body>
+                      <p className="mb-3">
+                        The TEEHR-Python package provides the core functionality for data processing, analysis, and evaluation. It includes modules for fetching USGS and National Water Model data from external sources, downloading data from the TEEHR data warehouse, validating and loading data into a local or remote warehouse, and performing advanced analytics at scale by leveraging Apache Spark's distributed computing frameworks.
+                      </p>
+                      <table className="table table-bordered align-middle mb-0">
+                        <tbody>
+                          <tr>
+                            <td>
+                              <img
+                                src="https://github.com/RTIInternational/teehr/blob/main/docs/images/readme/fetching-and-loading.png?raw=true"
+                                alt="Fetching and Loading"
+                                className="welcome-teehr-python-image"
+                              />
+                            </td>
+                            <td>
+                              <strong>Fetching and Loading</strong> - Tools to bring external or local data into your Evaluation from a variety of sources and file formats.
+                            </td>
+                          </tr>
+                          <tr>
+                            <td>
+                              <img
+                                src="https://github.com/RTIInternational/teehr/blob/main/docs/images/readme/data-validation-and-storage.png?raw=true"
+                                alt="Data Validation and Storage"
+                                className="welcome-teehr-python-image"
+                              />
+                            </td>
+                            <td>
+                              <strong>Data Validation and Storage</strong> - TEEHR's data model helps ensure consistency in field values and types, and interfaces with Apache Iceberg for underlying data storage functionality.
+                            </td>
+                          </tr>
+                          <tr>
+                            <td>
+                              <img
+                                src="https://github.com/RTIInternational/teehr/blob/main/docs/images/readme/analytics.png?raw=true"
+                                alt="Analytics"
+                                className="welcome-teehr-python-image"
+                              />
+                            </td>
+                            <td>
+                              <strong>Analytics</strong> - TEEHR contains a suite of robust and scalable analytic methods that enable users to fully interrogate their datasets.
+                            </td>
+                          </tr>
+                        </tbody>
+                      </table>
+                      <p className="mb-3">
+                        Documentation and examples for the TEEHR-Python package can be found in the <a href="https://rtiinternational.github.io/teehr">documentation</a>.
+                      </p>
+                    </Accordion.Body>
+                  </Accordion.Item>
 
-                <section>
-                  <h4 className="h5 mb-2">3. Services and Evaluation Manager</h4>
-                  <p className="mb-0">
-                    Platform services orchestrate workflows and expose analysis capabilities. The Evaluation Manager pattern organizes repeatable evaluation runs, tracks configurations, and helps teams compare methods and outcomes with greater transparency.
-                  </p>
-                </section>
-              </Card.Body>
-            </Card>
-          </Col>
-        </Row>
+                  <Accordion.Item eventKey="data-warehouse">
+                    <Accordion.Header>Data Warehouse</Accordion.Header>
+                    <Accordion.Body>
+                      <p className="mb-0">
+                        The TEEHR data warehouse is the core data layer for model, observation, and derived "Evaluation-Ready" products. Built on Apache Iceberg, it enables scalable storage, query performance for continental datasets, and standardized access patterns used across notebooks, services, and dashboards.
+                      </p>
+                      <div className="text-center mt-3">
+                        <img
+                          src={teehrIcebergDiagram}
+                          alt="TEEHR Data Warehouse Diagram"
+                          className="img-fluid welcome-iceberg-diagram"
+                        />
+                      </div>
+                      <p className="mb-0">
+                        The warehouse contains an ever-expanding list of historical and real-time hydrologic datasets including, but not limited to:
+                      </p>
+                      <ul>
+                        <li>The National Water Model (NWM) v3.0 hourly retrospective streamflow and accompanying USGS gage observations at over 8,000 gage locations across the US</li>
+                        <li>The National Water Model (NWM) v3.0 hourly retrospective rainfall and temperature summarized to USGS drainage basins across the US</li>
+                        <li>Historical research simulations</li>
+                        <li>CIROH's <a href="https://hub.ciroh.org/blog/nextgen-research-datastream-april-2026/">Nextgen Research Datastream forecasts</a></li>
+                        <li><a href="https://water.noaa.gov/">National Water Prediction Service (NWPS)</a> River Forecast Center streamflow forecasts </li>
+                        <li>NWM v3.0 analysis, short-range, and medium-range streamflow forecasts for CONUS and OCONUS locations in near real-time</li>
+                        <li>NWM v3.0 analysis, short-range, and medium-range streamflow rainrate forecasts summarized to CONUS and OCONUS USGS drainage basins in near real-time</li>
+                      </ul>
+                      <p className="mb-0">
+                        In addition to simulated and observed hydrologic data, the warehouse also contains tables storing historical and regularly-updated performance metrics and other tables supporting the <a href="https://dashboards.teehr.rtiamanzi.org/">TEEHR Dashboards</a>.
+                      </p>
+                    </Accordion.Body>
+                  </Accordion.Item>
 
-        <Row className="mt-4 pb-4">
-          <Col lg={10} className="mx-auto">
-            <table className="table table-borderless align-middle welcome-funding-table mb-0">
-              <tbody>
-                <tr>
-                  <td className="welcome-funding-logo-cell">
-                    <img
-                      src="https://github.com/RTIInternational/teehr/blob/main/docs/images/readme/CIROHLogo_200x200.png?raw=true"
-                      alt="CIROH logo"
-                      className="welcome-funding-logo"
-                    />
-                  </td>
-                  <td>
-                    Funding for this project was provided by the National Oceanic & Atmospheric Administration (NOAA), awarded to the Cooperative Institute for Research to Operations in Hydrology (CIROH) through the NOAA Cooperative Agreement with The University of Alabama (NA22NWS4320003).
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-          </Col>
-        </Row>
-      </Container>
+                  <Accordion.Item eventKey="services">
+                    <Accordion.Header>Services and Evaluation Manager</Accordion.Header>
+                    <Accordion.Body>
+                      <p className="mb-0">
+                        A suite of cloud-based services regularly ingests data, updates performance metrics, supports data warehouse access and notebook-based interactions, and hosts the <a href="https://dashboards.teehr.rtiamanzi.org/">TEEHR Dashboards</a>.
+                      </p>
+                      <div className="text-center mt-3">
+                        <img
+                          src={teehrCloudServicesDiagram}
+                          alt="TEEHR Cloud Services Diagram"
+                          className="img-fluid welcome-services-diagram"
+                        />
+                      </div>
+                    </Accordion.Body>
+                  </Accordion.Item>
+
+                  <Accordion.Item eventKey="dashboards">
+                    <Accordion.Header>TEEHR Dashboards</Accordion.Header>
+                    <Accordion.Body>
+                      <p className="mb-0">
+                        Purpose-built <a href="https://dashboards.teehr.rtiamanzi.org/">dashboards</a> deliver interactive performance visualizations and data exploration tools to support evaluation of historical simulations and real-time forecasts from specific perspectives and use-cases.
+                      </p>
+                      <div className="text-center mt-3">
+                        <img
+                          src={teehrDashboardsDiagram}
+                          alt="TEEHR Dashboards Diagram"
+                          className="img-fluid welcome-dashboards-diagram"
+                        />
+                      </div>
+                    </Accordion.Body>
+                  </Accordion.Item>
+
+                </Accordion>
+                </Card.Body>
+              </Card>
+            </Col>
+          </Row>
+
+          <Row className="mt-4 pb-4">
+            <Col lg={10} className="mx-auto">
+              <table className="table table-borderless align-middle welcome-funding-table mb-0">
+                <tbody>
+                  <tr>
+                    <td className="welcome-funding-logo-cell">
+                      <img
+                        src="https://github.com/RTIInternational/teehr/blob/main/docs/images/readme/CIROHLogo_200x200.png?raw=true"
+                        alt="CIROH logo"
+                        className="welcome-funding-logo"
+                      />
+                    </td>
+                    <td>
+                      Funding for this project was provided by the National Oceanic & Atmospheric Administration (NOAA), awarded to the Cooperative Institute for Research to Operations in Hydrology (CIROH) through the NOAA Cooperative Agreement with The University of Alabama (NA22NWS4320003).
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </Col>
+          </Row>
+
+          <Row className="mt-5 pt-4 border-top">
+            <Col className="text-center text-muted">
+              <p>
+                <strong>TEEHR</strong> - Tools for Exploratory Evaluation in Hydrologic Research.
+              </p>
+            </Col>
+          </Row>
+        </Container>
+      </div>
     </div>
   );
 };

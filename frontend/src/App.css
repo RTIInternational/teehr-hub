@@ -202,8 +202,8 @@ main {
 
 .welcome-hero {
   background: linear-gradient(125deg, #0d6efd 0%, #0b5ed7 40%, #198754 100%);
-  border-bottom-left-radius: 1.5rem;
-  border-bottom-right-radius: 1.5rem;
+  border-bottom-left-radius: 0;
+  border-bottom-right-radius: 0;
 }
 
 .welcome-logo {
@@ -242,6 +242,13 @@ main {
   border-color: rgba(255, 255, 255, 0.95);
 }
 
+.welcome-main-content {
+  background-size: cover;
+  background-attachment: fixed;
+  background-position: center;
+  background-repeat: no-repeat;
+}
+
 .welcome-funding-table {
   background: rgba(255, 255, 255, 0.85);
   border-radius: 0.5rem;
@@ -257,10 +264,29 @@ main {
   height: auto;
 }
 
+.welcome-overview-diagram {
+  max-width: 720px;
+}
+
+.welcome-teehr-python-image {
+  width: 154px;
+  height: auto;
+}
+
+.navbar-ciroh-logo {
+  width: auto;
+  height: 32px;
+  border-radius: 6px;
+}
+
+.navbar-teehr-logo {
+  border-radius: 6px;
+}
+
 @media (max-width: 768px) {
   .welcome-hero {
-    border-bottom-left-radius: 0.9rem;
-    border-bottom-right-radius: 0.9rem;
+    border-bottom-left-radius: 0;
+    border-bottom-right-radius: 0;
   }
 
   .welcome-logo,
@@ -271,8 +297,11 @@ main {
   .welcome-funding-logo-cell {
     width: 110px;
   }
-
   .welcome-funding-logo {
     max-width: 90px;
+  }
+
+  .welcome-overview-diagram {
+    max-width: 100%;
   }
 }

@@ -3,7 +3,7 @@ import { useAuth } from '../../hooks/useAuth.js';
 
 const Navbar = () => {
   const location = useLocation();
-  const isHome = location.pathname === '/hub';
+  const isHome = location.pathname === '/hub' || location.pathname === '/';
   const { ready, authenticated, username, roles, login, signup, logout } = useAuth();
   const isAdmin = roles.includes('admin');
 
@@ -38,14 +38,24 @@ const Navbar = () => {
   return (
     <nav className="navbar navbar-expand-lg navbar-dark bg-primary">
       <div className="container-fluid px-4 d-flex align-items-center">
-        <Link className="navbar-brand me-3" to="/hub">
-          <img
-            src="/teehr.png"
-            alt="TEEHR Dashboard"
-            height="32"
-            className="d-inline-block align-text-top"
-          />
-        </Link>
+        <div className="navbar-brand me-3 d-flex align-items-center gap-2">
+          <Link to="" className="d-inline-flex align-items-center" aria-label="TEEHR-Cloud Home">
+            <img
+              src="/teehr.png"
+              alt="TEEHR Dashboard"
+              height="32"
+              className="d-inline-block align-text-top navbar-teehr-logo"
+            />
+          </Link>
+          <Link to="https://ciroh.ua.edu/" className="d-inline-flex align-items-center" aria-label="CIROH Home">
+            <img
+              src="https://raw.githubusercontent.com/RTIInternational/teehr/main/docs/images/readme/CIROHLogo_200x200.png"
+              alt="CIROH logo"
+              height="32"
+              className="navbar-ciroh-logo"
+            />
+          </Link>
+        </div>
 
         {/* Breadcrumb Navigation */}
         <div className="flex-grow-1 d-flex align-items-center">
