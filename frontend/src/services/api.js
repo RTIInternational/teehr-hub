@@ -100,6 +100,11 @@ export const apiService = {
     return apiCall(`/collections/${table}/queryables/variable_name/values`);
   },
 
+  // Get distinct values for requested column
+  getDistinctValues: async (table = 'sim_metrics_by_location', columnName) => {
+    return apiCall(`/collections/${table}/queryables/${columnName}/values`);
+  },
+
   // Get table properties (now via queryables endpoint)
   getTableProperties: (table = 'sim_metrics_by_location') => {
     return apiCall(`/collections/${table}/queryables`);
