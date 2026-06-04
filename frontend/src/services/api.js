@@ -122,11 +122,21 @@ export const apiService = {
     const params = new URLSearchParams();
     const table = filters.table || 'sim_metrics_by_location';
 
-    if (filters.configuration) params.append('configuration_name', filters.configuration);
-    if (filters.variable) params.append('variable_name', filters.variable);
-    if (filters.primary_location_id) params.append('location_id', filters.primary_location_id);
-    if (filters.limit) params.append('limit', filters.limit);
-    if (filters.offset) params.append('offset', filters.offset);
+    const reservedKeys = ['table']
+
+    const aliasMap = {
+      aggMethod: "window_agg",
+      configuration: 'configuration_name',
+      leadTimeBin: 'forecast_lead_time_bin',
+      primary_location_id: 'location_id',
+      variable: 'variable_name',
+    }
+
+    for (const key in filters) {
+      if (reservedKeys.includes(key)) continue;
+      const paramKey = aliasMap[key] || key;
+      params.append(paramKey, filters[key])
+    }
 
     const queryString = params.toString();
     const endpoint = queryString
