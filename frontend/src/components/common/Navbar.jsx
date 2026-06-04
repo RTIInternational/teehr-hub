@@ -158,17 +158,17 @@ const Navbar = () => {
                 </Link>
               </li>
               <li>
-                <Link className="dropdown-item" to="/data" onClick={() => setIsDashboardsOpen(false)}>
+                <Link className="dropdown-item ps-4" to="/data" onClick={() => setIsDashboardsOpen(false)}>
                   Data Availability
                 </Link>
               </li>
               <li>
-                <Link className="dropdown-item" to="/retrospective" onClick={() => setIsDashboardsOpen(false)}>
+                <Link className="dropdown-item ps-4" to="/retrospective" onClick={() => setIsDashboardsOpen(false)}>
                   Retrospective Simulations
                 </Link>
               </li>
               <li>
-                <Link className="dropdown-item" to="/forecast" onClick={() => setIsDashboardsOpen(false)}>
+                <Link className="dropdown-item ps-4" to="/forecast" onClick={() => setIsDashboardsOpen(false)}>
                   Forecast Analysis
                 </Link>
               </li>
