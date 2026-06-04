@@ -67,7 +67,7 @@ html {
     height: auto;
     min-height: 100vh;
   }
-  
+
   .card-body {
     padding: 1rem;
   }
@@ -176,11 +176,11 @@ main {
   .hero-section {
     padding: 3rem 0 !important;
   }
-  
+
   .hero-section .display-4 {
     font-size: 2rem;
   }
-  
+
   .dashboard-card .card-body {
     padding: 1rem;
   }
@@ -190,4 +190,106 @@ main {
 .dashboard-card-disabled:hover {
   transform: none;
   box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.welcome-hero {
+  background: linear-gradient(125deg, #0d6efd 0%, #0b5ed7 40%, #198754 100%);
+  border-bottom-left-radius: 0;
+  border-bottom-right-radius: 0;
+}
+
+.welcome-main-content {
+  background-size: cover;
+  background-attachment: fixed;
+  background-position: center;
+  background-repeat: no-repeat;
+}
+
+.welcome-funding-table {
+  background: rgba(255, 255, 255, 0.85);
+  border-radius: 0.5rem;
+}
+
+.welcome-funding-logo-cell {
+  width: 200px;
+}
+
+.welcome-funding-logo {
+  max-width: 160px;
+  width: 100%;
+  height: auto;
+}
+
+.welcome-overview-diagram {
+  max-width: 720px;
+}
+
+.welcome-teehr-python-image {
+  width: 154px;
+  height: auto;
+}
+
+.navbar-ciroh-logo {
+  width: auto;
+  height: 32px;
+  border-radius: 6px;
+}
+
+.navbar-teehr-logo {
+  border-radius: 6px;
+}
+
+.navbar-dashboard-toggle {
+  transform: translateY(-1px);
+}
+
+@media (max-width: 768px) {
+  .welcome-hero {
+    border-bottom-left-radius: 0;
+    border-bottom-right-radius: 0;
+  }
+
+  .welcome-funding-logo-cell {
+    width: 110px;
+  }
+  .welcome-funding-logo {
+    max-width: 90px;
+  }
+
+  .welcome-overview-diagram {
+    max-width: 100%;
+  }
+}
+
+/* Preset A: Hydro Topographic */
+.bg-preset-hydro {
+  --bg-base: #eef6f5;
+  background: var(--bg-base);
+  position: relative;
+}
+
+.bg-preset-hydro::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.28;
+  z-index: 0;
+  background-image:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='320' height='320' viewBox='0 0 320 320'%3E%3Cg fill='none' stroke='%23064e3b' stroke-opacity='0.20' stroke-width='1.1'%3E%3Cpath d='M0 42c44 18 91 18 136 0s92-18 138 0'/%3E%3Cpath d='M0 78c44 18 91 18 136 0s92-18 138 0'/%3E%3Cpath d='M0 114c44 18 91 18 136 0s92-18 138 0'/%3E%3Cpath d='M0 150c44 18 91 18 136 0s92-18 138 0'/%3E%3Cpath d='M0 186c44 18 91 18 136 0s92-18 138 0'/%3E%3Cpath d='M0 222c44 18 91 18 136 0s92-18 138 0'/%3E%3Cpath d='M0 258c44 18 91 18 136 0s92-18 138 0'/%3E%3C/g%3E%3C/svg%3E");
+  background-size: 320px 320px;
+  mix-blend-mode: multiply;
+}
+
+/* Optional: deepen card separation for hydro preset */
+.bg-preset-hydro .card {
+  background: rgba(255, 255, 255, 0.92);
+  backdrop-filter: blur(2px);
+  box-shadow: 0 10px 24px rgba(16, 24, 40, 0.08);
+  border: 1px solid rgba(15, 23, 42, 0.08);
+}
+
+.bg-preset-hydro > * {
+  position: relative;
+  z-index: 1;
 }
