@@ -141,7 +141,7 @@ const Navbar = () => {
           </Link>
           <div className="dropdown" ref={dashboardsDropdownRef}>
             <button
-              className="btn btn-outline-light btn-sm dropdown-toggle"
+              className="btn btn-outline-light btn-sm dropdown-toggle d-inline-flex align-items-center navbar-dashboard-toggle"
               type="button"
               onClick={() => {
                 setIsDashboardsOpen((prev) => !prev);
@@ -176,7 +176,7 @@ const Navbar = () => {
           </div>
           {canViewHubDeployment && (
             <a
-              className="btn btn-outline-light btn-sm"
+              className="btn btn-outline-light btn-sm d-inline-flex align-items-center"
               href="https://hub.teehr.rtiamanzi.org/hub/spawn"
               target="_blank"
               rel="noreferrer"

@@ -239,6 +239,10 @@ main {
   border-radius: 6px;
 }
 
+.navbar-dashboard-toggle {
+  transform: translateY(-1px);
+}
+
 @media (max-width: 768px) {
   .welcome-hero {
     border-bottom-left-radius: 0;
