@@ -254,11 +254,11 @@ const Navbar = () => {
 
           {ready && !authenticated && (
             <div className="d-flex align-items-center gap-2">
-              <button className="btn btn-success btn-sm" onClick={() => login({ redirectUri: window.location.href })}>
-                Login
-              </button>
               <button className="btn btn-outline-light btn-sm" onClick={() => signup(window.location.href)}>
                 Sign Up
+              </button>
+              <button className="btn btn-success btn-sm" onClick={() => login({ redirectUri: window.location.href })}>
+                Login
               </button>
             </div>
           )}
