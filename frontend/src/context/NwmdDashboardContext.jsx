@@ -20,6 +20,9 @@ const initialNwmdState = {
   locations: { features: [] },
   configurations: [],
   variables: [],
+  thresholds: [],
+  aggMethods: [],
+  leadTimeBins: [],
   tableProperties: {}, // Will contain { "table_name": { metrics: [], group_by: [], description: "" } }
   mapViewportBounds: null,
   
@@ -27,6 +30,9 @@ const initialNwmdState = {
   mapFilters: {
     configuration: null,
     variable: null,
+    threshold: null,
+    aggMethod: null,
+    leadTimeBin: null,
     metricName: 'relative_bias'
   },
   
@@ -62,6 +68,11 @@ const initialNwmdState = {
   timeseriesLoading: false,
   metricsLoading: false,
   tablePropertiesLoading: false,
+  configurationsLoading: false,
+  variablesLoading: false,
+  thresholdsLoading: false,
+  aggMethodsLoading: false,
+  leadTimeBinsLoading: false,
   
   // Map state
   mapLoaded: false,
@@ -76,6 +87,9 @@ export const ActionTypes = {
   SET_LOCATIONS: 'SET_LOCATIONS',
   SET_CONFIGURATIONS: 'SET_CONFIGURATIONS',
   SET_VARIABLES: 'SET_VARIABLES',
+  SET_THRESHOLDS: 'SET_THRESHOLDS',
+  SET_AGG_METHODS: 'SET_AGG_METHODS',
+  SET_LEAD_TIME_BINS: 'SET_LEAD_TIME_BINS',
   SET_TABLE_PROPERTIES: 'SET_TABLE_PROPERTIES',
   
   // Filter updates
@@ -122,6 +136,7 @@ const nwmdDashboardReducer = (state, action) => {
       return {
         ...state,
         configurations,
+        configurationsLoading: false,
         // Set defaults if first time loading - prefer configured default if available
         mapFilters: {
           ...state.mapFilters,
@@ -145,6 +160,7 @@ const nwmdDashboardReducer = (state, action) => {
       return {
         ...state,
         variables,
+        variablesLoading: false,
         // Set defaults if first time loading - prefer configured default if available
         mapFilters: {
           ...state.mapFilters,
@@ -163,6 +179,78 @@ const nwmdDashboardReducer = (state, action) => {
             variables: state.timeseriesFilters.secondary?.variables?.length > 0
               ? state.timeseriesFilters.secondary.variables
               : (defaultVariable ? [defaultVariable] : [])
+          }
+        }
+      };
+    }
+
+    case ActionTypes.SET_THRESHOLDS: {
+      const thresholds = Array.isArray(action.payload) ? action.payload : [];
+      const defaultThreshold = selectDefault(NWMD_DASHBOARD_DEFAULTS.preferredThreshold, thresholds);
+      return {
+        ...state,
+        thresholds,
+        thresholdsLoading: false,
+        // Set defaults if first time loading - prefer configured default if available
+        mapFilters: {
+          ...state.mapFilters,
+          threshold: state.mapFilters.threshold || defaultThreshold
+        },
+        timeseriesFilters: {
+          ...state.timeseriesFilters,
+          secondary: {
+            ...state.timeseriesFilters.secondary,
+            thresholds: state.timeseriesFilters.secondary?.thresholds?.length > 0
+              ? state.timeseriesFilters.secondary.thresholds
+              : (defaultThreshold ? [defaultThreshold] : [])
+          }
+        }
+      };
+    }
+
+    case ActionTypes.SET_AGG_METHODS: {
+      const aggMethods = Array.isArray(action.payload) ? action.payload : [];
+      const defaultAggMethod = selectDefault(NWMD_DASHBOARD_DEFAULTS.preferredAggMethod, aggMethods);
+      return {
+        ...state,
+        aggMethods,
+        aggMethodsLoading: false,
+        // Set defaults if first time loading - prefer configured default if available
+        mapFilters: {
+          ...state.mapFilters,
+          aggMethod: state.mapFilters.aggMethod || defaultAggMethod
+        },
+        timeseriesFilters: {
+          ...state.timeseriesFilters,
+          secondary: {
+            ...state.timeseriesFilters.secondary,
+            aggMethods: state.timeseriesFilters.secondary?.aggMethods?.length > 0
+              ? state.timeseriesFilters.secondary.aggMethods
+              : (defaultAggMethod ? [defaultAggMethod] : [])
+          }
+        }
+      };
+    }
+
+    case ActionTypes.SET_LEAD_TIME_BINS: {
+      const leadTimeBins = Array.isArray(action.payload) ? action.payload : [];
+      const defaultLeadTimeBin = selectDefault(NWMD_DASHBOARD_DEFAULTS.preferredLeadTimeBin, leadTimeBins);
+      return {
+        ...state,
+        leadTimeBins,
+        leadTimeBinsLoading: false,
+        // Set defaults if first time loading - prefer configured default if available
+        mapFilters: {
+          ...state.mapFilters,
+          leadTimeBin: state.mapFilters.leadTimeBin || defaultLeadTimeBin
+        },
+        timeseriesFilters: {
+          ...state.timeseriesFilters,
+          secondary: {
+            ...state.timeseriesFilters.secondary,
+            leadTimeBins: state.timeseriesFilters.secondary?.leadTimeBins?.length > 0
+              ? state.timeseriesFilters.secondary.leadTimeBins
+              : (defaultLeadTimeBin ? [defaultLeadTimeBin] : [])
           }
         }
       };
@@ -315,6 +403,15 @@ const nwmdDashboardReducer = (state, action) => {
       }
       if ('variables' in action.payload) {
         loadingUpdates.variablesLoading = action.payload.variables;
+      }
+      if ('thresholds' in action.payload) {
+        loadingUpdates.thresholdsLoading = action.payload.thresholds;
+      }
+      if ('aggMethods' in action.payload) {
+        loadingUpdates.aggMethodsLoading = action.payload.aggMethods;
+      }
+      if ('leadTimeBins' in action.payload) {
+        loadingUpdates.leadTimeBinsLoading = action.payload.leadTimeBins;
       }
       return {
         ...state,

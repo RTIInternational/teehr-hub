@@ -175,13 +175,22 @@ export const NwmdMapComponent = ({
 
   // Load initial locations when map is ready and filters are available
   useEffect(() => {
-    if (state.mapLoaded && state.mapFilters.configuration && state.mapFilters.variable) {
+    if (state.mapLoaded &&
+        state.mapFilters.configuration &&
+        state.mapFilters.variable &&
+        state.mapFilters.threshold &&
+        state.mapFilters.aggMethod &&
+        state.mapFilters.leadTimeBin
+    ) {
       loadLocations({
         configuration: state.mapFilters.configuration,
-        variable: state.mapFilters.variable
+        variable: state.mapFilters.variable,
+        threshold: state.mapFilters.threshold,
+        aggMethod: state.mapFilters.aggMethod,
+        leadTimeBin: state.mapFilters.leadTimeBin
       });
     }
-  }, [state.mapLoaded, state.mapFilters.configuration, state.mapFilters.variable, loadLocations]);
+  }, [state.mapLoaded, state.mapFilters.configuration, state.mapFilters.variable, loadLocations, state.mapFilters.threshold, state.mapFilters.aggMethod, state.mapFilters.leadTimeBin]);
 
   // Update map when locations change
   useEffect(() => {

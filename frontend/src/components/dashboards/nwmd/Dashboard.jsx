@@ -9,6 +9,7 @@ import {
 import { getMetricLabel } from '../../common/dashboard/utils.js';
 import { useNwmdData } from './useNwmdData';
 import { NwmdMapComponent } from './NwmdMapComponent.jsx'
+import { FilterSidebar } from './FilterSidebar.jsx';
 
 const Dashboard = () => {
   const { state, dispatch } = useNwmdDashboard();
@@ -55,7 +56,7 @@ const Dashboard = () => {
           className="dashboard-grid h-100" 
           style={{
             display: 'grid',
-            gridTemplateColumns: '1fr 1fr',
+            gridTemplateColumns: '1fr 2fr 2fr',
             gridTemplateRows: 'auto minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1.8fr)',
             gap: '12px',
             padding: '12px',
@@ -86,12 +87,24 @@ const Dashboard = () => {
               ></button>
             </div>
           )}
+
+          <div style={{
+            gridColumn: '1 / 2',
+            gridRow: state.error ? '2 / 4' : '1 / 4'
+          }}>
+            <FilterSidebar 
+              state={state} 
+              mapFilters={mapFilters}
+              updateMapFilters={updateMapFilters}
+              loadLocations={loadLocations} 
+            />
+          </div>
           
           {/* Map Panel - Left Column, reduced height */}
           <div 
             className="map-panel" 
             style={{
-              gridColumn: '1 / 2',
+              gridColumn: '2 / 3',
               gridRow: state.error ? '2 / 4' : '1 / 4', // Reduced from 5 to 4
               border: '1px solid #e0e0e0',
               borderRadius: '8px',
@@ -115,7 +128,7 @@ const Dashboard = () => {
           {/* Location Info Card - Upper Right */}
           <div 
             style={{
-              gridColumn: '2 / 3',
+              gridColumn: '3 / 4',
               gridRow: state.error ? '2 / 3' : '1 / 2',
               minHeight: 0
             }}
@@ -161,11 +174,11 @@ const Dashboard = () => {
             )}
           </div> */}
 
-          {/* Metrics Panel - Full Width Bottom */}
+          {/* Metrics Panel - Bottom, right of filter sidebar */}
           <div 
             className="metrics-panel" 
             style={{
-              gridColumn: '1 / -1', // Span full width
+              gridColumn: '2 / -1', // Right of filter sidebar
               gridRow: state.error ? '5 / 6' : '4 / 5', // Bottom row
               border: '1px solid #e0e0e0',
               borderRadius: '8px',

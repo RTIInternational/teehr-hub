@@ -6,7 +6,7 @@ import { useNwmdDataFetching } from '../../../hooks/useNwmdDataFetching';
  * Handles the nwmd_metrics_by_location table specifically
  */
 export const useNwmdData = () => {
-  const { loadConfigurations, loadVariables, loadTableProperties, loadLocations, loadTimeseries, loadLocationMetrics, ...otherHooks } = useNwmdDataFetching();
+  const { loadConfigurations, loadVariables, loadThresholds, loadAggMethods, loadLeadTimeBins, loadTableProperties, loadLocations, loadTimeseries, loadLocationMetrics, ...otherHooks } = useNwmdDataFetching();
   
   // Table names for nwmd dashboard
   const TABLE_NAMES = ['nwmd_metrics_by_location'];
@@ -20,6 +20,21 @@ export const useNwmdData = () => {
   const loadNwmdVariables = useCallback(async () => {
     return loadVariables(TABLE_NAMES[0]); // Use location table for variables
   }, [loadVariables]);
+
+  // Load thresholds for nwmd metrics  
+  const loadNwmdThresholds = useCallback(async () => {
+    return loadThresholds(TABLE_NAMES[0]); // Use location table for variables
+  }, [loadThresholds]);
+
+  // Load thresholds for nwmd metrics  
+  const loadNwmdAggMethods = useCallback(async () => {
+    return loadAggMethods(TABLE_NAMES[0]); // Use location table for variables
+  }, [loadAggMethods]);
+
+  // Load thresholds for nwmd metrics  
+  const loadNwmdLeadTimeBins = useCallback(async () => {
+    return loadLeadTimeBins(TABLE_NAMES[0]); // Use location table for variables
+  }, [loadLeadTimeBins]);
   
   // Load table properties for nwmd metrics
   const loadNwmdTableProperties = useCallback(async () => {
@@ -47,13 +62,16 @@ export const useNwmdData = () => {
       await Promise.all([
         loadNwmdConfigurations(),
         loadNwmdVariables(), 
+        loadNwmdThresholds(),
+        loadNwmdAggMethods(),
+        loadNwmdLeadTimeBins(),
         loadNwmdTableProperties()
       ]);
     } catch (error) {
       console.error('Failed to initialize nwmd data:', error);
       throw error;
     }
-  }, [loadNwmdConfigurations, loadNwmdVariables, loadNwmdTableProperties]);
+  }, [loadNwmdConfigurations, loadNwmdVariables, loadNwmdThresholds, loadNwmdAggMethods, loadNwmdLeadTimeBins, loadNwmdTableProperties]);
   
   return {
     ...otherHooks,

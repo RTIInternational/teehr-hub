@@ -38,13 +38,11 @@ export const DATA_DASHBOARD_DEFAULTS = {
 };
 
 export const NWMD_DASHBOARD_DEFAULTS = {
-  // Preferred default configuration for forecasts
   preferredConfiguration: 'nwm30_medium_range',
-
-  // Preferred default variable
   preferredVariable: 'streamflow_hourly_inst',
-
-  // Default metric for map coloring
+  preferredThreshold: null,
+  preferredAggMethod: 'mean',
+  preferredLeadTimeBin: 'PT0S_P1DT0H',
   defaultMetricName: 'relative_bias'
 };
 

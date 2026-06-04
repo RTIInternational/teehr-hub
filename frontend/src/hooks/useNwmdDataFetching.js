@@ -16,6 +16,7 @@ export const useNwmdDataFetching = () => {
       dispatch({ type: ActionTypes.SET_CONFIGURATIONS, payload: configurations });
     } catch (error) {
       dispatch({ type: ActionTypes.SET_ERROR, payload: `Failed to load configurations: ${error.message}` });
+      dispatch({ type: ActionTypes.SET_LOADING, payload: { configurations: false } });
     }
   }, [dispatch]);
   
@@ -28,6 +29,43 @@ export const useNwmdDataFetching = () => {
       dispatch({ type: ActionTypes.SET_VARIABLES, payload: variables });
     } catch (error) {
       dispatch({ type: ActionTypes.SET_ERROR, payload: `Failed to load variables: ${error.message}` });
+      dispatch({ type: ActionTypes.SET_LOADING, payload: { variables: false } });
+    }
+  }, [dispatch]);
+
+  const loadThresholds = useCallback(async (table) => {
+    try {
+      dispatch({ type: ActionTypes.SET_LOADING, payload: { thresholds: true } });
+      // Use the new distinct values endpoint
+      const thresholds = await apiService.getDistinctValues(table, "threshold");
+      dispatch({ type: ActionTypes.SET_THRESHOLDS, payload: thresholds });
+    } catch (error) {
+      dispatch({ type: ActionTypes.SET_ERROR, payload: `Failed to load thresholds: ${error.message}` });
+      dispatch({ type: ActionTypes.SET_LOADING, payload: { thresholds: false } });
+    }
+  }, [dispatch]);
+
+  const loadAggMethods = useCallback(async (table) => {
+    try {
+      dispatch({ type: ActionTypes.SET_LOADING, payload: { aggMethods: true } });
+      // Use the new distinct values endpoint
+      const aggMethods = await apiService.getDistinctValues(table, "window_agg");
+      dispatch({ type: ActionTypes.SET_AGG_METHODS, payload: aggMethods });
+    } catch (error) {
+      dispatch({ type: ActionTypes.SET_ERROR, payload: `Failed to load aggregation methods: ${error.message}` });
+      dispatch({ type: ActionTypes.SET_LOADING, payload: { aggMethods: false } });
+    }
+  }, [dispatch]);
+
+  const loadLeadTimeBins = useCallback(async (table) => {
+    try {
+      dispatch({ type: ActionTypes.SET_LOADING, payload: { leadTimeBins: true } });
+      // Use the new distinct values endpoint
+      const leadTimeBins = await apiService.getDistinctValues(table, "forecast_lead_time_bin");
+      dispatch({ type: ActionTypes.SET_LEAD_TIME_BINS, payload: leadTimeBins });
+    } catch (error) {
+      dispatch({ type: ActionTypes.SET_ERROR, payload: `Failed to load forecast lead time bins: ${error.message}` });
+      dispatch({ type: ActionTypes.SET_LOADING, payload: { leadTimeBins: false } });
     }
   }, [dispatch]);
   
@@ -52,6 +90,7 @@ export const useNwmdDataFetching = () => {
       dispatch({ type: ActionTypes.SET_TABLE_PROPERTIES, payload: tableProperties });
     } catch (error) {
       dispatch({ type: ActionTypes.SET_ERROR, payload: `Failed to load table properties: ${error.message}` });
+      dispatch({ type: ActionTypes.SET_LOADING, payload: { tablePropertiesLoading: false } });
     }
   }, [dispatch]);
   
@@ -60,10 +99,7 @@ export const useNwmdDataFetching = () => {
     try {
       dispatch({ type: ActionTypes.SET_LOADING, payload: { locations: true } });
       
-      // Use getMetrics for filtered location data with metrics, or getLocations for basic locations
-      const locations = filters.configuration && filters.variable 
-        ? await apiService.getMetrics({ ...filters, table })
-        : await apiService.getLocations();
+      const locations = await apiService.getMetrics({ ...filters, table })
       
       dispatch({ type: ActionTypes.SET_LOCATIONS, payload: locations });
     } catch (error) {
@@ -192,6 +228,9 @@ export const useNwmdDataFetching = () => {
   return {
     loadConfigurations,
     loadVariables,
+    loadThresholds,
+    loadAggMethods,
+    loadLeadTimeBins,
     loadTableProperties,
     loadLocations,
     loadTimeseries,
