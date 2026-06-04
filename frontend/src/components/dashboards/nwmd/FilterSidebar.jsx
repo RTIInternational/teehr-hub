@@ -10,16 +10,23 @@ export const FilterSidebar = ({
     const newFilters = { ...mapFilters, [filterType]: value };
     updateMapFilters({ [filterType]: value });
 
-    // Reload locations when configuration or variable changes
-    // if (filterType === "configuration" || filterType === "variable") {
-    await loadLocations({
-      configuration: newFilters.configuration,
-      variable: newFilters.variable,
-      threshold: newFilters.threshold,
-      aggMethod: newFilters.aggMethod,
-      leadTimeBin: newFilters.leadTimeBin,
-    });
-    // }
+    // Reload locations when base metrics change
+    const reloadFilters = new Set([
+      "configuration",
+      "variable",
+      "threshold",
+      "aggMethod",
+      "leadTimeBin",
+    ]);
+    if (reloadFilters.has(filterType)) {
+      await loadLocations({
+        configuration: newFilters.configuration,
+        variable: newFilters.variable,
+        threshold: newFilters.threshold,
+        aggMethod: newFilters.aggMethod,
+        leadTimeBin: newFilters.leadTimeBin,
+      });
+    }
   };
 
   return (
@@ -61,6 +68,43 @@ export const FilterSidebar = ({
                 {threshold}
               </option>
             ))}
+        </Form.Select>
+      </Form.Group>
+
+      {/* Metric Filter */}
+      <Form.Group className="mb-3">
+        <Form.Label className="small fw-bold">Metric</Form.Label>
+        <Form.Select
+          size="sm"
+          value={mapFilters.metricName || ""}
+          onChange={(e) =>
+            handleMapFilterChange("metricName", e.target.value || null)
+          }
+        >
+          <option value="">Select Metric...</option>
+          {(() => {
+            // Try to find metrics from any available table in the batch response
+            // This works for both single-table and multi-table dashboards
+            const allTableProps = state.tableProperties || {};
+            const allMetrics = [];
+
+            // Collect all unique metrics from all tables
+            Object.values(allTableProps).forEach((tableProps) => {
+              if (Array.isArray(tableProps?.metrics)) {
+                tableProps.metrics.forEach((metric) => {
+                  if (!allMetrics.includes(metric)) {
+                    allMetrics.push(metric);
+                  }
+                });
+              }
+            });
+
+            return allMetrics.map((metricName) => (
+              <option key={metricName} value={metricName}>
+                {metricName}
+              </option>
+            ));
+          })()}
         </Form.Select>
       </Form.Group>
 
