@@ -205,7 +205,7 @@ const DashboardsHome = () => {
   };
 
   return (
-    <div className="home-page">
+    <div className="home-page bg-preset-hydro">
       {/* Hero Section */}
       <div className="hero-section bg-primary text-white py-5 mb-4">
         <Container>
@@ -237,7 +237,7 @@ const DashboardsHome = () => {
         </Row>
 
         {/* Footer Info */}
-        <Row className="mt-5 pt-4 border-top">
+        <Row className="mt-5 pt-4">
           <Col className="text-center text-muted">
             <p>
               <strong>TEEHR</strong> - Tools for Exploratory Evaluation in Hydrologic Research.

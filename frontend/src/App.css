@@ -67,7 +67,7 @@ html {
     height: auto;
     min-height: 100vh;
   }
-  
+
   .card-body {
     padding: 1rem;
   }
@@ -176,11 +176,11 @@ main {
   .hero-section {
     padding: 3rem 0 !important;
   }
-  
+
   .hero-section .display-4 {
     font-size: 2rem;
   }
-  
+
   .dashboard-card .card-body {
     padding: 1rem;
   }
@@ -192,54 +192,10 @@ main {
   box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
 }
 
-/* Welcome Page Styles */
-.welcome-page {
-  background:
-    radial-gradient(circle at 85% 15%, rgba(13, 110, 253, 0.12), transparent 40%),
-    radial-gradient(circle at 15% 80%, rgba(25, 135, 84, 0.1), transparent 35%),
-    #f8f9fa;
-}
-
 .welcome-hero {
   background: linear-gradient(125deg, #0d6efd 0%, #0b5ed7 40%, #198754 100%);
   border-bottom-left-radius: 0;
   border-bottom-right-radius: 0;
-}
-
-.welcome-logo {
-  height: 58px;
-  width: auto;
-  background: rgba(255, 255, 255, 0.95);
-  border-radius: 0.6rem;
-  padding: 0.4rem 0.6rem;
-}
-
-.welcome-ciroh-logo {
-  height: 58px;
-  width: auto;
-  border-radius: 0.6rem;
-  background: rgba(255, 255, 255, 0.95);
-  padding: 0.2rem;
-}
-
-.welcome-link-nav .nav-link {
-  color: #fff;
-  border: 1px solid rgba(255, 255, 255, 0.45);
-  margin-right: 0.5rem;
-  margin-bottom: 0.5rem;
-  background: rgba(255, 255, 255, 0.08);
-}
-
-.welcome-link-nav .nav-link:hover,
-.welcome-link-nav .nav-link:focus {
-  color: #fff;
-  background: rgba(255, 255, 255, 0.2);
-}
-
-.welcome-link-nav .nav-link.active {
-  background-color: rgba(255, 255, 255, 0.95);
-  color: #0d6efd;
-  border-color: rgba(255, 255, 255, 0.95);
 }
 
 .welcome-main-content {
@@ -289,11 +245,6 @@ main {
     border-bottom-right-radius: 0;
   }
 
-  .welcome-logo,
-  .welcome-ciroh-logo {
-    height: 48px;
-  }
-
   .welcome-funding-logo-cell {
     width: 110px;
   }
@@ -304,4 +255,37 @@ main {
   .welcome-overview-diagram {
     max-width: 100%;
   }
+}
+
+/* Preset A: Hydro Topographic */
+.bg-preset-hydro {
+  --bg-base: #eef6f5;
+  background: var(--bg-base);
+  position: relative;
+}
+
+.bg-preset-hydro::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.28;
+  z-index: 0;
+  background-image:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='320' height='320' viewBox='0 0 320 320'%3E%3Cg fill='none' stroke='%23064e3b' stroke-opacity='0.20' stroke-width='1.1'%3E%3Cpath d='M0 42c44 18 91 18 136 0s92-18 138 0'/%3E%3Cpath d='M0 78c44 18 91 18 136 0s92-18 138 0'/%3E%3Cpath d='M0 114c44 18 91 18 136 0s92-18 138 0'/%3E%3Cpath d='M0 150c44 18 91 18 136 0s92-18 138 0'/%3E%3Cpath d='M0 186c44 18 91 18 136 0s92-18 138 0'/%3E%3Cpath d='M0 222c44 18 91 18 136 0s92-18 138 0'/%3E%3Cpath d='M0 258c44 18 91 18 136 0s92-18 138 0'/%3E%3C/g%3E%3C/svg%3E");
+  background-size: 320px 320px;
+  mix-blend-mode: multiply;
+}
+
+/* Optional: deepen card separation for hydro preset */
+.bg-preset-hydro .card {
+  background: rgba(255, 255, 255, 0.92);
+  backdrop-filter: blur(2px);
+  box-shadow: 0 10px 24px rgba(16, 24, 40, 0.08);
+  border: 1px solid rgba(15, 23, 42, 0.08);
+}
+
+.bg-preset-hydro > * {
+  position: relative;
+  z-index: 1;
 }

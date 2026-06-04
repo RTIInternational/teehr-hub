@@ -1,49 +1,14 @@
-import { Container, Row, Col, Card, Button, Nav, Accordion } from 'react-bootstrap';
-import { Link } from 'react-router-dom';
-import { useAuth } from '../../hooks/useAuth.js';
+import { Container, Row, Col, Card, Accordion } from 'react-bootstrap';
 import teehrCloudVennDiagram from '../../assets/teehr-cloud-venn-diagram.png';
 import teehrIcebergDiagram from '../../assets/data-model-iceberg.png';
 import teehrCloudServicesDiagram from '../../assets/cloud-services-image.png';
 import teehrDashboardsDiagram from '../../assets/dashboard-snippet-image.png';
 
 const Home = () => {
-  const { authenticated, roles } = useAuth();
-  const canViewHubDeployment = authenticated && roles.includes('jupyter-user');
-
   return (
-    <div className="home-page welcome-page">
+    <div className="home-page bg-preset-hydro">
       <div className="hero-section welcome-hero text-white py-5">
         <Container>
-          <Row className="mb-4 align-items-center g-3">
-            <Col xs={12} lg>
-              <Nav className="welcome-link-nav flex-wrap" variant="pills">
-                <Nav.Item>
-                  <Nav.Link as={Link} to="/hub">Dashboard Hub</Nav.Link>
-                </Nav.Item>
-                <Nav.Item>
-                  <Nav.Link href="https://github.com/RTIInternational/teehr" target="_blank" rel="noreferrer">TEEHR-Python Repo</Nav.Link>
-                </Nav.Item>
-                <Nav.Item>
-                  <Nav.Link href="https://github.com/RTIInternational/teehr-hub" target="_blank" rel="noreferrer">TEEHR-Hub Repo</Nav.Link>
-                </Nav.Item>
-                {canViewHubDeployment && (
-                  <Nav.Item>
-                    <Nav.Link href="https://hub.teehr.rtiamanzi.org/hub/spawn" target="_blank" rel="noreferrer">TEEHR-Hub Deployment</Nav.Link>
-                  </Nav.Item>
-                )}
-              </Nav>
-            </Col>
-            <Col xs={12} lg="auto" className="text-lg-end">
-              <Button
-                as="a"
-                href="mailto:ciroh.teehr@gmail.com"
-                variant="outline-light"
-              >
-                Contact Us
-              </Button>
-            </Col>
-          </Row>
-
           <Row className="justify-content-center text-center">
             <Col lg={10}>
               <h1 className="display-4 mb-3">Welcome to TEEHR-Cloud</h1>
@@ -129,8 +94,39 @@ const Home = () => {
                           </tr>
                         </tbody>
                       </table>
-                      <p className="mb-3">
-                        Documentation and examples for the TEEHR-Python package can be found in the <a href="https://rtiinternational.github.io/teehr">documentation</a>.
+                      <p className="mt-3 mb-2">
+                        <a
+                          href="https://rtiinternational.github.io/teehr"
+                          target="_blank"
+                          rel="noreferrer"
+                          className="d-inline-flex align-items-center gap-2 text-decoration-none mb-2"
+                          aria-label="TEEHR-Python documentation"
+                        >
+                          <img
+                            src="/favicon.png"
+                            alt="TEEHR logo"
+                            width="20"
+                            height="20"
+                          />
+                          <span>TEEHR-Python Documentation</span>
+                        </a>
+                      </p>
+                      <p className="mb-2">
+                        <a
+                          href="https://rtiinternational.github.io/teehr"
+                          target="_blank"
+                          rel="noreferrer"
+                          className="d-inline-flex align-items-center gap-2 text-decoration-none"
+                          aria-label="TEEHR repository documentation on GitHub"
+                        >
+                          <img
+                            src="https://github.githubassets.com/images/modules/logos_page/GitHub-Mark.png"
+                            alt="GitHub logo"
+                            width="20"
+                            height="20"
+                          />
+                          <span>TEEHR-Python on GitHub</span>
+                        </a>
                       </p>
                     </Accordion.Body>
                   </Accordion.Item>
@@ -179,6 +175,23 @@ const Home = () => {
                           className="img-fluid welcome-services-diagram"
                         />
                       </div>
+                      <p className="mt-3 mb-2">
+                        <a
+                          href="https://rtiinternational.github.io/teehr-hub"
+                          target="_blank"
+                          rel="noreferrer"
+                          className="d-inline-flex align-items-center gap-2 text-decoration-none"
+                          aria-label="TEEHR Cloud Infrastructure repository on GitHub"
+                        >
+                          <img
+                            src="https://github.githubassets.com/images/modules/logos_page/GitHub-Mark.png"
+                            alt="GitHub logo"
+                            width="20"
+                            height="20"
+                          />
+                          <span>TEEHR-Cloud Infrastructure on GitHub</span>
+                        </a>
+                      </p>
                     </Accordion.Body>
                   </Accordion.Item>
 
@@ -225,7 +238,7 @@ const Home = () => {
             </Col>
           </Row>
 
-          <Row className="mt-5 pt-4 border-top">
+          <Row className="mt-5 pt-4">
             <Col className="text-center text-muted">
               <p>
                 <strong>TEEHR</strong> - Tools for Exploratory Evaluation in Hydrologic Research.
