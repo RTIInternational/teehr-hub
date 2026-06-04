@@ -4,7 +4,6 @@ import { useNwmdLocationSelection, useNwmdFilters } from '../../../hooks/useNwmd
 import { LocationMetrics, LocationCard } from '../../common';
 import {
   TimeseriesComponent, 
-  MapFilterButton
 } from '../../common/dashboard';
 import { getMetricLabel } from '../../common/dashboard/utils.js';
 import { useNwmdData } from './useNwmdData';
@@ -16,16 +15,6 @@ const Dashboard = () => {
   const { initializeNwmdData, loadLocations, loadTimeseries, loadLocationMetrics } = useNwmdData();
   const { selectLocation, selectedLocation } = useNwmdLocationSelection();
   const { mapFilters, updateMapFilters, timeseriesFilters, updateTimeseriesFilters } = useNwmdFilters();
-  
-  // Create dashboard-specific components with injected dependencies
-  const NwmdMapFilterButton = () => (
-    <MapFilterButton
-      state={state}
-      mapFilters={mapFilters}
-      updateMapFilters={updateMapFilters}
-      loadLocations={loadLocations}
-    />
-  );
 
   const handleViewportBoundsChange = useCallback((bounds) => {
     dispatch({
@@ -119,7 +108,6 @@ const Dashboard = () => {
               ActionTypes={ActionTypes}
               selectLocation={selectLocation}
               loadLocations={loadLocations}
-              MapFilterButton={NwmdMapFilterButton}
               getMetricLabel={getMetricLabel}
               onViewportBoundsChange={handleViewportBoundsChange}
             />
