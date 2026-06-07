@@ -42,7 +42,7 @@ const useNwmdVisibleLocations = () => {
 };
 
 export const useCdfPlots = () => {
-  const { dispatch } = useNwmdDashboard();
+  const { state, dispatch } = useNwmdDashboard();
 
   const setCdfPlotMetric = useCallback(
     (plotId, metricName) => {
@@ -55,6 +55,7 @@ export const useCdfPlots = () => {
   );
 
   return {
+    plotIds: state.cdfPlotOrder,
     setCdfPlotMetric,
   };
 };

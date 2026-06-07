@@ -1,5 +1,4 @@
 import { Form } from "react-bootstrap";
-import { useCdfPlots } from "./useCdfPlots";
 
 export const FilterSidebar = ({
   state,
@@ -7,8 +6,6 @@ export const FilterSidebar = ({
   updateMapFilters,
   loadLocations,
 }) => {
-  const { setCdfPlotMetric } = useCdfPlots();
-
   const handleMapFilterChange = async (filterType, value) => {
     const newFilters = { ...mapFilters, [filterType]: value };
     updateMapFilters({ [filterType]: value });
@@ -82,7 +79,6 @@ export const FilterSidebar = ({
           value={mapFilters.metricName || ""}
           onChange={(e) => {
             handleMapFilterChange("metricName", e.target.value || null);
-            setCdfPlotMetric("plot1", e.target.value);
           }}
         >
           <option value="">Select Metric...</option>

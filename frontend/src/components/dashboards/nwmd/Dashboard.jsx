@@ -10,12 +10,17 @@ import { useNwmdData } from './useNwmdData';
 import { NwmdMapComponent } from './NwmdMapComponent.jsx'
 import { FilterSidebar } from './FilterSidebar.jsx';
 import { CdfPlot } from './CdfPlot.jsx';
+import { useCdfPlots } from './useCdfPlots.js';
+import { CdfSidebar } from './CdfSidebar.jsx';
+import Tab from 'react-bootstrap/Tab';
+import Tabs from 'react-bootstrap/Tabs';
 
 const Dashboard = () => {
   const { state, dispatch } = useNwmdDashboard();
   const { initializeNwmdData, loadLocations, loadTimeseries, loadLocationMetrics } = useNwmdData();
   const { selectLocation, selectedLocation } = useNwmdLocationSelection();
   const { mapFilters, updateMapFilters, timeseriesFilters, updateTimeseriesFilters } = useNwmdFilters();
+  const { plotIds, setCdfPlotMetric } = useCdfPlots();
 
   const handleViewportBoundsChange = useCallback((bounds) => {
     dispatch({
@@ -82,12 +87,27 @@ const Dashboard = () => {
             gridColumn: '1 / 2',
             gridRow: state.error ? '2 / 4' : '1 / 4'
           }}>
-            <FilterSidebar 
-              state={state} 
-              mapFilters={mapFilters}
-              updateMapFilters={updateMapFilters}
-              loadLocations={loadLocations} 
-            />
+            <Tabs
+              defaultActiveKey="filter"
+              id="cdf-tabs"
+              className="mb-3"
+            >
+              <Tab eventKey="filter" title="Filters">
+                <FilterSidebar 
+                  state={state} 
+                  mapFilters={mapFilters}
+                  updateMapFilters={updateMapFilters}
+                  loadLocations={loadLocations} 
+                />
+              </Tab>
+              <Tab eventKey="cdf" title="CDF Config">
+                <CdfSidebar
+                  state={state}
+                  plotIds={plotIds}
+                  setCdfPlotMetric={setCdfPlotMetric}
+                />
+              </Tab>
+            </Tabs>
           </div>
           
           {/* Map Panel - Left Column, reduced height */}
@@ -128,7 +148,7 @@ const Dashboard = () => {
           >
               <div className="p-2 h-100 d-flex flex-column">
                 <div style={{ flex: 1, minHeight: 0 }}>
-                  <CdfPlot plotId="plot1" />
+                  <CdfPlot plotId="Metric 1" />
                 </div>
               </div>
             {/* )} */}

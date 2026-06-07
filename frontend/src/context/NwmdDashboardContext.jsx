@@ -64,9 +64,9 @@ const initialNwmdState = {
   locationMetrics: [],
 
   // CDF plots
-  cdfPlotOrder: ['plot1'],
+  cdfPlotOrder: ['Metric 1'],
   cdfPlots: {
-    plot1: {
+    'Metric 1': {
       metricName: 'relative_bias'
     }
   },
