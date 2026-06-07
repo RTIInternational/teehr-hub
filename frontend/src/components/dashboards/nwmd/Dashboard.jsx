@@ -146,10 +146,19 @@ const Dashboard = () => {
               minHeight: 0
             }}
           >
-              <div className="p-2 h-100 d-flex flex-column">
-                <div style={{ flex: 1, minHeight: 0 }}>
-                  <CdfPlot plotId="Metric 1" />
-                </div>
+              <div 
+                className="p-2 h-100"
+                style={{
+                  display: 'grid',
+                  gridTemplateColumns: '1fr 1fr',
+                  gridTemplateRows: '1fr 1fr',
+                  gap: '5px'
+                }}
+              >
+                <CdfPlot plotId="Metric 1" />
+                <CdfPlot plotId="Metric 2" />
+                <CdfPlot plotId="Metric 3" />
+                <CdfPlot plotId="Metric 4" />
               </div>
             {/* )} */}
           </div>

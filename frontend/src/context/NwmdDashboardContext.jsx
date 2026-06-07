@@ -64,10 +64,19 @@ const initialNwmdState = {
   locationMetrics: [],
 
   // CDF plots
-  cdfPlotOrder: ['Metric 1'],
+  cdfPlotOrder: ['Metric 1', 'Metric 2', 'Metric 3', 'Metric 4'],
   cdfPlots: {
     'Metric 1': {
-      metricName: 'relative_bias'
+      metricName: 'kling_gupta_efficiency_point'
+    },
+    'Metric 2': {
+      metricName: 'nash_sutcliffe_efficiency_point'
+    },
+    'Metric 3': {
+      metricName: 'relative_mean_point'
+    },
+    'Metric 4': {
+      metricName: 'relative_standard_deviation_point'
     }
   },
   
