@@ -1,7 +1,9 @@
 import Plotly from "plotly.js-dist-min";
 import { useEffect, useRef } from "react";
+import { useCdfPlot } from "./useCdfPlots";
 
-export const CdfPlot = ({ metricLabel, cdfData }) => {
+export const CdfPlot = ({ plotId }) => {
+  const { cdfData, metricName } = useCdfPlot(plotId);
   const plotRef = useRef(null);
 
   useEffect(() => {
@@ -19,7 +21,7 @@ export const CdfPlot = ({ metricLabel, cdfData }) => {
     const layout = {
       xaxis: {
         title: {
-          text: metricLabel,
+          text: metricName,
           font: { size: 14 },
         },
         rangemode: "tozero",
@@ -39,7 +41,7 @@ export const CdfPlot = ({ metricLabel, cdfData }) => {
       responsive: true,
       displayModeBar: "hover",
     });
-  }, [cdfData, metricLabel]);
+  }, [cdfData, metricName]);
 
   return <div ref={plotRef} />;
 };

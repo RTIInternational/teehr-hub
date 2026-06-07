@@ -62,6 +62,14 @@ const initialNwmdState = {
   
   // Location metrics
   locationMetrics: [],
+
+  // CDF plots
+  cdfPlotOrder: ['plot1'],
+  cdfPlots: {
+    plot1: {
+      metricName: 'relative_bias'
+    }
+  },
   
   // Loading states
   locationsLoading: false,
@@ -107,6 +115,9 @@ export const ActionTypes = {
   // Location metrics
   SET_LOCATION_METRICS: 'SET_LOCATION_METRICS',
   CLEAR_LOCATION_METRICS: 'CLEAR_LOCATION_METRICS',
+
+  // CDF plots
+  SET_CDF_PLOT_METRIC: 'SET_CDF_PLOT_METRIC',
   
   // Loading states
   SET_LOADING: 'SET_LOADING',
@@ -380,6 +391,18 @@ const nwmdDashboardReducer = (state, action) => {
         timeseriesData: {
           primary: [],
           secondary: []
+        }
+      };
+
+    case ActionTypes.SET_CDF_PLOT_METRIC:
+      return {
+        ...state,
+        cdfPlots: {
+          ...state.cdfPlots,
+          [action.payload.plotId]: {
+            ...state.cdfPlots[action.payload.plotId],
+            metricName: action.payload.metricName
+          }
         }
       };
       

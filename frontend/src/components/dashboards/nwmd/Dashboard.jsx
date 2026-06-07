@@ -9,6 +9,7 @@ import { getMetricLabel } from '../../common/dashboard/utils.js';
 import { useNwmdData } from './useNwmdData';
 import { NwmdMapComponent } from './NwmdMapComponent.jsx'
 import { FilterSidebar } from './FilterSidebar.jsx';
+import { CdfPlot } from './CdfPlot.jsx';
 
 const Dashboard = () => {
   const { state, dispatch } = useNwmdDashboard();
@@ -113,8 +114,28 @@ const Dashboard = () => {
             />
           </div>
 
-          {/* Location Info Card - Upper Right */}
+          {/* CDF Plots - Right Column */}
           <div 
+            className="cdf-plots-panel" 
+            style={{
+              gridColumn: '3 / 4',
+              gridRow: state.error ? '2 / 4' : '1 / 4', // Keep same positioning
+              border: '1px solid #e0e0e0',
+              borderRadius: '8px',
+              overflow: 'hidden',
+              minHeight: 0
+            }}
+          >
+              <div className="p-2 h-100 d-flex flex-column">
+                <div style={{ flex: 1, minHeight: 0 }}>
+                  <CdfPlot plotId="plot1" />
+                </div>
+              </div>
+            {/* )} */}
+          </div>
+
+          {/* Location Info Card - Upper Right */}
+          {/* <div 
             style={{
               gridColumn: '3 / 4',
               gridRow: state.error ? '2 / 3' : '1 / 2',
@@ -125,7 +146,7 @@ const Dashboard = () => {
               selectedLocation={state.selectedLocation}
               onClose={() => selectLocation(null)}
             />
-          </div>
+          </div> */}
 
           {/* Timeseries Panel - Middle Right */}
           {/* <div 
