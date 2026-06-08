@@ -363,6 +363,36 @@ export const useNwmdDataFetching = () => {
     [dispatch],
   );
 
+  // Load location-specific metadata
+  const loadLocationMetadata = useCallback(
+    async (primaryLocationId) => {
+      try {
+        dispatch({
+          type: ActionTypes.SET_LOADING,
+          payload: { metadata: true },
+        });
+        const metadata = await apiService.getLocationById(
+          primaryLocationId,
+          true,
+        );
+        dispatch({
+          type: ActionTypes.SET_LOCATION_METADATA,
+          payload: metadata,
+        });
+        return metadata;
+      } catch (error) {
+        console.error("Error loading location metadata:", error);
+        dispatch({
+          type: ActionTypes.SET_ERROR,
+          payload: `Failed to load location metadata: ${error.message}`,
+        });
+        dispatch({ type: ActionTypes.CLEAR_LOCATION_METADATA });
+        throw error;
+      }
+    },
+    [dispatch],
+  );
+
   // Initialize all data
   const initializeData = useCallback(async () => {
     try {
@@ -386,6 +416,7 @@ export const useNwmdDataFetching = () => {
     loadLocations,
     loadTimeseries,
     loadLocationMetrics,
+    loadLocationMetadata,
     initializeData,
   };
 };

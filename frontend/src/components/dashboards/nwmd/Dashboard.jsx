@@ -15,13 +15,19 @@ import { CdfPlot } from "./CdfPlot.jsx";
 import { CdfSidebar } from "./CdfSidebar.jsx";
 import { FilterSidebar } from "./FilterSidebar.jsx";
 import { NwmdMapComponent } from "./NwmdMapComponent.jsx";
+import { SiteInfo } from "./SiteInfo.jsx";
 import TimeseriesNoControls from "./TimeseriesNoControls.jsx";
 import { useCdfPlots } from "./useCdfPlots.js";
 import { useNwmdData } from "./useNwmdData";
 
 const Dashboard = () => {
   const { state, dispatch } = useNwmdDashboard();
-  const { initializeNwmdData, loadLocations, loadTimeseries } = useNwmdData();
+  const {
+    initializeNwmdData,
+    loadLocationMetadata,
+    loadLocations,
+    loadTimeseries,
+  } = useNwmdData();
   const { selectLocation, selectedLocation } = useNwmdLocationSelection();
   const { mapFilters, updateMapFilters, timeseriesFilters } = useNwmdFilters();
   const { plotIds, setCdfPlotMetric } = useCdfPlots();
@@ -98,7 +104,7 @@ const Dashboard = () => {
           <div
             style={{
               gridColumn: "1 / 2",
-              gridRow: "2 / -1",
+              gridRow: "2 / 3",
             }}
           >
             <Tabs defaultActiveKey="filter" id="cdf-tabs" className="mb-3">
@@ -118,6 +124,20 @@ const Dashboard = () => {
                 />
               </Tab>
             </Tabs>
+          </div>
+
+          <div
+            style={{
+              gridColumn: "1 / 2",
+              gridRow: "3 / -1",
+            }}
+          >
+            <SiteInfo
+              selectedLocation={state.selectedLocation}
+              metadataLoading={state.metadataLoading}
+              metadata={state.metadata}
+              loadLocationMetadata={loadLocationMetadata}
+            />
           </div>
 
           {/* Map Panel - Left Column, reduced height */}

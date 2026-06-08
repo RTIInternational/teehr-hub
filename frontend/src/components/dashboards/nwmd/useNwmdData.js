@@ -19,6 +19,7 @@ export const useNwmdData = () => {
     loadLocations,
     loadTimeseries,
     loadLocationMetrics,
+    loadLocationMetadata,
     ...otherHooks
   } = useNwmdDataFetching();
 
@@ -76,6 +77,13 @@ export const useNwmdData = () => {
     [loadLocationMetrics],
   );
 
+  const loadNwmdLocationMetadata = useCallback(
+    async (primaryLocationId) => {
+      return loadLocationMetadata(primaryLocationId);
+    },
+    [loadLocationMetadata],
+  );
+
   // Initialize all nwmd data
   const initializeNwmdData = useCallback(async () => {
     try {
@@ -108,6 +116,7 @@ export const useNwmdData = () => {
     loadLocations: loadNwmdLocations,
     loadTimeseries: loadNwmdTimeseries,
     loadLocationMetrics: loadNwmdLocationMetrics,
+    loadLocationMetadata: loadNwmdLocationMetadata,
     initializeNwmdData: initializeNwmdData,
     tableName: TABLE_NAMES[0], // Default to location table
     tableNames: TABLE_NAMES,

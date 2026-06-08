@@ -290,10 +290,11 @@ export const apiService = {
 
   // Get a single location by id from the locations table
   // Returns a GeoJSON FeatureCollection with the matching feature
-  getLocationById: (id) => {
+  getLocationById: (id, includeAttributes = false) => {
     const params = new URLSearchParams();
     params.append('id', id);
     params.append('limit', 1);
+    params.append('include_attributes', includeAttributes)
     return apiCall(`/collections/locations/items?${params.toString()}`);
   },
 

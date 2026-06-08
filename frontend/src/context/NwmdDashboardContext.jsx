@@ -66,6 +66,9 @@ const initialNwmdState = {
   // Location metrics
   locationMetrics: [],
 
+  // Location metadata
+  metadata: null,
+
   // CDF plots
   cdfPlotOrder: ["Metric 1", "Metric 2", "Metric 3", "Metric 4"],
   cdfPlots: {
@@ -87,6 +90,7 @@ const initialNwmdState = {
   locationsLoading: false,
   timeseriesLoading: false,
   metricsLoading: false,
+  metadataLoading: false,
   tablePropertiesLoading: false,
   configurationsLoading: false,
   variablesLoading: false,
@@ -127,6 +131,10 @@ export const ActionTypes = {
   // Location metrics
   SET_LOCATION_METRICS: "SET_LOCATION_METRICS",
   CLEAR_LOCATION_METRICS: "CLEAR_LOCATION_METRICS",
+
+  // Location metadata
+  SET_LOCATION_METADATA: "SET_LOCATION_METADATA",
+  CLEAR_LOCATION_METADATA: "CLEAR_LOCATION_METADATA",
 
   // CDF plots
   SET_CDF_PLOT_METRIC: "SET_CDF_PLOT_METRIC",
@@ -467,6 +475,9 @@ const nwmdDashboardReducer = (state, action) => {
       if ("metricsLoading" in action.payload) {
         loadingUpdates.metricsLoading = action.payload.metricsLoading;
       }
+      if ("metadata" in action.payload) {
+        loadingUpdates.metadataLoading = action.payload.metadata;
+      }
       if ("tablePropertiesLoading" in action.payload) {
         loadingUpdates.tablePropertiesLoading =
           action.payload.tablePropertiesLoading;
@@ -528,6 +539,20 @@ const nwmdDashboardReducer = (state, action) => {
         ...state,
         locationMetrics: [],
         metricsLoading: false,
+      };
+
+    case ActionTypes.SET_LOCATION_METADATA:
+      return {
+        ...state,
+        metadata: action.payload,
+        metadataLoading: false,
+      };
+
+    case ActionTypes.CLEAR_LOCATION_METADATA:
+      return {
+        ...state,
+        metadata: null,
+        metadataLoading: false,
       };
 
     default:
