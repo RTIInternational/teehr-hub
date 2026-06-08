@@ -75,5 +75,5 @@ export const useCdfPlot = (plotId) => {
   return {
     cdfData,
     metricName,
-  }
+  };
 };
