@@ -1,10 +1,7 @@
 import { useCallback, useEffect } from 'react';
 import { useNwmdDashboard, ActionTypes } from '../../../context/NwmdDashboardContext.jsx';
 import { useNwmdLocationSelection, useNwmdFilters } from '../../../hooks/useNwmdDataFetching';
-import { LocationMetrics, LocationCard } from '../../common';
-import {
-  TimeseriesComponent, 
-} from '../../common/dashboard';
+import { LocationCard } from '../../common';
 import { getMetricLabel } from '../../common/dashboard/utils.js';
 import { useNwmdData } from './useNwmdData';
 import { NwmdMapComponent } from './NwmdMapComponent.jsx'
@@ -14,6 +11,7 @@ import { useCdfPlots } from './useCdfPlots.js';
 import { CdfSidebar } from './CdfSidebar.jsx';
 import Tab from 'react-bootstrap/Tab';
 import Tabs from 'react-bootstrap/Tabs';
+import TimeseriesNoControls from './TimeseriesNoControls.jsx';
 
 const Dashboard = () => {
   const { state, dispatch } = useNwmdDashboard();
@@ -52,7 +50,7 @@ const Dashboard = () => {
           style={{
             display: 'grid',
             gridTemplateColumns: '1fr 2fr 2fr',
-            gridTemplateRows: 'auto minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1.8fr)',
+            gridTemplateRows: 'auto minmax(0, 1.5fr) auto minmax(0, 1fr)',
             gap: '12px',
             padding: '12px',
             height: '100%',
@@ -85,7 +83,7 @@ const Dashboard = () => {
 
           <div style={{
             gridColumn: '1 / 2',
-            gridRow: state.error ? '2 / 4' : '1 / 4'
+            gridRow: '2 / -1'
           }}>
             <Tabs
               defaultActiveKey="filter"
@@ -115,7 +113,7 @@ const Dashboard = () => {
             className="map-panel" 
             style={{
               gridColumn: '2 / 3',
-              gridRow: state.error ? '2 / 4' : '1 / 4', // Reduced from 5 to 4
+              gridRow: '2 / 3',
               border: '1px solid #e0e0e0',
               borderRadius: '8px',
               overflow: 'hidden',
@@ -139,7 +137,7 @@ const Dashboard = () => {
             className="cdf-plots-panel" 
             style={{
               gridColumn: '3 / 4',
-              gridRow: state.error ? '2 / 4' : '1 / 4', // Keep same positioning
+              gridRow: '2 / 3',
               border: '1px solid #e0e0e0',
               borderRadius: '8px',
               overflow: 'hidden',
@@ -164,10 +162,10 @@ const Dashboard = () => {
           </div>
 
           {/* Location Info Card - Upper Right */}
-          {/* <div 
+          <div 
             style={{
-              gridColumn: '3 / 4',
-              gridRow: state.error ? '2 / 3' : '1 / 2',
+              gridColumn: '2 / -1',
+              gridRow: '3 / 4',
               minHeight: 0
             }}
           >
@@ -175,49 +173,14 @@ const Dashboard = () => {
               selectedLocation={state.selectedLocation}
               onClose={() => selectLocation(null)}
             />
-          </div> */}
+          </div>
 
-          {/* Timeseries Panel - Middle Right */}
-          {/* <div 
+          {/* Timeseries Panel - Bottom, right of filter sidebar */}
+          <div 
             className="timeseries-panel" 
             style={{
-              gridColumn: '2 / 3',
-              gridRow: state.error ? '3 / 4' : '2 / 4', // Keep same positioning
-              border: '1px solid #e0e0e0',
-              borderRadius: '8px',
-              overflow: 'hidden',
-              minHeight: 0
-            }}
-          >
-            {state.selectedLocation ? (
-              <TimeseriesComponent
-                state={state}
-                TimeseriesControls={NwmdTimeseriesFilters}
-                timeseriesControlsProps={{
-                  state,
-                  timeseriesFilters,
-                  updateTimeseriesFilters,
-                  loadTimeseries,
-                  selectedLocation
-                }}
-              />
-            ) : (
-              <div className="d-flex align-items-center justify-content-center h-100 text-muted">
-                <div className="text-center">
-                  <div style={{ fontSize: '3rem' }}>📈</div>
-                  <h5>Select a Location</h5>
-                  <p>Click on a location on the map to view its time series data.</p>
-                </div>
-              </div>
-            )}
-          </div> */}
-
-          {/* Metrics Panel - Bottom, right of filter sidebar */}
-          <div 
-            className="metrics-panel" 
-            style={{
-              gridColumn: '2 / -1', // Right of filter sidebar
-              gridRow: state.error ? '5 / 6' : '4 / 5', // Bottom row
+              gridColumn: '2 / -1',
+              gridRow: '4 / -1',
               border: '1px solid #e0e0e0',
               borderRadius: '8px',
               minHeight: 0,
@@ -226,25 +189,13 @@ const Dashboard = () => {
               overflow: 'hidden' // Prevent the panel itself from overflowing
             }}
           >
-            {state.selectedLocation ? (
-              <LocationMetrics
-                selectedLocation={state.selectedLocation}
-                locationMetrics={state.locationMetrics}
-                metricsLoading={state.metricsLoading}
-                error={state.error}
-                loadLocationMetrics={loadLocationMetrics}
-                tableProperties={state.tableProperties}
-                defaultTable="nwmd_metrics_by_location"
-              />
-            ) : (
-              <div className="d-flex align-items-center justify-content-center h-100 text-muted">
-                <div className="text-center">
-                  <div style={{ fontSize: '2rem' }}>📊</div>
-                  <h6>Metrics</h6>
-                  <p className="small">Select a location to view metrics.</p>
-                </div>
-              </div>
-            )}
+            <TimeseriesNoControls 
+              selectedLocation={selectedLocation}
+              timeseriesFilters={timeseriesFilters}
+              timeseriesData={state.timeseriesData}
+              timeseriesLoading={state.timeseriesLoading}
+              loadTimeseries={loadTimeseries}
+            />
           </div>
         </div>
       </div>
