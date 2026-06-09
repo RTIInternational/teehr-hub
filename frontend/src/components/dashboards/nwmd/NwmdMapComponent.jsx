@@ -193,12 +193,12 @@ export const NwmdMapComponent = ({
   // Load initial locations when map is ready and filters are available
   useEffect(() => {
     if (
-      state.mapLoaded &&
-      state.mapFilters.configuration &&
-      state.mapFilters.variable &&
-      state.mapFilters.threshold &&
-      state.mapFilters.aggMethod &&
-      state.mapFilters.leadTimeBin
+      state.mapLoaded !== undefined &&
+      state.mapFilters.configuration !== undefined &&
+      state.mapFilters.variable !== undefined &&
+      state.mapFilters.threshold !== undefined &&
+      state.mapFilters.aggMethod !== undefined &&
+      state.mapFilters.leadTimeBin !== undefined
     ) {
       loadLocations({
         configuration: state.mapFilters.configuration,

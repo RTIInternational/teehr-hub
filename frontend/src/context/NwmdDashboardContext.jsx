@@ -27,15 +27,15 @@ const initialNwmdState = {
   aggMethods: [],
   leadTimeBins: [],
   tableProperties: {}, // Will contain { "table_name": { metrics: [], group_by: [], description: "" } }
-  mapViewportBounds: null,
+  mapViewportBounds: undefined,
 
   // Map filters (original structure)
   mapFilters: {
-    configuration: null,
-    variable: null,
-    threshold: null,
-    aggMethod: null,
-    leadTimeBin: null,
+    configuration: undefined,
+    variable: undefined,
+    threshold: undefined,
+    aggMethod: undefined,
+    leadTimeBin: undefined,
     metricName: "relative_bias",
   },
 
@@ -67,7 +67,7 @@ const initialNwmdState = {
   locationMetrics: [],
 
   // Location metadata
-  metadata: null,
+  metadata: undefined,
 
   // CDF plots
   cdfPlotOrder: ["Metric 1", "Metric 2", "Metric 3", "Metric 4"],
@@ -245,7 +245,10 @@ const nwmdDashboardReducer = (state, action) => {
         // Set defaults if first time loading - prefer configured default if available
         mapFilters: {
           ...state.mapFilters,
-          threshold: state.mapFilters.threshold || defaultThreshold,
+          threshold:
+            state.mapFilters.threshold !== undefined
+              ? state.mapFilters.threshold
+              : defaultThreshold,
         },
         timeseriesFilters: {
           ...state.timeseriesFilters,
@@ -254,7 +257,7 @@ const nwmdDashboardReducer = (state, action) => {
             thresholds:
               state.timeseriesFilters.secondary?.thresholds?.length > 0
                 ? state.timeseriesFilters.secondary.thresholds
-                : defaultThreshold
+                : defaultThreshold !== undefined
                   ? [defaultThreshold]
                   : [],
           },

@@ -66,6 +66,8 @@ async def get_collection_items(
     collection columns.
 
     If an invalid filter is requested, endpoint will respond with HTTP 400.
+
+    A filter value of "null" is interpreted as the SQL NULL type.
     """
     try:
         RESERVED_PARAMS = ["collection_id", "location_id", "limit", "offset"]
@@ -94,7 +96,10 @@ async def get_collection_items(
         for column, value in filters.items():
             sanitized_column = sanitize_string(column)
             sanitized_value = sanitize_string(value)
-            where_conditions.append(f"{sanitized_column} = '{sanitized_value}'")
+            if sanitized_value == "null":
+                where_conditions.append(f"{sanitized_column} IS NULL")
+            else:
+                where_conditions.append(f"{sanitized_column} = '{sanitized_value}'")
 
         where_clause = " AND ".join(where_conditions)
 

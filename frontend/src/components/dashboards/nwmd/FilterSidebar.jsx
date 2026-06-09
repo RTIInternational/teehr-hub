@@ -1,5 +1,7 @@
 import { Form } from "react-bootstrap";
 
+const NULL_OPTION = "__NULL__";
+
 export const FilterSidebar = ({
   state,
   mapFilters,
@@ -56,18 +58,29 @@ export const FilterSidebar = ({
         <Form.Label className="small fw-bold">Threshold</Form.Label>
         <Form.Select
           size="sm"
-          value={mapFilters.threshold || ""}
+          value={
+            mapFilters.threshold === null
+              ? NULL_OPTION
+              : (mapFilters.threshold ?? "")
+          }
           onChange={(e) =>
-            handleMapFilterChange("threshold", e.target.value || null)
+            handleMapFilterChange(
+              "threshold",
+              e.target.value === NULL_OPTION ? null : e.target.value || null,
+            )
           }
         >
           <option value="">Select Threshold...</option>
           {Array.isArray(state.thresholds) &&
-            state.thresholds.map((threshold) => (
-              <option key={threshold} value={threshold}>
-                {threshold}
-              </option>
-            ))}
+            state.thresholds.map((threshold) => {
+              const optionValue = threshold === null ? NULL_OPTION : threshold;
+              const optionLabel = threshold === null ? "None" : threshold;
+              return (
+                <option key={String(optionValue)} value={optionValue}>
+                  {optionLabel}
+                </option>
+              );
+            })}
         </Form.Select>
       </Form.Group>
 

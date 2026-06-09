@@ -58,7 +58,7 @@ export const selectDefault = (preferred, available) => {
   }
 
   // If preferred value exists in available options, use it
-  if (preferred && available.includes(preferred)) {
+  if (preferred !== undefined && available.includes(preferred)) {
     return preferred;
   }
 

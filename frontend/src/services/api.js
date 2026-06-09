@@ -140,7 +140,8 @@ export const apiService = {
     for (const key in filters) {
       if (reservedKeys.includes(key)) continue;
       const paramKey = aliasMap[key] || key;
-      params.append(paramKey, filters[key])
+      const filterValue = filters[key] === null ? "null" : filters[key];
+      params.append(paramKey, filterValue)
     }
 
     const queryString = params.toString();
