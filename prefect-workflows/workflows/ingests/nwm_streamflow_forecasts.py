@@ -191,7 +191,6 @@ def ingest_nwm_streamflow_forecasts(
             variable_name=variable_name,
             start_date=start_dt,
             end_date=end_dt,
-            ingest_days=LOOKBACK_DAYS,
             location_ids=stripped_ids,
             json_dir=kerchunk_cache_dir,
             output_parquet_dir=Path(
