@@ -1,5 +1,6 @@
 import Plotly from "plotly.js-dist-min";
 import { useEffect, useRef } from "react";
+import { getMetricLabel, metricScales } from "../../common/dashboard/utils";
 import { useCdfPlot } from "./useCdfPlots";
 
 export const CdfPlot = ({ plotId }) => {
@@ -8,6 +9,9 @@ export const CdfPlot = ({ plotId }) => {
 
   useEffect(() => {
     if (!plotRef.current) return;
+
+    const metricLabel = getMetricLabel(metricName);
+    const metricScale = metricScales[metricName];
 
     const trace = {
       x: cdfData.map((datum) => datum[0]),
@@ -21,10 +25,12 @@ export const CdfPlot = ({ plotId }) => {
     const layout = {
       xaxis: {
         title: {
-          text: metricName,
+          text: metricLabel,
           font: { size: 14 },
         },
-        rangemode: "tozero",
+        ...(metricScale?.stops
+          ? { range: [metricScale.stops.at(0), metricScale.stops.at(-1)] }
+          : { rangemode: "tozero" }),
       },
       yaxis: {
         title: {
