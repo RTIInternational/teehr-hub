@@ -1,23 +1,36 @@
-// Helper function to get metric label display name
-export const getMetricLabel = (metric) => {
-  const labels = {
-    count: "Count",
-    average: "Average",
-    relative_bias: "Relative Bias",
-    relative_mean: "Relative Mean",
-    relative_median: "Relative Median",
-    relative_minimum: "Relative Minimum",
-    relative_maximum: "Relative Maximum",
-    relative_standard_deviation: "Relative Standard Deviation",
-    pearson_correlation: "Pearson Correlation",
-    nash_sutcliffe_efficiency: "Nash-Sutcliffe Efficiency",
-    kling_gupta_efficiency: "Kling-Gupta Efficiency",
-  };
-  return labels[metric] || metric;
+export const getMetricDisplay = (metric) => {
+  return metricDisplay[metric];
 };
 
-export const metricScales = {
+// Helper function to get metric label display name
+export const getMetricLabel = (metric) => {
+  const display = getMetricDisplay(metric);
+  return display?.label || metric;
+};
+
+export const getMetricStops = (metric) => {
+  const display = getMetricDisplay(metric);
+  return display?.stops || undefined;
+};
+
+// Helper function for metric color expression
+export const getMetricColorExpression = (metric) => {
+  if (!metric) return "#0d6efd";
+
+  const display = getMetricDisplay(metric);
+  if (!display) return "#0d6efd";
+
+  return [
+    "interpolate",
+    ["linear"],
+    ["get", metric],
+    ...display.stops.flatMap((stop, i) => [stop, display.colors[i]]),
+  ];
+};
+
+const metricDisplay = {
   relative_bias: {
+    label: "Relative Bias",
     colors: [
       "#4575b4",
       "#91bfdb",
@@ -28,7 +41,7 @@ export const metricScales = {
       "#d73027",
     ],
     stops: [-1, -0.5, -0.1, 0, 0.1, 0.5, 1],
-    labels: [
+    stopLabels: [
       "Very Underpredicted",
       "Underpredicted",
       "Slightly Under",
@@ -39,6 +52,7 @@ export const metricScales = {
     ],
   },
   relative_mean: {
+    label: "Relative Mean",
     colors: [
       "#4575b4",
       "#91bfdb",
@@ -49,7 +63,7 @@ export const metricScales = {
       "#d73027",
     ],
     stops: [0, 0.5, 0.9, 1, 1.1, 1.5, 2],
-    labels: [
+    stopLabels: [
       "Much Lower",
       "Lower",
       "Slightly Lower",
@@ -60,6 +74,7 @@ export const metricScales = {
     ],
   },
   relative_median: {
+    label: "Relative Median",
     colors: [
       "#4575b4",
       "#91bfdb",
@@ -70,7 +85,7 @@ export const metricScales = {
       "#d73027",
     ],
     stops: [0, 0.5, 0.9, 1, 1.1, 1.5, 2],
-    labels: [
+    stopLabels: [
       "Much Lower",
       "Lower",
       "Slightly Lower",
@@ -81,6 +96,7 @@ export const metricScales = {
     ],
   },
   relative_minimum: {
+    label: "Relative Minimum",
     colors: [
       "#4575b4",
       "#91bfdb",
@@ -91,7 +107,7 @@ export const metricScales = {
       "#d73027",
     ],
     stops: [0, 0.5, 0.9, 1, 1.1, 1.5, 2],
-    labels: [
+    stopLabels: [
       "Much Lower",
       "Lower",
       "Slightly Lower",
@@ -102,6 +118,7 @@ export const metricScales = {
     ],
   },
   relative_maximum: {
+    label: "Relative Maximum",
     colors: [
       "#4575b4",
       "#91bfdb",
@@ -112,7 +129,7 @@ export const metricScales = {
       "#d73027",
     ],
     stops: [0, 0.5, 0.9, 1, 1.1, 1.5, 2],
-    labels: [
+    stopLabels: [
       "Much Lower",
       "Lower",
       "Slightly Lower",
@@ -123,6 +140,7 @@ export const metricScales = {
     ],
   },
   relative_standard_deviation: {
+    label: "Relative Standard Deviation",
     colors: [
       "#4575b4",
       "#91bfdb",
@@ -133,7 +151,7 @@ export const metricScales = {
       "#d73027",
     ],
     stops: [0, 0.5, 0.9, 1, 1.1, 1.5, 2],
-    labels: [
+    stopLabels: [
       "Much Less Variable",
       "Less Variable",
       "Slightly Less Variable",
@@ -144,9 +162,10 @@ export const metricScales = {
     ],
   },
   pearson_correlation: {
+    label: "Pearson Correlation",
     colors: ["#2166ac", "#92c5de", "#f7f7f7", "#f4a582", "#b2182b"],
     stops: [-1, -0.5, 0, 0.5, 1],
-    labels: [
+    stopLabels: [
       "Strong Negative",
       "Moderate Negative",
       "No Linear Correlation",
@@ -155,23 +174,27 @@ export const metricScales = {
     ],
   },
   nash_sutcliffe_efficiency: {
+    label: "Nash-Sutcliffe Efficiency",
     colors: ["#d73027", "#fc8d59", "#91bfdb", "#2166ac"],
     stops: [-1, 0.3, 0.7, 1],
-    labels: ["Poor", "Fair", "Good", "Excellent"],
+    stopLabels: ["Poor", "Fair", "Good", "Excellent"],
   },
   kling_gupta_efficiency: {
+    label: "Kling-Gupta Efficiency",
     colors: ["#d73027", "#fc8d59", "#91bfdb", "#2166ac"],
     stops: [-1, 0.3, 0.7, 1],
-    labels: ["Poor", "Fair", "Good", "Excellent"],
+    stopLabels: ["Poor", "Fair", "Good", "Excellent"],
   },
   count: {
+    label: "Count",
     colors: ["#ffffcc", "#a1dab4", "#41b6c4", "#225ea8"],
     stops: [0, 100, 500, 1000],
-    labels: ["Low", "Medium", "High", "Very High"],
+    stopLabels: ["Low", "Medium", "High", "Very High"],
   },
   average: {
+    label: "Average",
     colors: ["#ffffcc", "#c2e699", "#78c679", "#238443"],
     stops: [0, 1, 5, 20],
-    labels: ["Low", "Medium", "High", "Very High"],
+    stopLabels: ["Low", "Medium", "High", "Very High"],
   },
 };

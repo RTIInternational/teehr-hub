@@ -2,6 +2,7 @@ import maplibregl from "maplibre-gl";
 import { useEffect, useRef, useCallback, useMemo, useState } from "react";
 import "maplibre-gl/dist/maplibre-gl.css";
 import MapLegend from "../../common/dashboard/MapLegend.jsx";
+import { getMetricColorExpression } from "../../common/dashboard/utils.js";
 
 export const NwmdMapComponent = ({
   state,
@@ -859,50 +860,4 @@ export const NwmdMapComponent = ({
       </div>
     </div>
   );
-};
-
-// Helper function for metric color expression
-const getMetricColorExpression = (metric) => {
-  if (!metric) return "#0d6efd";
-
-  const colorScales = {
-    relative_bias: {
-      colors: [
-        "#4575b4",
-        "#91bfdb",
-        "#e0f3f8",
-        "#f7f7f7",
-        "#fee090",
-        "#fc8d59",
-        "#d73027",
-      ],
-      stops: [-1, -0.5, -0.1, 0, 0.1, 0.5, 1],
-    },
-    nash_sutcliffe_efficiency: {
-      colors: ["#d73027", "#fc8d59", "#91bfdb", "#2166ac"],
-      stops: [-1, 0.3, 0.7, 1],
-    },
-    kling_gupta_efficiency: {
-      colors: ["#d73027", "#fc8d59", "#91bfdb", "#2166ac"],
-      stops: [-1, 0.3, 0.7, 1],
-    },
-    count: {
-      colors: ["#ffffcc", "#a1dab4", "#41b6c4", "#225ea8"],
-      stops: [0, 100, 500, 1000],
-    },
-    average: {
-      colors: ["#ffffcc", "#c2e699", "#78c679", "#238443"],
-      stops: [0, 1, 5, 20],
-    },
-  };
-
-  const scale = colorScales[metric];
-  if (!scale) return "#0d6efd";
-
-  return [
-    "interpolate",
-    ["linear"],
-    ["get", metric],
-    ...scale.stops.flatMap((stop, i) => [stop, scale.colors[i]]),
-  ];
 };

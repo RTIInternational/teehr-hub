@@ -1,11 +1,11 @@
 // Shared Map Legend Component - shows color scale for any dashboard
-import { metricScales } from "./utils";
+import { getMetricDisplay } from "./utils";
 
 const MapLegend = ({ metric, getMetricLabel }) => {
   if (!metric) return null;
   
-  const scale = metricScales[metric];
-  if (!scale) return null;
+  const display = getMetricDisplay(metric);
+  if (!display) return null;
   
   const metricLabel = getMetricLabel(metric);
   
@@ -19,7 +19,7 @@ const MapLegend = ({ metric, getMetricLabel }) => {
       </div>
       <div className="card-body py-2">
         <div className="small"><strong>{metricLabel}</strong></div>
-        {scale.colors.map((color, i) => (
+        {display.colors.map((color, i) => (
           <div key={i} className="d-flex align-items-center mt-1">
             <div 
               style={{
@@ -30,7 +30,7 @@ const MapLegend = ({ metric, getMetricLabel }) => {
                 marginRight: '6px'
               }}
             ></div>
-            <small>{scale.stops[i]}</small>
+            <small>{display.stops[i]}</small>
           </div>
         ))}
       </div>
