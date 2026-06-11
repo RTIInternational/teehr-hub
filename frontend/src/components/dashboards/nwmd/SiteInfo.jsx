@@ -41,10 +41,11 @@ export const SiteInfo = ({
           <>
             {metadata ? (
               <div
-                className="flex-grow-1 p-2"
+                className="flex-grow-1 p-2 d-flex flex-column justify-content-between h-100"
                 style={{ overflow: "hidden", minHeight: 0 }}
               >
                 <SiteInfoTable locationMetadata={metadata} />
+                <UsgsLink locationMetadata={metadata} />
               </div>
             ) : (
               <div className="d-flex align-items-center justify-content-center flex-grow-1">
@@ -107,5 +108,17 @@ const SiteInfoTable = ({ locationMetadata }) => {
         </tr>
       </tbody>
     </Table>
+  );
+};
+
+const UsgsLink = ({ locationMetadata }) => {
+  const siteCode = locationMetadata?.features?.[0]?.id.toUpperCase();
+  return (
+    <a
+      href={`https://waterdata.usgs.gov/monitoring-location/${siteCode}`}
+      target="_blank"
+    >
+      Monitoring Location
+    </a>
   );
 };
