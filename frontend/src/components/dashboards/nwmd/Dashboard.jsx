@@ -10,7 +10,6 @@ import {
   useNwmdLocationSelection,
   useNwmdFilters,
 } from "../../../hooks/useNwmdDataFetching";
-import { LocationCard } from "../../common";
 import { getMetricLabel } from "../../common/dashboard/utils.js";
 import { CdfPlot } from "./CdfPlot.jsx";
 import { CdfSidebar } from "./CdfSidebar.jsx";
@@ -76,7 +75,7 @@ const Dashboard = () => {
           style={{
             display: "grid",
             gridTemplateColumns: "1fr 2fr 2fr",
-            gridTemplateRows: "auto minmax(0, 1.5fr) auto minmax(0, 1fr)",
+            gridTemplateRows: "auto minmax(0, 1.5fr) minmax(0, 1fr)",
             gap: "12px",
             padding: "12px",
             height: "100%",
@@ -185,24 +184,10 @@ const Dashboard = () => {
             {/* )} */}
           </div>
 
-          {/* Location Info Card - Upper Right */}
           <div
             style={{
               gridColumn: "1 / -1",
-              gridRow: "3 / 4",
-              minHeight: 0,
-            }}
-          >
-            <LocationCard
-              selectedLocation={state.selectedLocation}
-              onClose={() => selectLocation(null)}
-            />
-          </div>
-
-          <div
-            style={{
-              gridColumn: "1 / -1",
-              gridRow: "4 / -1",
+              gridRow: "3 / -1",
               minHeight: 0,
               display: "grid",
               gridTemplateColumns: "1fr 2fr 1fr",
