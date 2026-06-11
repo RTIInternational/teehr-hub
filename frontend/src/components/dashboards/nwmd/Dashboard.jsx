@@ -1,4 +1,5 @@
 import { useCallback, useEffect } from "react";
+import { Card } from "react-bootstrap";
 import Tab from "react-bootstrap/Tab";
 import Tabs from "react-bootstrap/Tabs";
 import {
@@ -33,6 +34,9 @@ const Dashboard = () => {
   const { selectLocation, selectedLocation } = useNwmdLocationSelection();
   const { mapFilters, updateMapFilters, timeseriesFilters } = useNwmdFilters();
   const { plotIds, setCdfPlotMetric } = useCdfPlots();
+  const hasSelectedLocation = Boolean(
+    state.selectedLocation?.primary_location_id,
+  );
 
   const handleViewportBoundsChange = useCallback(
     (bounds) => {
@@ -128,20 +132,6 @@ const Dashboard = () => {
             </Tabs>
           </div>
 
-          <div
-            style={{
-              gridColumn: "1 / 2",
-              gridRow: "3 / -1",
-            }}
-          >
-            <SiteInfo
-              selectedLocation={state.selectedLocation}
-              metadataLoading={state.metadataLoading}
-              metadata={state.metadata}
-              loadLocationMetadata={loadLocationMetadata}
-            />
-          </div>
-
           {/* Map Panel - Left Column, reduced height */}
           <div
             className="map-panel"
@@ -198,7 +188,7 @@ const Dashboard = () => {
           {/* Location Info Card - Upper Right */}
           <div
             style={{
-              gridColumn: "2 / 4",
+              gridColumn: "1 / -1",
               gridRow: "3 / 4",
               minHeight: 0,
             }}
@@ -211,50 +201,78 @@ const Dashboard = () => {
 
           <div
             style={{
-              gridColumn: "2 / 4",
+              gridColumn: "1 / -1",
               gridRow: "4 / -1",
               minHeight: 0,
               display: "grid",
-              gridTemplateColumns: "2fr 1fr",
+              gridTemplateColumns: "1fr 2fr 1fr",
               gap: "12px",
             }}
           >
-            <div
-              className="timeseries-panel"
-              style={{
-                border: "1px solid #e0e0e0",
-                borderRadius: "8px",
-                minHeight: 0,
-                display: "flex",
-                flexDirection: "column",
-                overflow: "hidden", // Prevent the panel itself from overflowing
-              }}
-            >
-              <TimeseriesNoControls
-                selectedLocation={selectedLocation}
-                timeseriesFilters={timeseriesFilters}
-                timeseriesData={state.timeseriesData}
-                timeseriesLoading={state.timeseriesLoading}
-                loadTimeseries={loadTimeseries}
-              />
-            </div>
-            <div
-              style={{
-                border: "1px solid #e0e0e0",
-                borderRadius: "8px",
-                minHeight: 0,
-                overflow: "hidden",
-              }}
-            >
-              <LeadTimeBinPlot
-                selectedLocation={state.selectedLocation}
-                mapFilters={mapFilters}
-                leadTimeBins={state.leadTimeBins}
-                rows={state.leadTimeBinMetrics}
-                loading={state.leadTimeBinMetricsLoading}
-                loadLeadTimeBinMetrics={loadLeadTimeBinMetrics}
-              />
-            </div>
+            {!hasSelectedLocation ? (
+              <Card
+                className="shadow-lg h-100 d-flex flex-column"
+                style={{ borderRadius: "8px", gridColumn: "1 / -1" }}
+              >
+                <Card.Body className="d-flex align-items-center justify-content-center text-muted">
+                  <div className="text-center">
+                    <div style={{ fontSize: "3rem" }}>📍</div>
+                    <h5>Select a Location</h5>
+                    <p className="mb-0">
+                      Click on a location on the map to load site info and
+                      charts.
+                    </p>
+                  </div>
+                </Card.Body>
+              </Card>
+            ) : (
+              <>
+                <div style={{ minHeight: 0 }}>
+                  <SiteInfo
+                    selectedLocation={state.selectedLocation}
+                    metadataLoading={state.metadataLoading}
+                    metadata={state.metadata}
+                    loadLocationMetadata={loadLocationMetadata}
+                  />
+                </div>
+                <div
+                  className="timeseries-panel"
+                  style={{
+                    border: "1px solid #e0e0e0",
+                    borderRadius: "8px",
+                    minHeight: 0,
+                    display: "flex",
+                    flexDirection: "column",
+                    overflow: "hidden", // Prevent the panel itself from overflowing
+                  }}
+                >
+                  <TimeseriesNoControls
+                    selectedLocation={selectedLocation}
+                    timeseriesFilters={timeseriesFilters}
+                    timeseriesData={state.timeseriesData}
+                    timeseriesLoading={state.timeseriesLoading}
+                    loadTimeseries={loadTimeseries}
+                  />
+                </div>
+                <div
+                  style={{
+                    border: "1px solid #e0e0e0",
+                    borderRadius: "8px",
+                    minHeight: 0,
+                    overflow: "hidden",
+                  }}
+                >
+                  <LeadTimeBinPlot
+                    selectedLocation={state.selectedLocation}
+                    mapFilters={mapFilters}
+                    leadTimeBins={state.leadTimeBins}
+                    rows={state.leadTimeBinMetrics}
+                    loading={state.leadTimeBinMetricsLoading}
+                    loadLeadTimeBinMetrics={loadLeadTimeBinMetrics}
+                  />
+                </div>
+              </>
+            )}
           </div>
         </div>
       </div>
