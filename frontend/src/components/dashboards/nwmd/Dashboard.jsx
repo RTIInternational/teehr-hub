@@ -14,6 +14,7 @@ import { getMetricLabel } from "../../common/dashboard/utils.js";
 import { CdfPlot } from "./CdfPlot.jsx";
 import { CdfSidebar } from "./CdfSidebar.jsx";
 import { FilterSidebar } from "./FilterSidebar.jsx";
+import LeadTimeBinPlot from "./LeadTimeBinPlot.jsx";
 import { NwmdMapComponent } from "./NwmdMapComponent.jsx";
 import { SiteInfo } from "./SiteInfo.jsx";
 import TimeseriesNoControls from "./TimeseriesNoControls.jsx";
@@ -27,6 +28,7 @@ const Dashboard = () => {
     loadLocationMetadata,
     loadLocations,
     loadTimeseries,
+    loadLeadTimeBinMetrics,
   } = useNwmdData();
   const { selectLocation, selectedLocation } = useNwmdLocationSelection();
   const { mapFilters, updateMapFilters, timeseriesFilters } = useNwmdFilters();
@@ -196,7 +198,7 @@ const Dashboard = () => {
           {/* Location Info Card - Upper Right */}
           <div
             style={{
-              gridColumn: "2 / -1",
+              gridColumn: "2 / 4",
               gridRow: "3 / 4",
               minHeight: 0,
             }}
@@ -207,27 +209,52 @@ const Dashboard = () => {
             />
           </div>
 
-          {/* Timeseries Panel - Bottom, right of filter sidebar */}
           <div
-            className="timeseries-panel"
             style={{
-              gridColumn: "2 / -1",
+              gridColumn: "2 / 4",
               gridRow: "4 / -1",
-              border: "1px solid #e0e0e0",
-              borderRadius: "8px",
               minHeight: 0,
-              display: "flex",
-              flexDirection: "column",
-              overflow: "hidden", // Prevent the panel itself from overflowing
+              display: "grid",
+              gridTemplateColumns: "2fr 1fr",
+              gap: "12px",
             }}
           >
-            <TimeseriesNoControls
-              selectedLocation={selectedLocation}
-              timeseriesFilters={timeseriesFilters}
-              timeseriesData={state.timeseriesData}
-              timeseriesLoading={state.timeseriesLoading}
-              loadTimeseries={loadTimeseries}
-            />
+            <div
+              className="timeseries-panel"
+              style={{
+                border: "1px solid #e0e0e0",
+                borderRadius: "8px",
+                minHeight: 0,
+                display: "flex",
+                flexDirection: "column",
+                overflow: "hidden", // Prevent the panel itself from overflowing
+              }}
+            >
+              <TimeseriesNoControls
+                selectedLocation={selectedLocation}
+                timeseriesFilters={timeseriesFilters}
+                timeseriesData={state.timeseriesData}
+                timeseriesLoading={state.timeseriesLoading}
+                loadTimeseries={loadTimeseries}
+              />
+            </div>
+            <div
+              style={{
+                border: "1px solid #e0e0e0",
+                borderRadius: "8px",
+                minHeight: 0,
+                overflow: "hidden",
+              }}
+            >
+              <LeadTimeBinPlot
+                selectedLocation={state.selectedLocation}
+                mapFilters={mapFilters}
+                leadTimeBins={state.leadTimeBins}
+                rows={state.leadTimeBinMetrics}
+                loading={state.leadTimeBinMetricsLoading}
+                loadLeadTimeBinMetrics={loadLeadTimeBinMetrics}
+              />
+            </div>
           </div>
         </div>
       </div>

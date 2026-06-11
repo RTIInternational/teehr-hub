@@ -363,6 +363,49 @@ export const useNwmdDataFetching = () => {
     [dispatch],
   );
 
+  const loadLeadTimeBinMetrics = useCallback(
+    async (filters = {}, table) => {
+      try {
+        dispatch({ type: ActionTypes.CLEAR_LEAD_TIME_BIN_METRICS });
+        dispatch({
+          type: ActionTypes.SET_LOADING,
+          payload: { leadTimeBinMetrics: true },
+        });
+
+        const metricsData = await apiService.getMetrics({
+          table,
+          primary_location_id: filters.primary_location_id,
+          configuration: filters.configuration,
+          variable: filters.variable,
+          threshold: filters.threshold,
+          aggMethod: filters.aggMethod,
+        });
+
+        const rows = (metricsData?.features || []).map(
+          (feature) => feature?.properties || {},
+        );
+
+        dispatch({
+          type: ActionTypes.SET_LEAD_TIME_BIN_METRICS,
+          payload: rows,
+        });
+        return rows;
+      } catch (error) {
+        dispatch({
+          type: ActionTypes.SET_LOADING,
+          payload: { leadTimeBinMetrics: false },
+        });
+        dispatch({
+          type: ActionTypes.SET_ERROR,
+          payload: `Failed to load lead-time bin metrics: ${error.message}`,
+        });
+        dispatch({ type: ActionTypes.CLEAR_LEAD_TIME_BIN_METRICS });
+        throw error;
+      }
+    },
+    [dispatch],
+  );
+
   // Load location-specific metadata
   const loadLocationMetadata = useCallback(
     async (primaryLocationId) => {
@@ -416,6 +459,7 @@ export const useNwmdDataFetching = () => {
     loadLocations,
     loadTimeseries,
     loadLocationMetrics,
+    loadLeadTimeBinMetrics,
     loadLocationMetadata,
     initializeData,
   };
@@ -461,6 +505,8 @@ export const useNwmdLocationSelection = () => {
       dispatch({ type: ActionTypes.CLEAR_TIMESERIES });
       // Clear metrics when location changes
       dispatch({ type: ActionTypes.CLEAR_LOCATION_METRICS });
+      // Clear lead-time-bin metrics when location changes
+      dispatch({ type: ActionTypes.CLEAR_LEAD_TIME_BIN_METRICS });
     },
     [dispatch],
   );

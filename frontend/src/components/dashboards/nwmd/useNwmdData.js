@@ -19,6 +19,7 @@ export const useNwmdData = () => {
     loadLocations,
     loadTimeseries,
     loadLocationMetrics,
+    loadLeadTimeBinMetrics,
     loadLocationMetadata,
     ...otherHooks
   } = useNwmdDataFetching();
@@ -84,6 +85,13 @@ export const useNwmdData = () => {
     [loadLocationMetadata],
   );
 
+  const loadNwmdLeadTimeBinMetrics = useCallback(
+    async (filters = {}) => {
+      return loadLeadTimeBinMetrics(filters, TABLE_NAMES[0]);
+    },
+    [loadLeadTimeBinMetrics],
+  );
+
   // Initialize all nwmd data
   const initializeNwmdData = useCallback(async () => {
     try {
@@ -116,6 +124,7 @@ export const useNwmdData = () => {
     loadLocations: loadNwmdLocations,
     loadTimeseries: loadNwmdTimeseries,
     loadLocationMetrics: loadNwmdLocationMetrics,
+    loadLeadTimeBinMetrics: loadNwmdLeadTimeBinMetrics,
     loadLocationMetadata: loadNwmdLocationMetadata,
     initializeNwmdData: initializeNwmdData,
     tableName: TABLE_NAMES[0], // Default to location table
