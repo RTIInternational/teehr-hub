@@ -32,6 +32,9 @@ RUN ARCH=$(uname -m) && \
 # Install Dask distributed for NWM fetching
 RUN pip install dask[distributed]=="2025.7.0" kerchunk=="0.2.7" netcdf4=="1.7.2" numpy=="2.3.1"
 
+# Install dependencies for gridded data ingestion via IceChunk + VirtualiZarr
+RUN pip install icechunk obstore obspec-utils virtualizarr
+
 # Install TEEHR with GDAL compatibility for ARM64
 RUN ARCH=$(uname -m) && \
     if [ "$ARCH" = "aarch64" ]; then \
