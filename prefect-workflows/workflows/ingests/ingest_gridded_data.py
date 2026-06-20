@@ -1,13 +1,14 @@
 from prefect import flow, get_run_logger
 import icechunk as ic
+import virtualizarr as vz
 
 from utils import grid_utils as gu
 from models.ingest_gridded_data_input import DataStoreType, IngestGriddedDataInput, ParserType
 
 
 _PARSER_MAP = {
-    ParserType.hdf: ic.parsers.HDFParser,
-    ParserType.zarr: ic.parsers.ZarrParser,
+    ParserType.hdf: vz.parsers.HDFParser,
+    ParserType.zarr: vz.parsers.ZarrParser,
 }
 
 _DATA_STORE_MAP = {
@@ -39,10 +40,10 @@ def ingest_gridded_data(args: IngestGriddedDataInput) -> None:
 
     # Configure the IceChunk S3 repository with a virtual chunk container
     repo = gu.configure_icechunk_s3_repo(
+        args.source_bucket,
         args.dest_bucket,
         prefix=f"{args.base_prefix}/{args.configuration_name}",
         virtual_store=data_store,
-        create_new_repo=args.create_new_repo,
         **args.s3_storage_kwargs
     )
     logger.info(
@@ -55,7 +56,7 @@ def ingest_gridded_data(args: IngestGriddedDataInput) -> None:
         **args.obstore_kwargs
     )
     logger.info(
-        f"ObjectStoreRegistry created for source_bucket: {args.source_bucket} and path: {args.base_prefix}/{args.configuration_name}."
+        f"ObjectStoreRegistry created for source_bucket: {args.source_bucket}."
     )
 
     # Read the data into a virtual (lazy) xarray dataset
@@ -70,7 +71,10 @@ def ingest_gridded_data(args: IngestGriddedDataInput) -> None:
 
     # Write the virtual dataset to the IceChunk repository
     session = repo.writable_session("main")
-    virtual_ds.vz.to_icechunk(session.store, group=args.repo_group)
+    virtual_ds.vz.to_icechunk(
+        session.store,
+        group=args.repo_group
+    )
     snapshot_id = session.commit(
         f"Ingested {len(file_list)} files into {args.dest_bucket}/{args.base_prefix}/{args.configuration_name}"
     )

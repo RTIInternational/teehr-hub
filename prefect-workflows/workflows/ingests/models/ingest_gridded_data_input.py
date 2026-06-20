@@ -53,10 +53,6 @@ class IngestGriddedDataInput(BaseModel):
         ParserType.hdf,
         description="Parser to use for reading data files"
     )
-    create_new_repo: bool = Field(
-        True,
-        description="Create a new IceChunk repository; set False to open an existing one"
-    )
     repo_group: str = Field(
         "/",
         description="Group path within the IceChunk repository to write the data into (e.g., '/', '/my_group')"

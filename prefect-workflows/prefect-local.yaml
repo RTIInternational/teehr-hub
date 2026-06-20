@@ -581,19 +581,25 @@ deployments:
     parameters: {
       "args": {
         "filesystem": "http",
-        "glob_pattern": "https://climate.arizona.edu/data/UA_SWE/DailyData_4km/WY2026/*.nc",
-        "dest_bucket": "ciroh-rti-public-data",
+        "glob_pattern": "https://climate.arizona.edu/data/UA_SWE/DailyData_4km/WY2026/UA_SWE_Depth_4km_v1_202510*_stable.nc",
+        "dest_bucket": "warehouse",
         "source_bucket": "https://climate.arizona.edu",
         "configuration_name": "ua_swann_4km",
         "base_prefix": "icechunk-ingests",
         "concat_dim": "time",
         "parser_type": "hdf",
-        "create_new_repo": true,
         "repo_group": "/",
         "data_store_type": "http",
         "fsspec_kwargs": {},
         "obstore_kwargs": {},
-        "s3_storage_kwargs": {"from_env": true},
+        "s3_storage_kwargs": {
+            "region": "us-east-1",  # placeholder
+            "access_key_id": "minioadmin",
+            "secret_access_key": "minioadmin123",
+            "endpoint_url": "http://minio:9000",
+            "allow_http": true,
+            "force_path_style": true 
+        },
         "xconcat_kwargs": {
           "coords": "minimal",
           "compat": "override",

@@ -3,12 +3,14 @@ import xarray as xr
 from obstore.store import from_url
 from obspec_utils.registry import ObjectStoreRegistry
 from virtualizarr import open_virtual_dataset
+import virtualizarr as vz
 import icechunk as ic
 
 from prefect import task, get_run_logger
+from prefect.cache_policies import NO_CACHE
 
 
-@task()
+@task(cache_policy=NO_CACHE)
 def create_file_list(filesystem: str, glob_pattern: str, **kwargs) -> list:
     """Create a list of files from a filesystem and path.
 
@@ -26,7 +28,7 @@ def create_file_list(filesystem: str, glob_pattern: str, **kwargs) -> list:
     return file_list
 
 
-@task()
+@task(cache_policy=NO_CACHE)
 def create_objectstore_registry(bucket: str, **kwargs) -> ObjectStoreRegistry:
     """Create an ObjectStoreRegistry for a given bucket.
 
@@ -42,67 +44,78 @@ def create_objectstore_registry(bucket: str, **kwargs) -> ObjectStoreRegistry:
     return registry
 
 
-@task()
+@task(cache_policy=NO_CACHE)
 def configure_icechunk_s3_repo(
-    bucket: str,
+    source_bucket: str,
+    dest_bucket: str,
     prefix: str,
     virtual_store: ic.storage.ObjectStoreConfig,
-    create_new_repo: bool,
     **kwargs
-) -> ic.S3Repository:
+) -> ic.repository.Repository:
     """Configure an IceChunk S3 repository with a virtual chunk container.
     
     The virtual chunk container allows virtualized writes to the repo (ie., VirtualiZarr)
 
     Parameters
     ----------
-    bucket : str
-        The name of the S3 bucket. e.g., "ciroh-rti-public-data".
+    source_bucket : str
+        The source bucket or base URL for the virtual chunk container (e.g., "https://climate.arizona.edu").
+    dest_bucket : str
+        The destination S3 bucket for the IceChunk repository (e.g., "warehouse").
     prefix : str
-        The prefix within the bucket where the data is stored. This should be 
-        the configuration_name.
+        The prefix within the destination bucket where the data is stored.
     virtual_store : ic.storage.ObjectStoreConfig
         The virtual store configuration to use.
-    create_new_repo : bool
-        Whether to create a new repository or open an existing one.
     **kwargs : dict
         Additional keyword arguments to pass to the s3_storage function.
     """
+    logger = get_run_logger()
+
     storage = ic.s3_storage(
-        bucket=bucket,
+        bucket=dest_bucket,
         prefix=prefix,
         **kwargs,
     )
-    config = ic.Repository.fetch_config(storage)
-    if config is None:
+    logger.info(
+        f"Configuring IceChunk S3 repository for bucket: {dest_bucket}, prefix: {prefix}"
+    )
+    if ic.Repository.exists(storage):
+        config = ic.Repository.fetch_config(storage)
+        if config is None:
+            config = ic.config.RepositoryConfig.default()
+    else:
         config = ic.config.RepositoryConfig.default()
+
+    url_prefix = source_bucket if source_bucket.endswith("/") else f"{source_bucket}/"
     container = ic.virtual.VirtualChunkContainer(
-        url_prefix=bucket,
+        url_prefix=url_prefix,
         store=virtual_store
     )
     config.set_virtual_chunk_container(container)
 
-    if create_new_repo is True:
-        repo = ic.Repository.create(
-            storage,
-            config=config,
-            authorize_virtual_chunk_access={bucket: None}
-        )
-    else:
+    if ic.Repository.exists(storage):
+        logger.info(f"Existing IceChunk repository found at bucket: {dest_bucket}, prefix: {prefix}. Opening repository.")
         repo = ic.Repository.open(
             storage,
             config=config,
-            authorize_virtual_chunk_access={bucket: None}
+            authorize_virtual_chunk_access={url_prefix: None}
         )
-
+    else:
+        logger.info(f"No existing IceChunk repository found at bucket: {dest_bucket}, prefix: {prefix}. Creating new repository.")
+        repo = ic.Repository.create(
+            storage,
+            config=config,
+            authorize_virtual_chunk_access={url_prefix: None}
+        )
+    logger.info(f"IceChunk repository configured at bucket: {dest_bucket}, prefix: {prefix}")
     return repo
 
 
-@task()
+@task(cache_policy=NO_CACHE)
 def create_virtual_xarray_dataset(
     file_list: list,
     registry: ObjectStoreRegistry,
-    parser: ic.parsers.Parser,
+    parser: vz.parsers,
     concat_dim: str,
     **kwargs
 ) -> xr.Dataset:
@@ -114,7 +127,7 @@ def create_virtual_xarray_dataset(
         A list of file paths to include in the dataset.
     registry : ObjectStoreRegistry
         The object store registry to use for accessing the files.
-    parser : ic.parsers.Parser
+    parser : vz.parsers
         The parser to use for reading the files.
     concat_dim : str
         The dimension along which to concatenate the datasets.
