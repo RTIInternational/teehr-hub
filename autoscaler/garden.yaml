@@ -14,14 +14,14 @@ spec:
   values:
     autoDiscovery:
       clusterName: teehr-hub
-    awsRegion: us-east-2
+    awsRegion: us-east-1
     rbac:
       create: true
       serviceAccount:
         name: cluster-autoscaler
         create: true
         annotations:
-          eks.amazonaws.com/role-arn: arn:aws:iam::935462133478:role/ClusterAutoscalerIRSA
+          eks.amazonaws.com/role-arn: arn:aws:iam::794457362858:role/ClusterAutoscalerRole-fved-cluster
     extraArgs:
       scale-down-unneeded-time: 5m
       skip-nodes-with-local-storage: "false"

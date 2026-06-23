@@ -4,7 +4,7 @@ metadata:
   name: spark
   namespace: ${environment.namespace}
   annotations:
-    eks.amazonaws.com/role-arn: arn:aws:iam::935462133478:role/teehr-hub-iceberg-s3-warehouse-readonly-irsa
+    eks.amazonaws.com/role-arn: arn:aws:iam::794457362858:role/fved-iceberg-s3-warehouse-readonly-irsa
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role

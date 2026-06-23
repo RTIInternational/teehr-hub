@@ -36,7 +36,7 @@ environments:
   - name: remote
     defaultNamespace: ${project.name}
     variables:
-      hostname: teehr.rtiamanzi.org
+      hostname: dev.low.amzifved.aws.rti.org
       devTeehrVersion: 267f8a75034132aefe84749af10ab1562a6ac169
       stableTeehrVersion: v0.6.5
       previousTeehrVersion: v0.5.3
@@ -46,8 +46,8 @@ environments:
         catalogS3Endpoint: ""
         catalogUri: http://iceberg-rest:8181
         catalogType: rest
-        catalogWarehouse: s3://dev-teehr-iceberg-warehouse/
-      nfsServerDns: "fs-0cb715f5b7a76e862.efs.us-east-2.amazonaws.com"
+        catalogWarehouse: s3://dev-fved-iceberg-warehouse-rti-use1/
+      nfsServerDns: "fs-0d53828f401595456.efs.us-east-1.amazonaws.com"
       trino:
         host: trino
         port: "8080"
@@ -72,8 +72,8 @@ providers:
       - name: ecr-config
         namespace: default
     deploymentRegistry:
-      hostname: 935462133478.dkr.ecr.us-east-2.amazonaws.com
+      hostname: 794457362858.dkr.ecr.us-east-1.amazonaws.com
       namespace: ${project.name}
-    context: arn:aws:eks:us-east-2:935462133478:cluster/teehr-hub
+    context: arn:aws:eks:us-east-1:794457362858:cluster/fved-cluster
     buildMode: cluster-buildkit
-    defaultHostname: teehr.rtiamanzi.org
+    defaultHostname: dev.low.amzifved.aws.rti.org

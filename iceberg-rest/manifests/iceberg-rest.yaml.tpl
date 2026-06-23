@@ -4,7 +4,7 @@ metadata:
   name: iceberg-rest
   namespace: teehr-hub
   annotations:
-    eks.amazonaws.com/role-arn: arn:aws:iam::935462133478:role/teehr-hub-iceberg-s3-warehouse-irsa
+    eks.amazonaws.com/role-arn: arn:aws:iam::794457362858:role/fved-iceberg-s3-warehouse-irsa
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -48,7 +48,7 @@ spec:
           value: "${var.iceberg.catalogS3PathStyleAccess}"
         ${endif}
         - name: AWS_REGION
-          value: us-east-2
+          value: us-east-1
         - name: CATALOG_WAREHOUSE
           value: ${var.iceberg.catalogWarehouse}
         - name: CATALOG_IO__IMPL

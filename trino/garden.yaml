@@ -33,7 +33,7 @@ spec:
         fs.native-s3.enabled=true
         s3.path-style-access=${var.iceberg.catalogS3PathStyleAccess}
         s3.endpoint=${var.iceberg.catalogS3Endpoint}
-        s3.region=us-east-2
+        s3.region=us-east-1
     accessControl:
       type: configmap
       refreshPeriod: 60s
@@ -111,7 +111,7 @@ spec:
         iceberg.rest-catalog.warehouse=${var.iceberg.catalogWarehouse}
         # S3 Configuration
         fs.native-s3.enabled=true
-        s3.region=us-east-2
+        s3.region=us-east-1
     accessControl:
       type: configmap
       refreshPeriod: 60s
@@ -132,4 +132,4 @@ spec:
       create: true
       name: trino
       annotations:
-        eks.amazonaws.com/role-arn: arn:aws:iam::935462133478:role/teehr-hub-iceberg-s3-warehouse-irsa
+        eks.amazonaws.com/role-arn: arn:aws:iam::794457362858:role/fved-iceberg-s3-warehouse-irsa
