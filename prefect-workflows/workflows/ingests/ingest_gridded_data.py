@@ -1,6 +1,9 @@
 from prefect import flow, get_run_logger
 import icechunk as ic
+from icechunk.xarray import to_icechunk
 import virtualizarr as vz
+import xarray as xr
+import zarr
 
 from utils import grid_utils as gu
 from models.ingest_gridded_data_input import DataStoreType, IngestGriddedDataInput, ParserType
@@ -69,15 +72,56 @@ def ingest_gridded_data(args: IngestGriddedDataInput) -> None:
     )
     logger.info("Virtual xarray dataset created.")
 
-    # Write the virtual dataset to the IceChunk repository
+    # append_dim is only valid when data already exists in the store.
+    # On a fresh repo the root group is empty, so omit it on the first write.
+    ro_session = repo.readonly_session("main")
+    try:
+        existing_root = zarr.open_group(ro_session.store, mode="r", zarr_format=3)
+        initial_append_dim = args.append_dim if len(existing_root) > 0 else None
+    except FileNotFoundError:
+        initial_append_dim = None
+
+    # TODO: Append, Upsert manually (use zarr's "region" for append dim)
+
+    # Write virtual references to the IceChunk repository
     session = repo.writable_session("main")
     virtual_ds.vz.to_icechunk(
         session.store,
-        group=args.repo_group
+        group="/",
+        append_dim=initial_append_dim
     )
     snapshot_id = session.commit(
-        f"Ingested {len(file_list)} files into {args.dest_bucket}/{args.base_prefix}/{args.configuration_name}"
+        f"Wrote virtual references for {len(file_list)} files into {args.dest_bucket}/{args.base_prefix}/{args.configuration_name}"
     )
-    logger.info(f"Data ingested into IceChunk repository with snapshot ID: {snapshot_id}.")
+    logger.info(f"Wrote virtual references for {len(file_list)} files into {args.dest_bucket}/{args.base_prefix}/{args.configuration_name} with snapshot ID: {snapshot_id}")
+
+    if args.write_materialized:
+        session = repo.writable_session("main")
+        # Materialize and write the virtual chunks to the IceChunk repository
+        ds = xr.open_zarr(
+            session.store,
+            group="/",
+            consolidated=False
+        )
+        ds = gu.rechunk_dataset(ds, args.append_dim, args.chunk_size)
+        encoding_config = gu.create_encoding_config(
+            ds,
+            append_dim=args.append_dim,
+            chunk_size=args.chunk_size,
+            num_shard_chunks=args.num_shard_chunks,
+        )
+        logger.info("Writing the chunked dataset to the Icechunk repository.")
+        to_icechunk(
+            ds,
+            session,
+            mode="w",  # TODO: append, upsert
+            group=args.raw_data_group,
+            encoding=encoding_config,
+            align_chunks=True
+        )
+        snapshot_id = session.commit(
+            f"Materialized and wrote {len(file_list)} files into {args.dest_bucket}/{args.base_prefix}/{args.configuration_name}"
+        )
+        logger.info(f"Materialized and wrote {len(file_list)} files into {args.dest_bucket}/{args.base_prefix}/{args.configuration_name} with snapshot ID: {snapshot_id}")
 
 

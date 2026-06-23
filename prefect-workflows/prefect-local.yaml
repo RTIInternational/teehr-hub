@@ -588,7 +588,6 @@ deployments:
         "base_prefix": "icechunk-ingests",
         "concat_dim": "time",
         "parser_type": "hdf",
-        "repo_group": "/",
         "data_store_type": "http",
         "fsspec_kwargs": {},
         "obstore_kwargs": {},

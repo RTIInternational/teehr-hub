@@ -39,6 +39,10 @@ class IngestGriddedDataInput(BaseModel):
         ...,
         description="IceChunk repository configuration name"
     )
+    write_materialized: bool = Field(
+        True,
+        description="If True, the virtual datasets are materialized and written to the repository"
+    )
 
     # --- Core optional parameters ---
     base_prefix: str = Field(
@@ -47,15 +51,31 @@ class IngestGriddedDataInput(BaseModel):
     )
     concat_dim: str = Field(
         "time",
-        description="Dimension along which to concatenate virtual datasets"
+        description="Dimension along which to concatenate datasets"
     )
     parser_type: ParserType = Field(
         ParserType.hdf,
-        description="Parser to use for reading data files"
+        description="Parser to use for reading raw data files"
     )
-    repo_group: str = Field(
-        "/",
-        description="Group path within the IceChunk repository to write the data into (e.g., '/', '/my_group')"
+    raw_data_group: str = Field(
+        "/raw_data",
+        description="Group path within the IceChunk repository to write the materialized raw data into"
+    )
+    pyramids_data_group: str = Field(
+        "/pyramids",
+        description="Group path within the IceChunk repository to write the pyramids data into"
+    )
+    append_dim: str = Field(
+        "time",
+        description="Dimension along which to append data when writing to the IceChunk repository"
+    )
+    chunk_size: int = Field(
+        512,
+        description="Inner chunk size applied to all non-append spatial dimensions when materializing data"
+    )
+    num_shard_chunks: int = Field(
+        30,
+        description="Number of inner chunks along the append dimension to group into a single shard"
     )
     data_store_type: DataStoreType = Field(
         DataStoreType.http,
@@ -77,5 +97,5 @@ class IngestGriddedDataInput(BaseModel):
     )
     xconcat_kwargs: Dict[str, Any] = Field(
         default_factory=dict,
-        description="Extra keyword arguments passed to xr.concat(datasets, dim=concat_dim, **xconcat_kwargs)"
+        description="Extra keyword arguments passed to xr.concat(datasets, dim=concat_dim, **xconcat_kwargs). Used when creating the virtual dataset from the raw data files"
     )

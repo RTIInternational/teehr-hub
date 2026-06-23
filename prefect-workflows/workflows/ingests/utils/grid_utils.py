@@ -107,6 +107,7 @@ def configure_icechunk_s3_repo(
             config=config,
             authorize_virtual_chunk_access={url_prefix: None}
         )
+    repo.save_config()
     logger.info(f"IceChunk repository configured at bucket: {dest_bucket}, prefix: {prefix}")
     return repo
 
@@ -137,9 +138,95 @@ def create_virtual_xarray_dataset(
     virtual_datasets = [
         open_virtual_dataset(url, registry=registry, parser=parser) for url in file_list
     ]
+    if len(virtual_datasets) == 0:
+        raise ValueError("No virtual datasets were created. Check the file list and registry of the source data.")
     virtual_ds = xr.concat(
         virtual_datasets,
         dim=concat_dim,
         **kwargs
     )
     return virtual_ds
+
+
+@task(cache_policy=NO_CACHE)
+def rechunk_dataset(
+    dataset: xr.Dataset,
+    append_dim: str,
+    chunk_size: int,
+) -> xr.Dataset:
+    """Re-chunk an xarray dataset prior to writing to IceChunk.
+
+    The append dimension (e.g. time) is chunked to 1 so that individual
+    time-steps can be appended independently.  All other dimensions are
+    chunked to ``chunk_size``.
+
+    Parameters
+    ----------
+    dataset : xr.Dataset
+        The dataset to re-chunk.
+    append_dim : str
+        The dimension used for appending (chunked to 1).
+    chunk_size : int
+        Chunk size applied to every dimension other than ``append_dim``.
+    """
+    chunks = {d: (1 if d == append_dim else chunk_size) for d in dataset.dims}
+    return dataset.chunk(chunks)
+
+
+@task(cache_policy=NO_CACHE)
+def create_encoding_config(
+    dataset: xr.Dataset,
+    append_dim: str,
+    chunk_size: int = 512,
+    num_shard_chunks: int = 30,
+    compression: str = "zstd",
+    compression_level: int = 3,
+    shuffle: str = "shuffle",
+) -> dict:
+    """Create an encoding configuration for writing a dataset to IceChunk.
+
+    Data variables receive chunk/shard/compression encoding.  Non-dimension
+    coordinates (e.g. ``spatial_ref`` / CRS grids) are written unchunked.
+
+    Parameters
+    ----------
+    dataset : xr.Dataset
+        The dataset to create encoding for.
+    append_dim : str
+        The dimension used for appending (e.g. "time").  Inner chunks along
+        this dimension are set to 1; shards pack ``num_shard_chunks`` of them.
+    chunk_size : int
+        Inner chunk size for all non-append dimensions (default 512).
+    num_shard_chunks : int
+        Number of inner chunks to group into a single shard along ``append_dim``
+        (default 30).
+    compression : str
+        Compression algorithm to use (default "zstd").
+    compression_level : int
+        Compression level (default 3).
+    shuffle : str
+        Whether to apply the byte-shuffle filter before compression (default "shuffle").
+    """
+    encoding_config = {}
+    for var in dataset.data_vars:
+        dims = dataset[var].dims
+        chunks = tuple(1 if d == append_dim else chunk_size for d in dims)
+        shards = tuple(num_shard_chunks if d == append_dim else chunk_size for d in dims)
+        encoding_config[var] = {
+            "chunks": chunks,
+            "shards": shards,
+            "compressors": {
+                "name": "blosc",
+                "configuration": {
+                    "cname": compression,
+                    "clevel": compression_level,
+                    "shuffle": shuffle
+                }
+            }
+        }
+    # Non-dimension coordinates (e.g. spatial_ref/CRS) are written unchunked
+    for coord in dataset.coords:
+        if coord not in dataset.dims:
+            encoding_config[coord] = {"chunks": None}
+
+    return encoding_config
