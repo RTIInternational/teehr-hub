@@ -70,7 +70,7 @@ providers:
     environments: ["remote"]
     imagePullSecrets:
       - name: ecr-config
-        namespace: default
+        namespace: ecr-secrets
     deploymentRegistry:
       hostname: 794457362858.dkr.ecr.us-east-1.amazonaws.com
       namespace: ${project.name}
