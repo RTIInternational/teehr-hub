@@ -1,4 +1,4 @@
-from typing import Dict, Any
+from typing import Dict, Any, List
 from enum import Enum
 from pydantic import BaseModel, Field
 
@@ -77,6 +77,33 @@ class IngestGriddedDataInput(BaseModel):
         30,
         description="Number of inner chunks along the append dimension to group into a single shard"
     )
+
+    # --- Pyramid creation parameters ---
+    build_pyramids_on_ingest: bool = Field(
+        False,
+        description="If True, build and write multiscale pyramids after materializing data"
+    )
+    x_dim: str = Field(
+        "lon",
+        description="Name of the x spatial dimension in the source data"
+    )
+    y_dim: str = Field(
+        "lat",
+        description="Name of the y spatial dimension in the source data"
+    )
+    target_crs: str = Field(
+        "EPSG:3857",
+        description="Target CRS for reprojection prior to pyramid creation"
+    )
+    factors: List[int] = Field(
+        default_factory=lambda: [1, 2, 4],
+        description="Downsampling factors for pyramid levels"
+    )
+    pyramid_method: str = Field(
+        "mean",
+        description="Aggregation method for pyramid downsampling ('mean', 'max', 'min', 'sum')"
+    )
+
     data_store_type: DataStoreType = Field(
         DataStoreType.http,
         description="Object store type for the IceChunk virtual chunk container"

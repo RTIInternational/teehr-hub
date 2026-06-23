@@ -7,6 +7,7 @@ import zarr
 
 from utils import grid_utils as gu
 from models.ingest_gridded_data_input import DataStoreType, IngestGriddedDataInput, ParserType
+from build_pyramids import build_pyramids as build_pyramids_flow
 
 
 _PARSER_MAP = {
@@ -123,5 +124,9 @@ def ingest_gridded_data(args: IngestGriddedDataInput) -> None:
             f"Materialized and wrote {len(file_list)} files into {args.dest_bucket}/{args.base_prefix}/{args.configuration_name}"
         )
         logger.info(f"Materialized and wrote {len(file_list)} files into {args.dest_bucket}/{args.base_prefix}/{args.configuration_name} with snapshot ID: {snapshot_id}")
+
+    if args.build_pyramids_on_ingest:
+        build_pyramids_flow(args)
+        logger.info("Pyramid building subflow completed.")
 
 
