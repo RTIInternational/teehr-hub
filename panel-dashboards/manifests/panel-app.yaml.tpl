@@ -13,7 +13,7 @@ spec:
         app: panel-app
     spec:
       # nodeSelector:
-      #   teehr-hub/nodegroup-name: core-a
+      #   fved/nodegroup-name: core-a
       containers:
       - name: panel-app
         image: ${actions.build.panel-dashboards-image.outputs.deploymentImageId}

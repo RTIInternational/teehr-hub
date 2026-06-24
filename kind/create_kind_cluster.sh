@@ -56,7 +56,7 @@ nodes:
 # worker: core
 - role: worker
   labels:
-    teehr-hub/nodegroup-name: core-a
+    fved/nodegroup-name: core-a
     hub.jupyter.org/node-purpose: core
     k8s.dask.org/node-purpose: core
     node.kubernetes.io/instance-type: r5.xlarge
@@ -66,7 +66,7 @@ nodes:
 # worker2: nb-r5-xlarge
 - role: worker
   labels:
-    teehr-hub/nodegroup-name: nb-r5-xlarge
+    fved/nodegroup-name: nb-r5-xlarge
     hub.jupyter.org/node-purpose: user
     k8s.dask.org/node-purpose: scheduler
     node.kubernetes.io/instance-type: r5.xlarge
@@ -76,7 +76,7 @@ nodes:
 # worker3: spark-r5-4xlarge
 - role: worker
   labels:
-    teehr-hub/nodegroup-name: spark-r5-4xlarge
+    fved/nodegroup-name: spark-r5-4xlarge
     node.kubernetes.io/instance-type: r5.4xlarge
   extraMounts:
   - hostPath: ${DATA_PATH}

@@ -20,7 +20,7 @@ spec:
 
     # server:
     #   nodeSelector:
-    #     teehr-hub/nodegroup-name: core-a
+    #     fved/nodegroup-name: core-a
 
     server:
       uiConfig:
@@ -113,4 +113,4 @@ spec:
         workPool: kubernetes-pool
       replicaCount: 1
       # nodeSelector:
-      #   teehr-hub/nodegroup-name: core-a
+      #   fved/nodegroup-name: core-a

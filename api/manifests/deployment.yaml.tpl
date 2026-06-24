@@ -17,7 +17,7 @@ spec:
         component: backend
     spec:
       # nodeSelector:
-      #   teehr-hub/nodegroup-name: core-a
+      #   fved/nodegroup-name: core-a
       containers:
       - name: teehr-api
         image: ${actions.build.teehr-api.outputs.deploymentImageId}

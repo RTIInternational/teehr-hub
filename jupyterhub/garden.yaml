@@ -32,11 +32,11 @@ spec:
         type: ClusterIP
       # chp:
       #   nodeSelector:
-      #     teehr-hub/nodegroup-name: core-a
+      #     fved/nodegroup-name: core-a
 
     hub:
       # nodeSelector:
-      #   teehr-hub/nodegroup-name: core-a
+      #   fved/nodegroup-name: core-a
       # baseUrl: /jupyter
 
       config:
@@ -152,7 +152,7 @@ spec:
                   image: ${actions.build.teehr-jupyter-driver-image-edge.outputs.deploymentImageId}
         kubespawner_override:
           node_selector:
-            teehr-hub/nodegroup-name: nb-r5-xlarge
+            fved/nodegroup-name: nb-r5-xlarge
       - display_name: "HEFS-FEWS Evaluation System (local)"
         default: False
         description: "A node on the local KIND cluster"
@@ -168,7 +168,7 @@ spec:
         kubespawner_override:
           image_pull_policy: IfNotPresent
           node_selector:
-            teehr-hub/nodegroup-name: nb-r5-xlarge
+            fved/nodegroup-name: nb-r5-xlarge
 
     prePuller:
       hook:
@@ -217,11 +217,11 @@ spec:
         type: ClusterIP
       chp:
         nodeSelector:
-          teehr-hub/nodegroup-name: core-a
+          fved/nodegroup-name: core-a
 
     hub:
       nodeSelector:
-        teehr-hub/nodegroup-name: core-a
+        fved/nodegroup-name: core-a
       config:
         GenericOAuthenticator:
           login_service: Keycloak
@@ -340,7 +340,7 @@ spec:
                   cpu_limit: 4
                   cpu_guarantee: 3
                   node_selector:
-                    teehr-hub/nodegroup-name: nb-r5-xlarge
+                    fved/nodegroup-name: nb-r5-xlarge
               current-tag-4xlarge:
                 display_name: Version ${var.stableTeehrVersion} - 4XL (16 cores, 128 GB memory) 
                 kubespawner_override:
@@ -350,7 +350,7 @@ spec:
                   cpu_limit: 15.5
                   cpu_guarantee: 12
                   node_selector:
-                    teehr-hub/nodegroup-name: nb-r5-4xlarge
+                    fved/nodegroup-name: nb-r5-4xlarge
               previous-tag-xlarge:
                 display_name: Version ${var.previousTeehrVersion} - XL (4 cores, 32 GB memory) 
                 kubespawner_override:
@@ -360,7 +360,7 @@ spec:
                   cpu_limit: 4
                   cpu_guarantee: 3
                   node_selector:
-                    teehr-hub/nodegroup-name: nb-r5-xlarge
+                    fved/nodegroup-name: nb-r5-xlarge
               previous-tag-4xlarge:
                 display_name: Version ${var.previousTeehrVersion} - 4XL (16 cores, 128 GB memory) 
                 kubespawner_override:
@@ -370,7 +370,7 @@ spec:
                   cpu_limit: 16
                   cpu_guarantee: 12
                   node_selector:
-                    teehr-hub/nodegroup-name: nb-r5-4xlarge
+                    fved/nodegroup-name: nb-r5-4xlarge
               dev-xlarge:
                 display_name: Bleeding Edge ${slice(var.devTeehrVersion, 0, 6)} - XL (4 cores, 32 GB memory) 
                 kubespawner_override:
@@ -380,7 +380,7 @@ spec:
                   cpu_limit: 4
                   cpu_guarantee: 3
                   node_selector:
-                    teehr-hub/nodegroup-name: nb-r5-xlarge
+                    fved/nodegroup-name: nb-r5-xlarge
               dev-4xlarge:
                 display_name: Bleeding Edge ${slice(var.devTeehrVersion, 0, 6)} - 4XL (16 cores, 128 GB memory) 
                 kubespawner_override:
@@ -390,7 +390,7 @@ spec:
                   cpu_limit: 15.5
                   cpu_guarantee: 12
                   node_selector:
-                    teehr-hub/nodegroup-name: nb-r5-4xlarge
+                    fved/nodegroup-name: nb-r5-4xlarge
         kubespawner_override:
           environment:
             TEEHR_PROJECT_ID: "TEEHR"
@@ -413,7 +413,7 @@ spec:
                   cpu_limit: 4
                   cpu_guarantee: 3
                   node_selector:
-                    teehr-hub/nodegroup-name: nb-r5-xlarge-mmm
+                    fved/nodegroup-name: nb-r5-xlarge-mmm
               current-tag-4xlarge:
                 display_name: Version ${var.stableTeehrVersion} - 4XL (16 cores, 128 GB memory) 
                 kubespawner_override:
@@ -423,7 +423,7 @@ spec:
                   cpu_limit: 16
                   cpu_guarantee: 12
                   node_selector:
-                    teehr-hub/nodegroup-name: nb-r5-4xlarge-mmm
+                    fved/nodegroup-name: nb-r5-4xlarge-mmm
               previous-tag-xlarge:
                 display_name: Version ${var.previousTeehrVersion} - XL (4 cores, 32 GB memory) 
                 kubespawner_override:
@@ -433,7 +433,7 @@ spec:
                   cpu_limit: 4
                   cpu_guarantee: 3
                   node_selector:
-                    teehr-hub/nodegroup-name: nb-r5-xlarge-mmm
+                    fved/nodegroup-name: nb-r5-xlarge-mmm
               previous-tag-4xlarge:
                 display_name: Version ${var.previousTeehrVersion} - 4XL (16 cores, 128 GB memory) 
                 kubespawner_override:
@@ -443,7 +443,7 @@ spec:
                   cpu_limit: 16
                   cpu_guarantee: 12
                   node_selector:
-                    teehr-hub/nodegroup-name: nb-r5-4xlarge-mmm
+                    fved/nodegroup-name: nb-r5-4xlarge-mmm
               dev-xlarge:
                 display_name: Bleeding Edge ${slice(var.devTeehrVersion, 0, 6)} - XL (4 cores, 32 GB memory) 
                 kubespawner_override:
@@ -453,7 +453,7 @@ spec:
                   cpu_limit: 4
                   cpu_guarantee: 3
                   node_selector:
-                    teehr-hub/nodegroup-name: nb-r5-xlarge-mmm
+                    fved/nodegroup-name: nb-r5-xlarge-mmm
               dev-4xlarge:
                 display_name: Bleeding Edge ${slice(var.devTeehrVersion, 0, 6)} - 4XL (16 cores, 128 GB memory) 
                 kubespawner_override:
@@ -463,7 +463,7 @@ spec:
                   cpu_limit: 16
                   cpu_guarantee: 12
                   node_selector:
-                    teehr-hub/nodegroup-name: nb-r5-4xlarge-mmm
+                    fved/nodegroup-name: nb-r5-4xlarge-mmm
         kubespawner_override:
           environment:
             TEEHR_PROJECT_ID: "MMM"
@@ -486,7 +486,7 @@ spec:
                   cpu_limit: 4
                   cpu_guarantee: 3
                   node_selector:
-                    teehr-hub/nodegroup-name: nb-r5-xlarge-testbed
+                    fved/nodegroup-name: nb-r5-xlarge-testbed
               current-tag-4xlarge:
                 display_name: Version ${var.stableTeehrVersion} - 4XL (16 cores, 128 GB memory) 
                 kubespawner_override:
@@ -496,7 +496,7 @@ spec:
                   cpu_limit: 16
                   cpu_guarantee: 12
                   node_selector:
-                    teehr-hub/nodegroup-name: nb-r5-4xlarge-testbed
+                    fved/nodegroup-name: nb-r5-4xlarge-testbed
               previous-tag-xlarge:
                 display_name: Version ${var.previousTeehrVersion} - XL (4 cores, 32 GB memory) 
                 kubespawner_override:
@@ -506,7 +506,7 @@ spec:
                   cpu_limit: 4
                   cpu_guarantee: 3
                   node_selector:
-                    teehr-hub/nodegroup-name: nb-r5-xlarge-testbed
+                    fved/nodegroup-name: nb-r5-xlarge-testbed
               previous-tag-4xlarge:
                 display_name: Version ${var.previousTeehrVersion} - 4XL (16 cores, 128 GB memory) 
                 kubespawner_override:
@@ -516,7 +516,7 @@ spec:
                   cpu_limit: 16
                   cpu_guarantee: 12
                   node_selector:
-                    teehr-hub/nodegroup-name: nb-r5-4xlarge-testbed
+                    fved/nodegroup-name: nb-r5-4xlarge-testbed
               dev-xlarge:
                 display_name: Bleeding Edge ${slice(var.devTeehrVersion, 0, 6)} - XL (4 cores, 32 GB memory) 
                 kubespawner_override:
@@ -526,7 +526,7 @@ spec:
                   cpu_limit: 4
                   cpu_guarantee: 3
                   node_selector:
-                    teehr-hub/nodegroup-name: nb-r5-xlarge-testbed
+                    fved/nodegroup-name: nb-r5-xlarge-testbed
               dev-4xlarge:
                 display_name: Bleeding Edge ${slice(var.devTeehrVersion, 0, 6)} - 4XL (16 cores, 128 GB memory) 
                 kubespawner_override:
@@ -536,7 +536,7 @@ spec:
                   cpu_limit: 16
                   cpu_guarantee: 12
                   node_selector:
-                    teehr-hub/nodegroup-name: nb-r5-4xlarge-testbed
+                    fved/nodegroup-name: nb-r5-4xlarge-testbed
         kubespawner_override:
           environment:
             TEEHR_PROJECT_ID: "Testbed"
@@ -559,7 +559,7 @@ spec:
                   cpu_limit: 4
                   cpu_guarantee: 3
                   node_selector:
-                    teehr-hub/nodegroup-name: nb-r5-xlarge-resops
+                    fved/nodegroup-name: nb-r5-xlarge-resops
               current-tag-4xlarge:
                 display_name: Version ${var.stableTeehrVersion} - 4XL (16 cores, 128 GB memory) 
                 kubespawner_override:
@@ -569,7 +569,7 @@ spec:
                   cpu_limit: 16
                   cpu_guarantee: 12
                   node_selector:
-                    teehr-hub/nodegroup-name: nb-r5-4xlarge-resops
+                    fved/nodegroup-name: nb-r5-4xlarge-resops
               previous-tag-xlarge:
                 display_name: Version ${var.previousTeehrVersion} - XL (4 cores, 32 GB memory) 
                 kubespawner_override:
@@ -579,7 +579,7 @@ spec:
                   cpu_limit: 4
                   cpu_guarantee: 3
                   node_selector:
-                    teehr-hub/nodegroup-name: nb-r5-xlarge-resops
+                    fved/nodegroup-name: nb-r5-xlarge-resops
               previous-tag-4xlarge:
                 display_name: Version ${var.previousTeehrVersion} - 4XL (16 cores, 128 GB memory) 
                 kubespawner_override:
@@ -589,7 +589,7 @@ spec:
                   cpu_limit: 16
                   cpu_guarantee: 12
                   node_selector:
-                    teehr-hub/nodegroup-name: nb-r5-4xlarge-resops
+                    fved/nodegroup-name: nb-r5-4xlarge-resops
               dev-xlarge:
                 display_name: Bleeding Edge ${slice(var.devTeehrVersion, 0, 6)} - XL (4 cores, 32 GB memory) 
                 kubespawner_override:
@@ -599,7 +599,7 @@ spec:
                   cpu_limit: 4
                   cpu_guarantee: 3
                   node_selector:
-                    teehr-hub/nodegroup-name: nb-r5-xlarge-resops
+                    fved/nodegroup-name: nb-r5-xlarge-resops
               dev-4xlarge:
                 display_name: Bleeding Edge ${slice(var.devTeehrVersion, 0, 6)} - 4XL (16 cores, 128 GB memory) 
                 kubespawner_override:
@@ -609,7 +609,7 @@ spec:
                   cpu_limit: 16
                   cpu_guarantee: 12
                   node_selector:
-                    teehr-hub/nodegroup-name: nb-r5-4xlarge-resops
+                    fved/nodegroup-name: nb-r5-4xlarge-resops
         kubespawner_override:
           environment:
             TEEHR_PROJECT_ID: "ResOps"
@@ -632,7 +632,7 @@ spec:
                   cpu_limit: 4
                   cpu_guarantee: 3
                   node_selector:
-                    teehr-hub/nodegroup-name: nb-r5-xlarge-firo
+                    fved/nodegroup-name: nb-r5-xlarge-firo
               hefs-latest:
                 display_name: HEFS-FEWS Bleeding Edge - XL (4 cores, 16 GB memory)
                 kubespawner_override:
@@ -643,7 +643,7 @@ spec:
                   cpu_limit: 4
                   cpu_guarantee: 3
                   node_selector:
-                    teehr-hub/nodegroup-name: nb-r5-xlarge-firo
+                    fved/nodegroup-name: nb-r5-xlarge-firo
               current-tag-xlarge:
                 display_name: Version ${var.stableTeehrVersion} - XL (4 cores, 16 GB memory) 
                 kubespawner_override:
@@ -653,7 +653,7 @@ spec:
                   cpu_limit: 4
                   cpu_guarantee: 3
                   node_selector:
-                    teehr-hub/nodegroup-name: nb-r5-xlarge-firo
+                    fved/nodegroup-name: nb-r5-xlarge-firo
               current-tag-4xlarge:
                 display_name: Version ${var.stableTeehrVersion} - 4XL (16 cores, 128 GB memory) 
                 kubespawner_override:
@@ -663,7 +663,7 @@ spec:
                   cpu_limit: 16
                   cpu_guarantee: 12
                   node_selector:
-                    teehr-hub/nodegroup-name: nb-r5-4xlarge-firo
+                    fved/nodegroup-name: nb-r5-4xlarge-firo
               previous-tag-xlarge:
                 display_name: Version ${var.previousTeehrVersion} - XL (4 cores, 32 GB memory) 
                 kubespawner_override:
@@ -673,7 +673,7 @@ spec:
                   cpu_limit: 4
                   cpu_guarantee: 3
                   node_selector:
-                    teehr-hub/nodegroup-name: nb-r5-xlarge-firo
+                    fved/nodegroup-name: nb-r5-xlarge-firo
               previous-tag-4xlarge:
                 display_name: Version ${var.previousTeehrVersion} - 4XL (16 cores, 128 GB memory) 
                 kubespawner_override:
@@ -683,7 +683,7 @@ spec:
                   cpu_limit: 16
                   cpu_guarantee: 12
                   node_selector:
-                    teehr-hub/nodegroup-name: nb-r5-4xlarge-firo
+                    fved/nodegroup-name: nb-r5-4xlarge-firo
               dev-xlarge:
                 display_name: Bleeding Edge ${slice(var.devTeehrVersion, 0, 6)} - XL (4 cores, 32 GB memory) 
                 kubespawner_override:
@@ -693,7 +693,7 @@ spec:
                   cpu_limit: 4
                   cpu_guarantee: 3
                   node_selector:
-                    teehr-hub/nodegroup-name: nb-r5-xlarge-firo
+                    fved/nodegroup-name: nb-r5-xlarge-firo
               dev-4xlarge:
                 display_name: Bleeding Edge ${slice(var.devTeehrVersion, 0, 6)} - 4XL (16 cores, 128 GB memory) 
                 kubespawner_override:
@@ -703,7 +703,7 @@ spec:
                   cpu_limit: 16
                   cpu_guarantee: 12
                   node_selector:
-                    teehr-hub/nodegroup-name: nb-r5-4xlarge-firo
+                    fved/nodegroup-name: nb-r5-4xlarge-firo
         kubespawner_override:
           environment:
             TEEHR_PROJECT_ID: "FIRO"
@@ -726,7 +726,7 @@ spec:
                   cpu_limit: 4
                   cpu_guarantee: 3
                   node_selector:
-                    teehr-hub/nodegroup-name: nb-r5-xlarge-fff
+                    fved/nodegroup-name: nb-r5-xlarge-fff
               current-tag-4xlarge:
                 display_name: Version ${var.stableTeehrVersion} - 4XL (16 cores, 128 GB memory) 
                 kubespawner_override:
@@ -736,7 +736,7 @@ spec:
                   cpu_limit: 16
                   cpu_guarantee: 12
                   node_selector:
-                    teehr-hub/nodegroup-name: nb-r5-4xlarge-fff
+                    fved/nodegroup-name: nb-r5-4xlarge-fff
               previous-tag-xlarge:
                 display_name: Version ${var.previousTeehrVersion} - XL (4 cores, 32 GB memory) 
                 kubespawner_override:
@@ -746,7 +746,7 @@ spec:
                   cpu_limit: 4
                   cpu_guarantee: 3
                   node_selector:
-                    teehr-hub/nodegroup-name: nb-r5-xlarge-fff
+                    fved/nodegroup-name: nb-r5-xlarge-fff
               previous-tag-4xlarge:
                 display_name: Version ${var.previousTeehrVersion} - 4XL (16 cores, 128 GB memory) 
                 kubespawner_override:
@@ -756,7 +756,7 @@ spec:
                   cpu_limit: 16
                   cpu_guarantee: 12
                   node_selector:
-                    teehr-hub/nodegroup-name: nb-r5-4xlarge-fff
+                    fved/nodegroup-name: nb-r5-4xlarge-fff
               dev-xlarge:
                 display_name: Bleeding Edge ${slice(var.devTeehrVersion, 0, 6)} - XL (4 cores, 32 GB memory) 
                 kubespawner_override:
@@ -766,7 +766,7 @@ spec:
                   cpu_limit: 4
                   cpu_guarantee: 3
                   node_selector:
-                    teehr-hub/nodegroup-name: nb-r5-xlarge-fff
+                    fved/nodegroup-name: nb-r5-xlarge-fff
               dev-4xlarge:
                 display_name: Bleeding Edge ${slice(var.devTeehrVersion, 0, 6)} - 4XL (16 cores, 128 GB memory) 
                 kubespawner_override:
@@ -776,7 +776,7 @@ spec:
                   cpu_limit: 16
                   cpu_guarantee: 12
                   node_selector:
-                    teehr-hub/nodegroup-name: nb-r5-4xlarge-fff
+                    fved/nodegroup-name: nb-r5-4xlarge-fff
         kubespawner_override:
           environment:
             TEEHR_PROJECT_ID: "FFF"
