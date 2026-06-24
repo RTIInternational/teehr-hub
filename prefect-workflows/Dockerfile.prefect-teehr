@@ -29,11 +29,8 @@ RUN ARCH=$(uname -m) && \
         echo "Skipping GDAL installation for x86_64 (not needed)"; \
     fi
 
-# Install Dask distributed for NWM fetching
-RUN pip install dask[distributed]=="2025.7.0" kerchunk=="0.2.7" netcdf4=="1.7.2" numpy=="2.3.1"
-
 # Install dependencies for gridded data ingestion via IceChunk + VirtualiZarr
-RUN pip install icechunk obstore obspec-utils virtualizarr
+RUN pip install icechunk obstore obspec-utils virtualizarr topozarr xproj rioxarray
 
 # Install TEEHR with GDAL compatibility for ARM64
 RUN ARCH=$(uname -m) && \
@@ -47,8 +44,8 @@ RUN ARCH=$(uname -m) && \
         pip install --no-cache-dir "git+https://github.com/RTIInternational/teehr.git@${TEEHR_VERSION}"; \
     fi
 
-# Force zarr>=3.0 after TEEHR (which may pull in zarr 2.x as a transitive dependency)
-RUN pip install --upgrade "zarr>=3.0"
+# Install Dask distributed for NWM fetching
+RUN pip install dask[distributed]
 
 # Set JAVA_HOME statically based on build architecture
 ENV JAVA_HOME=/usr/lib/jvm/java-21-openjdk-${TARGETARCH}
