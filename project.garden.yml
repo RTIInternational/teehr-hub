@@ -73,7 +73,7 @@ providers:
         namespace: ecr-secrets
     deploymentRegistry:
       hostname: 794457362858.dkr.ecr.us-east-1.amazonaws.com
-      namespace: ${project.name}
+      namespace: fved
     context: arn:aws:eks:us-east-1:794457362858:cluster/fved-cluster
     buildMode: cluster-buildkit
     defaultHostname: dev.low.amzifved.aws.rti.org

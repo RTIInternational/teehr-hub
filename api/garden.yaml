@@ -4,6 +4,7 @@ name: teehr-api
 
 spec:
   dockerfile: Dockerfile
+  localId: api
 
 environments:
   - local

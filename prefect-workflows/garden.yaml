@@ -7,8 +7,8 @@ environments:
   - remote
 spec:
   dockerfile: Dockerfile.prefect-teehr
-  localId: teehr-prefect
-  publishId: teehr-prefect:${var.devTeehrVersion}
+  localId: prefect
+  publishId: prefect:${var.devTeehrVersion}
   buildArgs:
       TEEHR_VERSION: ${var.devTeehrVersion}
 ---

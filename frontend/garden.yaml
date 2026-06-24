@@ -7,7 +7,7 @@ environments:
 
 spec:
   dockerfile: Dockerfile.dev
-  localId: teehr-frontend
+  localId: frontend
 
 ---
 
@@ -20,7 +20,7 @@ environments:
 
 spec:
   dockerfile: Dockerfile.prod
-  localId: teehr-frontend
+  localId: frontend
   buildArgs:
     VITE_API_BASE_URL: "https://api.${var.hostname}"
     VITE_KEYCLOAK_URL: "https://auth.${var.hostname}"
