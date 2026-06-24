@@ -9349,6 +9349,9 @@ metadata:
     # for information about enabling the PROXY protocol on the ELB to recover
     # the original remote IP address.
     service.beta.kubernetes.io/aws-load-balancer-backend-protocol: tcp
+    service.beta.kubernetes.io/aws-load-balancer-type: nlb
+    service.beta.kubernetes.io/aws-load-balancer-scheme: internet-facing
+    service.beta.kubernetes.io/aws-load-balancer-subnets: subnet-08372307c8029284a,subnet-091e17a5579c41ac5,subnet-025aba3979b452334
 spec:
   externalTrafficPolicy: Local
   ports:
