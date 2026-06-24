@@ -102,8 +102,21 @@ def ingest_gridded_data(args: IngestGriddedDataInput) -> None:
         ds = xr.open_zarr(
             session.store,
             group="/",
-            consolidated=False
+            consolidated=False,
+            decode_coords="all"  # ensure CRS is parsed
         )
+        logger.info("Selecting variables to ingest from the dataset.")
+        ds = ds[args.variable_names]
+
+        logger.info(f"Dropping potential duplicates from the virtual dataset along dimension: {args.append_dim}.")
+        ds = ds.drop_duplicates(dim=args.append_dim)
+
+        if ds.rio.crs is None:
+            logger.info(f"Assigning CRS to the dataset: {args.source_crs}.")
+            ds = ds.rio.write_crs(args.source_crs)
+        else:
+            ds = ds.rio.write_crs(ds.rio.crs)
+
         ds = gu.rechunk_dataset(ds, args.append_dim, args.chunk_size)
         encoding_config = gu.create_encoding_config(
             ds,
@@ -111,6 +124,7 @@ def ingest_gridded_data(args: IngestGriddedDataInput) -> None:
             chunk_size=args.chunk_size,
             num_shard_chunks=args.num_shard_chunks,
         )
+
         logger.info("Writing the chunked dataset to the Icechunk repository.")
         to_icechunk(
             ds,

@@ -39,6 +39,10 @@ class IngestGriddedDataInput(BaseModel):
         ...,
         description="IceChunk repository configuration name"
     )
+    variable_names: List[str] = Field(
+        default_factory=lambda: ["SWE", "DEPTH"],
+        description="Names of the variables to ingest. Defaults are 'SWE', 'DEPTH'."
+    )
     write_materialized: bool = Field(
         True,
         description="If True, the virtual datasets are materialized and written to the repository"
@@ -80,7 +84,7 @@ class IngestGriddedDataInput(BaseModel):
 
     # --- Pyramid creation parameters ---
     build_pyramids_on_ingest: bool = Field(
-        False,
+        True,
         description="If True, build and write multiscale pyramids after materializing data"
     )
     x_dim: str = Field(
@@ -91,13 +95,17 @@ class IngestGriddedDataInput(BaseModel):
         "lat",
         description="Name of the y spatial dimension in the source data"
     )
+    source_crs: str = Field(
+        "EPSG:4269",
+        description="Source CRS of the input data"
+    )
     target_crs: str = Field(
         "EPSG:3857",
         description="Target CRS for reprojection prior to pyramid creation"
     )
     factors: List[int] = Field(
         default_factory=lambda: [1, 2, 4],
-        description="Downsampling factors for pyramid levels"
+        description="Downsampling factors for pyramid levels. Defaults are 1, 2, 4."
     )
     pyramid_method: str = Field(
         "mean",
