@@ -13,7 +13,7 @@ spec:
   namespace: kube-system
   values:
     autoDiscovery:
-      clusterName: teehr-hub
+      clusterName: fved-cluster
     awsRegion: us-east-1
     rbac:
       create: true
