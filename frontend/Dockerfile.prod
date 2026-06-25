@@ -3,6 +3,7 @@ FROM node:20-alpine AS builder
 
 # Build arguments for compile-time environment variables
 ARG VITE_API_BASE_URL
+ARG VITE_XPUBLISH_API_BASE_URL
 ARG VITE_KEYCLOAK_URL
 ARG VITE_PREFECT_URL
 ARG VITE_KEYCLOAK_REALM
@@ -22,6 +23,7 @@ COPY . .
 
 # Set environment variables for build
 ENV VITE_API_BASE_URL=${VITE_API_BASE_URL}
+ENV VITE_XPUBLISH_API_BASE_URL=${VITE_XPUBLISH_API_BASE_URL}
 ENV VITE_KEYCLOAK_URL=${VITE_KEYCLOAK_URL}
 ENV VITE_PREFECT_URL=${VITE_PREFECT_URL}
 ENV VITE_KEYCLOAK_REALM=${VITE_KEYCLOAK_REALM}
@@ -45,6 +47,6 @@ EXPOSE 8080
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
     CMD wget --no-verbose --tries=1 --spider http://localhost:8080/health || exit 1
-    
+
 # Start nginx on port 8080
 CMD ["nginx", "-g", "daemon off;"]

@@ -4,6 +4,7 @@ from icechunk.xarray import to_icechunk
 import xarray as xr
 from topozarr import create_pyramid
 import rioxarray
+import zarr
 
 from utils import grid_utils as gu
 from models.ingest_gridded_data_input import IngestGriddedDataInput
@@ -101,10 +102,44 @@ def build_pyramids(args: IngestGriddedDataInput) -> None:
     append_dim_arg = None if is_new_pyramid else args.append_dim
 
     session = repo.writable_session("main")
+
+    # This ensures the parent '/pyramids' group contains the 'multiscales' block
+    if is_new_pyramid:
+        logger.info(f"Writing root GeoZarr pyramid metadata to: {args.pyramids_data_group}")
+        root_metadata_ds = xr.Dataset(attrs=dt.attrs)
+
+        # Safely write it directly into the parent group path of the Icechunk store
+        root_metadata_ds.to_zarr(
+            session.store,
+            group=args.pyramids_data_group,
+            mode="w",
+            zarr_format=3,  # Icechunk works natively with Zarr v3 specs
+            consolidated=False
+        )
+
+    layout = pyramid.attrs.get("multiscales", {}).get("layout", [])
+
     for level_name, level_tree_node in dt.children.items():
+        attrs = level_tree_node.attrs.copy()
+
+        # Inject GeoZarr spatial attrs so xpublish-tiles can detect this as
+        # a multiscale level via scan_resolution_levels / get_pixel_size.
+        level_idx = int(level_name)
+        if level_idx < len(layout):
+            level_layout = layout[level_idx]
+            attrs["spatial:transform"] = level_layout["spatial:transform"]
+            if "spatial:shape" in level_layout:
+                attrs["spatial:shape"] = level_layout["spatial:shape"]
+        # Also propagate CRS so get_resolution_level can do unit-aware
+        # pixel-size comparison for zoom-level selection.
+        if "proj:code" in pyramid.attrs:
+            attrs["proj:code"] = pyramid.attrs["proj:code"]
+
         level_ds = gu.rechunk_dataset(
             level_tree_node.to_dataset(), args.append_dim, args.chunk_size
         )
+        level_ds.attrs.update(attrs)
+
         encoding_config = gu.create_encoding_config(
             level_ds,
             append_dim=args.append_dim,
@@ -112,6 +147,7 @@ def build_pyramids(args: IngestGriddedDataInput) -> None:
             num_shard_chunks=args.num_shard_chunks,
         )
         group_path = f"{args.pyramids_data_group}/{level_name}"
+        # zarr_group = zarr.open_group(store=session.store, path=group_path)
         logger.info(f"Writing pyramid level '{level_name}' to: {group_path} (mode='{write_mode}').")
         to_icechunk(
             level_ds,
@@ -122,6 +158,15 @@ def build_pyramids(args: IngestGriddedDataInput) -> None:
             mode=write_mode,
             append_dim=append_dim_arg,
         )
+        # Need to append level attrs
+
+        # zarr_group.attrs.update(attrs)
+        # xr.Dataset(attrs=attrs).to_zarr(
+        #     session.store,
+        #     group=group_path,
+        #     mode="a",
+        #     zarr_format=3
+        # )
 
     snapshot_id = session.commit(
         f"Committed {len(dt.children)} pyramid levels ({len(new_dims)} new time step(s)) "

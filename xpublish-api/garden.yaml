@@ -1,0 +1,76 @@
+kind: Build
+type: container
+name: xpublish-api
+
+spec:
+  dockerfile: Dockerfile
+
+environments:
+  - local
+  - remote
+
+---
+
+kind: Deploy
+type: kubernetes
+name: xpublish-api
+environments:
+  - local
+
+dependencies:
+  - build.xpublish-api
+  - deploy.secrets
+
+spec:
+  manifestFiles:
+    - manifests/service.yaml
+
+  manifestTemplates:
+    - manifests/configmap-${environment.name}.yaml.tpl
+    - manifests/deployment.yaml.tpl
+
+  defaultTarget:
+    kind: Deployment
+    name: xpublish-api
+
+  sync:
+    paths:
+      - containerPath: /app/src
+        sourcePath: ./src
+        mode: one-way
+        exclude: ["__pycache__", "*.pyc"]
+    overrides:
+      - command: ["uvicorn", "src.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
+
+---
+
+kind: Deploy
+type: kubernetes
+name: xpublish-api
+environments:
+  - remote
+
+dependencies:
+  - build.xpublish-api
+  - deploy.secrets
+
+spec:
+  manifestFiles:
+    - manifests/service.yaml
+
+  manifestTemplates:
+    - manifests/configmap-${environment.name}.yaml.tpl
+    - manifests/deployment.yaml.tpl
+
+  defaultTarget:
+    kind: Deployment
+    name: xpublish-api
+
+  sync:
+    paths:
+      - containerPath: /app/src
+        sourcePath: ./src
+        mode: one-way
+        exclude: ["__pycache__", "*.pyc"]
+    overrides:
+      - command: ["uvicorn", "src.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]

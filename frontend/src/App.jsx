@@ -8,8 +8,10 @@ import { Home, Navbar } from './components/common';
 import { ForecastDashboard } from './components/dashboards/forecast';
 import { DataDashboard } from './components/dashboards/data_management';
 import { Dashboard } from './components/dashboards/retrospective';
+import GriddedDashboard from './components/dashboards/gridded/index.js';
 import { ForecastDashboardProvider } from './context/ForecastDashboardContext.jsx';
 import { RetrospectiveDashboardProvider } from './context/RetrospectiveDashboardContext.jsx';
+import { GriddedDashboardProvider } from './context/GriddedDashboardContext.jsx';
 import { useAuth } from './hooks/useAuth.js';
 import { DataDashboardProvider } from './context/DataDashboardContext.jsx';
 import 'bootstrap/dist/css/bootstrap.min.css';
@@ -118,6 +120,16 @@ function App() {
                   <DataDashboardProvider>
                     <DataDashboard />
                   </DataDashboardProvider>
+                </RequireAuth>
+              }
+            />
+            <Route
+              path="/gridded"
+              element={
+                <RequireAuth>
+                  <GriddedDashboardProvider>
+                    <GriddedDashboard />
+                  </GriddedDashboardProvider>
                 </RequireAuth>
               }
             />

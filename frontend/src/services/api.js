@@ -299,3 +299,85 @@ export const apiService = {
 };
 
 export default apiService;
+
+// ---------------------------------------------------------------------------
+// Gridded / xpublish API
+// Separate service backed by VITE_XPUBLISH_API_BASE_URL (the xpublish app).
+// ---------------------------------------------------------------------------
+
+const GRIDDED_API_BASE_URL = import.meta.env.VITE_XPUBLISH_API_BASE_URL || 'http://127.0.0.1:8001';
+export { GRIDDED_API_BASE_URL };
+
+const griddedApiCall = async (path) => {
+  const url = `${GRIDDED_API_BASE_URL}${path}`;
+  try {
+    const token = await ensureFreshToken();
+    const headers = { Accept: 'application/json' };
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+    const response = await fetch(url, { headers });
+    if (!response.ok) {
+      throw new Error(`Gridded API error: ${response.status} ${response.statusText}`);
+    }
+    return response.json();
+  } catch (error) {
+    console.error(`Gridded API call failed for ${path}:`, error);
+    throw error;
+  }
+};
+
+export const griddedApiService = {
+  // List available dataset keys from the xpublish app
+  // GET /api/dataset-keys → { datasets: string[] }
+  getGriddedDatasets: () => griddedApiCall('/api/dataset-keys'),
+
+  // List data variables for a dataset
+  // GET /api/dataset-variables/{datasetId} → { variables: string[] }
+  getGriddedVariables: (datasetId) =>
+    griddedApiCall(`/api/dataset-variables/${encodeURIComponent(datasetId)}`),
+
+  // List available timesteps for a dataset (uses the 'time' coordinate)
+  // GET /api/datasets/{datasetId}/coords/time → { values: string[] }
+  getGriddedTimesteps: (datasetId) =>
+    griddedApiCall(`/api/datasets/${encodeURIComponent(datasetId)}/coords/time`),
+
+  // Build the MapLibre raster tile URL template for a given dataset/variable/timestep.
+  // Note: {z}/{y}/{x} order (y before x) is required by TilesPlugin.
+  // MapLibre substitutes {z}, {x}, {y} independently, so the path order is preserved.
+  buildGriddedTileUrl: (datasetId, variable, timestep, colorRamp = 'raster/plasma', min = 0, max = 100) => {
+    const params = new URLSearchParams({
+      variables: variable,
+      style: colorRamp,
+      colorscalerange: `${min},${max}`,
+      width: '256',
+      height: '256',
+      f: 'image/png',
+      time: timestep,
+    });
+    return `${GRIDDED_API_BASE_URL}/api/datasets/${encodeURIComponent(datasetId)}/tiles/WebMercatorQuad/{z}/{y}/{x}?${params.toString()}`;
+  },
+
+  // Query a single point via the CfEdrPlugin OGC EDR position endpoint.
+  // Returns the numeric value at the given lon/lat for the selected variable/timestep,
+  // or null if the response cannot be parsed.
+  fetchGriddedEdrPoint: async (datasetId, variable, timestep, lon, lat) => {
+    const params = new URLSearchParams({
+      coords: `POINT(${lon} ${lat})`,
+      'parameter-name': variable,
+      datetime: timestep,
+      f: 'geojson',
+    });
+    const path = `/api/datasets/${encodeURIComponent(datasetId) + '_raw_data'}/edr/position?${params.toString()}`;
+    const data = await griddedApiCall(path);
+
+    // CoverageJSON / GeoJSON response — parse value from the first feature property
+    // matching the variable name. Verify against a live response and adjust if needed.
+    try {
+      const ranges = data?.ranges ?? data?.properties?.ranges ?? {};
+      const range = ranges[variable] ?? Object.values(ranges)[0];
+      const values = range?.values ?? range?.data;
+      return Array.isArray(values) ? values[0] : null;
+    } catch {
+      return null;
+    }
+  },
+};

@@ -88,3 +88,16 @@ spec:
     name: letsencrypt-prod
     kind: ClusterIssuer
   secretName: prefect.${var.hostname}-tls
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: ${var.hostname}-xpublish-api-cert
+spec:
+  commonName: xpublish-api.${var.hostname}
+  dnsNames:
+  - xpublish-api.${var.hostname}
+  issuerRef:
+    name: letsencrypt-prod
+    kind: ClusterIssuer
+  secretName: xpublish-api.${var.hostname}-tls

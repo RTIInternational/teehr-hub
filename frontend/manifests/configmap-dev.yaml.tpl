@@ -7,6 +7,7 @@ metadata:
 data:
   NODE_ENV: "development"
   VITE_API_BASE_URL: "https://api.${var.hostname}"
+  VITE_XPUBLISH_API_BASE_URL: "https://xpublish-api.${var.hostname}"
   VITE_KEYCLOAK_URL: "https://auth.${var.hostname}"
   VITE_PREFECT_URL: "https://prefect.${var.hostname}"
   VITE_KEYCLOAK_REALM: "teehr"

@@ -60,6 +60,22 @@ environments:
 ---
 kind: Deploy
 type: kubernetes
+name: xpublish-api-ingress
+spec:
+  manifestTemplates:
+    - manifests/xpublish-api.yaml.tpl
+dependencies:
+  - deploy.cert-manager
+  - deploy.letsencrypt
+  - deploy.cert
+  - deploy.contour
+  - deploy.xpublish-api
+environments:
+  - local
+  - remote
+---
+kind: Deploy
+type: kubernetes
 name: dashboards-ingress
 spec:
   manifestTemplates:
