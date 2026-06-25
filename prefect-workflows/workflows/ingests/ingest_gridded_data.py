@@ -6,7 +6,7 @@ import xarray as xr
 import zarr
 
 from utils import grid_utils as gu
-from models.ingest_gridded_data_input import DataStoreType, IngestGriddedDataInput, ParserType
+from models.ingest_gridded_data_input import VirtualContainerBackend, IngestGriddedDataInput, ParserType
 from build_geozarr_pyramids import build_pyramids as build_pyramids_flow
 
 
@@ -15,10 +15,10 @@ _PARSER_MAP = {
     ParserType.zarr: vz.parsers.ZarrParser,
 }
 
-_DATA_STORE_MAP = {
-    DataStoreType.http: lambda: ic.storage.http_store(opts={}),
-    DataStoreType.s3: lambda: ic.storage.s3_store(opts={}),
-    DataStoreType.gcs: lambda: ic.storage.gcs_store(opts={}),
+_VIRTUAL_CONTAINER_MAP = {
+    VirtualContainerBackend.http: lambda: ic.storage.http_store(opts={}),
+    VirtualContainerBackend.s3: lambda: ic.storage.s3_store(opts={}),
+    VirtualContainerBackend.gcs: lambda: ic.storage.gcs_store(opts={}),
 }
 
 
@@ -37,7 +37,7 @@ def ingest_gridded_data(args: IngestGriddedDataInput) -> None:
     logger = get_run_logger()
 
     parser = _PARSER_MAP[args.parser_type]()
-    data_store = _DATA_STORE_MAP[args.data_store_type]()
+    virtual_store = _VIRTUAL_CONTAINER_MAP[args.virtual_container_backend]()
 
     # Create a list of files to ingest
     file_list = gu.create_file_list(args.filesystem, args.glob_pattern, **args.fsspec_kwargs)
@@ -48,7 +48,7 @@ def ingest_gridded_data(args: IngestGriddedDataInput) -> None:
         args.source_bucket,
         args.dest_bucket,
         prefix=f"{args.base_prefix}/{args.configuration_name}",
-        virtual_store=data_store,
+        virtual_store=virtual_store,
         **args.s3_storage_kwargs
     )
     logger.info(

@@ -9,7 +9,7 @@ class ParserType(str, Enum):
     zarr = "zarr"
 
 
-class DataStoreType(str, Enum):
+class VirtualContainerBackend(str, Enum):
     """Supported object store types for IceChunk virtual chunk containers."""
     http = "http"
     s3 = "s3"
@@ -113,8 +113,8 @@ class IngestGriddedDataInput(BaseModel):
         description="Aggregation method for pyramid downsampling ('mean', 'max', 'min', 'sum')"
     )
 
-    data_store_type: DataStoreType = Field(
-        DataStoreType.http,
+    virtual_container_backend: VirtualContainerBackend = Field(
+        VirtualContainerBackend.http,
         description="Object store type for the IceChunk virtual chunk container"
     )
 
