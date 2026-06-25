@@ -122,16 +122,13 @@ def build_pyramids(args: IngestGriddedDataInput) -> None:
     for level_name, level_tree_node in dt.children.items():
         attrs = level_tree_node.attrs.copy()
 
-        # Inject GeoZarr spatial attrs so xpublish-tiles can detect this as
-        # a multiscale level via scan_resolution_levels / get_pixel_size.
+        # Inject GeoZarr spatial attrs for xpublish-tiles
         level_idx = int(level_name)
         if level_idx < len(layout):
             level_layout = layout[level_idx]
             attrs["spatial:transform"] = level_layout["spatial:transform"]
             if "spatial:shape" in level_layout:
                 attrs["spatial:shape"] = level_layout["spatial:shape"]
-        # Also propagate CRS so get_resolution_level can do unit-aware
-        # pixel-size comparison for zoom-level selection.
         if "proj:code" in pyramid.attrs:
             attrs["proj:code"] = pyramid.attrs["proj:code"]
 
@@ -147,7 +144,7 @@ def build_pyramids(args: IngestGriddedDataInput) -> None:
             num_shard_chunks=args.num_shard_chunks,
         )
         group_path = f"{args.pyramids_data_group}/{level_name}"
-        # zarr_group = zarr.open_group(store=session.store, path=group_path)
+
         logger.info(f"Writing pyramid level '{level_name}' to: {group_path} (mode='{write_mode}').")
         to_icechunk(
             level_ds,
@@ -158,15 +155,7 @@ def build_pyramids(args: IngestGriddedDataInput) -> None:
             mode=write_mode,
             append_dim=append_dim_arg,
         )
-        # Need to append level attrs
 
-        # zarr_group.attrs.update(attrs)
-        # xr.Dataset(attrs=attrs).to_zarr(
-        #     session.store,
-        #     group=group_path,
-        #     mode="a",
-        #     zarr_format=3
-        # )
 
     snapshot_id = session.commit(
         f"Committed {len(dt.children)} pyramid levels ({len(new_dims)} new time step(s)) "

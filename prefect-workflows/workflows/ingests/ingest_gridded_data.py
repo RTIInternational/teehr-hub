@@ -7,7 +7,7 @@ import zarr
 
 from utils import grid_utils as gu
 from models.ingest_gridded_data_input import DataStoreType, IngestGriddedDataInput, ParserType
-from build_pyramids import build_pyramids as build_pyramids_flow
+from build_geozarr_pyramids import build_pyramids as build_pyramids_flow
 
 
 _PARSER_MAP = {
@@ -18,6 +18,7 @@ _PARSER_MAP = {
 _DATA_STORE_MAP = {
     DataStoreType.http: lambda: ic.storage.http_store(opts={}),
     DataStoreType.s3: lambda: ic.storage.s3_store(opts={}),
+    DataStoreType.gcs: lambda: ic.storage.gcs_store(opts={}),
 }
 
 

@@ -13,6 +13,7 @@ class DataStoreType(str, Enum):
     """Supported object store types for IceChunk virtual chunk containers."""
     http = "http"
     s3 = "s3"
+    gcs = "gcs"
 
 
 class IngestGriddedDataInput(BaseModel):
