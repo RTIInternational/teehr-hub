@@ -124,8 +124,8 @@ kubectl taint nodes kind-worker2 hub.jupyter.org/dedicated=user:NoSchedule
 kubectl taint nodes kind-worker2 hub.jupyter.org_dedicated=user:NoSchedule
 
 #kind-worker3 acts as Spark worker node (tainted like EKS spark-r5-4xlarge)
-kubectl taint nodes kind-worker3 teehr-hub/dedicated=worker:NoSchedule
-kubectl taint nodes kind-worker3 teehr-hub_dedicated=worker:NoSchedule
+kubectl taint nodes kind-worker3 fved/dedicated=worker:NoSchedule
+kubectl taint nodes kind-worker3 fved_dedicated=worker:NoSchedule
 
 # Setup ingress with Contour
 kubectl apply -f https://projectcontour.io/quickstart/contour.yaml
