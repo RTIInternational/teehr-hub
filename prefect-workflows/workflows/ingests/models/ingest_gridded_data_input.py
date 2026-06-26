@@ -41,8 +41,8 @@ class IngestGriddedDataInput(BaseModel):
         description="IceChunk repository configuration name"
     )
     variable_names: List[str] = Field(
-        default_factory=lambda: ["SWE", "DEPTH", "RAINRATE"],
-        description="Names of the variables attempt to ingest. Defaults are 'SWE', 'DEPTH', 'RAINRATE'."
+        default_factory=lambda: ["SWE", "DEPTH"],
+        description="Names of the variables attempt to ingest. Defaults are 'SWE', 'DEPTH'."
     )
     write_materialized: bool = Field(
         True,

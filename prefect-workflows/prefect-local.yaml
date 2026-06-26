@@ -573,7 +573,7 @@ deployments:
     work_pool: *work_pool
 
   # Gridded Data Ingests
-  - name: ingest-ua-4km-data
+  - name: ingest-ua-4km-grids
     version:
     tags: []
     description: Ingest UA 4km SWE and DEPTH variables into an IceChunk S3 repository using VirtualiZarr
@@ -609,7 +609,7 @@ deployments:
     work_pool: *work_pool
 
 
-  - name: ingest-nwm30-forcing-analysis-assim
+  - name: ingest-nwm30-forcing-analysis-assim-grids
     version:
     tags: []
     description: Ingest NWM 3.0 forcing analysis and assimilation data into an IceChunk S3 repository using VirtualiZarr
@@ -625,6 +625,7 @@ deployments:
         "source_bucket": "gs://national-water-model",
         "configuration_name": "nwm30-forcing-analysis-assim",
         "base_prefix": "icechunk-ingests",
+        "variable_names": ["RAINRATE"],
         "concat_dim": "time",
         "parser_type": "hdf",
         "fsspec_kwargs": {"token": "anon"},
