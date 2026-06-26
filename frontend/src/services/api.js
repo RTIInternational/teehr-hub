@@ -369,13 +369,12 @@ export const griddedApiService = {
     const path = `/api/datasets/${encodeURIComponent(datasetId) + '_raw_data'}/edr/position?${params.toString()}`;
     const data = await griddedApiCall(path);
 
-    // CoverageJSON / GeoJSON response — parse value from the first feature property
-    // matching the variable name. Verify against a live response and adjust if needed.
+    // GeoJSON FeatureCollection from xpublish-edr's to_geojson format:
+    // { type: "FeatureCollection", features: [{ properties: { RAINRATE: 0.5, ... } }] }
     try {
-      const ranges = data?.ranges ?? data?.properties?.ranges ?? {};
-      const range = ranges[variable] ?? Object.values(ranges)[0];
-      const values = range?.values ?? range?.data;
-      return Array.isArray(values) ? values[0] : null;
+      const properties = data?.features?.[0]?.properties ?? {};
+      const value = properties[variable] ?? Object.values(properties).find(v => typeof v === 'number');
+      return value !== undefined ? value : null;
     } catch {
       return null;
     }

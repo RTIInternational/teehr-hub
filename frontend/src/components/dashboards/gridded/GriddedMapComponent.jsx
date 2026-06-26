@@ -147,7 +147,7 @@ const GriddedMapComponent = () => {
         popup.current.setHTML(`
           <div style="padding:8px; font-size:0.85rem;">
             <div style="font-weight:600; margin-bottom:4px; color:#495057;">${variable}</div>
-            <div><strong>Value:</strong> ${value !== null && value !== undefined ? value : 'N/A'}</div>
+            <div><strong>Value:</strong> ${value !== null && value !== undefined ? (typeof value === 'number' ? value.toFixed(2) : value) : 'N/A'}</div>
             <div><strong>Lat:</strong> ${lat.toFixed(4)}</div>
             <div><strong>Lon:</strong> ${lng.toFixed(4)}</div>
             <div style="margin-top:4px; font-size:0.75rem; color:#6c757d;">${currentTimestep}</div>
