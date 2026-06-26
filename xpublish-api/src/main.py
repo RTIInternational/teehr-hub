@@ -146,21 +146,7 @@ def build_app() -> FastAPI:
             "Opening icechunk repo s3://%s/%s (branch=%s)", cfg.bucket, cfg.prefix, branch
         )
         storage = ic.s3_storage(bucket=cfg.bucket, prefix=cfg.prefix, **storage_kwargs)
-        try:
-            if not ic.Repository.exists(storage):
-                logger.warning(
-                    "Icechunk repo s3://%s/%s does not exist — skipping '%s'.",
-                    cfg.bucket, cfg.prefix, cfg.name,
-                )
-                continue
-            repo = ic.Repository.open(storage)
-        except Exception as exc:
-            logger.warning(
-                "Failed to open icechunk repo s3://%s/%s — skipping '%s': %s",
-                cfg.bucket, cfg.prefix, cfg.name, exc,
-            )
-            continue
-
+        repo = ic.Repository.open(storage)
         session = repo.readonly_session(branch=branch)
         store = session.store
 
