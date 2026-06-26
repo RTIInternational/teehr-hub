@@ -106,7 +106,7 @@ class IngestGriddedDataInput(BaseModel):
     )
     factors: List[int] = Field(
         default_factory=lambda: [1, 2, 4],
-        description="Downsampling factors for pyramid levels. Defaults are 1, 2, 4."
+        description="Downsampling factors for pyramid levels. Defaults are 1, 2, 4. The number of levels is determined by the length of this list."
     )
     pyramid_method: str = Field(
         "mean",
