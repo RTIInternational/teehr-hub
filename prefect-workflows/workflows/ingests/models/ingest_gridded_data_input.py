@@ -41,8 +41,8 @@ class IngestGriddedDataInput(BaseModel):
         description="IceChunk repository configuration name"
     )
     variable_names: List[str] = Field(
-        default_factory=lambda: ["SWE", "DEPTH"],
-        description="Names of the variables to ingest. Defaults are 'SWE', 'DEPTH'."
+        default_factory=lambda: ["SWE", "DEPTH", "RAINRATE"],
+        description="Names of the variables attempt to ingest. Defaults are 'SWE', 'DEPTH', 'RAINRATE'."
     )
     write_materialized: bool = Field(
         True,
@@ -75,7 +75,7 @@ class IngestGriddedDataInput(BaseModel):
         description="Dimension along which to append data when writing to the IceChunk repository"
     )
     chunk_size: int = Field(
-        512,
+        256,
         description="Inner chunk size applied to all non-append spatial dimensions when materializing data"
     )
     num_shard_chunks: int = Field(
