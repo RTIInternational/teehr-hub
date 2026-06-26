@@ -112,13 +112,15 @@ def ingest_gridded_data(args: IngestGriddedDataInput) -> None:
         logger.info(f"Dropping potential duplicates from the virtual dataset along dimension: {args.append_dim}.")
         ds = ds.drop_duplicates(dim=args.append_dim)
 
-        if ds.rio.crs is None:
-            logger.info(f"Assigning CRS to the dataset: {args.source_crs}.")
-            ds = ds.rio.write_crs(args.source_crs)
-        else:
-            ds = ds.rio.write_crs(ds.rio.crs)
-
         ds = gu.rechunk_dataset(ds, args.append_dim, args.chunk_size)
+
+        ds = gu.standardize_and_inject_geozarr(
+            ds,
+            source_crs=args.source_crs,
+            x_dim=args.x_dim,
+            y_dim=args.y_dim,
+        )
+
         encoding_config = gu.create_encoding_config(
             ds,
             append_dim=args.append_dim,

@@ -6,6 +6,7 @@ from virtualizarr import open_virtual_dataset
 import virtualizarr as vz
 import icechunk as ic
 from pydantic import BaseModel
+from pyproj import CRS as PyprojCRS
 
 from prefect import task, get_run_logger
 from prefect.cache_policies import NO_CACHE
@@ -241,7 +242,10 @@ def create_encoding_config(
 @task(cache_policy=NO_CACHE)
 def reproject_dataset(
     dataset: xr.Dataset,
-    args: BaseModel,
+    target_crs: str,
+    x_dim: str,
+    y_dim: str,
+    source_crs: str | None = None
 ) -> xr.Dataset:
     """Reproject an xarray dataset to a target CRS.
 
@@ -249,20 +253,131 @@ def reproject_dataset(
     ----------
     dataset : xr.Dataset
         The dataset to reproject.
-    args : BaseModel
-        The arguments containing the target CRS and spatial dimension names.
+    target_crs : str
+        The target CRS to reproject the dataset to.
+    x_dim : str
+        The name of the x dimension.
+    y_dim : str
+        The name of the y dimension.
+    source_crs : str | None
+        The source CRS to use if the dataset does not have one defined.
     """
     logger = get_run_logger()
     logger.info(
-        f"Reprojecting dataset to target CRS: {args.target_crs} and setting spatial dims: x={args.x_dim}, y={args.y_dim}."
+        f"Reprojecting dataset to target CRS: {target_crs} and setting spatial dims: x={x_dim}, y={y_dim}."
     )
-    dataset = dataset.rio.set_spatial_dims(x_dim=args.x_dim, y_dim=args.y_dim)
+    dataset = dataset.rio.set_spatial_dims(x_dim=x_dim, y_dim=y_dim)
     if dataset.rio.crs is None:
-        logger.info(f"No CRS found in the source dataset. Assigning: {args.source_crs}.")
-        dataset = dataset.rio.write_crs(args.source_crs)
+        logger.info(f"No CRS found in the source dataset. Assigning: {source_crs}.")
+        dataset = dataset.rio.write_crs(source_crs)
     else:
         logger.info(f"Source dataset has a CRS defined: {dataset.rio.crs}.")
         dataset = dataset.rio.write_crs(dataset.rio.crs)
-    ds_mercator = dataset.rio.reproject(args.target_crs)
-    ds_mercator = ds_mercator.proj.assign_crs(spatial_ref=args.target_crs)
+    ds_mercator = dataset.rio.reproject(target_crs)
+    ds_mercator = ds_mercator.proj.assign_crs(spatial_ref=target_crs)
     return ds_mercator
+
+
+@task(cache_policy=NO_CACHE)
+def standardize_and_inject_geozarr(
+    ds: xr.Dataset,
+    source_crs: str | None = None,
+    x_dim: str | None = None,
+    y_dim: str | None = None,
+) -> xr.Dataset:
+    """Write CF-1.11 and GeoZarr metadata to a dataset before writing to IceChunk.
+
+    Resolves spatial dimensions and CRS, then writes:
+    - A scalar ``spatial_ref`` coordinate with CF grid mapping attrs and WKT strings.
+    - CF axis/standard_name attrs on the x/y coordinate variables.
+    - ``grid_mapping``, ``proj:wkt2``, and ``spatial:dimensions`` on each spatial data var.
+    - ``proj:wkt2``, ``spatial:dimensions``, and ``Conventions`` on the dataset itself.
+    """
+    logger = get_run_logger()
+
+    # --- Resolve spatial dimensions ---
+    if x_dim and y_dim and x_dim in ds.dims and y_dim in ds.dims:
+        ds = ds.rio.set_spatial_dims(x_dim=x_dim, y_dim=y_dim)
+        x_name, y_name = x_dim, y_dim
+    else:
+        try:
+            x_name, y_name = ds.rio.x_dim, ds.rio.y_dim
+        except Exception:
+            x_name = x_dim if x_dim in ds.dims else None
+            y_name = y_dim if y_dim in ds.dims else None
+
+    if x_name is None or y_name is None:
+        raise ValueError(
+            "Unable to determine spatial dimensions. "
+            "Provide valid x_dim/y_dim or ensure the dataset has discoverable spatial dims."
+        )
+
+    # --- Resolve CRS ---
+    crs_obj = ds.rio.crs
+    if crs_obj is None:
+        if source_crs is None:
+            raise ValueError(
+                "Dataset has no CRS and no source_crs fallback was provided."
+            )
+        logger.info(f"No CRS found; applying fallback: {source_crs}.")
+        ds = ds.rio.write_crs(source_crs)
+        crs_obj = ds.rio.crs
+
+    wkt_string = crs_obj.to_wkt()
+    pyproj_crs = PyprojCRS.from_user_input(crs_obj)
+
+    # --- Build grid mapping coordinate attrs ---
+    # Use full CF params when available (enables cf-xarray grid_mappings detection).
+    # Some projected CRS (e.g. EPSG:3857 Web Mercator) don't produce a grid_mapping_name
+    # from pyproj.to_cf() in all versions. grid_mapping_name must be present for
+    # cf-xarray to identify the coordinate as a grid mapping variable; crs_wkt is then
+    # the authoritative source that CRS.from_cf() will use to reconstruct the CRS.
+    cf_params = pyproj_crs.to_cf()
+    if cf_params.get("grid_mapping_name") is None:
+        cf_params["grid_mapping_name"] = "mercator"
+        logger.warning(
+            f"CRS {pyproj_crs.to_string()} produced no CF grid_mapping_name; "
+            "defaulting to 'mercator'. CRS will be reconstructed from crs_wkt."
+        )
+    grid_mapping_attrs = {**cf_params, "crs_wkt": wkt_string, "spatial_ref": wkt_string}
+
+    # Reuse an existing CRS coordinate if present, otherwise use "spatial_ref".
+    gm_coord = next(
+        (
+            c for c in ds.coords
+            if any(k in ds[c].attrs for k in ("grid_mapping_name", "crs_wkt", "spatial_ref"))
+        ),
+        "spatial_ref",
+    )
+    ds = ds.assign_coords({gm_coord: xr.DataArray(0, attrs=grid_mapping_attrs)})
+
+    # --- x/y coordinate attrs ---
+    is_geographic = crs_obj.is_geographic
+    if x_name in ds.coords:
+        ds[x_name].attrs["axis"] = "X"
+        ds[x_name].attrs.setdefault(
+            "standard_name", "longitude" if is_geographic else "projection_x_coordinate"
+        )
+    if y_name in ds.coords:
+        ds[y_name].attrs["axis"] = "Y"
+        ds[y_name].attrs.setdefault(
+            "standard_name", "latitude" if is_geographic else "projection_y_coordinate"
+        )
+
+    # --- Dataset-level attrs ---
+    conventions = ds.attrs.get("Conventions")
+    if conventions is None:
+        ds.attrs["Conventions"] = "CF-1.11"
+    elif "CF-" not in str(conventions):
+        ds.attrs["Conventions"] = f"{conventions} CF-1.11"
+    ds.attrs["proj:wkt2"] = wkt_string
+    ds.attrs["spatial:dimensions"] = [y_name, x_name]
+
+    # --- Per-variable attrs for spatial data vars ---
+    for var in ds.data_vars:
+        if {x_name, y_name} <= set(ds[var].dims):
+            ds[var].attrs["grid_mapping"] = gm_coord
+            ds[var].attrs["proj:wkt2"] = wkt_string
+            ds[var].attrs["spatial:dimensions"] = [y_name, x_name]
+
+    return ds

@@ -79,7 +79,10 @@ def build_pyramids(args: IngestGriddedDataInput) -> None:
     # Set spatial dims and reproject to web mercator
     ds_mercator = gu.reproject_dataset(
         dataset=ds_new,
-        args=args
+        target_crs=args.target_crs,
+        x_dim=args.x_dim,
+        y_dim=args.y_dim,
+        source_crs=args.source_crs
     )
     logger.info(f"Reprojected {len(new_dims)} time step(s) to {args.target_crs}.")
 
@@ -119,7 +122,7 @@ def build_pyramids(args: IngestGriddedDataInput) -> None:
     for level_name, level_tree_node in dt.children.items():
         attrs = level_tree_node.attrs.copy()
 
-        # Inject GeoZarr spatial attrs for xpublish-tiles
+        # Inject GeoZarr spatial transform and shape attrs for xpublish-tiles
         level_idx = int(level_name)
         if level_idx < len(layout):
             level_layout = layout[level_idx]
@@ -131,6 +134,16 @@ def build_pyramids(args: IngestGriddedDataInput) -> None:
 
         level_ds = gu.rechunk_dataset(
             level_tree_node.to_dataset(), args.append_dim, args.chunk_size
+        )
+        # Drop scalar (0-D) data variables
+        level_ds = level_ds.drop_vars(
+            [v for v in level_ds.data_vars if level_ds[v].ndim == 0]
+        )
+        level_ds = gu.standardize_and_inject_geozarr(
+            level_ds,
+            source_crs=args.target_crs,  # pyramids are already in target_crs (web mercator)
+            x_dim="x",
+            y_dim="y",
         )
         level_ds.attrs.update(attrs)
 
