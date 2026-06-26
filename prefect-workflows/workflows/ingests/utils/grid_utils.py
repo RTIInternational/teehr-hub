@@ -5,26 +5,30 @@ from obspec_utils.registry import ObjectStoreRegistry
 from virtualizarr import open_virtual_dataset
 import virtualizarr as vz
 import icechunk as ic
+from pydantic import BaseModel
 
 from prefect import task, get_run_logger
 from prefect.cache_policies import NO_CACHE
 
 
 @task(cache_policy=NO_CACHE)
-def create_file_list(filesystem: str, glob_pattern: str, **kwargs) -> list:
-    """Create a list of files from a filesystem and path.
+def create_file_list(source_data_storage: str, glob_pattern: str, **kwargs) -> list:
+    """Create a list of files from a source_data_storage and path.
 
     Parameters
     ----------
-    filesystem : str
-        The filesystem to use (e.g., "s3", "gcs", "local", "http").
+    source_data_storage : str
+        The source_data_storage to use (e.g., "s3", "gcs", "local", "http").
     glob_pattern : str
         The glob pattern to match files.
     **kwargs : dict
         Additional keyword arguments to pass to the fsspec filesystem.
     """
-    fs = fsspec.filesystem(filesystem, **kwargs)
+    fs = fsspec.filesystem(source_data_storage, **kwargs)
     file_list = fs.glob(glob_pattern)
+    # If source_data_storage is gcs, prepend "gs://" to each file path
+    if source_data_storage == "gcs":
+        file_list = [f"gs://{file}" for file in file_list]
     return file_list
 
 
@@ -39,6 +43,8 @@ def create_objectstore_registry(bucket: str, **kwargs) -> ObjectStoreRegistry:
     **kwargs : dict
         Additional keyword arguments to pass to from_url.
     """
+    logger = get_run_logger()
+    logger.info(f"Creating ObjectStoreRegistry for bucket: {bucket} and kwargs: {kwargs}")
     store = from_url(bucket, **kwargs)
     registry = ObjectStoreRegistry({bucket: store})
     return registry
@@ -230,3 +236,33 @@ def create_encoding_config(
             encoding_config[coord] = {"chunks": None}
 
     return encoding_config
+
+
+@task(cache_policy=NO_CACHE)
+def reproject_dataset(
+    dataset: xr.Dataset,
+    args: BaseModel,
+) -> xr.Dataset:
+    """Reproject an xarray dataset to a target CRS.
+
+    Parameters
+    ----------
+    dataset : xr.Dataset
+        The dataset to reproject.
+    args : BaseModel
+        The arguments containing the target CRS and spatial dimension names.
+    """
+    logger = get_run_logger()
+    logger.info(
+        f"Reprojecting dataset to target CRS: {args.target_crs} and setting spatial dims: x={args.x_dim}, y={args.y_dim}."
+    )
+    dataset = dataset.rio.set_spatial_dims(x_dim=args.x_dim, y_dim=args.y_dim)
+    if dataset.rio.crs is None:
+        logger.info(f"No CRS found in the source dataset. Assigning: {args.source_crs}.")
+        dataset = dataset.rio.write_crs(args.source_crs)
+    else:
+        logger.info(f"Source dataset has a CRS defined: {dataset.rio.crs}.")
+        dataset = dataset.rio.write_crs(dataset.rio.crs)
+    ds_mercator = dataset.rio.reproject(args.target_crs)
+    ds_mercator = ds_mercator.proj.assign_crs(spatial_ref=args.target_crs)
+    return ds_mercator

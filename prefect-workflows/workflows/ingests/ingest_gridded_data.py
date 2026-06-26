@@ -6,7 +6,7 @@ import xarray as xr
 import zarr
 
 from utils import grid_utils as gu
-from models.ingest_gridded_data_input import VirtualContainerBackend, IngestGriddedDataInput, ParserType
+from models.ingest_gridded_data_input import StorageType, IngestGriddedDataInput, ParserType
 from build_geozarr_pyramids import build_pyramids as build_pyramids_flow
 
 
@@ -16,9 +16,9 @@ _PARSER_MAP = {
 }
 
 _VIRTUAL_CONTAINER_MAP = {
-    VirtualContainerBackend.http: lambda: ic.storage.http_store(opts={}),
-    VirtualContainerBackend.s3: lambda: ic.storage.s3_store(opts={}),
-    VirtualContainerBackend.gcs: lambda: ic.storage.gcs_store(opts={}),
+    StorageType.http: lambda: ic.storage.http_store(opts={}),
+    StorageType.s3: lambda: ic.storage.s3_store(opts={}),
+    StorageType.gcs: lambda: ic.storage.gcs_store(opts={}),
 }
 
 
@@ -27,7 +27,7 @@ _VIRTUAL_CONTAINER_MAP = {
     timeout_seconds=60 * 60
 )
 def ingest_gridded_data(args: IngestGriddedDataInput) -> None:
-    """Ingest gridded data from a specified filesystem and glob pattern, and configure an IceChunk S3 repository.
+    """Ingest gridded data from a specified storage type and glob pattern, and configure an IceChunk S3 repository.
 
     Parameters
     ----------
@@ -37,10 +37,10 @@ def ingest_gridded_data(args: IngestGriddedDataInput) -> None:
     logger = get_run_logger()
 
     parser = _PARSER_MAP[args.parser_type]()
-    virtual_store = _VIRTUAL_CONTAINER_MAP[args.virtual_container_backend]()
+    virtual_store = _VIRTUAL_CONTAINER_MAP[args.source_data_storage]()
 
     # Create a list of files to ingest
-    file_list = gu.create_file_list(args.filesystem, args.glob_pattern, **args.fsspec_kwargs)
+    file_list = gu.create_file_list(args.source_data_storage, args.glob_pattern, **args.fsspec_kwargs)
     logger.info(f"Found {len(file_list)} files to ingest.")
 
     # Configure the IceChunk S3 repository with a virtual chunk container

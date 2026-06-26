@@ -580,7 +580,7 @@ deployments:
     entrypoint: workflows/ingests/ingest_gridded_data.py:ingest_gridded_data
     parameters: {
       "args": {
-        "filesystem": "http",
+        "source_data_storage": "http",
         "glob_pattern": "https://climate.arizona.edu/data/UA_SWE/DailyData_4km/WY2026/UA_SWE_Depth_4km_v1_202510*_stable.nc",
         "dest_bucket": "warehouse",
         "source_bucket": "https://climate.arizona.edu",

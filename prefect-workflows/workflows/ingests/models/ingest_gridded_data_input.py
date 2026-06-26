@@ -9,8 +9,8 @@ class ParserType(str, Enum):
     zarr = "zarr"
 
 
-class VirtualContainerBackend(str, Enum):
-    """Supported object store types for IceChunk virtual chunk containers."""
+class StorageType(str, Enum):
+    """Supported storage types for incoming data."""
     http = "http"
     s3 = "s3"
     gcs = "gcs"
@@ -20,9 +20,9 @@ class IngestGriddedDataInput(BaseModel):
     """Input parameters for the ingest_gridded_data Prefect flow."""
 
     # --- Core required parameters ---
-    filesystem: str = Field(
-        ...,
-        description="Filesystem type for file discovery (e.g., 's3', 'gcs', 'local', 'http')"
+    source_data_storage: StorageType = Field(
+        StorageType.http,
+        description="Storage type of the source data (e.g., 's3', 'gcs', 'local', 'http')"
     )
     glob_pattern: str = Field(
         ...,
@@ -111,11 +111,6 @@ class IngestGriddedDataInput(BaseModel):
     pyramid_method: str = Field(
         "mean",
         description="Aggregation method for pyramid downsampling ('mean', 'max', 'min', 'sum')"
-    )
-
-    virtual_container_backend: VirtualContainerBackend = Field(
-        VirtualContainerBackend.http,
-        description="Object store type for the IceChunk virtual chunk container"
     )
 
     # --- Per-component extra kwargs ---

@@ -77,13 +77,10 @@ def build_pyramids(args: IngestGriddedDataInput) -> None:
     ds_new = ds.sel({args.append_dim: new_dims})
 
     # Set spatial dims and reproject to web mercator
-    # TODO: workaround. This should no longer be needed?
-    if "time_str" in ds_new.variables:
-        ds_new = ds_new.drop_vars("time_str")
-    ds_new = ds_new.rio.set_spatial_dims(x_dim=args.x_dim, y_dim=args.y_dim)
-    ds_new = ds_new.rio.write_crs(ds_new.rio.crs)
-    ds_mercator = ds_new.rio.reproject(args.target_crs)
-    ds_mercator = ds_mercator.proj.assign_crs(spatial_ref=args.target_crs)
+    ds_mercator = gu.reproject_dataset(
+        dataset=ds_new,
+        args=args
+    )
     logger.info(f"Reprojected {len(new_dims)} time step(s) to {args.target_crs}.")
 
     # Create multiscale pyramids for the new slice
