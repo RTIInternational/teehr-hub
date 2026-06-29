@@ -16,7 +16,7 @@ name: letsencrypt
 description: K8s Lets Encrypt
 spec:
   manifestFiles:
-    - "./manifests/letsencrypt.yaml"
+    - "./manifests/letsencrypt-self-signed.yaml"
 dependencies: [deploy.cert-manager]
 environments:
   - remote
