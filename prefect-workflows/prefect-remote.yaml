@@ -86,7 +86,7 @@ deployments:
     work_pool: *work_pool
     schedule:
       cron: "0 8,20 * * *"
-      active: true
+      active: false
 
   # NWM Short and Medium Range Ingests
   - name: ingest-nwm-short-range-streamflow-forecasts
@@ -104,7 +104,7 @@ deployments:
     work_pool: *work_pool
     schedule:
       cron: "0 7,19 * * *"
-      active: true
+      active: false
 
   - name: ingest-nwm-short-range-alaska-streamflow-forecasts
     version:
@@ -122,7 +122,7 @@ deployments:
     work_pool: *work_pool
     schedule:
       cron: "10 7,19 * * *"
-      active: true
+      active: false
 
   - name: ingest-nwm-short-range-hawaii-streamflow-forecasts
     version:
@@ -140,7 +140,7 @@ deployments:
     work_pool: *work_pool
     schedule:
       cron: "20 7,19 * * *"
-      active: true
+      active: false
 
   - name: ingest-nwm-short-range-puertorico-streamflow-forecasts
     version:
@@ -158,7 +158,7 @@ deployments:
     work_pool: *work_pool
     schedule:
       cron: "30 7,19 * * *"
-      active: true
+      active: false
 
   - name: ingest-nwm-medium-range-streamflow-forecasts
     version:
@@ -176,7 +176,7 @@ deployments:
     work_pool: *work_pool
     schedule:
       cron: "0 6,18 * * *"
-      active: true
+      active: false
 
   - name: ingest-nwm-medium-range-blend-streamflow-forecasts
     version:
@@ -195,7 +195,7 @@ deployments:
     work_pool: *work_pool
     schedule:
       cron: "10 6,18 * * *"
-      active: true
+      active: false
 
   - name: ingest-nwm-medium-range-alaska-streamflow-forecasts
     version:
@@ -214,7 +214,7 @@ deployments:
     work_pool: *work_pool
     schedule:
       cron: "20 6,18 * * *"
-      active: true
+      active: false
 
   - name: ingest-nwm-medium-range-alaska-blend-streamflow-forecasts
     version:
@@ -233,7 +233,7 @@ deployments:
     work_pool: *work_pool
     schedule:
       cron: "30 6,18 * * *"
-      active: true
+      active: false
 
   # NWM Assimilation Ingests
   - name: ingest-nwm-analysis-assim-no-da
@@ -253,7 +253,7 @@ deployments:
     work_pool: *work_pool
     schedule:
       cron: "0 5,17 * * *"
-      active: true
+      active: false
 
   - name: ingest-nwm-analysis-assim-alaska-no-da
     version:
@@ -272,7 +272,7 @@ deployments:
     work_pool: *work_pool
     schedule:
       cron: "10 5,17 * * *"
-      active: true
+      active: false
 
   - name: ingest-nwm-analysis-assim-extend-no-da
     version:
@@ -291,7 +291,7 @@ deployments:
     work_pool: *work_pool
     schedule:
       cron: "20 5,17 * * *"
-      active: true
+      active: false
 
   - name: ingest-nwm-analysis-assim-extend-alaska-no-da
     version:
@@ -310,7 +310,7 @@ deployments:
     work_pool: *work_pool
     schedule:
       cron: "30 5,17 * * *"
-      active: true
+      active: false
 
   - name: ingest-nwm-analysis-assim-hawaii-no-da
     version:
@@ -329,7 +329,7 @@ deployments:
     work_pool: *work_pool
     schedule:
       cron: "40 5,17 * * *"
-      active: true
+      active: false
 
   - name: ingest-nwm-analysis-assim-puertorico-no-da
     version:
@@ -348,7 +348,7 @@ deployments:
     work_pool: *work_pool
     schedule:
       cron: "50 5,17 * * *"
-      active: true
+      active: false
 
   # NWM Forcing MAP Ingests
   - name: ingest-nwm-forcing-analysis-assim
@@ -634,7 +634,7 @@ deployments:
     work_pool: *work_pool
     schedule:
       cron: "30 10 * * *"
-      active: true
+      active: false
 
   - name: ingest-datastream-medium-range-cfe-forecasts
     version:
@@ -652,7 +652,7 @@ deployments:
     work_pool: *work_pool
     schedule:
       cron: "0 11 * * *"
-      active: true
+      active: false
 
   - name: ingest-datastream-short-range-lstm-forecasts
     version:
@@ -670,7 +670,7 @@ deployments:
     work_pool: *work_pool
     schedule:
       cron: "30 11 * * *"
-      active: true
+      active: false
 
   - name: ingest-datastream-medium-range-lstm-forecasts
     version:
@@ -688,7 +688,7 @@ deployments:
     work_pool: *work_pool
     schedule:
       cron: "0 12 * * *"
-      active: true
+      active: false
 
   # RFC Ingest
   - name: ingest-nwps-rfc-streamflow-forecasts
@@ -705,7 +705,7 @@ deployments:
     work_pool: *work_pool
     schedule:
       cron: "29 * * * *"
-      active: true
+      active: false
 
   # Maintenance and Metrics Workflows
   - name: update-joined-forecast-table
@@ -720,7 +720,7 @@ deployments:
     work_pool: *work_pool_large
     # schedule:
     #   cron: "0 9,21 * * *"
-    #   active: true
+    #   active: false
 
   - name: update-joined-forecast-table-incremental
     version:
@@ -734,7 +734,7 @@ deployments:
     work_pool: *work_pool
     schedule:
       cron: "0 9,21 * * *"
-      active: true
+      active: false
 
   - name: update-forecast-metrics-table
     version:
@@ -748,7 +748,7 @@ deployments:
     work_pool: *work_pool_large
     schedule:
       cron: "0 10,22 * * *"
-      active: true
+      active: false
 
   - name: routine-table-maintenance
     version:
@@ -762,7 +762,7 @@ deployments:
     work_pool: *work_pool
     schedule:
       cron: "0 4 * * 0"
-      active: true
+      active: false
 
   - name: cleanup-old-flow-runs
     version:
@@ -791,7 +791,7 @@ deployments:
     work_pool: *work_pool
     schedule:
       cron: "15 4 * * *"
-      active: true
+      active: false
 
   - name: update-locations-summary
     version:
@@ -805,7 +805,7 @@ deployments:
     work_pool: *work_pool
     schedule:
       cron: "25 4 * * *"
-      active: true
+      active: false
 
   - name: update-configurations-summary
     version:
@@ -819,4 +819,4 @@ deployments:
     work_pool: *work_pool
     schedule:
       cron: "35 4 * * *"
-      active: true
+      active: false
