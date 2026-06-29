@@ -36,7 +36,7 @@ environments:
   - name: remote
     defaultNamespace: ${project.name}
     variables:
-      hostname: dev.low.amzifved.aws.rti.org
+      hostname: fved.dev.low.amzifved.aws.rti.org
       devTeehrVersion: 267f8a75034132aefe84749af10ab1562a6ac169
       stableTeehrVersion: v0.6.5
       previousTeehrVersion: v0.5.3
@@ -76,4 +76,4 @@ providers:
       namespace: fved
     context: arn:aws:eks:us-east-1:794457362858:cluster/fved-cluster
     buildMode: cluster-buildkit
-    defaultHostname: dev.low.amzifved.aws.rti.org
+    defaultHostname: fved.dev.low.amzifved.aws.rti.org
