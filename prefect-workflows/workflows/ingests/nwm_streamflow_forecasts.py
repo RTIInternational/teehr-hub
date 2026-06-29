@@ -100,7 +100,7 @@ def ingest_nwm_streamflow_forecasts(
     """
     try:
         logger = get_run_logger()
-        # client = Client()
+        client = Client()
 
         if isinstance(timeseries_type, str):
             timeseries_type = TimeseriesTypeEnum(timeseries_type)
@@ -218,5 +218,5 @@ def ingest_nwm_streamflow_forecasts(
         )
         logger.info("Successfully loaded NWM streamflow forecasts into the warehouse")
     finally:
-        # client.close()
+        client.close()
         ev.spark.stop()

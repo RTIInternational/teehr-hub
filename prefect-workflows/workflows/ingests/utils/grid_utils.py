@@ -2,10 +2,9 @@ import fsspec
 import xarray as xr
 from obstore.store import from_url
 from obspec_utils.registry import ObjectStoreRegistry
-from virtualizarr import open_virtual_dataset
+from virtualizarr import open_virtual_dataset, open_virtual_mfdataset
 import virtualizarr as vz
 import icechunk as ic
-from pydantic import BaseModel
 from pyproj import CRS as PyprojCRS
 
 from prefect import task, get_run_logger
@@ -152,6 +151,14 @@ def create_virtual_xarray_dataset(
         dim=concat_dim,
         **kwargs
     )
+    # # TODO: open_mfdataset()?
+    # virtual_ds = open_virtual_mfdataset(
+    #     file_list,
+    #     registry=registry,
+    #     parser=parser,
+    #     concat_dim=concat_dim,
+    #     **kwargs
+    # )
     return virtual_ds
 
 

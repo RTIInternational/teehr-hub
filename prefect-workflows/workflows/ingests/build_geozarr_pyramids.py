@@ -3,11 +3,15 @@ import icechunk as ic
 from icechunk.xarray import to_icechunk
 import xarray as xr
 from topozarr import create_pyramid
-import rioxarray
+import rioxarray  # noqa: rio accessor
 import zarr
 
 from utils import grid_utils as gu
-from models.ingest_gridded_data_input import IngestGriddedDataInput
+from models.ingest_gridded_data_input import (
+    IngestGriddedDataInput,
+    RAW_DATA_GROUP_PATH,
+    PYRAMID_GROUP_PATH
+)
 
 
 @flow(
@@ -42,19 +46,19 @@ def build_pyramids(args: IngestGriddedDataInput) -> None:
     ro_session = repo.readonly_session("main")
     ds = xr.open_zarr(
         ro_session.store,
-        group=args.raw_data_group,
+        group=RAW_DATA_GROUP_PATH,
         consolidated=False,
         decode_coords="all"
     )
     all_dims = ds.indexes[args.append_dim].unique()
-    logger.info(f"Read materialized data from group: {args.raw_data_group}.")
+    logger.info(f"Read materialized data from group: {RAW_DATA_GROUP_PATH}.")
 
     # Determine which time steps are not yet in the pyramid store
     first_level = str(args.factors[0])
     try:
         existing_level_ds = xr.open_zarr(
             ro_session.store,
-            group=f"{args.pyramids_data_group}/{first_level}",
+            group=f"{PYRAMID_GROUP_PATH}/{first_level}",
             consolidated=False
         )
         level_dims = existing_level_ds.indexes[args.append_dim].unique()
@@ -105,13 +109,13 @@ def build_pyramids(args: IngestGriddedDataInput) -> None:
 
     # This ensures the parent '/pyramids' group contains the 'multiscales' block
     if is_new_pyramid:
-        logger.info(f"Writing root GeoZarr pyramid metadata to: {args.pyramids_data_group}")
+        logger.info(f"Writing root GeoZarr pyramid metadata to: {PYRAMID_GROUP_PATH}")
         root_metadata_ds = xr.Dataset(attrs=dt.attrs)
 
         # Safely write it directly into the parent group path of the Icechunk store
         root_metadata_ds.to_zarr(
             session.store,
-            group=args.pyramids_data_group,
+            group=PYRAMID_GROUP_PATH,
             mode="w",
             zarr_format=3,  # Icechunk works natively with Zarr v3 specs
             consolidated=False
@@ -147,13 +151,20 @@ def build_pyramids(args: IngestGriddedDataInput) -> None:
         )
         level_ds.attrs.update(attrs)
 
-        encoding_config = gu.create_encoding_config(
-            level_ds,
-            append_dim=args.append_dim,
-            chunk_size=args.chunk_size,
-            num_shard_chunks=args.num_shard_chunks,
-        )
-        group_path = f"{args.pyramids_data_group}/{level_name}"
+        # Check to see if data exists
+        group_path = f"{PYRAMID_GROUP_PATH}/{level_name}"
+        existing_group = zarr.open_group(session.store, mode="r", zarr_format=3)
+        if len(list(existing_group[group_path].array_keys())) == 0:
+            encoding_config = gu.create_encoding_config(
+                level_ds,
+                append_dim=args.append_dim,
+                chunk_size=args.chunk_size,
+                num_shard_chunks=args.num_shard_chunks,
+            )
+            write_mode = "w"
+        else:
+            encoding_config = None
+            write_mode = "a"  # append
 
         logger.info(f"Writing pyramid level '{level_name}' to: {group_path} (mode='{write_mode}').")
         to_icechunk(

@@ -584,7 +584,7 @@ deployments:
         "glob_pattern": "https://climate.arizona.edu/data/UA_SWE/DailyData_4km/WY2026/UA_SWE_Depth_4km_v1_202510*_stable.nc",
         "dest_bucket": "warehouse",
         "source_bucket": "https://climate.arizona.edu",
-        "configuration_name": "ua_swann_4km",
+        "configuration_name": "ua-swann-4km",
         "factors": [1],
         "base_prefix": "icechunk-ingests",
         "concat_dim": "time",

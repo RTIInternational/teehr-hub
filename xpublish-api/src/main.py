@@ -11,6 +11,8 @@ Environment variables:
   ICECHUNK_BRANCH        Branch to open for all repos (default: main)
   ICECHUNK_STORAGE_MODE  "local" for minio/kind, "remote" for AWS S3 (default: remote)
   CORS_ORIGINS           Comma-separated list of allowed CORS origins
+  DATASET_CACHE_TTL      Seconds to cache dataset metadata before re-opening from icechunk
+                         (default: 60). Set to 0 to disable caching (re-open on every request).
 
   Local (ICECHUNK_STORAGE_MODE=local):
     ICECHUNK_ENDPOINT_URL   MinIO endpoint (default: http://minio:9000)
@@ -30,11 +32,8 @@ Environment variables:
 import logging
 import os
 from contextlib import asynccontextmanager
-from dataclasses import dataclass
 
-import icechunk as ic
 import numpy as np
-import xarray as xr
 import xpublish
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.gzip import GZipMiddleware
@@ -43,9 +42,9 @@ from starlette.middleware.cors import CORSMiddleware
 from xpublish_edr import CfEdrPlugin
 from xpublish_tiles import lib as xpublish_tiles_lib
 from xpublish_tiles.xpublish.tiles import TilesPlugin
-from xpublish_tiles.multiscale import assign_leaf_xpublish_ids
 
 from .auth import KeycloakJWTValidator, resolve_identity
+from .provider import IcechunkDatasetProvider, RepoConfig
 
 logger = logging.getLogger(__name__)
 
@@ -53,12 +52,6 @@ logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
 )
-
-@dataclass
-class RepoConfig:
-    name: str
-    bucket: str
-    prefix: str
 
 
 def parse_repo_configs() -> list[RepoConfig]:
@@ -130,50 +123,38 @@ def build_app() -> FastAPI:
     branch = os.getenv("ICECHUNK_BRANCH", "main")
     cors_origins = [o.strip() for o in os.getenv("CORS_ORIGINS", "*").split(",")]
     storage_mode = os.getenv("ICECHUNK_STORAGE_MODE", "remote")
+    cache_ttl = float(os.getenv("DATASET_CACHE_TTL", "60"))
 
     repo_configs = parse_repo_configs()
     storage_kwargs = build_storage_kwargs()
 
     logger.info(
-        "Storage mode: %s | repos: %s",
+        "Storage mode: %s | repos: %s | cache_ttl: %ss",
         storage_mode,
         [(r.name, r.bucket, r.prefix) for r in repo_configs],
+        cache_ttl,
     )
 
-    datasets: dict[str, xr.Dataset | xr.Datatree] = {}
-    for cfg in repo_configs:
-        logger.info(
-            "Opening icechunk repo s3://%s/%s (branch=%s)", cfg.bucket, cfg.prefix, branch
-        )
-        storage = ic.s3_storage(bucket=cfg.bucket, prefix=cfg.prefix, **storage_kwargs)
-        repo = ic.Repository.open(storage)
-        session = repo.readonly_session(branch=branch)
-        store = session.store
-
-        # /pyramids group — used by TilesPlugin for raster tile serving.
-        dt = xr.open_datatree(
-            store,
-            group="/pyramids",
-            engine="zarr",
-            decode_coords="all",
-            consolidated=False
-        )
-        dt.attrs["_xpublish_id"] = cfg.name   # enables cache key in xpublish-tile
-        assign_leaf_xpublish_ids(dt)   # propagates "ua_swann_4km/0", "ua_swann_4km/1", etc. cache keys to children
-        datasets[cfg.name] = dt
-        # /raw_data group — used by CfEdrPlugin for point queries.
-        datasets[f"{cfg.name}_raw_data"] = xr.open_zarr(store, group="/raw_data", consolidated=False)
-
-    logger.info("Registered datasets: %s", list(datasets.keys()))
+    provider = IcechunkDatasetProvider(
+        repo_configs=repo_configs,
+        storage_kwargs=storage_kwargs,
+        branch=branch,
+        cache_ttl_seconds=cache_ttl,
+    )
 
     rest = xpublish.Rest(
-        datasets=datasets,
-        plugins={"tiles": TilesPlugin(), "edr": CfEdrPlugin()},
+        datasets={},
+        plugins={
+            "icechunk-provider": provider,
+            "tiles": TilesPlugin(),
+            "edr": CfEdrPlugin(),
+        },
     )
 
     api_app = rest.app
 
     # --- Custom discovery endpoints consumed by the frontend ---
+
     @api_app.get("/dataset-keys")
     def list_dataset_keys():
         # Return only the tiles-capable dataset names (not the _raw_data variants).
@@ -181,27 +162,27 @@ def build_app() -> FastAPI:
 
     @api_app.get("/dataset-variables/{dataset_id}")
     def dataset_variables(dataset_id: str):
-        # Fix discovery: look at 0 child of the pyramid tree, or fall back to raw_data
-        if dataset_id in datasets and hasattr(datasets[dataset_id], "children"):
-            # topozarr creates children nodes named 'scale0', 'scale1', etc.
-            first_child = list(datasets[dataset_id].children.keys())[0]
-            variables = list(datasets[dataset_id][first_child].data_vars.keys())
+        pyramid_dt = provider.get_datatree_for_dataset(dataset_id)
+        if pyramid_dt is None:
+            raise HTTPException(status_code=404, detail=f"Unknown dataset '{dataset_id}'")
+        children = list(pyramid_dt.children.keys())
+        if children:
+            variables = list(pyramid_dt[children[0]].data_vars.keys())
             logger.info("Variables for dataset '%s': %s", dataset_id, variables)
             return {"dataset_id": dataset_id, "variables": variables}
-
-        # Variables come from the /raw_data group; the /pyramids group root has none.
-        raw_data_id = f"{dataset_id}_raw_data"
-        if raw_data_id not in datasets:
+        # Pyramid has no children yet (empty repo) — fall back to raw_data variables.
+        raw_dt = provider.get_datatree_for_dataset(f"{dataset_id}_raw_data")
+        if raw_dt is None:
             raise HTTPException(status_code=404, detail=f"Unknown dataset '{dataset_id}'")
-        return {"dataset_id": dataset_id, "variables": list(datasets[raw_data_id].data_vars.keys())}
+        return {"dataset_id": dataset_id, "variables": list(raw_dt.dataset.data_vars.keys())}
 
     @api_app.get("/datasets/{dataset_id}/coords/{coord_name}")
     def dataset_coord_values(dataset_id: str, coord_name: str):
         # Coords (including time) live in the /raw_data group, not /pyramids.
-        raw_data_id = f"{dataset_id}_raw_data"
-        if raw_data_id not in datasets:
+        raw_dt = provider.get_datatree_for_dataset(f"{dataset_id}_raw_data")
+        if raw_dt is None:
             raise HTTPException(status_code=404, detail=f"Unknown dataset '{dataset_id}'")
-        ds = datasets[raw_data_id]
+        ds = raw_dt.dataset
         if coord_name not in ds.coords:
             raise HTTPException(status_code=404, detail=f"Coordinate '{coord_name}' not found")
         values = ds.coords[coord_name].values
@@ -256,7 +237,7 @@ def build_app() -> FastAPI:
 
     @app.get("/health")
     def health():
-        return {"status": "ok", "datasets": list(datasets.keys())}
+        return {"status": "ok", "datasets": provider.dataset_ids()}
 
     return app
 

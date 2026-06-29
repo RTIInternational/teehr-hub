@@ -3,6 +3,11 @@ from enum import Enum
 from pydantic import BaseModel, Field
 
 
+PYRAMID_GROUP_PATH = "/pyramids"
+RAW_DATA_GROUP_PATH = "/raw_data"
+REFERENCES_GROUP_PATH = "/references"
+
+
 class ParserType(str, Enum):
     """Supported parsers for reading virtual datasets."""
     hdf = "hdf"
@@ -61,14 +66,6 @@ class IngestGriddedDataInput(BaseModel):
     parser_type: ParserType = Field(
         ParserType.hdf,
         description="Parser to use for reading raw data files"
-    )
-    raw_data_group: str = Field(
-        "/raw_data",
-        description="Group path within the IceChunk repository to write the materialized raw data into"
-    )
-    pyramids_data_group: str = Field(
-        "/pyramids",
-        description="Group path within the IceChunk repository to write the pyramids data into"
     )
     append_dim: str = Field(
         "time",
