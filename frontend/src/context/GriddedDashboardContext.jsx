@@ -17,6 +17,8 @@ const initialGriddedState = {
 
   activeOverlays: [],   // string[] of overlay IDs currently shown on the map
 
+  variableAttrs: {},    // { [varName]: { units, long_name, ... } } — from /variable-attrs endpoint
+
   clickedPoint: null,       // { lon, lat } | null — last point clicked on the map
   timeseriesLoading: false,
   timeseriesError: null,
@@ -37,6 +39,7 @@ export const ActionTypes = {
   SET_TIMESERIES_LOADING: 'SET_TIMESERIES_LOADING',
   SET_TIMESERIES_DATA: 'SET_TIMESERIES_DATA',
   SET_TIMESERIES_ERROR: 'SET_TIMESERIES_ERROR',
+  SET_VARIABLE_ATTRS: 'SET_VARIABLE_ATTRS',
   SET_MAP_LOADED: 'SET_MAP_LOADED',
   SET_LOADING: 'SET_LOADING',
   SET_ERROR: 'SET_ERROR',
@@ -108,6 +111,9 @@ const griddedDashboardReducer = (state, action) => {
 
     case ActionTypes.SET_TIMESERIES_ERROR:
       return { ...state, timeseriesError: action.payload, timeseriesLoading: false };
+
+    case ActionTypes.SET_VARIABLE_ATTRS:
+      return { ...state, variableAttrs: action.payload };
 
     case ActionTypes.SET_MAP_LOADED:
       return { ...state, mapLoaded: action.payload };

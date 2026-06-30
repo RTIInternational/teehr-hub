@@ -197,6 +197,25 @@ def build_app() -> FastAPI:
         logger.info("Coordinate values for dataset '%s', coord '%s': %s", dataset_id, coord_name, serialized)
         return {"dataset_id": dataset_id, "coord_name": coord_name, "values": serialized}
 
+    @api_app.get("/datasets/{dataset_id}/variable-attrs")
+    def dataset_variable_attrs(dataset_id: str):
+        raw_dt = provider.get_datatree_for_dataset(f"{dataset_id}_raw_data")
+        if raw_dt is None:
+            raise HTTPException(status_code=404, detail=f"Unknown dataset '{dataset_id}'")
+        ds = raw_dt.dataset
+        result = {}
+        for var_name in ds.data_vars:
+            attrs = {}
+            for k, v in ds[var_name].attrs.items():
+                if isinstance(v, np.ndarray):
+                    attrs[k] = v.tolist()
+                elif isinstance(v, (np.integer, np.floating)):
+                    attrs[k] = v.item()
+                else:
+                    attrs[k] = v
+            result[var_name] = attrs
+        return {"dataset_id": dataset_id, "variables": result}
+
     # --- api_app middleware (gzip only; CORS is on the outer app) ---
 
     api_app.add_middleware(GZipMiddleware, minimum_size=1000)

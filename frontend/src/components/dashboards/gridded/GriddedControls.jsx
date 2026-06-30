@@ -5,6 +5,7 @@ import { OVERLAY_LAYERS } from './overlayLayers.js';
 
 const COLOR_RAMPS = [
   { label: 'Plasma', value: 'raster/plasma' },
+  { label: 'Turbo', value: 'raster/turbo' },
   { label: 'Viridis', value: 'raster/viridis' },
   { label: 'Inferno', value: 'raster/inferno' },
   { label: 'Blues', value: 'raster/Blues' },
@@ -14,8 +15,10 @@ const COLOR_RAMPS = [
 const GriddedControls = ({ loadVariables, loadTimesteps }) => {
   const [overlaysExpanded, setOverlaysExpanded] = useState(true);
   const { state, dispatch } = useGriddedDashboard();
-  const { datasets, variables, timesteps, mapFilters, activeOverlays } = state;
+  const { datasets, variables, timesteps, mapFilters, activeOverlays, variableAttrs } = state;
   const { dataset, variable, timestepIndex, colorRamp, colorRampMin, colorRampMax } = mapFilters;
+
+  const units = variableAttrs[variable]?.units ?? null;
 
   const currentTimestep = timesteps[timestepIndex] ?? '';
   const canStepBack = timestepIndex > 0;
@@ -181,7 +184,7 @@ const GriddedControls = ({ loadVariables, loadTimesteps }) => {
           {/* Color ramp range */}
           <Col md={6}>
             <Form.Group>
-              <Form.Label className="small fw-bold">Min</Form.Label>
+              <Form.Label className="small fw-bold">Min{units ? ` (${units})` : ''}</Form.Label>
               <Form.Control
                 size="sm"
                 type="number"
@@ -192,7 +195,7 @@ const GriddedControls = ({ loadVariables, loadTimesteps }) => {
           </Col>
           <Col md={6}>
             <Form.Group>
-              <Form.Label className="small fw-bold">Max</Form.Label>
+              <Form.Label className="small fw-bold">Max{units ? ` (${units})` : ''}</Form.Label>
               <Form.Control
                 size="sm"
                 type="number"

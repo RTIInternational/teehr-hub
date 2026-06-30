@@ -1,6 +1,7 @@
-import { useEffect, useCallback } from 'react';
+import { useEffect, useCallback, useRef } from 'react';
 import { useGriddedDashboard, ActionTypes } from '../../../context/GriddedDashboardContext.jsx';
 import { griddedApiService } from '../../../services/api.js';
+import { getVariableStyle } from './variableStyles.js';
 import DashboardPanel from '../../common/dashboard/DashboardPanel.jsx';
 import GriddedMapComponent from './GriddedMapComponent.jsx';
 import GriddedControls from './GriddedControls.jsx';
@@ -8,6 +9,7 @@ import GriddedTimeseriesPanel from './GriddedTimeseriesPanel.jsx';
 
 const Dashboard = () => {
   const { state, dispatch } = useGriddedDashboard();
+  const styledVariablesRef = useRef(new Set());
 
   const loadDatasets = useCallback(async () => {
     dispatch({ type: ActionTypes.SET_LOADING, payload: true });
@@ -37,6 +39,15 @@ const Dashboard = () => {
     } catch (err) {
       console.error('GriddedDashboard: Failed to load timesteps:', err);
       dispatch({ type: ActionTypes.SET_ERROR, payload: `Failed to load timesteps: ${err.message}` });
+    }
+  }, [dispatch]);
+
+  const loadVariableAttrs = useCallback(async (datasetId) => {
+    try {
+      const data = await griddedApiService.getGriddedVariableAttrs(datasetId);
+      dispatch({ type: ActionTypes.SET_VARIABLE_ATTRS, payload: data.variables ?? {} });
+    } catch (err) {
+      console.error('GriddedDashboard: Failed to load variable attrs:', err);
     }
   }, [dispatch]);
 
@@ -81,6 +92,23 @@ const Dashboard = () => {
       runTimeseriesQuery(state.clickedPoint.lon, state.clickedPoint.lat);
     }
   }, [state.clickedPoint, runTimeseriesQuery]);
+
+  // Fetch variable attrs and reset style-tracking when dataset changes
+  useEffect(() => {
+    if (state.mapFilters.dataset) {
+      loadVariableAttrs(state.mapFilters.dataset);
+      styledVariablesRef.current = new Set();
+    }
+  }, [state.mapFilters.dataset, loadVariableAttrs]);
+
+  // Auto-apply variable-specific default styles on first selection of each variable
+  useEffect(() => {
+    const { variable } = state.mapFilters;
+    if (!variable || styledVariablesRef.current.has(variable)) return;
+    styledVariablesRef.current.add(variable);
+    const { colorRamp, min, max } = getVariableStyle(variable);
+    dispatch({ type: ActionTypes.UPDATE_MAP_FILTERS, payload: { colorRamp, colorRampMin: min, colorRampMax: max } });
+  }, [state.mapFilters.variable, dispatch]);
 
   return (
     <div className="d-flex flex-column" style={{ height: 'calc(100dvh - 56px)', minHeight: 0 }}>

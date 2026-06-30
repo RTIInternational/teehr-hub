@@ -365,6 +365,11 @@ export const griddedApiService = {
   getGriddedTimesteps: (datasetId) =>
     griddedApiCall(`/api/datasets/${encodeURIComponent(datasetId)}/coords/time`),
 
+  // List variable attributes (units, long_name, etc.) for a dataset.
+  // GET /api/datasets/{datasetId}/variable-attrs → { dataset_id, variables: { varName: attrs } }
+  getGriddedVariableAttrs: (datasetId) =>
+    griddedApiCall(`/api/datasets/${encodeURIComponent(datasetId)}/variable-attrs`),
+
   // Build the MapLibre raster tile URL template for a given dataset/variable/timestep.
   // Note: {z}/{y}/{x} order (y before x) is required by TilesPlugin.
   // MapLibre substitutes {z}, {x}, {y} independently, so the path order is preserved.
@@ -373,6 +378,7 @@ export const griddedApiService = {
       variables: variable,
       style: colorRamp,
       colorscalerange: `${min},${max}`,
+      belowmincolor: 'transparent',
       width: '256',
       height: '256',
       f: 'image/png',
