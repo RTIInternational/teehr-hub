@@ -58,6 +58,10 @@ spec:
           value: ${var.iceberg.catalogWarehouse}
         - name: IN_CLUSTER
           value: "${var.iceberg.inCluster}"
+        - name: ICECHUNK_BUCKET
+          value: ${var.icechunk.bucket}
+        - name: ICECHUNK_PREFIX
+          value: ${var.icechunk.prefix}
         resources:
           requests:
             cpu: 500m

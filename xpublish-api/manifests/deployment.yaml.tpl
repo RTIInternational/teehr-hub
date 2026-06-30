@@ -29,6 +29,16 @@ spec:
             configMapKeyRef:
               name: xpublish-api-config
               key: ICECHUNK_REPOS
+        - name: ICECHUNK_BUCKET
+          valueFrom:
+            configMapKeyRef:
+              name: xpublish-api-config
+              key: ICECHUNK_BUCKET
+        - name: ICECHUNK_PREFIX
+          valueFrom:
+            configMapKeyRef:
+              name: xpublish-api-config
+              key: ICECHUNK_PREFIX
         - name: ICECHUNK_BRANCH
           valueFrom:
             configMapKeyRef:

@@ -33,6 +33,9 @@ environments:
         catalog: iceberg
         schema: teehr
       allowedOrigins: "https://dashboards.${var.hostname},https://api.${var.hostname}"
+      icechunk:
+        bucket: "warehouse"
+        prefix: "icechunk-ingests"
   - name: remote
     defaultNamespace: ${project.name}
     variables:
@@ -55,6 +58,9 @@ environments:
         catalog: iceberg
         schema: teehr
       allowedOrigins: "https://dashboards.${var.hostname},https://api.${var.hostname}"
+      icechunk:
+        bucket: "ciroh-rti-public-data"
+        prefix: "icechunk-ingests"
 providers:
   # The name of the provider plugin to use.
   - name: local-kubernetes

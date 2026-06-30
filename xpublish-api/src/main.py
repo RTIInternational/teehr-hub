@@ -5,9 +5,12 @@ Serves raster tiles via TilesPlugin (reads from /pyramids group) and
 point queries via CfEdrPlugin (reads from /raw_data group).
 
 Environment variables:
-  ICECHUNK_REPOS         Comma-separated list of name:bucket:prefix triplets.
-                         Example: "ua_swann_4km:warehouse:icechunk-ingests/ua_swann_4km"
-                         Multiple: "ds1:bucket:prefix1,ds2:bucket:prefix2"
+  ICECHUNK_REPOS         Comma-separated list of repo names.
+                         Example: "ua-swann-4km,nwm30-forcing-analysis-assim"
+  ICECHUNK_BUCKET        S3 bucket that holds all icechunk repos.
+                         Example: "warehouse" (local) or "ciroh-rti-public-data" (remote)
+  ICECHUNK_PREFIX        Base prefix path; each repo lives at {prefix}/{name}.
+                         Example: "icechunk-ingests"
   ICECHUNK_BRANCH        Branch to open for all repos (default: main)
   ICECHUNK_STORAGE_MODE  "local" for minio/kind, "remote" for AWS S3 (default: remote)
   CORS_ORIGINS           Comma-separated list of allowed CORS origins
@@ -56,26 +59,25 @@ logging.basicConfig(
 
 def parse_repo_configs() -> list[RepoConfig]:
     """
-    Parse ICECHUNK_REPOS env var: comma-separated name:bucket:prefix triplets.
-    Each entry is split on the first two colons so prefixes with colons are safe.
+    Parse repo configs from ICECHUNK_REPOS (comma-separated names),
+    ICECHUNK_BUCKET (shared S3 bucket), and ICECHUNK_PREFIX (base prefix).
+    Each repo's full prefix is constructed as "{ICECHUNK_PREFIX}/{name}".
     """
     repos_env = os.getenv("ICECHUNK_REPOS", "").strip()
+    bucket = os.getenv("ICECHUNK_BUCKET", "").strip()
+    prefix = os.getenv("ICECHUNK_PREFIX", "").strip()
     if not repos_env:
-        raise RuntimeError(
-            "ICECHUNK_REPOS is required. "
-            "Format: name:bucket:prefix  (comma-separate multiple repos)"
-        )
+        raise RuntimeError("ICECHUNK_REPOS is required: comma-separated list of repo names")
+    if not bucket:
+        raise RuntimeError("ICECHUNK_BUCKET is required: S3 bucket name")
+    if not prefix:
+        raise RuntimeError("ICECHUNK_PREFIX is required: base prefix path for icechunk repos")
     configs = []
-    for entry in repos_env.split(","):
-        entry = entry.strip()
-        if not entry:
+    for name in repos_env.split(","):
+        name = name.strip()
+        if not name:
             continue
-        parts = entry.split(":", 2)
-        if len(parts) != 3:
-            raise ValueError(
-                f"ICECHUNK_REPOS entry '{entry}' must be in name:bucket:prefix format"
-            )
-        configs.append(RepoConfig(name=parts[0].strip(), bucket=parts[1].strip(), prefix=parts[2].strip()))
+        configs.append(RepoConfig(name=name, bucket=bucket, prefix=f"{prefix}/{name}"))
     if not configs:
         raise RuntimeError("ICECHUNK_REPOS contained no valid entries")
     return configs

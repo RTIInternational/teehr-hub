@@ -1,3 +1,4 @@
+import os
 from typing import Dict, Any, List
 from enum import Enum
 from pydantic import BaseModel, Field
@@ -33,11 +34,11 @@ class BaseGriddedDataInput(BaseModel):
         description="IceChunk repository configuration name"
     )
     dest_bucket: str = Field(
-        ...,
+        default_factory=lambda: os.environ["ICECHUNK_BUCKET"],
         description="S3 bucket name for the destination IceChunk repository (e.g., 'ciroh-rti-public-data')"
     )
     base_prefix: str = Field(
-        "icechunk-ingests",
+        default_factory=lambda: os.environ["ICECHUNK_PREFIX"],
         description="Base path prefix within the bucket for the IceChunk repository"
     )
     append_dim: str = Field(

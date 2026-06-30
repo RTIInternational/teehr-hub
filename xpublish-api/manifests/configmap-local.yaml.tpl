@@ -8,7 +8,9 @@ metadata:
 data:
   # Local/kind deployment — uses minio as the S3-compatible store.
   # Bucket name matches the minio warehouse bucket used by the rest of the cluster.
-  ICECHUNK_REPOS: "ua-swann-4km:warehouse:icechunk-ingests/ua-swann-4km,nwm30-forcing-analysis-assim:warehouse:icechunk-ingests/nwm30-forcing-analysis-assim"
+  ICECHUNK_REPOS: "ua-swann-4km,nwm30-forcing-analysis-assim"
+  ICECHUNK_BUCKET: "${var.icechunk.bucket}"
+  ICECHUNK_PREFIX: "${var.icechunk.prefix}"
   ICECHUNK_BRANCH: "main"
   ICECHUNK_STORAGE_MODE: "local"
   # Matches the MINIO_SERVER value used cluster-wide (http://minio:9000)

@@ -7,7 +7,9 @@ metadata:
     component: backend
 data:
   # Remote/prod deployment — uses AWS S3 with IRSA or standard AWS_* env vars.
-  ICECHUNK_REPOS: "ua-swann-4km:ciroh-rti-public-data:icechunk-ingests/ua-swann-4km"
+  ICECHUNK_REPOS: "ua-swann-4km"
+  ICECHUNK_BUCKET: "${var.icechunk.bucket}"
+  ICECHUNK_PREFIX: "${var.icechunk.prefix}"
   ICECHUNK_BRANCH: "main"
   ICECHUNK_STORAGE_MODE: "remote"
   # Not used in remote mode; kept so deployment.yaml.tpl key reference is valid.
