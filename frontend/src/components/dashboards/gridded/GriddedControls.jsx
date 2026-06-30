@@ -1,5 +1,7 @@
+import { useState } from 'react';
 import { Form, Row, Col, Button, InputGroup } from 'react-bootstrap';
 import { useGriddedDashboard, ActionTypes } from '../../../context/GriddedDashboardContext.jsx';
+import { OVERLAY_LAYERS } from './overlayLayers.js';
 
 const COLOR_RAMPS = [
   { label: 'Plasma', value: 'raster/plasma' },
@@ -10,8 +12,9 @@ const COLOR_RAMPS = [
 ];
 
 const GriddedControls = ({ loadVariables, loadTimesteps }) => {
+  const [overlaysExpanded, setOverlaysExpanded] = useState(true);
   const { state, dispatch } = useGriddedDashboard();
-  const { datasets, variables, timesteps, mapFilters } = state;
+  const { datasets, variables, timesteps, mapFilters, activeOverlays } = state;
   const { dataset, variable, timestepIndex, colorRamp, colorRampMin, colorRampMax } = mapFilters;
 
   const currentTimestep = timesteps[timestepIndex] ?? '';
@@ -61,6 +64,34 @@ const GriddedControls = ({ loadVariables, loadTimesteps }) => {
     <div className="h-100 d-flex flex-column overflow-auto p-1">
       <Form>
         <Row className="g-2">
+          {/* Overlay layer toggles */}
+          <Col md={12}>
+            <button
+              type="button"
+              className="small fw-bold btn btn-link p-0 text-decoration-none text-reset d-flex align-items-center gap-1"
+              onClick={() => setOverlaysExpanded((v) => !v)}
+              aria-expanded={overlaysExpanded}
+            >
+              <span style={{ fontSize: '0.65rem' }}>{overlaysExpanded ? '▼' : '▶'}</span>
+              <span>Overlay Layers</span>
+            </button>
+            {overlaysExpanded && (
+              <div className="mt-1">
+                {OVERLAY_LAYERS.map((overlay) => (
+                  <Form.Check
+                    key={overlay.id}
+                    type="checkbox"
+                    id={`overlay-${overlay.id}`}
+                    label={<span style={{ fontSize: '0.8rem' }}>{overlay.label}</span>}
+                    checked={activeOverlays.includes(overlay.id)}
+                    onChange={() => dispatch({ type: ActionTypes.TOGGLE_OVERLAY, payload: overlay.id })}
+                    className="mb-1"
+                  />
+                ))}
+              </div>
+            )}
+          </Col>
+
           {/* Dataset selector */}
           <Col md={12}>
             <Form.Group>

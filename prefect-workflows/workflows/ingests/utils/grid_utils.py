@@ -6,6 +6,7 @@ from virtualizarr import open_virtual_dataset, open_virtual_mfdataset
 import virtualizarr as vz
 import icechunk as ic
 from pyproj import CRS as PyprojCRS
+import zarr
 
 from prefect import task, get_run_logger
 from prefect.cache_policies import NO_CACHE
@@ -388,3 +389,75 @@ def standardize_and_inject_geozarr(
             ds[var].attrs["spatial:dimensions"] = [y_name, x_name]
 
     return ds
+
+
+@task(cache_policy=NO_CACHE)
+def filter_for_new_data(
+    incoming_ds: xr.Dataset,
+    existing_ds: xr.Dataset,
+    append_dim: str,
+) -> xr.Dataset | None:
+    """Filter out duplicate time steps from an incoming dataset based on an existing dataset.
+
+    Parameters
+    ----------
+    incoming_ds : xr.Dataset
+        The incoming dataset to filter.
+    existing_ds : xr.Dataset
+        The existing dataset to compare against.
+    append_dim : str
+        The dimension used for appending (e.g. "time").
+
+    Returns
+    -------
+    xr.Dataset | None
+        A filtered dataset containing only new time steps, or None if no new data is found.
+    """
+    logger = get_run_logger()
+    if append_dim not in incoming_ds.dims:
+        raise ValueError(f"Append dimension '{append_dim}' not found in incoming dataset.")
+    if append_dim not in existing_ds.dims:
+        raise ValueError(f"Append dimension '{append_dim}' not found in existing dataset.")
+
+    incoming_steps = set(incoming_ds[append_dim].values)
+    existing_steps = set(existing_ds[append_dim].values)
+    new_steps = incoming_steps - existing_steps
+
+    if not new_steps:
+        logger.info("No new data steps found; all incoming steps already exist.")
+        return None
+
+    ds_filtered = incoming_ds.sel({append_dim: list(new_steps)})
+    logger.info(f"Filtered dataset to {len(ds_filtered[append_dim])} new steps along '{append_dim}'.")
+    return ds_filtered
+
+
+
+@task(cache_policy=NO_CACHE)
+def group_contains_data(store: ic.storage.ObjectStoreConfig, group_path: str) -> bool:
+    """Check if a group in the IceChunk repository contains any data.
+
+    Parameters
+    ----------
+    store : ic.storage.ObjectStoreConfig
+        The IceChunk storage configuration.
+    group_path : str
+        The group path in the IceChunk repository to check.
+
+    Returns
+    
+    bool
+        True if the group contains data, False otherwise.
+    """
+    logger = get_run_logger()
+    group_path = group_path.removeprefix("/")
+    existing_store = zarr.open_group(store, mode="a", zarr_format=3)
+    if not group_path in list(existing_store.group_keys()):
+        logger.info(f"Group {group_path} does not exist in the IceChunk repository.")
+        return False
+    if len(list(existing_store[group_path].array_keys())) > 0:
+        logger.info(f"Group {group_path} exists and contains data.")
+        return True
+    else:
+        logger.info(f"Group {group_path} exists but contains no data.")
+        return False

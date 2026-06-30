@@ -49,6 +49,9 @@ def ingest_gridded_data(args: IngestGriddedDataInput) -> None:
 
     # Create a list of files to ingest
     file_list = gu.create_file_list(args.source_data_storage, args.glob_pattern, **args.fsspec_kwargs)
+    if len(file_list) == 0:
+        logger.warning(f"No files found matching the glob pattern: {args.glob_pattern}.")
+        raise ValueError(f"No files found matching the glob pattern: {args.glob_pattern}.")
     logger.info(f"Found {len(file_list)} files to ingest.")
 
     # Configure the IceChunk S3 repository with a virtual chunk container
@@ -85,17 +88,15 @@ def ingest_gridded_data(args: IngestGriddedDataInput) -> None:
     # append_dim is only valid when data already exists in the store.
     # On a fresh repo the root group is empty, so omit it on the first write.
     rw_session = repo.writable_session("main")
-    existing_root = zarr.open_group(rw_session.store, mode="r", zarr_format=3)
-    if len(list(existing_root[REFERENCES_GROUP_PATH].array_keys())) == 0:
-        initial_append_dim = None
-    else:
+    if gu.group_contains_data(rw_session.store, REFERENCES_GROUP_PATH):
         initial_append_dim = args.append_dim
+    else:
+        initial_append_dim = None
 
-
-    # TODO: Append, Upsert manually (use zarr's "region" for append dim)
-    logger.info(f"Writing virtual references. Initial append_dim set to: {initial_append_dim}.")
+    # TODO: Upsert manually (use zarr's "region" for append dim)
 
     # Write virtual references to the IceChunk repository
+    logger.info(f"Writing virtual references.")
     rw_session = repo.writable_session("main")
     virtual_ds.vz.to_icechunk(
         rw_session.store,
@@ -108,7 +109,7 @@ def ingest_gridded_data(args: IngestGriddedDataInput) -> None:
     logger.info(f"Wrote virtual references for {len(file_list)} files into {args.dest_bucket}/{args.base_prefix}/{args.configuration_name} with snapshot ID: {snapshot_id}")
 
     if args.write_materialized:
-        rw_session = repo.writable_session("main")
+        rw_session = repo.writable_session("main")  # After any commit a session is reset to read-only
         # Materialize and write the virtual chunks to the IceChunk repository
         ds = xr.open_zarr(
             rw_session.store,
@@ -132,8 +133,7 @@ def ingest_gridded_data(args: IngestGriddedDataInput) -> None:
         )
 
         # Check to see if data exists
-        existing_group = zarr.open_group(rw_session.store, mode="r", zarr_format=3)
-        if len(list(existing_group[RAW_DATA_GROUP_PATH].array_keys())) == 0:
+        if not gu.group_contains_data(rw_session.store, RAW_DATA_GROUP_PATH):
             encoding_config = gu.create_encoding_config(
                 ds,
                 append_dim=args.append_dim,
@@ -146,8 +146,22 @@ def ingest_gridded_data(args: IngestGriddedDataInput) -> None:
             encoding_config = None
             write_mode = "a"  # append
             append_dim = args.append_dim
+            existing_ds = xr.open_zarr(
+                rw_session.store,
+                group=RAW_DATA_GROUP_PATH,
+                consolidated=False
+            )
+            ds = gu.filter_for_new_data(
+                incoming_ds=ds,
+                existing_ds=existing_ds,
+                append_dim=args.append_dim,
+            )
+            if ds is None:
+                logger.info(f"No new data steps found in {RAW_DATA_GROUP_PATH}. Shutting down.")
+                return
 
         logger.info(f"Writing the chunked dataset to the Icechunk repository with mode: {write_mode}.")
+
         to_icechunk(
             ds,
             rw_session,

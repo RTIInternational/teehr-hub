@@ -42,43 +42,44 @@ def build_pyramids(args: IngestGriddedDataInput) -> None:
         f"Icechunk repo opened at: {args.dest_bucket}/{args.base_prefix}/{args.configuration_name}."
     )
 
-    # Read the full materialized dataset (lazy)
-    ro_session = repo.readonly_session("main")
-    ds = xr.open_zarr(
-        ro_session.store,
-        group=RAW_DATA_GROUP_PATH,
-        consolidated=False,
-        decode_coords="all"
-    )
-    all_dims = ds.indexes[args.append_dim].unique()
-    logger.info(f"Read materialized data from group: {RAW_DATA_GROUP_PATH}.")
-
+    rw_session = repo.writable_session("main")
     # Determine which time steps are not yet in the pyramid store
     first_level = str(args.factors[0])
-    try:
-        existing_level_ds = xr.open_zarr(
-            ro_session.store,
+    if not gu.group_contains_data(rw_session.store, RAW_DATA_GROUP_PATH):
+        logger.info(f"No data found in {RAW_DATA_GROUP_PATH}. Shutting down.")
+        return
+
+    if not gu.group_contains_data(rw_session.store, f"{PYRAMID_GROUP_PATH}/{first_level}"):
+        is_new_pyramid = True
+        logger.info(f"No existing pyramids found. Building for all data in {RAW_DATA_GROUP_PATH}.")
+        ds_new = xr.open_zarr(
+            rw_session.store,
+            group=RAW_DATA_GROUP_PATH,
+            consolidated=False,
+            decode_coords="all"
+        )
+    else:
+        is_new_pyramid = False
+        logger.info(f"Existing pyramids found. Checking for new data against {RAW_DATA_GROUP_PATH}.")
+        existing_ds = xr.open_zarr(
+            store=rw_session.store,
+            group=RAW_DATA_GROUP_PATH,
+            consolidated=False
+        )
+        incoming_ds = xr.open_zarr(
+            rw_session.store,
             group=f"{PYRAMID_GROUP_PATH}/{first_level}",
             consolidated=False
         )
-        level_dims = existing_level_ds.indexes[args.append_dim].unique()
-        new_dims = all_dims.difference(level_dims)
-        is_new_pyramid = False
-        logger.info(
-            f"Found {len(level_dims)} existing pyramid time step(s). "
-            f"{len(new_dims)} new step(s) to process."
+        ds_new = gu.filter_for_new_data(
+            incoming_ds=incoming_ds,
+            existing_ds=existing_ds,
+            append_dim=args.append_dim,
         )
-    except (FileNotFoundError, KeyError):
-        is_new_pyramid = True
-        logger.info(f"No existing pyramids found. Building from scratch for {len(all_dims)} time step(s).")
-        new_dims = all_dims
-
-    if new_dims.empty:
-        logger.info("No new data to pyramid. Skipping.")
-        return
-
-    # Slice to only the new time steps before reprojecting
-    ds_new = ds.sel({args.append_dim: new_dims})
+        if ds_new is None:
+            logger.info(f"No new data steps found in {RAW_DATA_GROUP_PATH}. Shutting down.")
+            return
+        logger.info(f"Found {len(ds_new[args.append_dim])} new time step(s) to process.")
 
     # Set spatial dims and reproject to web mercator
     ds_mercator = gu.reproject_dataset(
@@ -88,7 +89,7 @@ def build_pyramids(args: IngestGriddedDataInput) -> None:
         y_dim=args.y_dim,
         source_crs=args.source_crs
     )
-    logger.info(f"Reprojected {len(new_dims)} time step(s) to {args.target_crs}.")
+    logger.info(f"Reprojected {len(ds_new.indexes[args.append_dim].unique())} time step(s) to {args.target_crs}.")
 
     # Create multiscale pyramids for the new slice
     pyramid = create_pyramid(
@@ -105,7 +106,7 @@ def build_pyramids(args: IngestGriddedDataInput) -> None:
     write_mode = "w" if is_new_pyramid else "a"
     append_dim_arg = None if is_new_pyramid else args.append_dim
 
-    session = repo.writable_session("main")
+    rw_session = repo.writable_session("main")
 
     # This ensures the parent '/pyramids' group contains the 'multiscales' block
     if is_new_pyramid:
@@ -114,7 +115,7 @@ def build_pyramids(args: IngestGriddedDataInput) -> None:
 
         # Safely write it directly into the parent group path of the Icechunk store
         root_metadata_ds.to_zarr(
-            session.store,
+            rw_session.store,
             group=PYRAMID_GROUP_PATH,
             mode="w",
             zarr_format=3,  # Icechunk works natively with Zarr v3 specs
@@ -153,8 +154,10 @@ def build_pyramids(args: IngestGriddedDataInput) -> None:
 
         # Check to see if data exists
         group_path = f"{PYRAMID_GROUP_PATH}/{level_name}"
-        existing_group = zarr.open_group(session.store, mode="r", zarr_format=3)
-        if len(list(existing_group[group_path].array_keys())) == 0:
+        if gu.group_contains_data(rw_session.store, group_path):
+            encoding_config = None
+            write_mode = "a"
+        else:
             encoding_config = gu.create_encoding_config(
                 level_ds,
                 append_dim=args.append_dim,
@@ -162,14 +165,12 @@ def build_pyramids(args: IngestGriddedDataInput) -> None:
                 num_shard_chunks=args.num_shard_chunks,
             )
             write_mode = "w"
-        else:
-            encoding_config = None
-            write_mode = "a"  # append
+
 
         logger.info(f"Writing pyramid level '{level_name}' to: {group_path} (mode='{write_mode}').")
         to_icechunk(
             level_ds,
-            session,
+            rw_session,
             group=group_path,
             encoding=encoding_config,
             align_chunks=True,
@@ -178,8 +179,8 @@ def build_pyramids(args: IngestGriddedDataInput) -> None:
         )
 
 
-    snapshot_id = session.commit(
-        f"Committed {len(dt.children)} pyramid levels ({len(new_dims)} new time step(s)) "
+    snapshot_id = rw_session.commit(
+        f"Committed {len(dt.children)} pyramid levels ({len(level_ds[args.append_dim])} new time step(s)) "
         f"to {args.dest_bucket}/{args.base_prefix}/{args.configuration_name}"
     )
     logger.info(f"Pyramids committed with snapshot ID: {snapshot_id}.")

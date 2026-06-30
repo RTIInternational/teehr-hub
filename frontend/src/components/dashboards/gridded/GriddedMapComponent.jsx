@@ -4,10 +4,11 @@ import 'maplibre-gl/dist/maplibre-gl.css';
 import { useGriddedDashboard, ActionTypes } from '../../../context/GriddedDashboardContext.jsx';
 import { griddedApiService, GRIDDED_API_BASE_URL } from '../../../services/api.js';
 import { ensureFreshToken } from '../../../auth/keycloak.js';
+import { OVERLAY_LAYERS } from './overlayLayers.js';
 
 const GriddedMapComponent = () => {
   const { state, dispatch } = useGriddedDashboard();
-  const { mapFilters, mapLoaded } = state;
+  const { mapFilters, mapLoaded, activeOverlays } = state;
   const { dataset, variable, timestepIndex, colorRamp, colorRampMin, colorRampMax } = mapFilters;
 
   const mapContainer = useRef(null);
@@ -115,6 +116,28 @@ const GriddedMapComponent = () => {
   useEffect(() => {
     updateTileLayer();
   }, [updateTileLayer]);
+
+  // Sync external overlay layers to the map whenever the active set changes.
+  // Overlays are inserted below gridded-layer so the primary data renders on top.
+  useEffect(() => {
+    const mapInstance = map.current;
+    if (!mapInstance || !mapLoaded) return;
+
+    OVERLAY_LAYERS.forEach(({ id, sourceConfig, layerConfig }) => {
+      const isActive = activeOverlays.includes(id);
+      const hasLayer = !!mapInstance.getLayer(id);
+      const hasSource = !!mapInstance.getSource(id);
+
+      if (isActive && !hasLayer) {
+        if (!hasSource) mapInstance.addSource(id, sourceConfig);
+        const beforeId = mapInstance.getLayer('gridded-layer') ? 'gridded-layer' : undefined;
+        mapInstance.addLayer({ id, source: id, ...layerConfig }, beforeId);
+      } else if (!isActive && hasLayer) {
+        mapInstance.removeLayer(id);
+        if (hasSource) mapInstance.removeSource(id);
+      }
+    });
+  }, [mapLoaded, activeOverlays]);
 
   // Update EDR click handler when active filters change
   useEffect(() => {

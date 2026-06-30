@@ -15,6 +15,8 @@ const initialGriddedState = {
     colorRampMax: 100,
   },
 
+  activeOverlays: [],   // string[] of overlay IDs currently shown on the map
+
   mapLoaded: false,
   loading: false,
   error: null,
@@ -25,6 +27,7 @@ export const ActionTypes = {
   SET_VARIABLES: 'SET_VARIABLES',
   SET_TIMESTEPS: 'SET_TIMESTEPS',
   UPDATE_MAP_FILTERS: 'UPDATE_MAP_FILTERS',
+  TOGGLE_OVERLAY: 'TOGGLE_OVERLAY',
   SET_MAP_LOADED: 'SET_MAP_LOADED',
   SET_LOADING: 'SET_LOADING',
   SET_ERROR: 'SET_ERROR',
@@ -71,6 +74,14 @@ const griddedDashboardReducer = (state, action) => {
           ...action.payload,
         },
       };
+
+    case ActionTypes.TOGGLE_OVERLAY: {
+      const id = action.payload;
+      const next = state.activeOverlays.includes(id)
+        ? state.activeOverlays.filter((x) => x !== id)
+        : [...state.activeOverlays, id];
+      return { ...state, activeOverlays: next };
+    }
 
     case ActionTypes.SET_MAP_LOADED:
       return { ...state, mapLoaded: action.payload };
