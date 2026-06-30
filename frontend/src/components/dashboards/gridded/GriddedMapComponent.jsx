@@ -65,7 +65,10 @@ const GriddedMapComponent = () => {
 
     map.current.on('error', (e) => {
       console.error('GriddedMapComponent: MapLibre error:', e);
-      dispatch({ type: ActionTypes.SET_ERROR, payload: `Map error: ${e.error?.message || 'Unknown error'}` });
+      // e.sourceId is set for tile/source errors (e.g. 404 for areas with no data); only surface fatal map errors.
+      if (!e.sourceId) {
+        dispatch({ type: ActionTypes.SET_ERROR, payload: `Map error: ${e.error?.message || 'Unknown error'}` });
+      }
     });
 
     return () => {

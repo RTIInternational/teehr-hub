@@ -36,7 +36,7 @@ const GriddedControls = ({ loadVariables, loadTimesteps }) => {
     const selected = e.target.value || null;
     dispatch({ type: ActionTypes.UPDATE_MAP_FILTERS, payload: { variable: selected, timestepIndex: 0 } });
     if (dataset && selected) {
-      await loadTimesteps(dataset, selected);
+      await loadTimesteps(dataset);
     }
   };
 
@@ -58,9 +58,10 @@ const GriddedControls = ({ loadVariables, loadTimesteps }) => {
 
   const handleRangeChange = (field, value) => {
     const num = parseFloat(value);
-    if (!Number.isNaN(num)) {
-      dispatch({ type: ActionTypes.UPDATE_MAP_FILTERS, payload: { [field]: num } });
-    }
+    if (Number.isNaN(num)) return;
+    if (field === 'colorRampMin' && num >= colorRampMax) return;
+    if (field === 'colorRampMax' && num <= colorRampMin) return;
+    dispatch({ type: ActionTypes.UPDATE_MAP_FILTERS, payload: { [field]: num } });
   };
 
   return (

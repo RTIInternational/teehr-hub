@@ -32,9 +32,9 @@ const Dashboard = () => {
     }
   }, [dispatch]);
 
-  const loadTimesteps = useCallback(async (datasetId, variable) => {
+  const loadTimesteps = useCallback(async (datasetId) => {
     try {
-      const data = await griddedApiService.getGriddedTimesteps(datasetId, variable);
+      const data = await griddedApiService.getGriddedTimesteps(datasetId);
       dispatch({ type: ActionTypes.SET_TIMESTEPS, payload: data.values ?? [] });
     } catch (err) {
       console.error('GriddedDashboard: Failed to load timesteps:', err);
@@ -174,17 +174,6 @@ const Dashboard = () => {
                 loadTimesteps={loadTimesteps}
               />
             </DashboardPanel>
-          </div>
-
-          {/* Right-middle placeholder — reserved for future use */}
-          <div
-            style={{
-              gridColumn: '2 / 3',
-              gridRow: state.error ? '3 / 4' : '2 / 4',
-              minHeight: 0,
-            }}
-          >
-            {/* Reserved for future timeseries or statistics panel */}
           </div>
 
           {/* Bottom full-width panel — timeseries plot */}

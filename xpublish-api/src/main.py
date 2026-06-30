@@ -73,8 +73,7 @@ def parse_repo_configs() -> list[RepoConfig]:
     if not prefix:
         raise RuntimeError("ICECHUNK_PREFIX is required: base prefix path for icechunk repos")
     configs = []
-    for name in repos_env.split(","):
-        name = name.strip()
+    for name in (n.strip() for n in repos_env.split(",")):
         if not name:
             continue
         configs.append(RepoConfig(name=name, bucket=bucket, prefix=f"{prefix}/{name}"))
@@ -194,7 +193,7 @@ def build_app() -> FastAPI:
             np.datetime_as_string(v, unit="s") if isinstance(v, np.datetime64) else str(v)
             for v in values
         ]
-        logger.info("Coordinate values for dataset '%s', coord '%s': %s", dataset_id, coord_name, serialized)
+        logger.debug("Coordinate values for dataset '%s', coord '%s': %s", dataset_id, coord_name, serialized)
         return {"dataset_id": dataset_id, "coord_name": coord_name, "values": serialized}
 
     @api_app.get("/datasets/{dataset_id}/variable-attrs")
@@ -214,6 +213,7 @@ def build_app() -> FastAPI:
                 else:
                     attrs[k] = v
             result[var_name] = attrs
+        logger.info("Variable attrs for dataset '%s': %s", dataset_id, list(result.keys()))
         return {"dataset_id": dataset_id, "variables": result}
 
     # --- api_app middleware (gzip only; CORS is on the outer app) ---

@@ -5,13 +5,12 @@ import DashboardPanel from '../../common/dashboard/DashboardPanel.jsx';
 
 const GriddedTimeseriesPanel = () => {
   const { state } = useGriddedDashboard();
-  const { timeseriesData, timeseriesLoading, timeseriesError, clickedPoint, mapFilters } = state;
-  const { variable } = mapFilters;
+  const { timeseriesData, timeseriesLoading, timeseriesError, clickedPoint } = state;
   const plotRef = useRef(null);
 
   useEffect(() => {
     if (!plotRef.current || !timeseriesData) return;
-    const { times, values, lon, lat } = timeseriesData;
+    const { times, values, lon, lat, variable } = timeseriesData;
     Plotly.react(
       plotRef.current,
       [
@@ -37,7 +36,7 @@ const GriddedTimeseriesPanel = () => {
       },
       { responsive: true, displayModeBar: false },
     );
-  }, [timeseriesData, variable]);
+  }, [timeseriesData]);
 
   const header = <span className="small fw-bold">Timeseries</span>;
 

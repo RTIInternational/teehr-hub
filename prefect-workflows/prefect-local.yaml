@@ -1,7 +1,3 @@
-# Welcome to your prefect.yaml file! You can you this file for storing and managing
-# configuration for deploying your flows. We recommend committing this file to source
-# control along with your flow code.
-
 # Generic metadata about this project
 name: teehr-hub
 prefect-version: 3.4.24

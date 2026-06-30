@@ -312,29 +312,25 @@ export const MAX_TIMESERIES_POINTS = 365;
 
 const griddedApiCall = async (path, { raw = false } = {}) => {
   const url = `${GRIDDED_API_BASE_URL}${path}`;
-  try {
-    const token = await ensureFreshToken();
-    const headers = { Accept: raw ? 'text/csv' : 'application/json' };
-    if (token) headers['Authorization'] = `Bearer ${token}`;
-    const response = await fetch(url, { headers });
-    if (!response.ok) {
-      throw new Error(`Gridded API error: ${response.status} ${response.statusText}`);
-    }
-    return raw ? response.text() : response.json();
-  } catch (error) {
-    console.error(`Gridded API call failed for ${path}:`, error);
-    throw error;
+  const token = await ensureFreshToken();
+  const headers = { Accept: raw ? 'text/csv' : 'application/json' };
+  if (token) headers['Authorization'] = `Bearer ${token}`;
+  const response = await fetch(url, { headers });
+  if (!response.ok) {
+    throw new Error(`Gridded API error: ${response.status} ${response.statusText}`);
   }
+  return raw ? response.text() : response.json();
 };
 
 function parseTimeseriesCsv(csvText, variable) {
   const lines = csvText.trim().split('\n').filter((l) => l.trim());
   if (lines.length < 2) return { times: [], values: [] };
   const headers = lines[0].split(',').map((h) => h.trim().replace(/^["']|["']$/g, ''));
-  const timeColIdx = ['datetime', 'time', 'date'].reduce((found, name) => {
-    if (found !== -1) return found;
-    return headers.findIndex((h) => h.toLowerCase() === name);
-  }, -1);
+  let timeColIdx = -1;
+  for (const name of ['datetime', 'time', 'date']) {
+    timeColIdx = headers.findIndex((h) => h.toLowerCase() === name);
+    if (timeColIdx !== -1) break;
+  }
   const varColIdx = headers.findIndex((h) => h === variable);
   if (varColIdx === -1) throw new Error(`Variable '${variable}' not found in timeseries response`);
   const times = [];
@@ -397,7 +393,7 @@ export const griddedApiService = {
       datetime: timestep,
       f: 'geojson',
     });
-    const path = `/api/datasets/${encodeURIComponent(datasetId) + '_raw_data'}/edr/position?${params.toString()}`;
+    const path = `/api/datasets/${encodeURIComponent(datasetId + '_raw_data')}/edr/position?${params.toString()}`;
     const data = await griddedApiCall(path);
 
     // GeoJSON FeatureCollection from xpublish-edr's to_geojson format:
@@ -424,7 +420,7 @@ export const griddedApiService = {
       datetime: datetimeRange,
       f: 'csv',
     });
-    const path = `/api/datasets/${encodeURIComponent(datasetId)}_raw_data/edr/position?${params.toString()}`;
+    const path = `/api/datasets/${encodeURIComponent(datasetId + '_raw_data')}/edr/position?${params.toString()}`;
     const csvText = await griddedApiCall(path, { raw: true });
     return parseTimeseriesCsv(csvText, variable);
   },

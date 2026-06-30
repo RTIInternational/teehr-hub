@@ -1,5 +1,5 @@
 import os
-from typing import Dict, Any, List
+from typing import Any
 from enum import Enum
 from pydantic import BaseModel, Field
 
@@ -25,7 +25,7 @@ class StorageType(str, Enum):
 class BaseGriddedDataInput(BaseModel):
     """Base model for gridded data analysis parameters."""
 
-    s3_storage_kwargs: Dict[str, Any] = Field(
+    s3_storage_kwargs: dict[str, Any] = Field(
         default_factory=lambda: {"from_env": True},
         description="Extra keyword arguments passed to ic.s3_storage(bucket, prefix, **s3_storage_kwargs). Defaults to {'from_env': True}."
     )
@@ -75,7 +75,7 @@ class BuildPyramidsDataInput(BaseGriddedDataInput):
         "EPSG:3857",
         description="Target CRS for reprojection prior to pyramid creation"
     )
-    factors: List[int] = Field(
+    factors: list[int] = Field(
         default_factory=lambda: [1, 2, 4],
         description="Downsampling factors for pyramid levels. Defaults are 1, 2, 4. The number of levels is determined by the length of this list."
     )
@@ -101,7 +101,7 @@ class IngestGriddedDataInput(BuildPyramidsDataInput):
         ...,
         description="Bucket or base URL for the source data files passed to the ObjectStoreRegistry (e.g., 'https://climate.arizona.edu')"
     )
-    variable_names: List[str] = Field(
+    variable_names: list[str] = Field(
         default_factory=lambda: ["SWE", "DEPTH"],
         description="Names of the variables attempt to ingest. Defaults are 'SWE', 'DEPTH'."
     )
@@ -119,15 +119,15 @@ class IngestGriddedDataInput(BuildPyramidsDataInput):
     )
 
     # --- Per-component extra kwargs ---
-    fsspec_kwargs: Dict[str, Any] = Field(
+    fsspec_kwargs: dict[str, Any] = Field(
         default_factory=dict,
         description="Extra keyword arguments passed to fsspec.filesystem(filesystem, **fsspec_kwargs)"
     )
-    obstore_kwargs: Dict[str, Any] = Field(
+    obstore_kwargs: dict[str, Any] = Field(
         default_factory=dict,
         description="Extra keyword arguments passed to obstore.store.from_url(url, **obstore_kwargs)"
     )
-    xconcat_kwargs: Dict[str, Any] = Field(
+    xconcat_kwargs: dict[str, Any] = Field(
         default_factory=dict,
         description="Extra keyword arguments passed to xr.concat(datasets, dim=concat_dim, **xconcat_kwargs). Used when creating the virtual dataset from the raw data files"
     )
