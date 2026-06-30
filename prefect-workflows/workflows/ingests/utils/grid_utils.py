@@ -462,6 +462,9 @@ def group_contains_data(
         logger.info(f"Group {group_path} does not exist in the IceChunk repository.")
         return False
     if sub_group_name is not None:
+        if sub_group_name not in list(existing_store[group_path].group_keys()):
+            logger.info(f"Sub-group {sub_group_name} does not exist in {group_path}.")
+            return False
         group_path = f"{group_path}/{sub_group_name}"
     if len(list(existing_store[group_path].array_keys())) > 0:
         logger.info(f"Group {group_path} exists and contains data.")

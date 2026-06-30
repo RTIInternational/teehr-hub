@@ -308,22 +308,47 @@ export default apiService;
 const GRIDDED_API_BASE_URL = import.meta.env.VITE_XPUBLISH_API_BASE_URL || 'http://127.0.0.1:8001';
 export { GRIDDED_API_BASE_URL };
 
-const griddedApiCall = async (path) => {
+export const MAX_TIMESERIES_POINTS = 365;
+
+const griddedApiCall = async (path, { raw = false } = {}) => {
   const url = `${GRIDDED_API_BASE_URL}${path}`;
   try {
     const token = await ensureFreshToken();
-    const headers = { Accept: 'application/json' };
+    const headers = { Accept: raw ? 'text/csv' : 'application/json' };
     if (token) headers['Authorization'] = `Bearer ${token}`;
     const response = await fetch(url, { headers });
     if (!response.ok) {
       throw new Error(`Gridded API error: ${response.status} ${response.statusText}`);
     }
-    return response.json();
+    return raw ? response.text() : response.json();
   } catch (error) {
     console.error(`Gridded API call failed for ${path}:`, error);
     throw error;
   }
 };
+
+function parseTimeseriesCsv(csvText, variable) {
+  const lines = csvText.trim().split('\n').filter((l) => l.trim());
+  if (lines.length < 2) return { times: [], values: [] };
+  const headers = lines[0].split(',').map((h) => h.trim().replace(/^["']|["']$/g, ''));
+  const timeColIdx = ['datetime', 'time', 'date'].reduce((found, name) => {
+    if (found !== -1) return found;
+    return headers.findIndex((h) => h.toLowerCase() === name);
+  }, -1);
+  const varColIdx = headers.findIndex((h) => h === variable);
+  if (varColIdx === -1) throw new Error(`Variable '${variable}' not found in timeseries response`);
+  const times = [];
+  const values = [];
+  for (const line of lines.slice(1)) {
+    const cols = line.split(',').map((c) => c.trim().replace(/^["']|["']$/g, ''));
+    const val = parseFloat(cols[varColIdx]);
+    if (Number.isFinite(val)) {
+      times.push(timeColIdx !== -1 ? cols[timeColIdx] : '');
+      values.push(val);
+    }
+  }
+  return { times, values };
+}
 
 export const griddedApiService = {
   // List available dataset keys from the xpublish app
@@ -378,5 +403,23 @@ export const griddedApiService = {
     } catch {
       return null;
     }
+  },
+
+  // Query a timeseries at a single point via the CfEdrPlugin OGC EDR position endpoint.
+  // Requests all timesteps up to maxPoints using an ISO 8601 datetime interval.
+  // Returns { times: string[], values: number[] }.
+  fetchGriddedEdrTimeseries: async (datasetId, variable, lon, lat, timesteps, maxPoints = MAX_TIMESERIES_POINTS) => {
+    const slice = maxPoints > 0 ? timesteps.slice(0, maxPoints) : timesteps;
+    if (slice.length === 0) throw new Error('No timesteps available for timeseries query');
+    const datetimeRange = slice.length === 1 ? slice[0] : `${slice[0]}/${slice[slice.length - 1]}`;
+    const params = new URLSearchParams({
+      coords: `POINT(${lon} ${lat})`,
+      'parameter-name': variable,
+      datetime: datetimeRange,
+      f: 'csv',
+    });
+    const path = `/api/datasets/${encodeURIComponent(datasetId)}_raw_data/edr/position?${params.toString()}`;
+    const csvText = await griddedApiCall(path, { raw: true });
+    return parseTimeseriesCsv(csvText, variable);
   },
 };

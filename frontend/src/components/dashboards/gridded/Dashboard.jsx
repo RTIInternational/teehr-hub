@@ -4,6 +4,7 @@ import { griddedApiService } from '../../../services/api.js';
 import DashboardPanel from '../../common/dashboard/DashboardPanel.jsx';
 import GriddedMapComponent from './GriddedMapComponent.jsx';
 import GriddedControls from './GriddedControls.jsx';
+import GriddedTimeseriesPanel from './GriddedTimeseriesPanel.jsx';
 
 const Dashboard = () => {
   const { state, dispatch } = useGriddedDashboard();
@@ -39,6 +40,20 @@ const Dashboard = () => {
     }
   }, [dispatch]);
 
+  const runTimeseriesQuery = useCallback(async (lon, lat) => {
+    const { dataset, variable } = state.mapFilters;
+    const { timesteps } = state;
+    if (!dataset || !variable || timesteps.length === 0) return;
+    dispatch({ type: ActionTypes.SET_TIMESERIES_LOADING, payload: true });
+    try {
+      const data = await griddedApiService.fetchGriddedEdrTimeseries(dataset, variable, lon, lat, timesteps);
+      dispatch({ type: ActionTypes.SET_TIMESERIES_DATA, payload: { ...data, lon, lat, variable } });
+    } catch (err) {
+      console.error('GriddedDashboard: Timeseries query failed:', err);
+      dispatch({ type: ActionTypes.SET_TIMESERIES_ERROR, payload: err.message });
+    }
+  }, [state.mapFilters.dataset, state.mapFilters.variable, state.timesteps, dispatch]);
+
   // Load datasets on mount
   useEffect(() => {
     loadDatasets();
@@ -59,6 +74,13 @@ const Dashboard = () => {
       loadTimesteps(dataset, variable);
     }
   }, [state.mapFilters.dataset, state.mapFilters.variable, state.timesteps.length, loadTimesteps]);
+
+  // Run timeseries query when the user clicks a point on the map
+  useEffect(() => {
+    if (state.clickedPoint) {
+      runTimeseriesQuery(state.clickedPoint.lon, state.clickedPoint.lat);
+    }
+  }, [state.clickedPoint, runTimeseriesQuery]);
 
   return (
     <div className="d-flex flex-column" style={{ height: 'calc(100dvh - 56px)', minHeight: 0 }}>
@@ -137,7 +159,7 @@ const Dashboard = () => {
             {/* Reserved for future timeseries or statistics panel */}
           </div>
 
-          {/* Bottom full-width placeholder — reserved for future plots or metrics tables */}
+          {/* Bottom full-width panel — timeseries plot */}
           <div
             style={{
               gridColumn: '1 / -1',
@@ -145,7 +167,7 @@ const Dashboard = () => {
               minHeight: 0,
             }}
           >
-            {/* Reserved for future plots or metrics tables */}
+            <GriddedTimeseriesPanel />
           </div>
         </div>
       </div>

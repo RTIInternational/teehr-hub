@@ -158,6 +158,7 @@ def ingest_gridded_data(args: IngestGriddedDataInput) -> None:
                 return
 
         logger.info(f"Writing the chunked dataset to the Icechunk repository with mode: {write_mode}.")
+        ds = ds.sortby(args.append_dim)
 
         to_icechunk(
             ds,

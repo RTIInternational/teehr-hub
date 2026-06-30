@@ -17,6 +17,11 @@ const initialGriddedState = {
 
   activeOverlays: [],   // string[] of overlay IDs currently shown on the map
 
+  clickedPoint: null,       // { lon, lat } | null — last point clicked on the map
+  timeseriesLoading: false,
+  timeseriesError: null,
+  timeseriesData: null,     // { times: string[], values: number[], lon, lat, variable } | null
+
   mapLoaded: false,
   loading: false,
   error: null,
@@ -28,6 +33,10 @@ export const ActionTypes = {
   SET_TIMESTEPS: 'SET_TIMESTEPS',
   UPDATE_MAP_FILTERS: 'UPDATE_MAP_FILTERS',
   TOGGLE_OVERLAY: 'TOGGLE_OVERLAY',
+  SET_CLICKED_POINT: 'SET_CLICKED_POINT',
+  SET_TIMESERIES_LOADING: 'SET_TIMESERIES_LOADING',
+  SET_TIMESERIES_DATA: 'SET_TIMESERIES_DATA',
+  SET_TIMESERIES_ERROR: 'SET_TIMESERIES_ERROR',
   SET_MAP_LOADED: 'SET_MAP_LOADED',
   SET_LOADING: 'SET_LOADING',
   SET_ERROR: 'SET_ERROR',
@@ -82,6 +91,23 @@ const griddedDashboardReducer = (state, action) => {
         : [...state.activeOverlays, id];
       return { ...state, activeOverlays: next };
     }
+
+    case ActionTypes.SET_CLICKED_POINT:
+      return {
+        ...state,
+        clickedPoint: action.payload,
+        timeseriesData: null,
+        timeseriesError: null,
+      };
+
+    case ActionTypes.SET_TIMESERIES_LOADING:
+      return { ...state, timeseriesLoading: action.payload };
+
+    case ActionTypes.SET_TIMESERIES_DATA:
+      return { ...state, timeseriesData: action.payload, timeseriesLoading: false, timeseriesError: null };
+
+    case ActionTypes.SET_TIMESERIES_ERROR:
+      return { ...state, timeseriesError: action.payload, timeseriesLoading: false };
 
     case ActionTypes.SET_MAP_LOADED:
       return { ...state, mapLoaded: action.payload };

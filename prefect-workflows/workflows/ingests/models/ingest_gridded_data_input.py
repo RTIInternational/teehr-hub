@@ -63,7 +63,28 @@ class BaseGriddedDataInput(BaseModel):
     )
 
 
-class IngestGriddedDataInput(BaseGriddedDataInput):
+class BuildPyramidsDataInput(BaseGriddedDataInput):
+    """Input parameters for the build_geozarr_pyramids Prefect flow."""
+
+    source_crs: str = Field(
+        "EPSG:4269",
+        description="Source CRS of the input data"
+    )
+    target_crs: str = Field(
+        "EPSG:3857",
+        description="Target CRS for reprojection prior to pyramid creation"
+    )
+    factors: List[int] = Field(
+        default_factory=lambda: [1, 2, 4],
+        description="Downsampling factors for pyramid levels. Defaults are 1, 2, 4. The number of levels is determined by the length of this list."
+    )
+    pyramid_method: str = Field(
+        "mean",
+        description="Aggregation method for pyramid downsampling ('mean', 'max', 'min', 'sum')"
+    )
+
+
+class IngestGriddedDataInput(BuildPyramidsDataInput):
     """Input parameters for the ingest_gridded_data Prefect flow."""
 
     # --- Core required parameters ---
@@ -108,25 +129,4 @@ class IngestGriddedDataInput(BaseGriddedDataInput):
     xconcat_kwargs: Dict[str, Any] = Field(
         default_factory=dict,
         description="Extra keyword arguments passed to xr.concat(datasets, dim=concat_dim, **xconcat_kwargs). Used when creating the virtual dataset from the raw data files"
-    )
-
-
-class BuildPyramidsDataInput(BaseGriddedDataInput):
-    """Input parameters for the build_geozarr_pyramids Prefect flow."""
-
-    source_crs: str = Field(
-        "EPSG:4269",
-        description="Source CRS of the input data"
-    )
-    target_crs: str = Field(
-        "EPSG:3857",
-        description="Target CRS for reprojection prior to pyramid creation"
-    )
-    factors: List[int] = Field(
-        default_factory=lambda: [1, 2, 4],
-        description="Downsampling factors for pyramid levels. Defaults are 1, 2, 4. The number of levels is determined by the length of this list."
-    )
-    pyramid_method: str = Field(
-        "mean",
-        description="Aggregation method for pyramid downsampling ('mean', 'max', 'min', 'sum')"
     )

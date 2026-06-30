@@ -152,9 +152,13 @@ def build_pyramids(args: BuildPyramidsDataInput) -> None:
         )
         level_ds.attrs.update(attrs)
 
+        logger.info("Rechunked and updated GeoZarr attributes for pyramid level: %s", level_name)
         # Check to see if data exists
-        group_path = f"{PYRAMID_GROUP_PATH}/{level_name}"
-        if gu.group_contains_data(rw_session.store, group_path):
+        if gu.group_contains_data(
+            store=rw_session.store,
+            group_path=PYRAMID_GROUP_PATH,
+            sub_group_name=level_name
+        ):
             encoding_config = None
             write_mode = "a"
         else:
@@ -166,8 +170,9 @@ def build_pyramids(args: BuildPyramidsDataInput) -> None:
             )
             write_mode = "w"
 
-
+        group_path = f"{PYRAMID_GROUP_PATH}/{level_name}"
         logger.info(f"Writing pyramid level '{level_name}' to: {group_path} (mode='{write_mode}').")
+        level_ds = level_ds.sortby(args.append_dim)
         to_icechunk(
             level_ds,
             rw_session,

@@ -154,6 +154,8 @@ const GriddedMapComponent = () => {
 
       const { lng, lat } = e.lngLat;
 
+      dispatch({ type: ActionTypes.SET_CLICKED_POINT, payload: { lon: lng, lat } });
+
       popup.current
         .setLngLat([lng, lat])
         .setHTML('<div style="padding:6px; font-size:0.8rem;">Loading…</div>')
