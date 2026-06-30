@@ -822,3 +822,91 @@ deployments:
     schedule:
       cron: "35 4 * * *"
       active: true
+
+  # Gridded Data Ingests
+  - name: ingest-ua-4km-grids
+    version:
+    tags: []
+    description: Ingest UA 4km SWE and DEPTH variables into an IceChunk S3 repository using VirtualiZarr
+    entrypoint: workflows/ingests/ingest_gridded_data.py:ingest_gridded_data
+    parameters: {
+      "args": {
+        "source_data_storage": "http",
+        "glob_pattern": "https://climate.arizona.edu/data/UA_SWE/DailyData_4km/WY2026/UA_SWE_Depth_4km_v1_202510*_stable.nc",
+        "source_bucket": "https://climate.arizona.edu",
+        "configuration_name": "ua-swann-4km",
+        "factors": [1],
+        "concat_dim": "time",
+        "parser_type": "hdf",
+        "fsspec_kwargs": {},
+        "obstore_kwargs": {},
+        "xconcat_kwargs": {
+          "coords": "minimal",
+          "compat": "override",
+          "combine_attrs": "override"
+        }
+      }
+    }
+    work_pool: *work_pool
+
+  - name: ingest-nwm30-forcing-analysis-assim-grids
+    version:
+    tags: []
+    description: Ingest NWM 3.0 forcing analysis and assimilation data into an IceChunk S3 repository using VirtualiZarr
+    entrypoint: workflows/ingests/ingest_gridded_data.py:ingest_gridded_data
+    parameters: {
+      "args": {
+        "x_dim": "x",
+        "y_dim": "y",
+        "factors": [1, 2, 4],
+        "source_data_storage": "gcs",
+        "glob_pattern": "gs://national-water-model/nwm.20260606/forcing_analysis_assim/nwm.t*z.analysis_assim.forcing.tm00.conus.nc",
+        "source_bucket": "gs://national-water-model",
+        "configuration_name": "nwm30-forcing-analysis-assim",
+        "variable_names": ["RAINRATE"],
+        "concat_dim": "time",
+        "parser_type": "hdf",
+        "fsspec_kwargs": {"token": "anon"},
+        "obstore_kwargs": {"skip_signature": true},
+        "xconcat_kwargs": {
+          "coords": "minimal",
+          "compat": "override",
+          "combine_attrs": "override"
+        }
+      }
+    }
+    work_pool: *work_pool
+
+  # Gridded Pyramid Builds
+  - name: build-ua-4km-grids-pyramids
+    version:
+    tags: []
+    description: Build multiscale pyramids for the UA 4km SWE/DEPTH IceChunk repository
+    entrypoint: workflows/ingests/build_geozarr_pyramids.py:build_pyramids
+    parameters: {
+      "args": {
+        "dest_bucket": "warehouse",
+        "source_bucket": "https://climate.arizona.edu",
+        "glob_pattern": "",
+        "configuration_name": "ua-swann-4km",
+        "factors": [1],
+        "base_prefix": "icechunk-ingests"
+      }
+    }
+    work_pool: *work_pool
+
+  - name: build-nwm30-forcing-analysis-assim-grids-pyramids
+    version:
+    tags: []
+    description: Build multiscale pyramids for the NWM 3.0 forcing analysis/assimilation IceChunk repository
+    entrypoint: workflows/ingests/build_geozarr_pyramids.py:build_pyramids
+    parameters: {
+      "args": {
+        "x_dim": "x",
+        "y_dim": "y",
+        "source_bucket": "gs://national-water-model",
+        "glob_pattern": "",
+        "configuration_name": "nwm30-forcing-analysis-assim",
+        "factors": [1, 2, 4]
+    }
+    work_pool: *work_pool
