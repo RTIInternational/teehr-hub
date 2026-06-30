@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Form, Row, Col, Button, InputGroup } from 'react-bootstrap';
 import { useGriddedDashboard, ActionTypes } from '../../../context/GriddedDashboardContext.jsx';
+import { useGriddedDataFetching } from '../../../hooks/useGriddedDataFetching.js';
 import { OVERLAY_LAYERS } from './overlayLayers.js';
 
 const COLOR_RAMPS = [
@@ -12,9 +13,10 @@ const COLOR_RAMPS = [
   { label: 'RdBu', value: 'raster/RdBu' },
 ];
 
-const GriddedControls = ({ loadVariables, loadTimesteps }) => {
+const GriddedControls = () => {
   const [overlaysExpanded, setOverlaysExpanded] = useState(true);
   const { state, dispatch } = useGriddedDashboard();
+  const { loadVariables, loadTimesteps } = useGriddedDataFetching();
   const { datasets, variables, timesteps, mapFilters, activeOverlays, variableAttrs } = state;
   const { dataset, variable, timestepIndex, colorRamp, colorRampMin, colorRampMax } = mapFilters;
 

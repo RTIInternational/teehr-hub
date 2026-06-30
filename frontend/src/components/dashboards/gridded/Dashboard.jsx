@@ -1,7 +1,7 @@
-import { useEffect, useCallback, useRef } from 'react';
+import { useEffect } from 'react';
 import { useGriddedDashboard, ActionTypes } from '../../../context/GriddedDashboardContext.jsx';
-import { griddedApiService } from '../../../services/api.js';
-import { getVariableStyle } from './variableStyles.js';
+import { useGriddedDataFetching } from '../../../hooks/useGriddedDataFetching.js';
+import { useGriddedVariableStyles } from './useGriddedVariableStyles.js';
 import DashboardPanel from '../../common/dashboard/DashboardPanel.jsx';
 import GriddedMapComponent from './GriddedMapComponent.jsx';
 import GriddedControls from './GriddedControls.jsx';
@@ -9,61 +9,8 @@ import GriddedTimeseriesPanel from './GriddedTimeseriesPanel.jsx';
 
 const Dashboard = () => {
   const { state, dispatch } = useGriddedDashboard();
-  const styledVariablesRef = useRef(new Set());
-
-  const loadDatasets = useCallback(async () => {
-    dispatch({ type: ActionTypes.SET_LOADING, payload: true });
-    try {
-      const data = await griddedApiService.getGriddedDatasets();
-      dispatch({ type: ActionTypes.SET_DATASETS, payload: data.datasets ?? [] });
-    } catch (err) {
-      console.error('GriddedDashboard: Failed to load datasets:', err);
-      dispatch({ type: ActionTypes.SET_ERROR, payload: `Failed to load datasets: ${err.message}` });
-    }
-  }, [dispatch]);
-
-  const loadVariables = useCallback(async (datasetId) => {
-    try {
-      const data = await griddedApiService.getGriddedVariables(datasetId);
-      dispatch({ type: ActionTypes.SET_VARIABLES, payload: data.variables ?? [] });
-    } catch (err) {
-      console.error('GriddedDashboard: Failed to load variables:', err);
-      dispatch({ type: ActionTypes.SET_ERROR, payload: `Failed to load variables: ${err.message}` });
-    }
-  }, [dispatch]);
-
-  const loadTimesteps = useCallback(async (datasetId) => {
-    try {
-      const data = await griddedApiService.getGriddedTimesteps(datasetId);
-      dispatch({ type: ActionTypes.SET_TIMESTEPS, payload: data.values ?? [] });
-    } catch (err) {
-      console.error('GriddedDashboard: Failed to load timesteps:', err);
-      dispatch({ type: ActionTypes.SET_ERROR, payload: `Failed to load timesteps: ${err.message}` });
-    }
-  }, [dispatch]);
-
-  const loadVariableAttrs = useCallback(async (datasetId) => {
-    try {
-      const data = await griddedApiService.getGriddedVariableAttrs(datasetId);
-      dispatch({ type: ActionTypes.SET_VARIABLE_ATTRS, payload: data.variables ?? {} });
-    } catch (err) {
-      console.error('GriddedDashboard: Failed to load variable attrs:', err);
-    }
-  }, [dispatch]);
-
-  const runTimeseriesQuery = useCallback(async (lon, lat) => {
-    const { dataset, variable } = state.mapFilters;
-    const { timesteps } = state;
-    if (!dataset || !variable || timesteps.length === 0) return;
-    dispatch({ type: ActionTypes.SET_TIMESERIES_LOADING, payload: true });
-    try {
-      const data = await griddedApiService.fetchGriddedEdrTimeseries(dataset, variable, lon, lat, timesteps);
-      dispatch({ type: ActionTypes.SET_TIMESERIES_DATA, payload: { ...data, lon, lat, variable } });
-    } catch (err) {
-      console.error('GriddedDashboard: Timeseries query failed:', err);
-      dispatch({ type: ActionTypes.SET_TIMESERIES_ERROR, payload: err.message });
-    }
-  }, [state.mapFilters.dataset, state.mapFilters.variable, state.timesteps, dispatch]);
+  const { loadDatasets, loadVariables, loadTimesteps, loadVariableAttrs, runTimeseriesQuery } = useGriddedDataFetching();
+  const { resetStyles, applyVariableStyleIfNew } = useGriddedVariableStyles();
 
   // Load datasets on mount
   useEffect(() => {
@@ -82,7 +29,7 @@ const Dashboard = () => {
   useEffect(() => {
     const { dataset, variable } = state.mapFilters;
     if (dataset && variable && state.timesteps.length === 0) {
-      loadTimesteps(dataset, variable);
+      loadTimesteps(dataset);
     }
   }, [state.mapFilters.dataset, state.mapFilters.variable, state.timesteps.length, loadTimesteps]);
 
@@ -97,18 +44,14 @@ const Dashboard = () => {
   useEffect(() => {
     if (state.mapFilters.dataset) {
       loadVariableAttrs(state.mapFilters.dataset);
-      styledVariablesRef.current = new Set();
+      resetStyles();
     }
-  }, [state.mapFilters.dataset, loadVariableAttrs]);
+  }, [state.mapFilters.dataset, loadVariableAttrs, resetStyles]);
 
   // Auto-apply variable-specific default styles on first selection of each variable
   useEffect(() => {
-    const { variable } = state.mapFilters;
-    if (!variable || styledVariablesRef.current.has(variable)) return;
-    styledVariablesRef.current.add(variable);
-    const { colorRamp, min, max } = getVariableStyle(variable);
-    dispatch({ type: ActionTypes.UPDATE_MAP_FILTERS, payload: { colorRamp, colorRampMin: min, colorRampMax: max } });
-  }, [state.mapFilters.variable, dispatch]);
+    applyVariableStyleIfNew(state.mapFilters.variable);
+  }, [state.mapFilters.variable, applyVariableStyleIfNew]);
 
   return (
     <div className="d-flex flex-column" style={{ height: 'calc(100dvh - 56px)', minHeight: 0 }}>
@@ -169,10 +112,7 @@ const Dashboard = () => {
             }}
           >
             <DashboardPanel header={<span className="small fw-bold">Display Options</span>} bodyStyle={{ padding: '8px' }}>
-              <GriddedControls
-                loadVariables={loadVariables}
-                loadTimesteps={loadTimesteps}
-              />
+              <GriddedControls />
             </DashboardPanel>
           </div>
 
