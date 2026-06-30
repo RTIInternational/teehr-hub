@@ -80,7 +80,7 @@ def ingest_gridded_data(args: IngestGriddedDataInput) -> None:
         file_list,
         registry=registry,
         parser=parser,
-        concat_dim=args.concat_dim,
+        concat_dim=args.append_dim,
         **args.xconcat_kwargs
     )
     logger.info("Virtual xarray dataset created.")
@@ -111,11 +111,9 @@ def ingest_gridded_data(args: IngestGriddedDataInput) -> None:
     if args.write_materialized:
         rw_session = repo.writable_session("main")  # After any commit a session is reset to read-only
         # Materialize and write the virtual chunks to the IceChunk repository
-        ds = xr.open_zarr(
-            rw_session.store,
-            group=REFERENCES_GROUP_PATH,
-            consolidated=False,
-            decode_coords="all"  # ensure CRS is parsed
+        ds = gu.open_zarr_group(
+            store=rw_session.store,
+            group_path=REFERENCES_GROUP_PATH
         )
         logger.info("Selecting variables to ingest from the dataset.")
         ds = ds[args.variable_names]
@@ -146,10 +144,9 @@ def ingest_gridded_data(args: IngestGriddedDataInput) -> None:
             encoding_config = None
             write_mode = "a"  # append
             append_dim = args.append_dim
-            existing_ds = xr.open_zarr(
-                rw_session.store,
-                group=RAW_DATA_GROUP_PATH,
-                consolidated=False
+            existing_ds = gu.open_zarr_group(
+                store=rw_session.store,
+                group_path=RAW_DATA_GROUP_PATH
             )
             ds = gu.filter_for_new_data(
                 incoming_ds=ds,

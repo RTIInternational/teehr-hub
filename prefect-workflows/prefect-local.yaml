@@ -608,6 +608,58 @@ deployments:
     }
     work_pool: *work_pool
 
+  # # Gridded Pyramid Builds
+  # - name: build-ua-4km-grids-pyramids
+  #   version:
+  #   tags: []
+  #   description: Build multiscale pyramids for the UA 4km SWE/DEPTH IceChunk repository
+  #   entrypoint: workflows/ingests/build_geozarr_pyramids.py:build_pyramids
+  #   parameters: {
+  #     "args": {
+  #       "dest_bucket": "warehouse",
+  #       "source_bucket": "https://climate.arizona.edu",
+  #       "glob_pattern": "",
+  #       "configuration_name": "ua-swann-4km",
+  #       "factors": [1],
+  #       "base_prefix": "icechunk-ingests",
+  #       "s3_storage_kwargs": {
+  #           "region": "us-east-1",
+  #           "access_key_id": "minioadmin",
+  #           "secret_access_key": "minioadmin123",
+  #           "endpoint_url": "http://minio:9000",
+  #           "allow_http": true,
+  #           "force_path_style": true
+  #       }
+  #     }
+  #   }
+  #   work_pool: *work_pool
+
+  - name: build-nwm30-forcing-analysis-assim-grids-pyramids
+    version:
+    tags: []
+    description: Build multiscale pyramids for the NWM 3.0 forcing analysis/assimilation IceChunk repository
+    entrypoint: workflows/ingests/build_geozarr_pyramids.py:build_pyramids
+    parameters: {
+      "args": {
+        "x_dim": "x",
+        "y_dim": "y",
+        "dest_bucket": "warehouse",
+        "source_bucket": "gs://national-water-model",
+        "glob_pattern": "",
+        "configuration_name": "nwm30-forcing-analysis-assim",
+        "factors": [1, 2, 4],
+        "base_prefix": "icechunk-ingests",
+        "s3_storage_kwargs": {
+            "region": "us-east-1",
+            "access_key_id": "minioadmin",
+            "secret_access_key": "minioadmin123",
+            "endpoint_url": "http://minio:9000",
+            "allow_http": true,
+            "force_path_style": true
+        }
+      }
+    }
+    work_pool: *work_pool
 
   - name: ingest-nwm30-forcing-analysis-assim-grids
     version:

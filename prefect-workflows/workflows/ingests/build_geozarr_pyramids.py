@@ -8,7 +8,7 @@ import zarr
 
 from utils import grid_utils as gu
 from models.ingest_gridded_data_input import (
-    IngestGriddedDataInput,
+    BuildPyramidsDataInput,
     RAW_DATA_GROUP_PATH,
     PYRAMID_GROUP_PATH
 )
@@ -18,7 +18,7 @@ from models.ingest_gridded_data_input import (
     flow_run_name="build-pyramids",
     timeout_seconds=60 * 60
 )
-def build_pyramids(args: IngestGriddedDataInput) -> None:
+def build_pyramids(args: BuildPyramidsDataInput) -> None:
     """Build multiscale pyramids incrementally for newly ingested data and write them to an IceChunk repository.
 
     Reads only time steps not yet present in the pyramid store, reprojects to web
@@ -27,8 +27,8 @@ def build_pyramids(args: IngestGriddedDataInput) -> None:
 
     Parameters
     ----------
-    args : IngestGriddedDataInput
-        Pydantic model containing all flow parameters. See IngestGriddedDataInput for field descriptions.
+    args : BuildPyramidsDataInput
+        Pydantic model containing all flow parameters. See BuildPyramidsDataInput for field descriptions.
     """
     logger = get_run_logger()
 
@@ -45,31 +45,31 @@ def build_pyramids(args: IngestGriddedDataInput) -> None:
     rw_session = repo.writable_session("main")
     # Determine which time steps are not yet in the pyramid store
     first_level = str(args.factors[0])
-    if not gu.group_contains_data(rw_session.store, RAW_DATA_GROUP_PATH):
+    if not gu.group_contains_data(store=rw_session.store, group_path=RAW_DATA_GROUP_PATH):
         logger.info(f"No data found in {RAW_DATA_GROUP_PATH}. Shutting down.")
         return
 
-    if not gu.group_contains_data(rw_session.store, f"{PYRAMID_GROUP_PATH}/{first_level}"):
+    if not gu.group_contains_data(
+        store=rw_session.store,
+        group_path=PYRAMID_GROUP_PATH,
+        sub_group_name=first_level
+    ):
         is_new_pyramid = True
-        logger.info(f"No existing pyramids found. Building for all data in {RAW_DATA_GROUP_PATH}.")
-        ds_new = xr.open_zarr(
-            rw_session.store,
-            group=RAW_DATA_GROUP_PATH,
-            consolidated=False,
-            decode_coords="all"
+        logger.info(f"No existing pyramids found in {PYRAMID_GROUP_PATH}/{first_level}. Building for all data in {RAW_DATA_GROUP_PATH}.")
+        ds_new = gu.open_zarr_group(
+            store=rw_session.store,
+            group_path=RAW_DATA_GROUP_PATH
         )
     else:
         is_new_pyramid = False
         logger.info(f"Existing pyramids found. Checking for new data against {RAW_DATA_GROUP_PATH}.")
-        existing_ds = xr.open_zarr(
+        incoming_ds = gu.open_zarr_group(
             store=rw_session.store,
-            group=RAW_DATA_GROUP_PATH,
-            consolidated=False
+            group_path=RAW_DATA_GROUP_PATH
         )
-        incoming_ds = xr.open_zarr(
-            rw_session.store,
-            group=f"{PYRAMID_GROUP_PATH}/{first_level}",
-            consolidated=False
+        existing_ds = gu.open_zarr_group(
+            store=rw_session.store,
+            group_path=f"{PYRAMID_GROUP_PATH}/{first_level}"
         )
         ds_new = gu.filter_for_new_data(
             incoming_ds=incoming_ds,

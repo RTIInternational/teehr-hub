@@ -434,7 +434,11 @@ def filter_for_new_data(
 
 
 @task(cache_policy=NO_CACHE)
-def group_contains_data(store: ic.storage.ObjectStoreConfig, group_path: str) -> bool:
+def group_contains_data(
+    store: ic.storage.ObjectStoreConfig,
+    group_path: str,
+    sub_group_name: str = None
+) -> bool:
     """Check if a group in the IceChunk repository contains any data.
 
     Parameters
@@ -443,9 +447,11 @@ def group_contains_data(store: ic.storage.ObjectStoreConfig, group_path: str) ->
         The IceChunk storage configuration.
     group_path : str
         The group path in the IceChunk repository to check.
-
+    sub_group_name : str, optional
+        If provided, checks for data in a sub-group of the specified group path.
+        
     Returns
-    
+    ------- 
     bool
         True if the group contains data, False otherwise.
     """
@@ -455,9 +461,48 @@ def group_contains_data(store: ic.storage.ObjectStoreConfig, group_path: str) ->
     if not group_path in list(existing_store.group_keys()):
         logger.info(f"Group {group_path} does not exist in the IceChunk repository.")
         return False
+    if sub_group_name is not None:
+        group_path = f"{group_path}/{sub_group_name}"
     if len(list(existing_store[group_path].array_keys())) > 0:
         logger.info(f"Group {group_path} exists and contains data.")
         return True
     else:
         logger.info(f"Group {group_path} exists but contains no data.")
         return False
+
+
+@task(cache_policy=NO_CACHE)
+def open_zarr_group(
+    store: ic.storage.ObjectStoreConfig,
+    group_path: str,
+    decode_coords: str = "all",
+    consolidated: bool = False
+) -> zarr.Group:
+    """Open a Zarr group from the IceChunk repository.
+
+    Parameters
+    ----------
+    store : ic.storage.ObjectStoreConfig
+        The IceChunk storage configuration.
+    group_path : str
+        The group path in the IceChunk repository to open.
+    mode : str, optional
+        The mode to open the Zarr group (default is "r" for read-only).
+    consolidated : bool, optional
+        Whether to use consolidated metadata (default is False).
+
+    Returns
+    -------
+    zarr.Group
+        The opened Zarr group.
+    """
+    logger = get_run_logger()
+    logger.info(
+        f"Opening Zarr group at {group_path} from IceChunk repository with decode_coords={decode_coords} and consolidated={consolidated}."
+    )
+    return xr.open_zarr(
+        store=store,
+        group=group_path,
+        consolidated=consolidated,
+        decode_coords=decode_coords
+    )
