@@ -8,7 +8,6 @@ dependencies:
   - deploy.cert-manager
   - deploy.letsencrypt
   - deploy.cert
-  - deploy.contour
 environments:
   - local
   - remote
@@ -24,7 +23,6 @@ dependencies:
   - deploy.cert-manager
   - deploy.letsencrypt
   - deploy.cert
-  - deploy.contour
 environments:
   - local
 ---
@@ -38,7 +36,6 @@ dependencies:
   - deploy.cert-manager
   - deploy.letsencrypt
   - deploy.cert
-  - deploy.contour
 environments:
   - local
   - remote
@@ -53,7 +50,6 @@ dependencies:
   - deploy.cert-manager
   - deploy.letsencrypt
   - deploy.cert
-  - deploy.contour
 environments:
   - local
   - remote
@@ -68,7 +64,6 @@ dependencies:
   - deploy.cert-manager
   - deploy.letsencrypt
   - deploy.cert
-  - deploy.contour
 environments:
   - local
   - remote
@@ -83,7 +78,6 @@ dependencies:
   - deploy.cert-manager
   - deploy.letsencrypt
   - deploy.cert
-  - deploy.contour
   - deploy.keycloak-bootstrap
 environments:
   - local
@@ -99,7 +93,6 @@ dependencies:
   - deploy.cert-manager
   - deploy.letsencrypt
   - deploy.cert
-  - deploy.contour
   - deploy.prefect-oidc-proxy
 environments:
   - local
@@ -115,7 +108,6 @@ environments:
 #   - deploy.cert-manager
 #   - deploy.letsencrypt
 #   - deploy.cert
-#   - deploy.contour
 #   - deploy.kube-prometheus-stack
 # environments:
 #   - remote
