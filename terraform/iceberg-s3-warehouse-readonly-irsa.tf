@@ -14,7 +14,8 @@ data "aws_iam_policy_document" "iceberg_s3_warehouse_readonly_trust_policy" {
       variable = "${replace(module.eks.cluster_oidc_issuer_url, "https://", "")}:sub"
       values = [
         "system:serviceaccount:teehr-hub:spark",
-        "system:serviceaccount:teehr-hub:jupyter"
+        "system:serviceaccount:teehr-hub:jupyter",
+        "system:serviceaccount:teehr-hub:xpublish-api"
       ]
     }
   }

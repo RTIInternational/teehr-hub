@@ -26,6 +26,7 @@ spec:
     - manifests/service.yaml
 
   manifestTemplates:
+    - manifests/serviceaccount.yaml.tpl
     - manifests/configmap-${environment.name}.yaml.tpl
     - manifests/deployment.yaml.tpl
 
@@ -59,18 +60,10 @@ spec:
     - manifests/service.yaml
 
   manifestTemplates:
+    - manifests/serviceaccount.yaml.tpl
     - manifests/configmap-${environment.name}.yaml.tpl
     - manifests/deployment.yaml.tpl
 
   defaultTarget:
     kind: Deployment
     name: xpublish-api
-
-  sync:
-    paths:
-      - containerPath: /app/src
-        sourcePath: ./src
-        mode: one-way
-        exclude: ["__pycache__", "*.pyc"]
-    overrides:
-      - command: ["uvicorn", "src.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]

@@ -16,6 +16,7 @@ spec:
         app: xpublish-api
         component: backend
     spec:
+      serviceAccountName: xpublish-api
       containers:
       - name: xpublish-api
         image: ${actions.build.xpublish-api.outputs.deploymentImageId}
