@@ -177,7 +177,7 @@ const Home = () => {
                       </div>
                       <p className="mt-3 mb-2">
                         <a
-                          href="https://rtiinternational.github.io/teehr-hub"
+                          href="https://github.com/RTIInternational/teehr-hub"
                           target="_blank"
                           rel="noreferrer"
                           className="d-inline-flex align-items-center gap-2 text-decoration-none"
