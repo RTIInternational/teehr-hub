@@ -113,7 +113,7 @@ const Home = () => {
                       </p>
                       <p className="mb-2">
                         <a
-                          href="https://rtiinternational.github.io/teehr"
+                          href="https://github.com/RTIInternational/teehr"
                           target="_blank"
                           rel="noreferrer"
                           className="d-inline-flex align-items-center gap-2 text-decoration-none"
