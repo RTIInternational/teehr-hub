@@ -904,5 +904,6 @@ deployments:
         "glob_pattern": "",
         "configuration_name": "nwm30-forcing-analysis-assim",
         "factors": [1, 2, 4]
+      }
     }
     work_pool: *work_pool
