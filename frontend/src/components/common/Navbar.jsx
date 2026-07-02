@@ -123,7 +123,7 @@ const Navbar = () => {
     <nav className="navbar navbar-expand-lg navbar-dark bg-primary">
       <div className="container-fluid px-4 d-flex align-items-center">
         <div className="navbar-brand me-3 d-flex align-items-center gap-2">
-          <Link to="" className="d-inline-flex align-items-center" aria-label="TEEHR-Cloud Home">
+          <Link to="/" className="d-inline-flex align-items-center" aria-label="TEEHR-Cloud Home">
             <img
               src="/teehr.png"
               alt="TEEHR Dashboard"
