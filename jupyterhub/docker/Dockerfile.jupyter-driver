@@ -56,7 +56,8 @@ RUN pip install --no-cache-dir \
     kubernetes \
     nbconvert \
     trino \
-    plotly
+    plotly \
+    icechunk
 
 # Install TEEHR (set GDAL config for ARM64 builds)
 RUN ARCH=$(uname -m) && \
