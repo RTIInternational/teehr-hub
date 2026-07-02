@@ -19,6 +19,25 @@ resource "aws_s3_bucket_public_access_block" "teehr_iceberg_warehouse_public_acc
   # restrict_public_buckets  = false
 }
 
+resource "aws_s3_bucket" "teehr_icechunk_warehouse" {
+  bucket = "${var.environment}-${var.project_name}-icechunk-warehouse"
+
+  tags = {
+    Name        = "${var.environment}-${var.project_name}-icechunk-warehouse"
+    Environment = var.environment
+    Project     = var.project_name
+  }
+}
+
+resource "aws_s3_bucket_public_access_block" "teehr_icechunk_warehouse_public_access_block" {
+  bucket = aws_s3_bucket.teehr_icechunk_warehouse.id
+
+  block_public_acls       = true
+  block_public_policy     = true
+  ignore_public_acls      = true
+  restrict_public_buckets = true
+}
+
 # resource "aws_s3_bucket_policy" "public_read" {
 #   bucket = aws_s3_bucket.teehr_iceberg_warehouse.id
 
