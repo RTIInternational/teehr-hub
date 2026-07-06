@@ -8,8 +8,10 @@ import { Home, DashboardsHome, Navbar } from './components/common';
 import { DataDashboard } from './components/dashboards/data_management';
 import { ForecastDashboard } from './components/dashboards/forecast';
 import { Dashboard } from './components/dashboards/retrospective';
+import { NwmdDashboard } from './components/dashboards/nwmd/index.js';
 import { DataDashboardProvider } from './context/DataDashboardContext.jsx';
 import { ForecastDashboardProvider } from './context/ForecastDashboardContext.jsx';
+import { NwmdDashboardProvider } from './context/NwmdDashboardContext.jsx';
 import { RetrospectiveDashboardProvider } from './context/RetrospectiveDashboardContext.jsx';
 import { useAuth } from './hooks/useAuth.js';
 import 'bootstrap/dist/css/bootstrap.min.css';
@@ -118,6 +120,16 @@ const AppRoutes = () => {
                 <DataDashboardProvider>
                   <DataDashboard />
                 </DataDashboardProvider>
+              </RequireAuth>
+            }
+          />
+          <Route
+            path="/nwmd"
+            element={
+              <RequireAuth>
+                <NwmdDashboardProvider>
+                  <NwmdDashboard />
+                </NwmdDashboardProvider>
               </RequireAuth>
             }
           />

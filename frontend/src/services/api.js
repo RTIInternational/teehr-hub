@@ -100,6 +100,11 @@ export const apiService = {
     return apiCall(`/collections/${table}/queryables/variable_name/values`);
   },
 
+  // Get distinct values for requested column
+  getDistinctValues: async (table = 'sim_metrics_by_location', columnName) => {
+    return apiCall(`/collections/${table}/queryables/${columnName}/values`);
+  },
+
   // Get table properties (now via queryables endpoint)
   getTableProperties: (table = 'sim_metrics_by_location') => {
     return apiCall(`/collections/${table}/queryables`);
@@ -122,11 +127,22 @@ export const apiService = {
     const params = new URLSearchParams();
     const table = filters.table || 'sim_metrics_by_location';
 
-    if (filters.configuration) params.append('configuration_name', filters.configuration);
-    if (filters.variable) params.append('variable_name', filters.variable);
-    if (filters.primary_location_id) params.append('location_id', filters.primary_location_id);
-    if (filters.limit) params.append('limit', filters.limit);
-    if (filters.offset) params.append('offset', filters.offset);
+    const reservedKeys = ['table']
+
+    const aliasMap = {
+      aggMethod: "window_agg",
+      configuration: 'configuration_name',
+      leadTimeBin: 'forecast_lead_time_bin',
+      primary_location_id: 'location_id',
+      variable: 'variable_name',
+    }
+
+    for (const key in filters) {
+      if (reservedKeys.includes(key)) continue;
+      const paramKey = aliasMap[key] || key;
+      const filterValue = filters[key] === null ? "null" : filters[key];
+      params.append(paramKey, filterValue)
+    }
 
     const queryString = params.toString();
     const endpoint = queryString
@@ -275,10 +291,11 @@ export const apiService = {
 
   // Get a single location by id from the locations table
   // Returns a GeoJSON FeatureCollection with the matching feature
-  getLocationById: (id) => {
+  getLocationById: (id, includeAttributes = false) => {
     const params = new URLSearchParams();
     params.append('id', id);
     params.append('limit', 1);
+    params.append('include_attributes', includeAttributes)
     return apiCall(`/collections/locations/items?${params.toString()}`);
   },
 

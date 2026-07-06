@@ -90,6 +90,7 @@ const Navbar = () => {
       '/retrospective': 'Retrospective Simulations',
       '/forecast': 'Forecast Analysis',
       '/data': 'Data Availability',
+      '/nwmd': 'National Water Model Diagnostics',
       '/admin': 'Admin Page',
       '/admin/api-keys': 'API Keys',
       '/admin/keycloak': 'Keycloak Admin',

@@ -37,6 +37,15 @@ export const DATA_DASHBOARD_DEFAULTS = {
   // Placeholder for future default configuration/variable selections
 };
 
+export const NWMD_DASHBOARD_DEFAULTS = {
+  preferredConfiguration: 'nwm30_medium_range',
+  preferredVariable: 'streamflow_hourly_inst',
+  preferredThreshold: null,
+  preferredAggMethod: 'mean',
+  preferredLeadTimeBin: 'PT0S_P1DT0H',
+  defaultMetricName: 'relative_bias'
+};
+
 /**
  * Helper function to select the best default from available options
  * @param {string|null} preferred - The preferred default value
@@ -49,7 +58,7 @@ export const selectDefault = (preferred, available) => {
   }
 
   // If preferred value exists in available options, use it
-  if (preferred && available.includes(preferred)) {
+  if (preferred !== undefined && available.includes(preferred)) {
     return preferred;
   }
 
