@@ -2,6 +2,9 @@ import { useEffect, useRef, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth.js';
 
+const JUPYTERHUB_URL =
+  import.meta.env.VITE_JUPYTERHUB_URL || 'https://hub.teehr.local.app.garden/hub/spawn';
+
 const Navbar = () => {
   const location = useLocation();
   const isHome = location.pathname === '/';
@@ -177,7 +180,7 @@ const Navbar = () => {
           {canViewHubDeployment && (
             <a
               className="btn btn-outline-light btn-sm d-inline-flex align-items-center"
-              href="https://hub.teehr.rtiamanzi.org/hub/spawn"
+              href={JUPYTERHUB_URL}
               target="_blank"
               rel="noreferrer"
             >
