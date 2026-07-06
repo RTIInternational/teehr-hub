@@ -30,7 +30,7 @@ spec:
         app: minio
     spec:
       # nodeSelector:
-      #   fved/nodegroup-name: core-a
+      #   teehr-hub/nodegroup-name: core-a
       containers:
         - name: minio
           image: minio/minio:latest

@@ -19,10 +19,10 @@ spec:
 
     # coordinator:
     #   nodeSelector:
-    #     fved/nodegroup-name: core-a
+    #     teehr-hub/nodegroup-name: core-a
     # worker:
     #   nodeSelector:
-    #     fved/nodegroup-name: core-a
+    #     teehr-hub/nodegroup-name: core-a
     catalogs:
       iceberg: |-
         connector.name=iceberg
@@ -83,7 +83,7 @@ spec:
 
     coordinator:
       # nodeSelector:
-      #   fved/nodegroup-name: core-a
+      #   teehr-hub/nodegroup-name: core-a
       resources:
         requests:
           cpu: 1
@@ -94,7 +94,7 @@ spec:
 
     worker:
       # nodeSelector:
-      #   fved/nodegroup-name: core-a
+      #   teehr-hub/nodegroup-name: core-a
       resources:
         requests:
           cpu: 1

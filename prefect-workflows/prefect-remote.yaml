@@ -46,7 +46,7 @@ definitions:
       REMOTE_WAREHOUSE_S3_PATH: "{{ $REMOTE_WAREHOUSE_S3_PATH }}"
       IN_CLUSTER: "{{ $IN_CLUSTER }}"
     node_selector:
-      fved/nodegroup-name: spark-r5-4xlarge
+      teehr-hub/nodegroup-name: spark-r5-4xlarge
     tolerations:
       - key: fved/dedicated
         operator: Equal

@@ -15,7 +15,7 @@ spec:
         app: teehr-frontend
     spec:
       # nodeSelector:
-      #   fved/nodegroup-name: core-a
+      #   teehr-hub/nodegroup-name: core-a
       containers:
       - name: frontend
         image: ${actions.build.teehr-frontend.outputs.deployment-image-id}

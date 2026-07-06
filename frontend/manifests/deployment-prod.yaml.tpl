@@ -17,7 +17,7 @@ spec:
         version: production
     spec:
       # nodeSelector:
-      #   fved/nodegroup-name: core-a
+      #   teehr-hub/nodegroup-name: core-a
       containers:
       - name: frontend
         image: ${actions.build.teehr-frontend-prod.outputs.deployment-image-id}

@@ -25,7 +25,7 @@ spec:
     spec:
       serviceAccountName: iceberg-rest
       # nodeSelector:
-      #   fved/nodegroup-name: core-a
+      #   teehr-hub/nodegroup-name: core-a
       containers:
       - image: tabulario/iceberg-rest
         imagePullPolicy: IfNotPresent
