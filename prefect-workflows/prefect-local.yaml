@@ -49,11 +49,11 @@ definitions:
       node_selector:
         teehr-hub/nodegroup-name: spark-r5-4xlarge
       tolerations:
-        - key: fved/dedicated
+        - key: teehr-hub/dedicated
           operator: Equal
           value: worker
           effect: NoSchedule
-        - key: fved_dedicated
+        - key: teehr-hub_dedicated
           operator: Equal
           value: worker
           effect: NoSchedule

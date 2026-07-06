@@ -31,11 +31,11 @@ spec:
       claimName: data-nfs
   tolerations:
   - effect: "NoSchedule"
-    key: "fved/dedicated"
+    key: "teehr-hub/dedicated"
     operator: "Equal"
     value: "worker"
   - effect: "NoSchedule"
-    key: "fved_dedicated"
+    key: "teehr-hub_dedicated"
     operator: "Equal"
     value: "worker"
   nodeSelector:
