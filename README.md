@@ -171,17 +171,19 @@ Or set a profile
 export AWS_PROFILE=ciroh_mdenno
 ```
 
-Plan Terraform (can take ~15 mins)
+Plan Terraform in the platform repository (can take ~15 mins)
 ```bash
-cd terraform
-terraform init
+cd ../teehr-platform/terraform
+cp backend/dev.hcl.example backend/dev.hcl
+# Edit backend/dev.hcl with account-specific state bucket/table settings.
+terraform init -backend-config=backend/dev.hcl
 terraform plan -var-file=teehr-hub.tfvars
 cd ..
 ```
 
-Plan Terraform (can take ~15 mins)
+Apply Terraform in the platform repository (can take ~15 mins)
 ```bash
-cd terraform
+cd ../teehr-platform/terraform
 terraform apply -var-file=teehr-hub.tfvars
 cd ..
 ```
