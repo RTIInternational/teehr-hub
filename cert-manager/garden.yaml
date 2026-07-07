@@ -35,13 +35,3 @@ dependencies:
   - deploy.letsencrypt
 environments:
   - local
----
-kind: Deploy
-type: kubernetes
-name: cert
-description: K8s Cert
-spec:
-  manifestTemplates:
-    - "./manifests/cert.yaml.tpl"
-environments:
-  - remote

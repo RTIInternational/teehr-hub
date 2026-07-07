@@ -1,8 +1,0 @@
-kind: Deploy
-type: kubernetes
-name: contour
-spec:
-  manifestFiles:
-    - manifests/contour.yaml
-environments:
-  - local

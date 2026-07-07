@@ -77,11 +77,5 @@ environments:
 # spec:
 #   manifestTemplates:
 #     - manifests/grafana.yaml.tpl
-# dependencies:
-#   - deploy.cert-manager
-#   - deploy.letsencrypt
-#   - deploy.cert
-#   - deploy.contour
-#   - deploy.kube-prometheus-stack
 # environments:
 #   - remote
