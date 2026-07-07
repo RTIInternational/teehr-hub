@@ -161,7 +161,7 @@ The remote application deployment happens via GitHub Actions.
 
 ## Connect to Cluster
 
-To connect ot the cluster via `kubectl` or `k9s`, the following should work:
+To connect to the cluster via `kubectl` or `k9s`, the following should work:
 ```bash
 aws configure
 ```
