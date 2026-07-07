@@ -5,10 +5,17 @@ spec:
   chart:
     name: cert-manager
     repo: https://charts.jetstack.io
-    version: "v1.12.0"
+    version: "v1.18.2"
   namespace: cert-manager
   values:
-    installCRDs: true
+    crds:
+      enabled: true
+    serviceAccount:
+      annotations:
+        eks.amazonaws.com/role-arn: arn:aws:iam::794457362858:role/fved-cert-manager-route53-irsa
+    extraArgs:
+      - --dns01-recursive-nameservers=169.254.169.253:53
+      - --dns01-recursive-nameservers-only
 ---
 kind: Deploy
 type: kubernetes
@@ -16,7 +23,7 @@ name: letsencrypt
 description: K8s Lets Encrypt
 spec:
   manifestFiles:
-    - "./manifests/letsencrypt-self-signed.yaml"
+    - "./manifests/letsencrypt.yaml"
 dependencies: [deploy.cert-manager]
 environments:
   - remote
