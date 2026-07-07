@@ -13,7 +13,7 @@ Not in scope:
 - Platform-level certificate infrastructure ownership
 
 Remote ownership:
-- For remote environments, cert-manager is platform-owned in teehr-platform.
+- For remote environments, cert-manager is platform-owned in teehr-cloud-platform.
 - Do not use this directory to manage remote cert-manager resources.
 
 Operational note:
