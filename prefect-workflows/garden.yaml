@@ -52,7 +52,7 @@ description: Create Prefect job service account
 environments:
   - remote
 spec:
-  manifestFiles:
+  manifestTemplates:
   - ./manifests/prefect-job-sa.yaml
 ---
 kind: Deploy
