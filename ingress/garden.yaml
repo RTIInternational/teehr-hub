@@ -4,11 +4,6 @@ name: jupyterhub-ingress
 spec:
   manifestTemplates:
     - manifests/hub.yaml.tpl
-dependencies:
-  - deploy.cert-manager
-  - deploy.letsencrypt
-  - deploy.cert
-  - deploy.contour
 environments:
   - local
   - remote
@@ -19,12 +14,6 @@ name: minio-ingress
 spec:
   manifestTemplates:
     - manifests/minio.yaml.tpl
-
-dependencies:
-  - deploy.cert-manager
-  - deploy.letsencrypt
-  - deploy.cert
-  - deploy.contour
 environments:
   - local
 ---
@@ -34,11 +23,6 @@ name: panel-ingress
 spec:
   manifestTemplates:
     - manifests/panel.yaml.tpl
-dependencies:
-  - deploy.cert-manager
-  - deploy.letsencrypt
-  - deploy.cert
-  - deploy.contour
 environments:
   - local
   - remote
@@ -49,11 +33,6 @@ name: api-ingress
 spec:
   manifestTemplates:
     - manifests/api.yaml.tpl
-dependencies:
-  - deploy.cert-manager
-  - deploy.letsencrypt
-  - deploy.cert
-  - deploy.contour
 environments:
   - local
   - remote
@@ -64,11 +43,6 @@ name: dashboards-ingress
 spec:
   manifestTemplates:
     - manifests/dashboards.yaml.tpl
-dependencies:
-  - deploy.cert-manager
-  - deploy.letsencrypt
-  - deploy.cert
-  - deploy.contour
 environments:
   - local
   - remote
@@ -80,10 +54,6 @@ spec:
   manifestTemplates:
     - manifests/auth.yaml.tpl
 dependencies:
-  - deploy.cert-manager
-  - deploy.letsencrypt
-  - deploy.cert
-  - deploy.contour
   - deploy.keycloak-bootstrap
 environments:
   - local
@@ -96,10 +66,6 @@ spec:
   manifestTemplates:
     - manifests/prefect.yaml.tpl
 dependencies:
-  - deploy.cert-manager
-  - deploy.letsencrypt
-  - deploy.cert
-  - deploy.contour
   - deploy.prefect-oidc-proxy
 environments:
   - local

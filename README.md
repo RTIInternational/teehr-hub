@@ -157,6 +157,8 @@ When you rebuild an external image, reload it into Kind and restart any running 
 This section will walk you through standing up the `teehr-hub`` in an AWS account.
 The instructions should generally work with other providers, but some steps will certainly be different.
 
+Platform/app deployment contract details are documented in `docs/platform-app-deployment-contract.md`.
+
 NOTE: you must clean up complete from other approaches before running this.
 
 Login to AWS.  You need to login with a user that has sufficient permissions.
@@ -190,5 +192,16 @@ aws eks update-kubeconfig --name teehr-hub --region us-east-2 --role-arn arn:aws
 kubectl config set-context $(kubectl config current-context) --namespace teehr-hub
 k9s
 ```
+
+Check platform prerequisites (required when cluster-level components are managed outside this repo)
+```bash
+bash scripts/check-platform-prereqs.sh
+```
+
+Expected platform prerequisites:
+- `HTTPProxy` CRD from Contour exists (`httpproxies.projectcontour.io`)
+- cert-manager CRDs exist (`certificates.cert-manager.io`, `clusterissuers.cert-manager.io`)
+- ClusterIssuer `letsencrypt-prod` exists
+- At least one TLS secret ending in `-tls` exists in namespace `teehr-hub`
 
 After the cluster is setup in an AWS account, you can deploy using the GitHub Actions.
