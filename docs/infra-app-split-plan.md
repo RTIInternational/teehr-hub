@@ -2,8 +2,7 @@
 
 Last updated: 2026-07-07
 
-Status: Completed for the first migration wave (Terraform, cert-manager, contour, and autoscaler ownership moved to teehr-platform for remote environments).
-
+Status: Completed for the first migration wave (Terraform, cert-manager, contour, and autoscaler ownership moved to teehr-cloud-platform for remote environments).
 ## Objective
 Separate platform infrastructure from application deployment so TEEHR Hub can be deployed across multiple hosts/accounts with different AWS requirements, while keeping local development productive.
 
