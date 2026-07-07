@@ -37,10 +37,7 @@ Owns account/cluster foundational concerns:
   - cert-manager
   - contour
   - cluster-autoscaler
-- Environment bootstrap outputs/artifacts consumed by app repo
-
-Suggested name: teehr-platform
-
+Suggested name: teehr-cloud-platform
 ### 2) Application Repo (current teehr-hub)
 Owns application workloads only:
 - API, frontend, jupyterhub, spark, trino, prefect, keycloak, dashboards
