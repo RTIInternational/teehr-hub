@@ -154,15 +154,15 @@ When you rebuild an external image, reload it into Kind and restart any running 
 
 ## Remote Deployment
 
-This section will walk you through standing up the `teehr-hub`` in an AWS account.
-The instructions should generally work with other providers, but some steps will certainly be different.
+The TEEHR Platform (Terraform IaC, cert-manager, contour, cluster-autoscaler) has been split out into a separate repository [`teehr-platform`](https://github.com/RTIInternational/teehr-platform). See that repository for Terraform, cert-manager, Contour, and autoscaler changes.
 
 Platform/app deployment contract details are documented in `docs/platform-app-deployment-contract.md`.
 
-NOTE: you must clean up complete from other approaches before running this.
+The remote application deployment happens via GitHub Actions.
 
-Login to AWS.  You need to login with a user that has sufficient permissions.
-We used Admin for testing but need to determine the minimum set of permissions needed.
+## Connect to Cluster
+
+To connect ot the cluster via `kubectl` or `k9s`, the following should work:
 ```bash
 aws configure
 ```
@@ -171,39 +171,9 @@ Or set a profile
 export AWS_PROFILE=ciroh_mdenno
 ```
 
-Plan Terraform in the platform repository (can take ~15 mins)
-```bash
-cd ../teehr-platform/terraform
-cp backend/dev.hcl.example backend/dev.hcl
-# Edit backend/dev.hcl with account-specific state bucket/table settings.
-terraform init -backend-config=backend/dev.hcl
-terraform plan -var-file=teehr-hub.tfvars
-cd ..
-```
-
-Apply Terraform in the platform repository (can take ~15 mins)
-```bash
-cd ../teehr-platform/terraform
-terraform apply -var-file=teehr-hub.tfvars
-cd ..
-```
-
-Connect to cluster
+Run the following to connect to `teehr-hub` cluster.  If you have deployed to your own cluster you will need to adjust this command accordingly.
 ```bash
 aws eks update-kubeconfig --name teehr-hub --region us-east-2 --role-arn arn:aws:iam::935462133478:role/teehr-hub-teehr-hub-admin
 kubectl config set-context $(kubectl config current-context) --namespace teehr-hub
 k9s
 ```
-
-Check platform prerequisites (required when cluster-level components are managed outside this repo)
-```bash
-bash scripts/check-platform-prereqs.sh
-```
-
-Expected platform prerequisites:
-- `HTTPProxy` CRD from Contour exists (`httpproxies.projectcontour.io`)
-- cert-manager CRDs exist (`certificates.cert-manager.io`, `clusterissuers.cert-manager.io`)
-- ClusterIssuer `letsencrypt-prod` exists
-- At least one TLS secret ending in `-tls` exists in namespace `teehr-hub`
-
-After the cluster is setup in an AWS account, you can deploy using the GitHub Actions.

@@ -2,6 +2,8 @@
 
 Last updated: 2026-07-07
 
+Status: Completed for the first migration wave (Terraform, cert-manager, contour, and autoscaler ownership moved to teehr-platform for remote environments).
+
 ## Objective
 Separate platform infrastructure from application deployment so TEEHR Hub can be deployed across multiple hosts/accounts with different AWS requirements, while keeping local development productive.
 
@@ -21,9 +23,9 @@ Current repo mixes platform and app concerns, and includes account-specific valu
 
 Examples:
 - Hardcoded account/context in Garden provider config: [project.garden.yml](project.garden.yml#L75)
-- Cluster autoscaler chart values hardcode cluster, region, and role ARN: [autoscaler/garden.yaml](autoscaler/garden.yaml#L16)
+- Cluster autoscaler module in this repo has been removed; ownership is now in teehr-platform.
 - App service accounts hardcode IRSA role ARNs: [jupyterhub/manifests/jupyter-serviceaccount.yaml.tpl](jupyterhub/manifests/jupyter-serviceaccount.yaml.tpl#L7)
-- Ingress deploys depend directly on contour/cert-manager modules: [ingress/garden.yaml](ingress/garden.yaml#L8)
+- Ingress deploys depend on Contour CRDs and cert-manager-provided TLS artifacts.
 - Terraform backend bucket/region are hardcoded: [terraform/versions.tf](terraform/versions.tf#L15)
 
 ## Target Architecture
@@ -91,7 +93,7 @@ Deliverables:
 - Output artifact for app deploy pipeline
 
 ## Phase 2: Extract Platform Add-ons (2-3 days)
-- Move [autoscaler](autoscaler), [contour](contour), and [cert-manager](cert-manager) to platform repo.
+- Move autoscaler, contour, and cert-manager ownership to platform repo.
 - Manage these add-ons with Terraform in the platform repo (instead of Garden in app repo).
 - Platform apply order:
   1. cert-manager
@@ -104,7 +106,8 @@ Deliverables:
 - Versioned add-on manifests/charts managed independently from app releases
 
 Current status:
-- Started: cert-manager remote ownership handoff (app repo no longer installs cert-manager or ClusterIssuer in remote deploys).
+- Completed: cert-manager, contour, and autoscaler ownership moved to teehr-platform for remote environments.
+- Completed: app repo remote deployment path no longer installs these platform add-ons.
 
 ## Phase 3: Decouple App from Account IDs (3-4 days)
 - Replace hardcoded ARNs/account IDs in app manifests with variables sourced from contract.
@@ -156,13 +159,13 @@ Deliverables:
 ## Immediate Backlog (Recommended Next 10 Tasks)
 1. Add platform contract schema doc and example values file.
 2. Add Garden variables for role ARNs, region, cluster name, ingress class, issuer name.
-3. Replace autoscaler hardcoded role/region/cluster in [autoscaler/garden.yaml](autoscaler/garden.yaml).
+3. Completed: autoscaler ownership moved out of this repo to teehr-platform.
 4. Replace IRSA hardcoded annotations in jupyterhub/spark/trino/prefect/iceberg manifests.
 5. Parameterize Terraform backend in [terraform/versions.tf](terraform/versions.tf).
 6. Create new platform repo with moved terraform directory.
-7. Move cert-manager and contour modules to platform repo.
-8. Move autoscaler module to platform repo.
-9. Remove platform module dependencies from [ingress/garden.yaml](ingress/garden.yaml).
+7. Completed: cert-manager and contour ownership moved to teehr-platform.
+8. Completed: autoscaler ownership moved to teehr-platform.
+9. Completed: remove platform module dependencies from [ingress/garden.yaml](ingress/garden.yaml).
 10. Add CI compatibility check that validates required contract values before app deploy.
 
 ## Open Decisions
