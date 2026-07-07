@@ -18,6 +18,7 @@ Current status:
 
 - cert-manager remote ownership moved to platform repo
 - contour remote ownership moved to platform repo
+- autoscaler remote ownership moved to platform repo
 
 ## Contract Source
 

@@ -4,7 +4,7 @@ type: helm
 name: cluster-autoscaler
 description: Deploy Cluster Autoscaler to kube-system with IRSA
 environments:
-  - remote
+  - local
 spec:
   chart:
     repo: https://kubernetes.github.io/autoscaler
@@ -36,4 +36,4 @@ spec:
   manifestFiles:
     - "./manifests/node-termination-handler.yaml"
 environments:
-  - remote
+  - local
