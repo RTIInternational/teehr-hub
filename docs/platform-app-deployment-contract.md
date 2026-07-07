@@ -4,6 +4,16 @@ Last updated: 2026-07-07
 
 This document defines the minimum platform-provided values required by app deployment automation in this repository.
 
+## Platform-Owned Remote Prerequisites
+
+For remote environments, the following components are treated as platform-owned prerequisites:
+
+- cert-manager installation and CRDs
+- ClusterIssuer (for example `letsencrypt-prod`)
+- Contour installation and CRDs
+
+The app repository should not install these components in remote deploys. It only validates their presence and deploys app resources that depend on them.
+
 ## Contract Source
 
 For remote deploys, the GitHub Actions workflow expects a YAML file at:

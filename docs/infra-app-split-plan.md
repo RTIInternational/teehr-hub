@@ -1,6 +1,6 @@
 # TEEHR Hub Infrastructure and Application Split Plan
 
-Last updated: 2026-07-06
+Last updated: 2026-07-07
 
 ## Objective
 Separate platform infrastructure from application deployment so TEEHR Hub can be deployed across multiple hosts/accounts with different AWS requirements, while keeping local development productive.
@@ -92,7 +92,8 @@ Deliverables:
 
 ## Phase 2: Extract Platform Add-ons (2-3 days)
 - Move [autoscaler](autoscaler), [contour](contour), and [cert-manager](cert-manager) to platform repo.
-- Platform pipeline deploy order:
+- Manage these add-ons with Terraform in the platform repo (instead of Garden in app repo).
+- Platform apply order:
   1. cert-manager
   2. contour
   3. autoscaler
@@ -101,6 +102,9 @@ Deliverables:
 Deliverables:
 - Platform add-on deployment pipeline
 - Versioned add-on manifests/charts managed independently from app releases
+
+Current status:
+- Started: cert-manager remote ownership handoff (app repo no longer installs cert-manager or ClusterIssuer in remote deploys).
 
 ## Phase 3: Decouple App from Account IDs (3-4 days)
 - Replace hardcoded ARNs/account IDs in app manifests with variables sourced from contract.
