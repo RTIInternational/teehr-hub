@@ -30,7 +30,7 @@ RUN ARCH=$(uname -m) && \
     fi
 
 # Install dependencies for gridded data ingestion via IceChunk + VirtualiZarr
-RUN pip install icechunk obstore obspec-utils virtualizarr topozarr xproj rioxarray
+RUN pip install icechunk obstore obspec-utils virtualizarr topozarr xproj rioxarray exactextract
 
 # Install TEEHR with GDAL compatibility for ARM64
 RUN ARCH=$(uname -m) && \
