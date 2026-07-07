@@ -14,6 +14,11 @@ For remote environments, the following components are treated as platform-owned 
 
 The app repository should not install these components in remote deploys. It only validates their presence and deploys app resources that depend on them.
 
+Current status:
+
+- cert-manager remote ownership moved to platform repo
+- contour remote ownership moved to platform repo
+
 ## Contract Source
 
 For remote deploys, the GitHub Actions workflow expects a YAML file at:
