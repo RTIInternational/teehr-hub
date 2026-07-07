@@ -26,7 +26,7 @@ Examples:
 - Cluster autoscaler module in this repo has been removed; ownership is now in teehr-platform.
 - App service accounts hardcode IRSA role ARNs: [jupyterhub/manifests/jupyter-serviceaccount.yaml.tpl](jupyterhub/manifests/jupyter-serviceaccount.yaml.tpl#L7)
 - Ingress deploys depend on Contour CRDs and cert-manager-provided TLS artifacts.
-- Terraform backend bucket/region are hardcoded: [terraform/versions.tf](terraform/versions.tf#L15)
+- Terraform backend/account concerns now live in teehr-platform.
 
 ## Target Architecture
 Use a 2-repo model with clear interfaces.
@@ -82,7 +82,7 @@ Deliverables:
 - Initial variable plumbing in app manifests
 
 ## Phase 1: Extract Terraform (3-5 days)
-- Move [terraform](terraform) into new platform repo.
+- Move Terraform ownership into teehr-platform.
 - Parameterize backend config (bucket/key/region) per environment/account.
 - Keep current Terraform module composition initially; do not redesign infra and split at once.
 - Publish required outputs for app consumption.
@@ -161,7 +161,7 @@ Deliverables:
 2. Add Garden variables for role ARNs, region, cluster name, ingress class, issuer name.
 3. Completed: autoscaler ownership moved out of this repo to teehr-platform.
 4. Replace IRSA hardcoded annotations in jupyterhub/spark/trino/prefect/iceberg manifests.
-5. Parameterize Terraform backend in [terraform/versions.tf](terraform/versions.tf).
+5. Completed: Terraform backend/account ownership moved to teehr-platform.
 6. Create new platform repo with moved terraform directory.
 7. Completed: cert-manager and contour ownership moved to teehr-platform.
 8. Completed: autoscaler ownership moved to teehr-platform.
