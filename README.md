@@ -154,8 +154,7 @@ When you rebuild an external image, reload it into Kind and restart any running 
 
 ## Remote Deployment
 
-The TEEHR Platform (Terraform IaC, cert-manager, contour, cluster-autoscaler) has been split out into a separate repository [`teehr-platform`](https://github.com/RTIInternational/teehr-platform). See that repository for Terraform, cert-manager, Contour, and autoscaler changes.
-
+The TEEHR Platform (Terraform IaC, cert-manager, contour, cluster-autoscaler) has been split out into a separate repository [`teehr-cloud-platform`](https://github.com/RTIInternational/teehr-cloud-platform). See that repository for Terraform, cert-manager, Contour, and autoscaler changes.
 Platform/app deployment contract details are documented in `docs/platform-app-deployment-contract.md`.
 
 The remote application deployment happens via GitHub Actions.
