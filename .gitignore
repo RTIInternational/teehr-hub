@@ -9,3 +9,5 @@ data/
 secrets.remote.yaml
 secrets.remote.yaml:Zone.Identifier
 __pycache__/
+.python-version
+*.egg-info

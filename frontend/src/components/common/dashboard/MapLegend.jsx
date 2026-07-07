@@ -1,37 +1,11 @@
 // Shared Map Legend Component - shows color scale for any dashboard
+import { getMetricDisplay } from "./utils";
+
 const MapLegend = ({ metric, getMetricLabel }) => {
   if (!metric) return null;
   
-  const colorScales = {
-    'relative_bias': {
-      colors: ['#4575b4', '#91bfdb', '#e0f3f8', '#f7f7f7', '#fee090', '#fc8d59', '#d73027'],
-      stops: [-1, -0.5, -0.1, 0, 0.1, 0.5, 1],
-      labels: ['Very Underpredicted', 'Underpredicted', 'Slightly Under', 'No Bias', 'Slightly Over', 'Overpredicted', 'Very Overpredicted']
-    },
-    'nash_sutcliffe_efficiency': {
-      colors: ['#d73027', '#fc8d59', '#91bfdb', '#2166ac'],
-      stops: [-1, 0.3, 0.7, 1],
-      labels: ['Poor', 'Fair', 'Good', 'Excellent']
-    },
-    'kling_gupta_efficiency': {
-      colors: ['#d73027', '#fc8d59', '#91bfdb', '#2166ac'],
-      stops: [-1, 0.3, 0.7, 1],
-      labels: ['Poor', 'Fair', 'Good', 'Excellent']
-    },
-    'count': {
-      colors: ['#ffffcc', '#a1dab4', '#41b6c4', '#225ea8'],
-      stops: [0, 100, 500, 1000],
-      labels: ['Low', 'Medium', 'High', 'Very High']
-    },
-    'average': {
-      colors: ['#ffffcc', '#c2e699', '#78c679', '#238443'],
-      stops: [0, 1, 5, 20],
-      labels: ['Low', 'Medium', 'High', 'Very High']
-    }
-  };
-  
-  const scale = colorScales[metric];
-  if (!scale) return null;
+  const display = getMetricDisplay(metric);
+  if (!display) return null;
   
   const metricLabel = getMetricLabel(metric);
   
@@ -45,7 +19,7 @@ const MapLegend = ({ metric, getMetricLabel }) => {
       </div>
       <div className="card-body py-2">
         <div className="small"><strong>{metricLabel}</strong></div>
-        {scale.colors.map((color, i) => (
+        {display.colors.map((color, i) => (
           <div key={i} className="d-flex align-items-center mt-1">
             <div 
               style={{
@@ -56,7 +30,7 @@ const MapLegend = ({ metric, getMetricLabel }) => {
                 marginRight: '6px'
               }}
             ></div>
-            <small>{scale.stops[i]}</small>
+            <small>{display.stops[i]}</small>
           </div>
         ))}
       </div>
