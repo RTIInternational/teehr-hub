@@ -3,8 +3,9 @@
 ## 2026-07-07
 
 ### Summary
-- Completed post-migration cleanup in the app repo after platform infrastructure code moved to `teehr-platform`.
+- Completed post-migration cleanup after platform infrastructure code was moved to `teehr-cloud-platform`.
 - Removed platform-oriented and remote-only artifacts that no longer belong in `teehr-hub`.
+- Added Garden variables in `project.garden.yml` required to support deployment to other platforms (AWS infrastructure)
 - Updated docs to clarify local app workflow vs. remote platform responsibilities.
 
 ### What Changed
