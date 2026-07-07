@@ -16,6 +16,7 @@ from ..database import (
     trino_catalog,
     trino_schema,
 )
+from .utils import prepare_for_serialization
 
 router = APIRouter()
 
@@ -445,10 +446,10 @@ async def get_queryable_values(collection_id: str, property_name: str):
         query = f"""
             SELECT DISTINCT {sanitized_property}
             FROM {trino_catalog}.{trino_schema}.{sanitized_collection}
-            WHERE {sanitized_property} IS NOT NULL
             ORDER BY {sanitized_property}
         """
-        df = execute_query(query)
+        raw_df = execute_query(query)
+        df = prepare_for_serialization(raw_df)
         values = df[sanitized_property].tolist() if not df.empty else []
 
         return JSONResponse(
