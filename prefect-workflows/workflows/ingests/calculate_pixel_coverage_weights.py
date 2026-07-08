@@ -17,7 +17,6 @@ The first flow will calculate pixel coverage weights for a given grid and polygo
         - Write the pixel coverage weights to the iceberg warehouse table with the domain name and location IDs as keys.
             - Schema: fraction_covered, row, col, location_id, position_index, configuration_name, variable_name, domain_name
         
-
 The second flow will use the pixel coverage weights to calculate mean areal scalar timeseries values
 for a given raster layer and polygon layer and write them to the iceberg warehouse table.
     - Inputs
@@ -32,15 +31,37 @@ for a given raster layer and polygon layer and write them to the iceberg warehou
         - Write the mean areal values to the iceberg warehouse primary or secondary timeseries table
 """
 from prefect import flow, task, get_run_logger
+from prefect.cache_policies import NO_CACHE
 import icechunk as ic
 from exactextract import exact_extract
 import geopandas as gpd
 import xarray as xr
 import rioxarray  # noqa: F401
 import pandas as pd
+from teehr import Evaluation
 
 from workflows.utils.common_utils import initialize_evaluation
 from models.mean_areal_inputs import PixelCoverageWeightsInput
+
+
+@task(cache_policy=NO_CACHE, timeout_seconds=60 * 60)
+def write_weights_to_warehouse(
+    ev: Evaluation,
+    weights_df: pd.DataFrame,
+    table_name: str = "grid_pixel_coverage_weights",
+    write_mode: str = "append",
+    uniqueness_fields: list[str] = ["location_id", "domain_name"]
+):
+    """Write the pixel coverage weights to the iceberg warehouse table."""
+    logger = get_run_logger()
+    logger.info(f"Writing coverage weights to the '{table_name}' warehouse table.")
+    ev._write.to_warehouse(
+        source_data=weights_df,
+        table_name=table_name,
+        write_mode=write_mode,
+        uniqueness_fields=uniqueness_fields
+    )
+    logger.info(f"Pixel coverage weights written to the '{table_name}' warehouse table.")
 
 
 @task(timeout_seconds=60 * 5)
@@ -143,7 +164,6 @@ def calculate_pixel_coverage_weights(args: PixelCoverageWeightsInput):
         group="raw_data",
         decode_coords="all"
     )[grid_variable_name].isel({args.append_dim: 0}).squeeze(drop=True)
-
     # TODO: # Ensure latitude and longitude are strictly increasing (left to right/top to bottom)?
     grid_template_da = grid_template_da.load()
     logger.info(f"Grid data read for first {args.append_dim} occurrence. Dimensions of length 1 have been dropped.")
@@ -167,11 +187,7 @@ def calculate_pixel_coverage_weights(args: PixelCoverageWeightsInput):
     )
 
     # Write the pixel coverage weights to the iceberg warehouse table
-    logger.info("Writing coverage weights to the 'grid_pixel_coverage_weights' warehouse table.")
-    ev._write.to_warehouse(
-        source_data=weights_df,
-        table_name="grid_pixel_coverage_weights",
-        write_mode="append",
-        uniqueness_fields=["location_id", "domain_name"]
+    write_weights_to_warehouse(
+        ev=ev,
+        weights_df=weights_df
     )
-    logger.info("Pixel coverage weights written to the iceberg warehouse table.")
