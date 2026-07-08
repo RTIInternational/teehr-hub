@@ -11,6 +11,14 @@ variables:
     replyToDisplayName: TEEHR Support
     starttls: "true"
     ssl: "false"
+  aws:
+    region: us-east-2
+  remoteCluster:
+    contextArn: arn:aws:eks:us-east-2:935462133478:cluster/teehr-hub
+    ecrRegistry: 935462133478.dkr.ecr.us-east-2.amazonaws.com
+  irsa:
+    icebergReadOnlyRoleArn: arn:aws:iam::935462133478:role/teehr-hub-iceberg-s3-warehouse-readonly-irsa
+    icebergReadWriteRoleArn: arn:aws:iam::935462133478:role/teehr-hub-iceberg-s3-warehouse-irsa
 
 environments:
   - name: local
@@ -72,8 +80,8 @@ providers:
       - name: ecr-config
         namespace: default
     deploymentRegistry:
-      hostname: 935462133478.dkr.ecr.us-east-2.amazonaws.com
+      hostname: ${var.remoteCluster.ecrRegistry}
       namespace: ${project.name}
-    context: arn:aws:eks:us-east-2:935462133478:cluster/teehr-hub
+    context: ${var.remoteCluster.contextArn}
     buildMode: cluster-buildkit
     defaultHostname: teehr.rtiamanzi.org

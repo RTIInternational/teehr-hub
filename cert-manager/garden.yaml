@@ -1,6 +1,8 @@
 kind: Deploy
 type: helm
 name: cert-manager
+environments:
+  - local
 spec:
   chart:
     name: cert-manager
@@ -9,17 +11,6 @@ spec:
   namespace: cert-manager
   values:
     installCRDs: true
----
-kind: Deploy
-type: kubernetes
-name: letsencrypt
-description: K8s Lets Encrypt
-spec:
-  manifestFiles:
-    - "./manifests/letsencrypt.yaml"
-dependencies: [deploy.cert-manager]
-environments:
-  - remote
 ---
 kind: Deploy
 type: kubernetes
@@ -44,4 +35,3 @@ dependencies:
   - deploy.letsencrypt
 environments:
   - local
-  - remote

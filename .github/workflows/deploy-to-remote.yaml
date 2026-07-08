@@ -18,6 +18,10 @@ jobs:
           echo "${{ secrets.REMOTE_SECRETS }}" > secrets/secrets.remote.yaml
           echo "${{ secrets.REMOTE_DEPLOY }}" > configs/deploy.remote-aws-srvs.yaml
 
+      - name: Validate deployment contract
+        run: |
+          bash scripts/validate-deploy-contract.sh configs/deploy.remote-aws-srvs.yaml
+
       - name: Set deployment env. vars
         id: extract_values
         run: |
@@ -41,6 +45,10 @@ jobs:
       - name: AWS EKS Kubeconfig
         run: |
           aws eks update-kubeconfig --name ${CLUSTER_NAME} --region ${AWS_REGION} --role-arn ${CLUSTER_ROLE_ARN}
+
+      - name: Check platform prerequisites
+        run: |
+          bash scripts/check-platform-prereqs.sh
 
       - name: Deploy preview env with Garden
         uses: garden-io/garden-action@v2

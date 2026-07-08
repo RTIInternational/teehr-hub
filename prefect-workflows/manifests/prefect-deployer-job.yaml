@@ -49,7 +49,7 @@ spec:
 
         # Use env vars to configure Iceberg catalog for env.
         - name: AWS_REGION
-          value: us-east-2
+          value: ${var.aws.region}
         - name: REMOTE_CATALOG_REST_URI
           value: ${var.iceberg.catalogUri}
         - name: REMOTE_CATALOG_TYPE
