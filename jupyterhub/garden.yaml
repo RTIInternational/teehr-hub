@@ -78,12 +78,47 @@ spec:
             secretKeyRef:
               name: jupyterhub
               key: OAUTH_CLIENT_SECRET
+        JUPYTERHUB_PROFILE_LIST_JSON:
+          valueFrom:
+            configMapKeyRef:
+              name: jupyterhub-profile-list
+              key: profile-list.json
+              optional: true
 
       extraConfig:
         spark-config: |
           # Allow users to create Spark sessions
           c.KubeSpawner.service_account = 'jupyter'
           c.KubeSpawner.automount_service_account_token = True
+        profile-list-loader: |
+          import json
+          import os
+
+          raw_profile_config = os.environ.get("JUPYTERHUB_PROFILE_LIST_JSON", "").strip()
+          if raw_profile_config:
+              try:
+                  parsed_profile_config = json.loads(raw_profile_config)
+              except Exception as exc:
+                  raise RuntimeError("Invalid JUPYTERHUB_PROFILE_LIST_JSON: not valid JSON") from exc
+
+              if isinstance(parsed_profile_config, dict):
+                  profile_version = parsed_profile_config.get("version")
+                  profile_list = parsed_profile_config.get("profiles")
+                  if profile_version is not None and profile_version != 1:
+                      raise RuntimeError(f"Unsupported profile config version: {profile_version}")
+              else:
+                  profile_list = parsed_profile_config
+
+              if not isinstance(profile_list, list):
+                  raise RuntimeError("JUPYTERHUB_PROFILE_LIST_JSON must be a list or an object with a profiles list")
+
+              for index, profile in enumerate(profile_list):
+                  if not isinstance(profile, dict):
+                      raise RuntimeError(f"Profile at index {index} must be an object")
+                  if "display_name" not in profile:
+                      raise RuntimeError(f"Profile at index {index} is missing required key: display_name")
+
+              c.KubeSpawner.profile_list = profile_list
         cull-kernels: |
           c.MappingKernelManager.cull_idle_timeout = 3600
           c.MappingKernelManager.cull_connected = True
@@ -261,11 +296,46 @@ spec:
             secretKeyRef:
               name: jupyterhub
               key: OAUTH_CLIENT_SECRET
+        JUPYTERHUB_PROFILE_LIST_JSON:
+          valueFrom:
+            configMapKeyRef:
+              name: jupyterhub-profile-list
+              key: profile-list.json
+              optional: true
       extraConfig:
         spark-config: |
           # Allow users to create Spark sessions
           c.KubeSpawner.service_account = 'jupyter'
           c.KubeSpawner.automount_service_account_token = True
+        profile-list-loader: |
+          import json
+          import os
+
+          raw_profile_config = os.environ.get("JUPYTERHUB_PROFILE_LIST_JSON", "").strip()
+          if raw_profile_config:
+              try:
+                  parsed_profile_config = json.loads(raw_profile_config)
+              except Exception as exc:
+                  raise RuntimeError("Invalid JUPYTERHUB_PROFILE_LIST_JSON: not valid JSON") from exc
+
+              if isinstance(parsed_profile_config, dict):
+                  profile_version = parsed_profile_config.get("version")
+                  profile_list = parsed_profile_config.get("profiles")
+                  if profile_version is not None and profile_version != 1:
+                      raise RuntimeError(f"Unsupported profile config version: {profile_version}")
+              else:
+                  profile_list = parsed_profile_config
+
+              if not isinstance(profile_list, list):
+                  raise RuntimeError("JUPYTERHUB_PROFILE_LIST_JSON must be a list or an object with a profiles list")
+
+              for index, profile in enumerate(profile_list):
+                  if not isinstance(profile, dict):
+                      raise RuntimeError(f"Profile at index {index} must be an object")
+                  if "display_name" not in profile:
+                      raise RuntimeError(f"Profile at index {index} is missing required key: display_name")
+
+              c.KubeSpawner.profile_list = profile_list
         cull-kernels: |
           c.MappingKernelManager.cull_idle_timeout = 3600
           c.MappingKernelManager.cull_connected = True
