@@ -23,6 +23,8 @@ def format_to_teehr_timeseries(
     member: str = None,
 ):
     """Format the results to the teehr timeseries table format."""
+    logger = get_run_logger()
+    logger.info(f"Formatting results to the '{timeseries_table_name}' teehr timeseries table format.")
     all_ids = np.array([data["location_id"] for data in results])
     all_values = np.array([data["values"] for data in results])
     num_locations = len(all_ids)
@@ -57,6 +59,8 @@ def format_to_teehr_timeseries(
 @task(timeout_seconds=60 * 10)
 def flatten_dataarray(dataarray: xr.DataArray) -> xr.DataArray:
     """Flatten a 3D DataArray into a 2D DataArray with dimensions (time, pixel_index)."""
+    logger = get_run_logger()
+    logger.info("Flattening the 3D DataArray into a 2D DataArray with dimensions (time, pixel_index).")
     x_dim = dataarray.rio.x_dim
     y_dim = dataarray.rio.y_dim
     dataarray = dataarray.sortby(x_dim, ascending=True)
@@ -65,6 +69,7 @@ def flatten_dataarray(dataarray: xr.DataArray) -> xr.DataArray:
     flat_da = dataarray.stack(position_index=[y_dim, x_dim])
     flat_da = flat_da.reset_index("position_index", drop=True)
     flat_da = flat_da.drop_vars([y_dim, x_dim], errors="ignore")
+    logger.info("Flattening complete. The resulting DataArray has dimensions: " + str(flat_da.dims))
     return flat_da
 
 
@@ -74,6 +79,8 @@ def calculate_all_polygons(flat_da, weights_df):
     flat_da: The 2D Xarray DataArray pre-flattened to dimensions: (time, position_index)
     weights_df: The Pandas DataFrame containing 'position_index', 'fraction_covered', and 'location_id'
     """
+    logger = get_run_logger()
+    logger.info("Calculating mean areal values for all polygons.")
     swe_matrix = flat_da.values
     results = []
     gp = weights_df.groupby("location_id")
@@ -88,6 +95,10 @@ def calculate_all_polygons(flat_da, weights_df):
             "location_id": location_id,
             "values": time_series_result
         })
+    logger.info(f"Completed calculating mean areal values for {len(results)} polygons.")
+    if len(results) == 0:
+        logger.error("No results were calculated. The results list is empty.")
+        raise ValueError("No results were calculated. The results list is empty.")
     return results
 
 
@@ -102,15 +113,27 @@ def read_weights_from_warehouse(
     logger = get_run_logger()
     logger.info(
         f"Reading pixel coverage weights for domain '{weights_domain_name}' "
-        f"and locations '{location_id_prefix}' from the iceberg warehouse table."
+        f"and locations '{location_id_prefix}' and variable '{weights_variable_name}' "
+        "from the iceberg warehouse table."
     )
-    return ev.spark.sql(f"""
+    df = ev.spark.sql(f"""
         SELECT fraction_covered, location_id, position_index
         FROM iceberg.teehr.grid_pixel_coverage_weights
         WHERE location_id LIKE '{location_id_prefix}-%'
           AND domain_name = '{weights_domain_name}'
           AND variable_name = '{weights_variable_name}'
     """).toPandas()
+    logger.info(f"Retrieved {len(df)} rows of pixel coverage weights from the warehouse table.")
+    if len(df) == 0:
+        logger.error(
+            f"No pixel coverage weights were found for domain '{weights_domain_name}' "
+            f"and location prefix '{location_id_prefix}' and variable name '{weights_variable_name}'."
+        )
+        raise ValueError(
+            f"No pixel coverage weights were found for domain '{weights_domain_name}' "
+            f"and location prefix '{location_id_prefix}' and variable name '{weights_variable_name}'."
+        )
+    return df
 
 @flow(
     name="calculate-mean-areal-values",
@@ -130,15 +153,19 @@ def calculate_mean_areal_values(args: MeanArealValuesInput):
     # Initialize the evaluation context
     ev = initialize_evaluation(
         temp_dir_path=args.temp_dir_path,
-        start_spark_cluster=args.start_spark_cluster
+        start_spark_cluster=args.start_spark_cluster,
+        update_configs={
+            "spark.sql.execution.arrow.pyspark.enabled": "true"
+        }
     )
 
     # Read the pixel coverage weights from the iceberg warehouse table
+    teehr_variable_name = args.variable_and_unit_mapper.variable_name[args.grid_variable_name].name
     weights_df = read_weights_from_warehouse(
         ev=ev,
         location_id_prefix=args.location_id_prefix,
         weights_domain_name=args.domain_name,
-        weights_variable_name=args.variable_name
+        weights_variable_name=teehr_variable_name
     )
 
     # Read all timesteps of the grid from the Icechunk repo
@@ -161,7 +188,6 @@ def calculate_mean_areal_values(args: MeanArealValuesInput):
     # Calculate mean areal values for each polygon at each timestep
     mean_areal_values_results = calculate_all_polygons(flat_da, weights_df)
 
-    teehr_variable_name = args.variable_and_unit_mapper.variable_name[args.grid_variable_name].name
     grid_unit_name = grid_template_da.attrs.get("units", None)
     if grid_unit_name is None:
         raise ValueError(f"Grid variable '{args.grid_variable_name}' does not have a 'units' attribute.")

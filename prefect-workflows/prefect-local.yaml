@@ -703,7 +703,6 @@ deployments:
         "location_id_prefix": "huc12",
         "configuration_name": "nwm30-forcing-analysis-assim",
         "grid_variable_name": "RAINRATE",
-        "teehr_variable_name": "rainrate_hourly_mean",
         "domain_name": "nwm30_forcing_conus",
         "s3_storage_kwargs": {
             "region": "us-east-1",

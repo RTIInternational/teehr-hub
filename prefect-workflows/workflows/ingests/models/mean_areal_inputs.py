@@ -41,12 +41,12 @@ class PixelCoverageWeightsInput(BaseGriddedDataInput):
         ...,
         description="Prefix for location IDs to filter polygons"
     )
-    grid_variable_name: dict[str, str] = Field(
+    grid_variable_name: str = Field(
         ...,
         description="Name of variable in the gridded dataset"
     )
     variable_and_unit_mapper: VariableAndUnitMapper = Field(
-        default_factory=lambda: VariableAndUnitMapper(**VARIABLE_AND_UNIT_MAPPER),
+        default=VARIABLE_AND_UNIT_MAPPER,
         description="Mapping of variable names and units to their corresponding metadata"
     )
     domain_name: str = Field(

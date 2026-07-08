@@ -50,7 +50,7 @@ def get_readonly_repo_store(
     base_prefix: str,
     configuration_name: str,
     s3_storage_kwargs: dict
-) -> ic.Store:
+) -> ic.IcechunkStore:
     """Get a read-only IceChunk S3 repository store for reading the grid data."""
     logger = get_run_logger()
     storage = ic.s3_storage(
