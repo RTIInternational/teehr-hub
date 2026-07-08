@@ -34,7 +34,8 @@ def initialize_evaluation(
     # which has read-write S3 access (the default 'spark' SA is read-only).
     default_configs = {
         "spark.kubernetes.authenticate.executor.serviceAccountName": "prefect-job",
-        "spark.kubernetes.executor.podNamePrefix": "prefect-job"
+        "spark.kubernetes.executor.podNamePrefix": "prefect-job",
+        "spark.sql.catalog.iceberg.client.region": "us-east-1",
     }
     if update_configs:
         default_configs.update(update_configs)
