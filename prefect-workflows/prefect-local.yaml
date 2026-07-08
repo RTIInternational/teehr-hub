@@ -696,7 +696,7 @@ deployments:
     version:
     tags: []
     description: Calculate pixel coverage weights for a given grid template and polygon shapefile
-    entrypoint: workflows/ingests/calculate_pixel_coverage_weights.py:calculate_pixel_coverage_weights
+    entrypoint: workflows/ingests/pixel_coverage_weights.py:calculate_pixel_coverage_weights
     parameters: {
       "args": {
         "temp_dir_path": *temp_dir_path,

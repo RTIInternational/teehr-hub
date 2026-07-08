@@ -44,19 +44,42 @@ from workflows.utils.common_utils import initialize_evaluation
 from models.mean_areal_inputs import PixelCoverageWeightsInput
 
 
+@task(timeout_seconds=60 * 2)
+def get_readonly_repo_store(
+    dest_bucket: str,
+    base_prefix: str,
+    configuration_name: str,
+    s3_storage_kwargs: dict
+) -> ic.Store:
+    """Get a read-only IceChunk S3 repository store for reading the grid data."""
+    logger = get_run_logger()
+    storage = ic.s3_storage(
+        bucket=dest_bucket,
+        prefix=f"{base_prefix}/{configuration_name}",
+        **s3_storage_kwargs
+    )
+    repo = ic.Repository.open(storage)
+    session = repo.readonly_session(branch="main")
+    store = session.store
+    logger.info(
+        f"IceChunk S3 session store configured at: {dest_bucket}/{base_prefix}/{configuration_name}."
+    )
+    return store
+
+
 @task(cache_policy=NO_CACHE, timeout_seconds=60 * 60)
-def write_weights_to_warehouse(
+def write_dataframe_to_warehouse(
     ev: Evaluation,
-    weights_df: pd.DataFrame,
-    table_name: str = "grid_pixel_coverage_weights",
+    dataframe: pd.DataFrame,
+    table_name: str,
     write_mode: str = "append",
-    uniqueness_fields: list[str] = ["location_id", "domain_name"]
+    uniqueness_fields: list[str] = None
 ):
     """Write the pixel coverage weights to the iceberg warehouse table."""
     logger = get_run_logger()
     logger.info(f"Writing coverage weights to the '{table_name}' warehouse table.")
     ev._write.to_warehouse(
-        source_data=weights_df,
+        source_data=dataframe,
         table_name=table_name,
         write_mode=write_mode,
         uniqueness_fields=uniqueness_fields
@@ -147,16 +170,11 @@ def calculate_pixel_coverage_weights(args: PixelCoverageWeightsInput):
     polygons_gdf["location_id"] = polygons_gdf["id"].values  # the 'id' column is ignored by exactextract
 
     # Connect to the IceChunk S3 repository with a read-only session to read the grid data
-    storage = ic.s3_storage(
-        bucket=args.dest_bucket,
-        prefix=f"{args.base_prefix}/{args.configuration_name}",
-        **args.s3_storage_kwargs
-    )
-    repo = ic.Repository.open(storage)
-    session = repo.readonly_session(branch="main")
-    store = session.store
-    logger.info(
-        f"IceChunk S3 session store configured at: {args.dest_bucket}/{args.base_prefix}/{args.configuration_name}."
+    store = get_readonly_repo_store(
+        dest_bucket=args.dest_bucket,
+        base_prefix=args.base_prefix,
+        configuration_name=args.configuration_name,
+        s3_storage_kwargs=args.s3_storage_kwargs
     )
     grid_variable_name = list(args.variable_name_mapping.keys())[0]
     grid_template_da = xr.open_zarr(
@@ -187,7 +205,9 @@ def calculate_pixel_coverage_weights(args: PixelCoverageWeightsInput):
     )
 
     # Write the pixel coverage weights to the iceberg warehouse table
-    write_weights_to_warehouse(
+    write_dataframe_to_warehouse(
         ev=ev,
-        weights_df=weights_df
+        dataframe=weights_df,
+        table_name="grid_pixel_coverage_weights",
+        uniqueness_fields=["location_id", "domain_name"]
     )
