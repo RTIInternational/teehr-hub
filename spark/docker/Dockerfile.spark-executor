@@ -5,6 +5,9 @@ USER 0
 
 ARG TEEHR_VERSION
 
+# Use HTTPS apt mirrors so builds work when plain HTTP egress is blocked.
+RUN sed -i 's|http://archive.ubuntu.com/ubuntu|https://archive.ubuntu.com/ubuntu|g; s|http://security.ubuntu.com/ubuntu|https://security.ubuntu.com/ubuntu|g' /etc/apt/sources.list
+
 # Add deadsnakes PPA and install Python 3.12
 RUN apt-get update && apt-get install -y \
     software-properties-common \
