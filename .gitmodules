@@ -1,0 +1,4 @@
+[submodule "teehr-cloud-core"]
+	path = teehr-cloud-core
+	url = https://github.com/RTIInternational/teehr-cloud-core.git
+	branch = main
