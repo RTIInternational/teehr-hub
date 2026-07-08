@@ -45,19 +45,24 @@ class PixelCoverageWeightsInput(BaseGriddedDataInput):
         ...,
         description="Name of variable in the gridded dataset"
     )
-    domain_name: str = Field(
-        ...,
-        description="Name of the domain for which pixel coverage weights are being calculated"
-    )
     variable_and_unit_mapper: VariableAndUnitMapper = Field(
         default_factory=lambda: VariableAndUnitMapper(**VARIABLE_AND_UNIT_MAPPER),
         description="Mapping of variable names and units to their corresponding metadata"
     )
-    timeseries_table_name: str = Field(
-        "primary_timeseries",
-        description="Name of the timeseries table in the teehr warehouse to write the mean areal values to. Default is 'primary_timeseries'."
+    domain_name: str = Field(
+        ...,
+        description="Name of the domain for which pixel coverage weights are being calculated"
     )
     start_spark_cluster: bool = Field(
         False,
         description="Whether to start a Spark cluster for processing"
+    )
+
+
+class MeanArealValuesInput(PixelCoverageWeightsInput):
+    """Model for mean areal values inputs."""
+
+    timeseries_table_name: str = Field(
+        "primary_timeseries",
+        description="Name of the timeseries table in the teehr warehouse to write the mean areal values to. Default is 'primary_timeseries'."
     )

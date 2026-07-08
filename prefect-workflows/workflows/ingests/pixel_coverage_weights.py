@@ -176,12 +176,11 @@ def calculate_pixel_coverage_weights(args: PixelCoverageWeightsInput):
         configuration_name=args.configuration_name,
         s3_storage_kwargs=args.s3_storage_kwargs
     )
-    grid_variable_name = list(args.variable_name_mapping.keys())[0]
     grid_template_da = xr.open_zarr(
         store,
         group="raw_data",
         decode_coords="all"
-    )[grid_variable_name].isel({args.append_dim: 0}).squeeze(drop=True)
+    )[args.grid_variable_name].isel({args.append_dim: 0}).squeeze(drop=True)
     # TODO: # Ensure latitude and longitude are strictly increasing (left to right/top to bottom)?
     grid_template_da = grid_template_da.load()
     logger.info(f"Grid data read for first {args.append_dim} occurrence. Dimensions of length 1 have been dropped.")
@@ -195,7 +194,7 @@ def calculate_pixel_coverage_weights(args: PixelCoverageWeightsInput):
         polygons_gdf=polygons_gdf
     )
     logger.info("Pixel coverage weights calculated.")
-    teehr_variable_name = list(args.variable_name_mapping.values())[0]
+    teehr_variable_name = args.variable_and_unit_mapper.variable_name[args.grid_variable_name].name
     weights_df = format_weights_df(
         weights_df=weights_df,
         grid_width=grid_template_da.rio.width,

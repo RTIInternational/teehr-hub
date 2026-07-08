@@ -185,5 +185,4 @@ def calculate_mean_areal_values(args: MeanArealValuesInput):
         table_name=args.timeseries_table_name,
         write_mode="append",
     )
-
     logger.info("Mean areal values calculation flow completed.")

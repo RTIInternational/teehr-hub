@@ -692,7 +692,7 @@ deployments:
     work_pool: *work_pool
 
   # Mean Areal Value Workflows
-  - name: calculate-pixel-coverage-weights
+  - name: calculate-nwm30-conus-forcing-pixel-coverage-weights
     version:
     tags: []
     description: Calculate pixel coverage weights for a given grid template and polygon shapefile
@@ -704,6 +704,30 @@ deployments:
         "configuration_name": "nwm30-forcing-analysis-assim",
         "grid_variable_name": "RAINRATE",
         "teehr_variable_name": "rainrate_hourly_mean",
+        "domain_name": "nwm30_forcing_conus",
+        "s3_storage_kwargs": {
+            "region": "us-east-1",
+            "access_key_id": "minioadmin",
+            "secret_access_key": "minioadmin123",
+            "endpoint_url": "http://minio:9000",
+            "allow_http": true,
+            "force_path_style": true
+        }
+      }
+    }
+    work_pool: *work_pool
+
+  - name: calculate-nwm30-forcing-analysis-assim-mean-areal-values
+    version:
+    tags: []
+    description: Calculate mean areal values for a given grid template and polygon shapefile
+    entrypoint: workflows/ingests/mean_areal_values.py:calculate_mean_areal_values
+    parameters: {
+      "args": {
+        "temp_dir_path": *temp_dir_path,
+        "location_id_prefix": "huc12",
+        "configuration_name": "nwm30-forcing-analysis-assim",
+        "grid_variable_name": "RAINRATE",
         "domain_name": "nwm30_forcing_conus",
         "s3_storage_kwargs": {
             "region": "us-east-1",
