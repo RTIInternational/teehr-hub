@@ -18,7 +18,7 @@ jobs:
       - name: Setup app secrets
         run: |
           echo "${{ secrets.REMOTE_SECRETS }}" > teehr-cloud-core/secrets/secrets.remote.yaml
-          echo "${{ secrets.REMOTE_DEPLOY }}" > configs/deploy.remote-aws-srvs.yaml
+          echo "${{ secrets.REMOTE_DEPLOY }}" > teehr-cloud-core/configs/deploy.remote-aws-srvs.yaml
 
       - name: Validate deployment contract
         run: |
