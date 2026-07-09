@@ -91,7 +91,7 @@ class IngestGriddedDataInput(BuildPyramidsDataInput):
 
     # --- Core required parameters ---
     source_data_storage: StorageType = Field(
-        StorageType.http,
+        default=StorageType.http,
         description="Storage type of the source data (e.g., 's3', 'gcs', 'local', 'http')"
     )
     glob_pattern: str = Field(

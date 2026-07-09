@@ -1,5 +1,5 @@
 import maplibregl from 'maplibre-gl';
-import { useEffect, useRef, useCallback } from 'react';
+import { useEffect, useRef, useCallback, useState } from 'react';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import { useGriddedDashboard, ActionTypes } from '../../../context/GriddedDashboardContext.jsx';
 import { griddedApiService, GRIDDED_API_BASE_URL } from '../../../services/api.js';
@@ -20,6 +20,32 @@ const GriddedMapComponent = () => {
   const clickHandlerRef = useRef(null);
 
   const currentTimestep = state.timesteps[timestepIndex] ?? null;
+
+  // Map of overlay id -> array of { label, imageData, contentType, width, height }
+  const [overlayLegends, setOverlayLegends] = useState({});
+  const fetchedLegends = useRef(new Set());
+
+  // Fetch ArcGIS legend JSON for newly-activated overlays that declare a legendUrl.
+  useEffect(() => {
+    const toFetch = OVERLAY_LAYERS.filter(
+      (o) => activeOverlays.includes(o.id) && o.legendUrl && !fetchedLegends.current.has(o.id),
+    );
+    if (toFetch.length === 0) return;
+
+    toFetch.forEach(async (overlay) => {
+      fetchedLegends.current.add(overlay.id);
+      try {
+        const res = await fetch(overlay.legendUrl);
+        const json = await res.json();
+        const layer = json.layers?.find((l) => l.layerId === overlay.legendLayerId);
+        if (layer?.legend) {
+          setOverlayLegends((prev) => ({ ...prev, [overlay.id]: layer.legend }));
+        }
+      } catch {
+        // Legend fetch failure is non-critical; silently skip.
+      }
+    });
+  }, [activeOverlays]);
 
   // Initialize map once on mount
   useEffect(() => {
@@ -197,8 +223,50 @@ const GriddedMapComponent = () => {
     };
   }, [mapLoaded, dataset, variable, currentTimestep]);
 
+  const activeLegendEntries = OVERLAY_LAYERS
+    .filter((o) => activeOverlays.includes(o.id) && overlayLegends[o.id])
+    .map((o) => ({ label: o.label, entries: overlayLegends[o.id] }));
+
   return (
-    <div ref={mapContainer} style={{ width: '100%', height: '100%' }} />
+    <div style={{ position: 'relative', width: '100%', height: '100%' }}>
+      <div ref={mapContainer} style={{ width: '100%', height: '100%' }} />
+      {activeLegendEntries.length > 0 && (
+        <div
+          style={{
+            position: 'absolute',
+            bottom: '28px',
+            right: '8px',
+            background: 'rgba(255,255,255,0.92)',
+            border: '1px solid #ccc',
+            borderRadius: '4px',
+            padding: '6px 8px',
+            fontSize: '0.72rem',
+            maxHeight: '40vh',
+            overflowY: 'auto',
+            pointerEvents: 'none',
+            zIndex: 1,
+          }}
+        >
+          {activeLegendEntries.map(({ label, entries }) => (
+            <div key={label} style={{ marginBottom: entries.length > 1 ? '6px' : 0 }}>
+              <div style={{ fontWeight: 600, marginBottom: '2px' }}>{label}</div>
+              {entries.map((entry, i) => (
+                <div key={i} className="d-flex align-items-center gap-1">
+                  <img
+                    src={`data:${entry.contentType};base64,${entry.imageData}`}
+                    width={entry.width}
+                    height={entry.height}
+                    alt={entry.label}
+                    style={{ flexShrink: 0 }}
+                  />
+                  <span>{entry.label}</span>
+                </div>
+              ))}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
   );
 };
 
