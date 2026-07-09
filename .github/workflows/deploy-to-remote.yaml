@@ -22,7 +22,7 @@ jobs:
 
       - name: Validate deployment contract
         run: |
-          bash scripts/validate-deploy-contract.sh teehr-cloud-core/configs/deploy.remote-aws-srvs.yaml
+          bash teehr-cloud-core/scripts/validate-deploy-contract.sh teehr-cloud-core/configs/deploy.remote-aws-srvs.yaml
 
       - name: Set deployment env. vars
         id: extract_values
@@ -50,7 +50,7 @@ jobs:
 
       - name: Check platform prerequisites
         run: |
-          bash scripts/check-platform-prereqs.sh
+          bash teehr-cloud-core/scripts/check-platform-prereqs.sh
 
       - name: Deploy preview env with Garden
         uses: garden-io/garden-action@v2
