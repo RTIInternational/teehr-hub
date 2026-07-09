@@ -2,6 +2,8 @@ kind: Deploy
 type: helm
 name: cert-manager
 environments:
+  # local only.  cert-manager is installed in the remote cluster via 
+  # teehr-cloud-platform/terraform/manifests/cert-manager.yaml
   - local
 spec:
   chart:
@@ -35,3 +37,4 @@ dependencies:
   - deploy.letsencrypt
 environments:
   - local
+  - remote

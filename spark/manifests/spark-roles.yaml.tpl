@@ -3,8 +3,10 @@ kind: ServiceAccount
 metadata:
   name: spark
   namespace: ${environment.namespace}
+  ${if environment.name == "remote"}
   annotations:
     eks.amazonaws.com/role-arn: ${var.irsa.icebergReadOnlyRoleArn}
+  ${endif}
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
