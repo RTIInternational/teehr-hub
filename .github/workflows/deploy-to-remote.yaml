@@ -56,4 +56,4 @@ jobs:
         uses: garden-io/garden-action@v2
         with:
           garden-version: 0.14.20
-          command: deploy --env remote
+          command: deploy --force-build --env remote
