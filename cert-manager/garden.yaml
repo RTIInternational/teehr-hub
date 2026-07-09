@@ -33,8 +33,17 @@ description: K8s Cert
 spec:
   manifestTemplates:
     - "./manifests/cert.yaml.tpl"
+environments:
+  - remote
+---
+kind: Deploy
+type: kubernetes
+name: cert
+description: K8s Cert
+spec:
+  manifestTemplates:
+    - "./manifests/cert.yaml.tpl"
 dependencies:
   - deploy.letsencrypt
 environments:
   - local
-  - remote
