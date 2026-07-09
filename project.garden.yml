@@ -16,15 +16,13 @@ variables:
   remoteCluster:
     contextArn: arn:aws:eks:us-east-2:935462133478:cluster/teehr-hub
     ecrRegistry: 935462133478.dkr.ecr.us-east-2.amazonaws.com
-  irsa:
-    icebergReadOnlyRoleArn: arn:aws:iam::935462133478:role/teehr-hub-iceberg-s3-warehouse-readonly-irsa
-    icebergReadWriteRoleArn: arn:aws:iam::935462133478:role/teehr-hub-iceberg-s3-warehouse-irsa
 
 environments:
   - name: local
     defaultNamespace: ${project.name}
     variables:
       hostname: teehr.local.app.garden
+      certificateIssuerName: letsencrypt-prod
       devTeehrVersion: 267f8a75034132aefe84749af10ab1562a6ac169
       stableTeehrVersion: place-holder # Needed for sync to work for some reason.
       iceberg:
@@ -45,9 +43,13 @@ environments:
     defaultNamespace: ${project.name}
     variables:
       hostname: teehr.rtiamanzi.org
+      certificateIssuerName: letsencrypt-prod
       devTeehrVersion: 267f8a75034132aefe84749af10ab1562a6ac169
       stableTeehrVersion: v0.6.5
       previousTeehrVersion: v0.5.3
+      irsa:
+        icebergReadOnlyRoleArn: arn:aws:iam::935462133478:role/teehr-hub-iceberg-s3-warehouse-readonly-irsa
+        icebergReadWriteRoleArn: arn:aws:iam::935462133478:role/teehr-hub-iceberg-s3-warehouse-irsa
       iceberg:
         inCluster: "false"
         catalogS3PathStyleAccess: "false"
