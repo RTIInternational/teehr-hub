@@ -40,6 +40,33 @@ without this ConfigMap.
 
 See `profile-list.example.json` in this folder.
 
+## Current in-repo payloads
+
+For this transition period, this repo now includes environment-specific profile
+payloads used by in-repo ConfigMaps:
+
+- `profile-list.local.json`
+- `profile-list.remote.json`
+
+## Remote profile generation
+
+`profile-list.remote.json` can be generated from a compact project spec file:
+
+- Specs: `profile-list.remote.projects.json`
+- Generator: `generate_profile_list_remote.py`
+
+From repo root:
+
+```bash
+python3 jupyterhub/profiles/generate_profile_list_remote.py
+```
+
+To add a new project, add one object to `profile-list.remote.projects.json`
+and regenerate. The generator handles per-project `TEEHR_PROJECT_ID`,
+nodegroup suffixing, and optional FIRO HEFS image choices.
+
+These are intended to move into the client repository later.
+
 ## Suggested migration sequence
 
 1. Copy current profile list into client JSON.
