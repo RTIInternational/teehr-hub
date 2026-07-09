@@ -30,6 +30,8 @@ for a given raster layer and polygon layer and write them to the iceberg warehou
         - Calculate mean areal values for each polygon at each timestep using python
         - Write the mean areal values to the iceberg warehouse primary or secondary timeseries table
 """
+from typing import Tuple
+
 from prefect import flow, task, get_run_logger
 from prefect.cache_policies import NO_CACHE
 import icechunk as ic
@@ -39,6 +41,7 @@ import xarray as xr
 import rioxarray  # noqa: F401
 import pandas as pd
 from teehr import Evaluation
+from shapely.geometry import box
 
 from workflows.utils.common_utils import initialize_evaluation
 from models.mean_areal_inputs import PixelCoverageWeightsInput
@@ -129,6 +132,8 @@ def run_exact_extract(
     output: str = "pandas"
 ) -> pd.DataFrame:
     """Run exactextract to calculate pixel coverage weights for each polygon."""
+    logger = get_run_logger()
+    logger.info("Running exactextract to calculate pixel coverage weights for each polygon.")
     weights_df = exact_extract(
         rast=grid_template_da,
         vec=polygons_gdf,
@@ -136,7 +141,42 @@ def run_exact_extract(
         include_cols=include_cols,
         output=output
     )
+    logger.info("Pixel coverage weights calculated.")
     return weights_df
+
+
+@task(timeout_seconds=60 * 5)
+def check_layer_extents(
+    polygons_gdf: gpd.GeoDataFrame,
+    grid_da: xr.DataArray
+) -> Tuple[gpd.GeoDataFrame, xr.DataArray]:
+    """Check the extents of the polygons and grid to ensure they overlap.
+    
+    If there are polygons outside the grid extent, drop them from the polygons_gdf.
+    If the grid extent is larger than the polygon extent, clip the grid layer to the polygon extent.
+    """
+    logger = get_run_logger()
+    logger.info("Checking the extents of the polygons and grid to ensure they overlap.")
+    poly_box = box(*polygons_gdf.total_bounds)
+    grid_box = box(*grid_da.rio.bounds())
+    if not poly_box.intersects(grid_box):
+        logger.error("The polygons and grid do not intersect. Please check the input data.")
+        raise ValueError("The polygons and grid do not intersect. Please check the input data.")
+    if poly_box.contains(grid_box):
+        initial_count = len(polygons_gdf)
+        polygons_gdf = polygons_gdf[polygons_gdf.within(grid_box)]
+        dropped_count = initial_count - len(polygons_gdf)
+        if dropped_count > 0:
+            logger.info(
+                f"Dropped {dropped_count} polygons that are outside the grid extent."
+            )
+    elif grid_box.contains(poly_box):
+        logger.info(
+            "The grid layer extends beyond the polygon extent. "
+            "Clipping the grid layer to the polygon extent."
+        )
+        grid_da = grid_da.rio.clip_box(*poly_box.bounds)
+    return polygons_gdf, grid_da
 
 
 @flow(
@@ -182,18 +222,24 @@ def calculate_pixel_coverage_weights(args: PixelCoverageWeightsInput):
         decode_coords="all"
     )[args.grid_variable_name].isel({args.append_dim: 0}).squeeze(drop=True)
     # TODO: # Ensure latitude and longitude are strictly increasing (left to right/top to bottom)?
-    grid_template_da = grid_template_da.load()
     logger.info(f"Grid data read for first {args.append_dim} occurrence. Dimensions of length 1 have been dropped.")
 
-    # Reproject the polygons to the grid's CRS
+    # Reproject the polygons to the grid's CRS and check extents to ensure they overlap
     polygons_gdf = polygons_gdf.to_crs(grid_template_da.rio.crs)
+    polygons_gdf, grid_template_da = check_layer_extents(
+        polygons_gdf=polygons_gdf,
+        grid_da=grid_template_da
+    )
+
+    # Load into memory for exactextract
+    grid_template_da = grid_template_da.load()
 
     # Calculate pixel coverage weights for each polygon using exactextract
     weights_df = run_exact_extract(
         grid_template_da=grid_template_da,
         polygons_gdf=polygons_gdf
     )
-    logger.info("Pixel coverage weights calculated.")
+
     teehr_variable_name = args.variable_and_unit_mapper.variable_name[args.grid_variable_name].name
     weights_df = format_weights_df(
         weights_df=weights_df,
