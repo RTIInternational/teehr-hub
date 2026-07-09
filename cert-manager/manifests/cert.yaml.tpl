@@ -7,7 +7,7 @@ spec:
   dnsNames:
   - hub.${var.hostname}
   issuerRef:
-    name: letsencrypt-prod
+    name: ${var.certificateIssuerName}
     kind: ClusterIssuer
   secretName: hub.${var.hostname}-tls
 ---
@@ -20,7 +20,7 @@ spec:
   dnsNames:
   - minio.${var.hostname}
   issuerRef:
-    name: letsencrypt-prod
+    name: ${var.certificateIssuerName}
     kind: ClusterIssuer
   secretName: minio.${var.hostname}-tls
 ---
@@ -33,7 +33,7 @@ spec:
   dnsNames:
   - panel.${var.hostname}
   issuerRef:
-    name: letsencrypt-prod
+    name: ${var.certificateIssuerName}
     kind: ClusterIssuer
   secretName: panel.${var.hostname}-tls
 ---
@@ -46,7 +46,7 @@ spec:
   dnsNames:
   - api.${var.hostname}
   issuerRef:
-    name: letsencrypt-prod
+    name: ${var.certificateIssuerName}
     kind: ClusterIssuer
   secretName: api.${var.hostname}-tls
 ---
@@ -59,7 +59,7 @@ spec:
   dnsNames:
   - dashboards.${var.hostname}
   issuerRef:
-    name: letsencrypt-prod
+    name: ${var.certificateIssuerName}
     kind: ClusterIssuer
   secretName: dashboards.${var.hostname}-tls
 ---
@@ -72,7 +72,7 @@ spec:
   dnsNames:
   - auth.${var.hostname}
   issuerRef:
-    name: letsencrypt-prod
+    name: ${var.certificateIssuerName}
     kind: ClusterIssuer
   secretName: auth.${var.hostname}-tls
 ---
@@ -85,6 +85,6 @@ spec:
   dnsNames:
   - prefect.${var.hostname}
   issuerRef:
-    name: letsencrypt-prod
+    name: ${var.certificateIssuerName}
     kind: ClusterIssuer
   secretName: prefect.${var.hostname}-tls
