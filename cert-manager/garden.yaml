@@ -1,6 +1,8 @@
 kind: Deploy
 type: helm
 name: cert-manager
+environments:
+  - local
 spec:
   chart:
     name: cert-manager
@@ -16,17 +18,6 @@ spec:
     extraArgs:
       - --dns01-recursive-nameservers=169.254.169.253:53
       - --dns01-recursive-nameservers-only
----
-kind: Deploy
-type: kubernetes
-name: letsencrypt
-description: K8s Lets Encrypt
-spec:
-  manifestFiles:
-    - "./manifests/letsencrypt.yaml"
-dependencies: [deploy.cert-manager]
-environments:
-  - remote
 ---
 kind: Deploy
 type: kubernetes
