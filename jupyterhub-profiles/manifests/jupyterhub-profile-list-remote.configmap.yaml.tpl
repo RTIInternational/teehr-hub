@@ -21,7 +21,6 @@ data:
               "choices": {
                 "current-tag-xlarge": {
                   "display_name": "Version ${var.stableTeehrVersion} - XL (4 cores, 16 GB memory)",
-                  "default": true,
                   "kubespawner_override": {
                     "image": "${actions.build.teehr-jupyter-driver-image-stable.outputs.deploymentImageId}",
                     "mem_limit": "32G",
@@ -31,7 +30,8 @@ data:
                     "node_selector": {
                       "teehr-hub/nodegroup-name": "nb-r5-xlarge"
                     }
-                  }
+                  },
+                  "default": true
                 },
                 "current-tag-4xlarge": {
                   "display_name": "Version ${var.stableTeehrVersion} - 4XL (16 cores, 128 GB memory)",
@@ -117,7 +117,6 @@ data:
               "choices": {
                 "current-tag-xlarge": {
                   "display_name": "Version ${var.stableTeehrVersion} - XL (4 cores, 16 GB memory)",
-                  "default": true,
                   "kubespawner_override": {
                     "image": "${actions.build.teehr-jupyter-driver-image-stable.outputs.deploymentImageId}",
                     "mem_limit": "32G",
@@ -127,15 +126,16 @@ data:
                     "node_selector": {
                       "teehr-hub/nodegroup-name": "nb-r5-xlarge-mmm"
                     }
-                  }
+                  },
+                  "default": true
                 },
                 "current-tag-4xlarge": {
                   "display_name": "Version ${var.stableTeehrVersion} - 4XL (16 cores, 128 GB memory)",
                   "kubespawner_override": {
                     "image": "${actions.build.teehr-jupyter-driver-image-stable.outputs.deploymentImageId}",
-                    "mem_limit": "128G",
+                    "mem_limit": "127G",
                     "mem_guarantee": "76G",
-                    "cpu_limit": 16,
+                    "cpu_limit": 15.5,
                     "cpu_guarantee": 12,
                     "node_selector": {
                       "teehr-hub/nodegroup-name": "nb-r5-4xlarge-mmm"
@@ -185,9 +185,9 @@ data:
                   "display_name": "Bleeding Edge ${slice(var.devTeehrVersion, 0, 6)} - 4XL (16 cores, 128 GB memory)",
                   "kubespawner_override": {
                     "image": "${actions.build.teehr-jupyter-driver-image-edge.outputs.deploymentImageId}",
-                    "mem_limit": "128G",
+                    "mem_limit": "127G",
                     "mem_guarantee": "76G",
-                    "cpu_limit": 16,
+                    "cpu_limit": 15.5,
                     "cpu_guarantee": 12,
                     "node_selector": {
                       "teehr-hub/nodegroup-name": "nb-r5-4xlarge-mmm"
@@ -213,7 +213,6 @@ data:
               "choices": {
                 "current-tag-xlarge": {
                   "display_name": "Version ${var.stableTeehrVersion} - XL (4 cores, 16 GB memory)",
-                  "default": true,
                   "kubespawner_override": {
                     "image": "${actions.build.teehr-jupyter-driver-image-stable.outputs.deploymentImageId}",
                     "mem_limit": "32G",
@@ -223,15 +222,16 @@ data:
                     "node_selector": {
                       "teehr-hub/nodegroup-name": "nb-r5-xlarge-testbed"
                     }
-                  }
+                  },
+                  "default": true
                 },
                 "current-tag-4xlarge": {
                   "display_name": "Version ${var.stableTeehrVersion} - 4XL (16 cores, 128 GB memory)",
                   "kubespawner_override": {
                     "image": "${actions.build.teehr-jupyter-driver-image-stable.outputs.deploymentImageId}",
-                    "mem_limit": "128G",
+                    "mem_limit": "127G",
                     "mem_guarantee": "76G",
-                    "cpu_limit": 16,
+                    "cpu_limit": 15.5,
                     "cpu_guarantee": 12,
                     "node_selector": {
                       "teehr-hub/nodegroup-name": "nb-r5-4xlarge-testbed"
@@ -281,9 +281,9 @@ data:
                   "display_name": "Bleeding Edge ${slice(var.devTeehrVersion, 0, 6)} - 4XL (16 cores, 128 GB memory)",
                   "kubespawner_override": {
                     "image": "${actions.build.teehr-jupyter-driver-image-edge.outputs.deploymentImageId}",
-                    "mem_limit": "128G",
+                    "mem_limit": "127G",
                     "mem_guarantee": "76G",
-                    "cpu_limit": 16,
+                    "cpu_limit": 15.5,
                     "cpu_guarantee": 12,
                     "node_selector": {
                       "teehr-hub/nodegroup-name": "nb-r5-4xlarge-testbed"
@@ -309,7 +309,6 @@ data:
               "choices": {
                 "current-tag-xlarge": {
                   "display_name": "Version ${var.stableTeehrVersion} - XL (4 cores, 16 GB memory)",
-                  "default": true,
                   "kubespawner_override": {
                     "image": "${actions.build.teehr-jupyter-driver-image-stable.outputs.deploymentImageId}",
                     "mem_limit": "32G",
@@ -319,15 +318,16 @@ data:
                     "node_selector": {
                       "teehr-hub/nodegroup-name": "nb-r5-xlarge-resops"
                     }
-                  }
+                  },
+                  "default": true
                 },
                 "current-tag-4xlarge": {
                   "display_name": "Version ${var.stableTeehrVersion} - 4XL (16 cores, 128 GB memory)",
                   "kubespawner_override": {
                     "image": "${actions.build.teehr-jupyter-driver-image-stable.outputs.deploymentImageId}",
-                    "mem_limit": "128G",
+                    "mem_limit": "127G",
                     "mem_guarantee": "76G",
-                    "cpu_limit": 16,
+                    "cpu_limit": 15.5,
                     "cpu_guarantee": 12,
                     "node_selector": {
                       "teehr-hub/nodegroup-name": "nb-r5-4xlarge-resops"
@@ -377,9 +377,9 @@ data:
                   "display_name": "Bleeding Edge ${slice(var.devTeehrVersion, 0, 6)} - 4XL (16 cores, 128 GB memory)",
                   "kubespawner_override": {
                     "image": "${actions.build.teehr-jupyter-driver-image-edge.outputs.deploymentImageId}",
-                    "mem_limit": "128G",
+                    "mem_limit": "127G",
                     "mem_guarantee": "76G",
-                    "cpu_limit": 16,
+                    "cpu_limit": 15.5,
                     "cpu_guarantee": 12,
                     "node_selector": {
                       "teehr-hub/nodegroup-name": "nb-r5-4xlarge-resops"
@@ -405,7 +405,6 @@ data:
               "choices": {
                 "hefs-v0-3-0": {
                   "display_name": "HEFS-FEWS v0.3.x - XL (4 cores, 16 GB memory)",
-                  "default": true,
                   "kubespawner_override": {
                     "image": "${var.remoteCluster.ecrRegistry}/hefs-fews-hub:v0.3.1",
                     "mem_limit": "32G",
@@ -415,20 +414,21 @@ data:
                     "node_selector": {
                       "teehr-hub/nodegroup-name": "nb-r5-xlarge-firo"
                     }
-                  }
+                  },
+                  "default": true
                 },
                 "hefs-latest": {
                   "display_name": "HEFS-FEWS Bleeding Edge - XL (4 cores, 16 GB memory)",
                   "kubespawner_override": {
                     "image": "${var.remoteCluster.ecrRegistry}/hefs-fews-hub:dev",
-                    "image_pull_policy": "Always",
                     "mem_limit": "32G",
                     "mem_guarantee": "19G",
                     "cpu_limit": 4,
                     "cpu_guarantee": 3,
                     "node_selector": {
                       "teehr-hub/nodegroup-name": "nb-r5-xlarge-firo"
-                    }
+                    },
+                    "image_pull_policy": "Always"
                   }
                 },
                 "current-tag-xlarge": {
@@ -448,9 +448,9 @@ data:
                   "display_name": "Version ${var.stableTeehrVersion} - 4XL (16 cores, 128 GB memory)",
                   "kubespawner_override": {
                     "image": "${actions.build.teehr-jupyter-driver-image-stable.outputs.deploymentImageId}",
-                    "mem_limit": "128G",
+                    "mem_limit": "127G",
                     "mem_guarantee": "76G",
-                    "cpu_limit": 16,
+                    "cpu_limit": 15.5,
                     "cpu_guarantee": 12,
                     "node_selector": {
                       "teehr-hub/nodegroup-name": "nb-r5-4xlarge-firo"
@@ -500,9 +500,9 @@ data:
                   "display_name": "Bleeding Edge ${slice(var.devTeehrVersion, 0, 6)} - 4XL (16 cores, 128 GB memory)",
                   "kubespawner_override": {
                     "image": "${actions.build.teehr-jupyter-driver-image-edge.outputs.deploymentImageId}",
-                    "mem_limit": "128G",
+                    "mem_limit": "127G",
                     "mem_guarantee": "76G",
-                    "cpu_limit": 16,
+                    "cpu_limit": 15.5,
                     "cpu_guarantee": 12,
                     "node_selector": {
                       "teehr-hub/nodegroup-name": "nb-r5-4xlarge-firo"
@@ -528,7 +528,6 @@ data:
               "choices": {
                 "current-tag-xlarge": {
                   "display_name": "Version ${var.stableTeehrVersion} - XL (4 cores, 16 GB memory)",
-                  "default": true,
                   "kubespawner_override": {
                     "image": "${actions.build.teehr-jupyter-driver-image-stable.outputs.deploymentImageId}",
                     "mem_limit": "32G",
@@ -538,15 +537,16 @@ data:
                     "node_selector": {
                       "teehr-hub/nodegroup-name": "nb-r5-xlarge-fff"
                     }
-                  }
+                  },
+                  "default": true
                 },
                 "current-tag-4xlarge": {
                   "display_name": "Version ${var.stableTeehrVersion} - 4XL (16 cores, 128 GB memory)",
                   "kubespawner_override": {
                     "image": "${actions.build.teehr-jupyter-driver-image-stable.outputs.deploymentImageId}",
-                    "mem_limit": "128G",
+                    "mem_limit": "127G",
                     "mem_guarantee": "76G",
-                    "cpu_limit": 16,
+                    "cpu_limit": 15.5,
                     "cpu_guarantee": 12,
                     "node_selector": {
                       "teehr-hub/nodegroup-name": "nb-r5-4xlarge-fff"
@@ -596,9 +596,9 @@ data:
                   "display_name": "Bleeding Edge ${slice(var.devTeehrVersion, 0, 6)} - 4XL (16 cores, 128 GB memory)",
                   "kubespawner_override": {
                     "image": "${actions.build.teehr-jupyter-driver-image-edge.outputs.deploymentImageId}",
-                    "mem_limit": "128G",
+                    "mem_limit": "127G",
                     "mem_guarantee": "76G",
-                    "cpu_limit": 16,
+                    "cpu_limit": 15.5,
                     "cpu_guarantee": 12,
                     "node_selector": {
                       "teehr-hub/nodegroup-name": "nb-r5-4xlarge-fff"

@@ -1,0 +1,14 @@
+# Deploy remote JupyterHub profile list config map
+kind: Deploy
+type: kubernetes
+name: jupyterhub-profile-list-remote
+environments:
+  - remote
+dependencies:
+  - build.teehr-jupyter-driver-image-edge
+  - build.teehr-jupyter-driver-image-stable
+  - build.teehr-jupyter-driver-image-previous
+spec:
+  manifestTemplates:
+    - manifests/jupyterhub-profile-list-remote.configmap.yaml.tpl
+---
