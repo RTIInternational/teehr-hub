@@ -1,15 +1,26 @@
-# JupyterHub Profile List Contract
+# JupyterHub Remote Profiles (Deployment Repo)
 
-This directory defines the client-owned profile contract for JupyterHub spawn options.
+This directory owns the remote JupyterHub profile list for this deployment
+repository.
 
 ## Why this exists
 
-`jupyterhub/garden.yaml` now supports loading profile definitions from the
+`jupyterhub/garden.yaml` supports loading profile definitions from the
 `JUPYTERHUB_PROFILE_LIST_JSON` environment variable.
 
-When this env var is set, the loaded profile list overrides the static
-`singleuser.profileList` in Helm values. If it is not set, the static profile
-list is used as a fallback.
+- If set, it overrides static `singleuser.profileList` in Helm values.
+- If not set, static Helm values are used.
+
+## Repository split
+
+Ownership is split across repos:
+
+- `teehr-cloud-core/jupyterhub-profiles`:
+   - Contract and generator logic.
+   - Local profile payload and template.
+- `teehr-hub/jupyterhub-profiles` (this directory):
+   - Remote project list input for this deployment.
+   - Generated remote payload and ConfigMap template used by deployment.
 
 ## Contract (v1)
 
@@ -17,60 +28,56 @@ Top-level JSON can be either:
 
 1. A list of JupyterHub profile objects.
 2. An object with:
-   - `version`: must be `1` when present.
-   - `profiles`: a list of JupyterHub profile objects.
+   - `version`: optional; if present, must be `1`.
+   - `profiles`: required list of JupyterHub profile objects.
 
 Minimum required key per profile:
 - `display_name` (string)
 
-Everything else is passed through to JupyterHub/KubeSpawner unchanged.
+All other keys are passed through to JupyterHub/KubeSpawner unchanged.
 
-## Delivery pattern for client repos
+## Files in this directory
 
-Recommended pattern in a client repo:
+- Source of truth for remote projects:
+   - `profile-list.remote.projects.json`
+- Generated remote payload:
+   - `profile-list.remote.json`
+- Generated remote ConfigMap template:
+   - `manifests/jupyterhub-profile-list-remote.configmap.yaml.tpl`
+- Generator scripts (owned in submodule):
+   - `teehr-cloud-core/jupyterhub-profiles/generate_profile_list.py`
+   - `teehr-cloud-core/jupyterhub-profiles/generate_profile_configmap_templates.py`
 
-1. Create a ConfigMap named `jupyterhub-profile-list`.
-2. Add a key `profile-list.json` containing contract JSON.
-3. Deploy that ConfigMap before `teehr-jupyterhub`.
+## Update flow
 
-Because the env var source is marked optional, deployments continue to work
-without this ConfigMap.
+When adding/changing remote profiles for this deployment:
 
-## Example
-
-See `profile-list.example.json` in this folder.
-
-## Current in-repo payloads
-
-For this transition period, this repo now includes environment-specific profile
-payloads used by in-repo ConfigMaps:
-
-- `profile-list.local.json`
-- `profile-list.remote.json`
-
-## Remote profile generation
-
-`profile-list.remote.json` can be generated from a compact project spec file:
-
-- Specs: `profile-list.remote.projects.json`
-- Generator: `generate_profile_list_remote.py`
-
-From repo root:
+1. Update the `teehr-cloud-core` submodule to the desired version.
+2. Edit `profile-list.remote.projects.json`.
+3. From the deployment repo root run:
 
 ```bash
-python3 jupyterhub/profiles/generate_profile_list_remote.py
+python3 teehr-cloud-core/jupyterhub-profiles/generate_profile_list.py \
+   --spec jupyterhub-profiles/profile-list.remote.projects.json \
+   --out jupyterhub-profiles/profile-list.remote.json
+
+python3 teehr-cloud-core/jupyterhub-profiles/generate_profile_configmap_templates.py \
+   --spec jupyterhub-profiles/profile-list.remote.json \
+   --out jupyterhub-profiles/manifests/jupyterhub-profile-list-remote.configmap.yaml.tpl
 ```
 
-To add a new project, add one object to `profile-list.remote.projects.json`
-and regenerate. The generator handles per-project `TEEHR_PROJECT_ID`,
-nodegroup suffixing, and optional FIRO HEFS image choices.
+4. Commit these files together:
+    - `profile-list.remote.projects.json`
+    - `profile-list.remote.json`
+    - `manifests/jupyterhub-profile-list-remote.configmap.yaml.tpl`
+5. Run the normal remote Garden deploy flow so the ConfigMap deploys before
+    JupyterHub.
 
-These are intended to move into the client repository later.
+Because the env var source is optional, deployment still works without the
+ConfigMap, but profile customization will not be applied.
 
-## Suggested migration sequence
+## Notes
 
-1. Copy current profile list into client JSON.
-2. Deploy ConfigMap and verify profile rendering in JupyterHub UI.
-3. Remove static `singleuser.profileList` from `garden.yaml` after cutover.
-4. Move this contract and loader into `teehr-cloud-core` and keep JSON in each
-   client repository.
+- This repo is remote-only for profiles. No local profile payload is required.
+- Generator logic is intentionally centralized in
+   `teehr-cloud-core/jupyterhub-profiles` to avoid drift.
