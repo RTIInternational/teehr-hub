@@ -57,6 +57,13 @@ class PixelCoverageWeightsInput(BaseGriddedDataInput):
         False,
         description="Whether to start a Spark cluster for processing"
     )
+    write_mode: str = Field(
+        "append",
+        description=(
+            "Write mode for saving the pixel coverage weights to the warehouse table. "
+            "Default is 'append'. The value is passed to ev._write.to_warehouse()."
+        )
+    )
 
 
 class MeanArealValuesInput(PixelCoverageWeightsInput):
@@ -64,5 +71,8 @@ class MeanArealValuesInput(PixelCoverageWeightsInput):
 
     timeseries_table_name: str = Field(
         "primary_timeseries",
-        description="Name of the timeseries table in the teehr warehouse to write the mean areal values to. Default is 'primary_timeseries'."
+        description=(
+            "Name of the timeseries table in the teehr warehouse to write the mean areal values to. "
+            "Default is 'primary_timeseries'."
+        )
     )
