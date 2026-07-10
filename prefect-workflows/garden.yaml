@@ -28,7 +28,7 @@ environments:
   - remote
 spec:
   manifestTemplates:
-  - ./manifests/prefect-deployer-job.yaml
+  - ./manifests/prefect-deployer-job.yaml.tpl
 ---
 kind: Deploy
 type: kubernetes
@@ -53,7 +53,7 @@ environments:
   - remote
 spec:
   manifestTemplates:
-  - ./manifests/prefect-job-sa.yaml
+  - ./manifests/prefect-job-sa.yaml.tpl
 ---
 kind: Deploy
 type: kubernetes
