@@ -37,12 +37,12 @@ Server Version: v1.33.0
 Optional, but recommended, k9s https://k9scli.io/
 ```bash
  % k9s version
- ____  __ ________       
+ ____  __ ________
 |    |/  /   __   \______
 |       /\____    /  ___/
 |    \   \  /    /\___  \
 |____|\__ \/____//____  /
-         \/           \/ 
+         \/           \/
 
 Version:    v0.50.2
 Commit:     bc22b8705304b86c2f4c417a088accdfed13fdf8
@@ -51,7 +51,7 @@ Date:       2025-04-10T15:32:12Z
 
 After you have the dependencies above installed you should be able to create a kind cluster by running the following from the repo root.
 ```bash
-./kind/create_kind_cluster.sh 
+./kind/create_kind_cluster.sh
 ```
 
 NOTE: From this point on, some operations will expect additional secrets to be provided by the developer. These are typically provided in `secrets/secrets.local.private.yaml` ([example](https://github.com/RTIInternational/teehr-hub/blob/main/secrets/secrets.local.private.yaml.example)). Coordinate with the team for internal development standards.
@@ -62,7 +62,7 @@ garden deploy
 ```
 
 This should create all the services in the cluster.  To test, open a browser and go to `https://api.teehr.local.app.garden`. Two notes:
-1) We use a self-sign certificate for local development so you will have to accept it in your browser. Specifically, you will need to do so for the API before the dashboards will work by going to `api.teehr.local.app.garden` and accepting the self-signed cert.
+1) We use a self-sign certificate for local development so you will have to accept it in your browser. Specifically, you will need to do so for the API before the dashboards will work by going to `api.teehr.local.app.garden` and accepting the self-signed cert. To support the gridded dashboard, the same must be done for `xpublish-api.teehr.local.app.garden`
 2) Note you may need to edit your `/etc/hosts` file to have this address point to localhost.  You likely need the following entries in your `/etc/hosts` file.
 
 ```bash
