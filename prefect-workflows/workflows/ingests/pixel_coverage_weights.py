@@ -80,7 +80,7 @@ def write_dataframe_to_warehouse(
 ):
     """Write the pixel coverage weights to the iceberg warehouse table."""
     logger = get_run_logger()
-    logger.info(f"Writing coverage weights to the '{table_name}' warehouse table.")
+    logger.info(f"Writing coverage weights to the '{table_name}' warehouse table with write_mode='{write_mode}'.")
     ev._write.to_warehouse(
         source_data=dataframe,
         table_name=table_name,
