@@ -57,6 +57,14 @@ When adding/changing remote profiles for this deployment:
 3. From the deployment repo root run:
 
 ```bash
+python3 teehr-cloud-core/jupyterhub-profiles/generate_profile_list.py --remote
+
+python3 teehr-cloud-core/jupyterhub-profiles/generate_profile_configmap_templates.py --remote
+```
+
+Equivalent explicit-path form:
+
+```bash
 python3 teehr-cloud-core/jupyterhub-profiles/generate_profile_list.py \
    --spec jupyterhub-profiles/profile-list.remote.projects.json \
    --out jupyterhub-profiles/profile-list.remote.json
