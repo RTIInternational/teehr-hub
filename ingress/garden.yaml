@@ -1,0 +1,19 @@
+kind: Deploy
+type: kubernetes
+name: panel-ingress
+spec:
+  manifestTemplates:
+    - manifests/panel.yaml.tpl
+environments:
+  - local
+  - remote
+---
+kind: Deploy
+type: kubernetes
+name: dashboards-ingress
+spec:
+  manifestTemplates:
+    - manifests/dashboards.yaml.tpl
+environments:
+  - local
+  - remote
