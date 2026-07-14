@@ -1,0 +1,50 @@
+[
+  {
+    "project_id": "TEEHR",
+    "display_name": "TEEHR Project",
+    "description": "Choose this profile for work related to the TEEHR Project.",
+    "default": true,
+    "nodegroup_suffix": "",
+    "include_hefs_choices": false
+  },
+  {
+    "project_id": "MMM",
+    "display_name": "Multi-model Mosaic Project (MMM)",
+    "description": "Choose this profile for work related to the Multi-model Mosaic Project.",
+    "default": false,
+    "nodegroup_suffix": "-mmm",
+    "include_hefs_choices": false
+  },
+  {
+    "project_id": "Testbed",
+    "display_name": "Testbed Project (Testbed)",
+    "description": "Choose this profile for work related to the Testbed Project.",
+    "default": false,
+    "nodegroup_suffix": "-testbed",
+    "include_hefs_choices": false
+  },
+  {
+    "project_id": "ResOps",
+    "display_name": "Reservoir Operations Project (ResOps)",
+    "description": "Choose this profile for work related to the Reservoir Operations Project.",
+    "default": false,
+    "nodegroup_suffix": "-resops",
+    "include_hefs_choices": false
+  },
+  {
+    "project_id": "FIRO",
+    "display_name": "Cloud Operations and FIRO Projects (FIRO)",
+    "description": "Choose this profile for work related to the Cloud Operations and FIRO Projects.",
+    "default": false,
+    "nodegroup_suffix": "-firo",
+    "include_hefs_choices": true
+  },
+  {
+    "project_id": "FFF",
+    "display_name": "Flash Flood Forecast Projects (FFF)",
+    "description": "Choose this profile for work related to the Flash Flood Forecast Project.",
+    "default": false,
+    "nodegroup_suffix": "-fff",
+    "include_hefs_choices": false
+  }
+]

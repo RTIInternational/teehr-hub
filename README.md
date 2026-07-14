@@ -154,13 +154,14 @@ When you rebuild an external image, reload it into Kind and restart any running 
 
 ## Remote Deployment
 
-This section will walk you through standing up the `teehr-hub`` in an AWS account.
-The instructions should generally work with other providers, but some steps will certainly be different.
+The TEEHR Platform (Terraform IaC, cert-manager, contour, cluster-autoscaler) has been split out into a separate repository [`teehr-cloud-platform`](https://github.com/RTIInternational/teehr-cloud-platform). See that repository for Terraform, cert-manager, Contour, and autoscaler changes.
+Platform/app deployment contract details are documented in `docs/platform-app-deployment-contract.md`.
 
-NOTE: you must clean up complete from other approaches before running this.
+The remote application deployment happens via GitHub Actions.
 
-Login to AWS.  You need to login with a user that has sufficient permissions.
-We used Admin for testing but need to determine the minimum set of permissions needed.
+## Connect to Cluster
+
+To connect to the cluster via `kubectl` or `k9s`, the following should work:
 ```bash
 aws configure
 ```
@@ -169,26 +170,9 @@ Or set a profile
 export AWS_PROFILE=ciroh_mdenno
 ```
 
-Plan Terraform (can take ~15 mins)
-```bash
-cd terraform
-terraform init
-terraform plan -var-file=teehr-hub.tfvars
-cd ..
-```
-
-Plan Terraform (can take ~15 mins)
-```bash
-cd terraform
-terraform apply -var-file=teehr-hub.tfvars
-cd ..
-```
-
-Connect to cluster
+Run the following to connect to `teehr-hub` cluster.  If you have deployed to your own cluster you will need to adjust this command accordingly.
 ```bash
 aws eks update-kubeconfig --name teehr-hub --region us-east-2 --role-arn arn:aws:iam::935462133478:role/teehr-hub-teehr-hub-admin
 kubectl config set-context $(kubectl config current-context) --namespace teehr-hub
 k9s
 ```
-
-After the cluster is setup in an AWS account, you can deploy using the GitHub Actions.

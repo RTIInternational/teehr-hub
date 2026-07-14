@@ -1,0 +1,68 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: deploy-prefect-workflows
+spec:
+  ttlSecondsAfterFinished: 60
+  template:
+    spec:
+      containers:
+      - name: deploy-prefect-workflows
+        image: ${actions.build.teehr-prefect-image.outputs.deploymentImageId}
+        command:
+        # - pwd
+        - prefect
+        - --no-prompt
+        - deploy
+        - --all
+        - --prefect-file
+        - ${environment.name == "local" ? "/teehr/prefect-local.yaml" : "/teehr/prefect-remote.yaml"}
+        env:
+        - name: PREFECT_API_URL
+          value: http://prefect-server:4200/api
+        # Pass in envs that can then be passed to the job template/job.
+        - name: PREFECT_TEEHR_IMAGE
+          value: ${actions.build.teehr-prefect-image.outputs.deploymentImageId}
+        - name: TEEHR_SPARK_IMAGE
+          value: ${actions.build.teehr-spark-executor-image.outputs.deploymentImageId}
+        - name: TEEHR_NAMESPACE
+          value: ${environment.namespace}
+        # Need to figure out how to handle secrets here.  This is OK for dev.
+        # Might want to update job template to use secrets from K8s secret.
+
+        ${if environment.name == "local"}
+        - name: AWS_ACCESS_KEY_ID
+          valueFrom:
+            secretKeyRef:
+              name: minio-secrets
+              key: accesskey
+        - name: AWS_SECRET_ACCESS_KEY
+          valueFrom:
+            secretKeyRef:
+              name: minio-secrets
+              key: secretkey
+        - name: REMOTE_CATALOG_S3_ENDPOINT
+          value: ${var.iceberg.catalogS3Endpoint}
+        - name: REMOTE_CATALOG_S3_PATH_STYLE_ACCESS
+          value: "${var.iceberg.catalogS3PathStyleAccess}"
+        ${endif}
+
+        # Use env vars to configure Iceberg catalog for env.
+        - name: AWS_REGION
+          value: ${var.aws.region}
+        - name: REMOTE_CATALOG_REST_URI
+          value: ${var.iceberg.catalogUri}
+        - name: REMOTE_CATALOG_TYPE
+          value: ${var.iceberg.catalogType}
+        - name: REMOTE_WAREHOUSE_S3_PATH
+          value: ${var.iceberg.catalogWarehouse}
+        - name: IN_CLUSTER
+          value: "${var.iceberg.inCluster}"
+        resources:
+          requests:
+            cpu: 500m
+            memory: "${environment.name == 'local' ? '256Mi' : '512Mi'}"
+          limits:
+            cpu: 1000m
+            memory: 1Gi
+      restartPolicy: Never
