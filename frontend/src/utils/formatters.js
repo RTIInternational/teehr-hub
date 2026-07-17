@@ -88,3 +88,50 @@ export const getYAxisTitle = (primaryData, secondaryData, filters) => {
   
   return formattedVariable;
 };
+
+/**
+ * Convert a quarter string (e.g., "2026-Q1") to start and end dates
+ * @param {string} quarter - Quarter string in format "YYYY-Q#" (e.g., "2026-Q1")
+ * @returns {{start_date: string, end_date: string} | null} Object with start_date and end_date in ISO format (YYYY-MM-DDTHH:MM), or null if invalid
+ */
+export const getQuarterDateRange = (quarter) => {
+  if (!quarter) return null;
+
+  const match = quarter.match(/^(\d{4})-Q([1-4])$/);
+  if (!match) return null;
+
+  const year = parseInt(match[1], 10);
+  const quarterNum = parseInt(match[2], 10);
+
+  // Map quarters to month ranges
+  const quarterStartMonths = {
+    1: 0,  // January
+    2: 3,  // April
+    3: 6,  // July
+    4: 9,  // October
+  };
+
+  const quarterEndMonths = {
+    1: 2,   // March (month 2, so Feb 28/29)
+    2: 5,   // June (month 5, so May 31)
+    3: 8,   // September (month 8, so Aug 31)
+    4: 11,  // December (month 11, so Nov 30)
+  };
+
+  const startMonth = quarterStartMonths[quarterNum];
+  const endMonth = quarterEndMonths[quarterNum];
+
+  // Create start date (first day of quarter at 00:00)
+  const startDate = new Date(year, startMonth, 1);
+  startDate.setHours(0, 0, 0, 0);
+
+  // Create end date (last day of quarter at 23:59)
+  const endDate = new Date(year, endMonth + 1, 0); // Day 0 of next month = last day of current month
+  endDate.setHours(23, 59, 0, 0);
+
+  // Format as ISO strings (YYYY-MM-DDTHH:MM)
+  const start_date = startDate.toISOString().slice(0, 16);
+  const end_date = endDate.toISOString().slice(0, 16);
+
+  return { start_date, end_date };
+};
