@@ -2,22 +2,7 @@ import Plotly from "plotly.js-dist-min";
 import { useEffect, useMemo, useRef } from "react";
 import { Card, Spinner } from "react-bootstrap";
 import { getMetricLabel } from "../../common/dashboard/utils.js";
-
-const parseDurationToHours = (duration) => {
-  if (typeof duration !== "string" || !duration.startsWith("P")) return null;
-
-  const match = duration.match(
-    /^P(?:(\d+)D)?(?:T(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?)?$/,
-  );
-  if (!match) return null;
-
-  const days = Number(match[1] || 0);
-  const hours = Number(match[2] || 0);
-  const minutes = Number(match[3] || 0);
-  const seconds = Number(match[4] || 0);
-
-  return days * 24 + hours + minutes / 60 + seconds / 3600;
-};
+import { parseDurationToHours } from "./leadTimeBins";
 
 const getMinimumLeadTimeHours = (leadTimeBin) => {
   if (typeof leadTimeBin !== "string") return null;
