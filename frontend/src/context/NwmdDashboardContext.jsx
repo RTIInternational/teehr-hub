@@ -21,6 +21,7 @@ const getToday = () => {
 const initialNwmdState = {
   // Data
   locations: { features: [] },
+  quarters: [],
   configurations: [],
   variables: [],
   thresholds: [],
@@ -31,6 +32,7 @@ const initialNwmdState = {
 
   // Map filters (original structure)
   mapFilters: {
+    quarter: undefined,
     configuration: undefined,
     variable: undefined,
     threshold: undefined,
@@ -95,6 +97,7 @@ const initialNwmdState = {
   metricsLoading: false,
   metadataLoading: false,
   tablePropertiesLoading: false,
+  quartersLoading: false,
   configurationsLoading: false,
   variablesLoading: false,
   thresholdsLoading: false,
@@ -113,6 +116,7 @@ const initialNwmdState = {
 export const ActionTypes = {
   // Data loading
   SET_LOCATIONS: "SET_LOCATIONS",
+  SET_QUARTERS: "SET_QUARTERS",
   SET_CONFIGURATIONS: "SET_CONFIGURATIONS",
   SET_VARIABLES: "SET_VARIABLES",
   SET_THRESHOLDS: "SET_THRESHOLDS",
@@ -168,6 +172,23 @@ const nwmdDashboardReducer = (state, action) => {
         locations: action.payload,
         locationsLoading: false,
       };
+
+    case ActionTypes.SET_QUARTERS: {
+      const quarters = Array.isArray(action.payload) ? action.payload : [];
+      const defaultQuarter = selectDefault(
+        NWMD_DASHBOARD_DEFAULTS.preferredQuarter,
+        quarters,
+      );
+      return {
+        ...state,
+        quarters,
+        quartersLoading: false,
+        mapFilters: {
+          ...state.mapFilters,
+          quarter: state.mapFilters.quarter || defaultQuarter,
+        },
+      };
+    }
 
     case ActionTypes.SET_CONFIGURATIONS: {
       const configurations = Array.isArray(action.payload)
@@ -492,6 +513,9 @@ const nwmdDashboardReducer = (state, action) => {
       if ("tablePropertiesLoading" in action.payload) {
         loadingUpdates.tablePropertiesLoading =
           action.payload.tablePropertiesLoading;
+      }
+      if ("quarters" in action.payload) {
+        loadingUpdates.quartersLoading = action.payload.quarters;
       }
       if ("configurations" in action.payload) {
         loadingUpdates.configurationsLoading = action.payload.configurations;

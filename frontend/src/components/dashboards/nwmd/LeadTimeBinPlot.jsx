@@ -47,6 +47,7 @@ const LeadTimeBinPlot = ({
 
     void loadLeadTimeBinMetrics({
       primary_location_id: primaryLocationId,
+      quarter: mapFilters?.quarter,
       configuration: mapFilters?.configuration,
       variable: mapFilters?.variable,
       threshold: mapFilters?.threshold,
@@ -56,6 +57,7 @@ const LeadTimeBinPlot = ({
     });
   }, [
     primaryLocationId,
+    mapFilters?.quarter,
     mapFilters?.configuration,
     mapFilters?.variable,
     mapFilters?.threshold,
