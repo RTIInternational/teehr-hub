@@ -107,13 +107,22 @@ const Dashboard = () => {
           )}
 
           <div
+            className="nwmd-filter-tabs"
             style={{
               gridColumn: "1 / 2",
               gridRow: "2 / 3",
+              minHeight: 0,
+              overflow: "hidden",
+              display: "flex",
+              flexDirection: "column",
             }}
           >
-            <Tabs defaultActiveKey="filter" id="cdf-tabs" className="mb-3">
-              <Tab eventKey="filter" title="Filters">
+            <Tabs defaultActiveKey="filter" id="cdf-tabs">
+              <Tab
+                eventKey="filter"
+                title="Filters"
+                className="overflow-y-auto"
+              >
                 <FilterSidebar
                   state={state}
                   mapFilters={mapFilters}
