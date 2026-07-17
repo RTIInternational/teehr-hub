@@ -4,6 +4,7 @@ import {
   NWMD_DASHBOARD_DEFAULTS,
   selectDefault,
 } from "../config/dashboardDefaults";
+import { getQuarterDateRange } from "../utils/formatters.js";
 
 // Dynamic date helpers - returns dates for 10 days ago through today
 const getTenDaysAgo = () => {
@@ -15,6 +16,24 @@ const getTenDaysAgo = () => {
 const getToday = () => {
   const date = new Date();
   return date.toISOString().slice(0, 16); // Format: YYYY-MM-DDTHH:MM
+};
+
+const syncTimeseriesFiltersForQuarter = (timeseriesFilters, quarter) => {
+  const quarterRange = getQuarterDateRange(quarter);
+  if (!quarterRange) return {};
+
+  return {
+    primary: {
+      ...timeseriesFilters.primary,
+      start_date: quarterRange.start_date,
+      end_date: quarterRange.end_date,
+    },
+    secondary: {
+      ...timeseriesFilters.secondary,
+      reference_start_date: quarterRange.start_date,
+      reference_end_date: quarterRange.end_date,
+    },
+  };
 };
 
 // Initial state for nwmd dashboard
@@ -179,13 +198,22 @@ const nwmdDashboardReducer = (state, action) => {
         NWMD_DASHBOARD_DEFAULTS.preferredQuarter,
         quarters,
       );
+      const quarterToUse = state.mapFilters.quarter || defaultQuarter;
+      const timeseriesSync = quarterToUse
+        ? syncTimeseriesFiltersForQuarter(state.timeseriesFilters, quarterToUse)
+        : {};
+
       return {
         ...state,
         quarters,
         quartersLoading: false,
         mapFilters: {
           ...state.mapFilters,
-          quarter: state.mapFilters.quarter || defaultQuarter,
+          quarter: quarterToUse,
+        },
+        timeseriesFilters: {
+          ...state.timeseriesFilters,
+          ...timeseriesSync,
         },
       };
     }
@@ -384,6 +412,20 @@ const nwmdDashboardReducer = (state, action) => {
         mapTimeseriesSync.secondary = {
           ...(mapTimeseriesSync.secondary || state.timeseriesFilters.secondary),
           variables: action.payload.variable ? [action.payload.variable] : [],
+        };
+      }
+      if (action.payload.quarter !== undefined) {
+        const quarterTimeseriesSync = syncTimeseriesFiltersForQuarter(
+          state.timeseriesFilters,
+          action.payload.quarter,
+        );
+        mapTimeseriesSync.primary = {
+          ...(mapTimeseriesSync.primary || state.timeseriesFilters.primary),
+          ...(quarterTimeseriesSync.primary || {}),
+        };
+        mapTimeseriesSync.secondary = {
+          ...(mapTimeseriesSync.secondary || state.timeseriesFilters.secondary),
+          ...(quarterTimeseriesSync.secondary || {}),
         };
       }
       return {
