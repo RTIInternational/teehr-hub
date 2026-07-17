@@ -1,4 +1,5 @@
 import { Form } from "react-bootstrap";
+import LeadTimeRangeFilter from "./LeadTimeRangeFilter";
 
 const NULL_OPTION = "__NULL__";
 
@@ -167,22 +168,11 @@ export const FilterSidebar = ({
 
       {/* Forecast Lead Time Bin Filter */}
       <Form.Group className="mb-3">
-        <Form.Label className="small fw-bold">Lead time (hours): </Form.Label>
-        <Form.Select
-          size="sm"
-          value={mapFilters.leadTimeBin || ""}
-          onChange={(e) =>
-            handleMapFilterChange("leadTimeBin", e.target.value || null)
-          }
-        >
-          <option value="">Select Lead Time Bin...</option>
-          {Array.isArray(state.leadTimeBins) &&
-            state.leadTimeBins.map((config) => (
-              <option key={config} value={config}>
-                {config}
-              </option>
-            ))}
-        </Form.Select>
+        <LeadTimeRangeFilter
+          leadTimeBins={state.leadTimeBins}
+          selectedLeadTimeBin={mapFilters.leadTimeBin}
+          onCommit={(nextBin) => handleMapFilterChange("leadTimeBin", nextBin)}
+        />
       </Form.Group>
     </div>
   );
