@@ -14,6 +14,7 @@ export const FilterSidebar = ({
 
     // Reload locations when base metrics change
     const reloadFilters = new Set([
+      "quarter",
       "configuration",
       "variable",
       "threshold",
@@ -22,6 +23,7 @@ export const FilterSidebar = ({
     ]);
     if (reloadFilters.has(filterType)) {
       await loadLocations({
+        quarter: newFilters.quarter,
         configuration: newFilters.configuration,
         variable: newFilters.variable,
         threshold: newFilters.threshold,
@@ -33,6 +35,26 @@ export const FilterSidebar = ({
 
   return (
     <div className="p-3">
+      {/* Quarter Filter */}
+      <Form.Group className="mb-3">
+        <Form.Label className="small fw-bold">Quarter</Form.Label>
+        <Form.Select
+          size="sm"
+          value={mapFilters.quarter || ""}
+          onChange={(e) =>
+            handleMapFilterChange("quarter", e.target.value || null)
+          }
+        >
+          <option value="">Select Quarter...</option>
+          {Array.isArray(state.quarters) &&
+            state.quarters.map((quarter) => (
+              <option key={quarter} value={quarter}>
+                {quarter}
+              </option>
+            ))}
+        </Form.Select>
+      </Form.Group>
+
       {/* Configuration Filter */}
       <Form.Group className="mb-3">
         <Form.Label className="small fw-bold">Model Configuration</Form.Label>

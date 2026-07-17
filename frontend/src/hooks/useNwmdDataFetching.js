@@ -10,6 +10,29 @@ import { extractTableProperties } from "../utils/ogcTransformers";
 export const useNwmdDataFetching = () => {
   const { dispatch } = useNwmdDashboard();
 
+  const loadQuarters = useCallback(
+    async (table) => {
+      try {
+        dispatch({
+          type: ActionTypes.SET_LOADING,
+          payload: { quarters: true },
+        });
+        const quarters = await apiService.getDistinctValues(table, "quarter");
+        dispatch({ type: ActionTypes.SET_QUARTERS, payload: quarters });
+      } catch (error) {
+        dispatch({
+          type: ActionTypes.SET_ERROR,
+          payload: `Failed to load quarters: ${error.message}`,
+        });
+        dispatch({
+          type: ActionTypes.SET_LOADING,
+          payload: { quarters: false },
+        });
+      }
+    },
+    [dispatch],
+  );
+
   // Load configurations (distinct values from database)
   const loadConfigurations = useCallback(
     async (table) => {
@@ -375,6 +398,7 @@ export const useNwmdDataFetching = () => {
         const metricsData = await apiService.getMetrics({
           table,
           primary_location_id: filters.primary_location_id,
+          quarter: filters.quarter,
           configuration: filters.configuration,
           variable: filters.variable,
           threshold: filters.threshold,
@@ -440,6 +464,7 @@ export const useNwmdDataFetching = () => {
   const initializeData = useCallback(async () => {
     try {
       await Promise.all([
+        loadQuarters(),
         loadConfigurations(),
         loadVariables(),
         loadTableProperties(),
@@ -447,9 +472,10 @@ export const useNwmdDataFetching = () => {
     } catch (error) {
       console.error("Failed to initialize data:", error);
     }
-  }, [loadConfigurations, loadVariables, loadTableProperties]);
+  }, [loadQuarters, loadConfigurations, loadVariables, loadTableProperties]);
 
   return {
+    loadQuarters,
     loadConfigurations,
     loadVariables,
     loadThresholds,

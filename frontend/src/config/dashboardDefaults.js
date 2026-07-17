@@ -8,29 +8,29 @@
 export const RETROSPECTIVE_DASHBOARD_DEFAULTS = {
   // Preferred default configuration - will be selected if available in the payload
   // Falls back to first available configuration if not found
-  preferredConfiguration: 'nwm30_retrospective',
+  preferredConfiguration: "nwm30_retrospective",
 
   // Preferred default variable - will be selected if available
   // Falls back to first available variable if not found
-  preferredVariable: 'streamflow_hourly_inst',
+  preferredVariable: "streamflow_hourly_inst",
 
   // Default metric for map coloring
-  defaultMetricName: 'relative_bias',
+  defaultMetricName: "relative_bias",
 
   // Default date range for retrospective analysis
-  defaultStartDate: '2020-01-01T00:00',
-  defaultEndDate: '2020-12-31T23:59'
+  defaultStartDate: "2020-01-01T00:00",
+  defaultEndDate: "2020-12-31T23:59",
 };
 
 export const FORECAST_DASHBOARD_DEFAULTS = {
   // Preferred default configuration for forecasts
-  preferredConfiguration: 'nwm30_medium_range',
+  preferredConfiguration: "nwm30_medium_range",
 
   // Preferred default variable
-  preferredVariable: 'streamflow_hourly_inst',
+  preferredVariable: "streamflow_hourly_inst",
 
   // Default metric for map coloring
-  defaultMetricName: 'relative_bias'
+  defaultMetricName: "relative_bias",
 };
 
 export const DATA_DASHBOARD_DEFAULTS = {
@@ -38,12 +38,13 @@ export const DATA_DASHBOARD_DEFAULTS = {
 };
 
 export const NWMD_DASHBOARD_DEFAULTS = {
-  preferredConfiguration: 'nwm30_medium_range',
-  preferredVariable: 'streamflow_hourly_inst',
+  preferredQuarter: null,
+  preferredConfiguration: "nwm30_medium_range",
+  preferredVariable: "streamflow_hourly_inst",
   preferredThreshold: null,
-  preferredAggMethod: 'mean',
-  preferredLeadTimeBin: 'PT0S_P1DT0H',
-  defaultMetricName: 'relative_bias'
+  preferredAggMethod: "mean",
+  preferredLeadTimeBin: "PT0S_P1DT0H",
+  defaultMetricName: "relative_bias",
 };
 
 /**
