@@ -12,6 +12,12 @@ const getMinimumLeadTimeHours = (leadTimeBin) => {
   return Math.round(hours);
 };
 
+const parseFiniteMetricValue = (value) => {
+  if (value === null || value === undefined || value === "") return null;
+  const numericValue = Number(value);
+  return Number.isFinite(numericValue) ? numericValue : null;
+};
+
 const LeadTimeBinPlot = ({
   selectedLocation,
   mapFilters,
@@ -24,6 +30,8 @@ const LeadTimeBinPlot = ({
 
   const primaryLocationId = selectedLocation?.primary_location_id;
   const metricName = mapFilters?.metricName;
+  const lowerBoundMetricName = metricName ? `${metricName}_boot_0_025` : null;
+  const upperBoundMetricName = metricName ? `${metricName}_boot_0_975` : null;
 
   useEffect(() => {
     if (!primaryLocationId) {
@@ -51,36 +59,56 @@ const LeadTimeBinPlot = ({
   ]);
 
   const chartData = useMemo(() => {
-    if (!metricName || !rows.length) {
+    if (
+      !metricName ||
+      !lowerBoundMetricName ||
+      !upperBoundMetricName ||
+      !rows.length
+    ) {
       return { x: [], y: [] };
     }
 
-    const grouped = new Map();
+    const rowsByBin = new Map();
 
     rows.forEach((row) => {
       const bin = row.forecast_lead_time_bin;
-      const value = row[metricName];
-      if (!bin || value === null || value === undefined) return;
-      const numericValue = Number(value);
-      if (!Number.isFinite(numericValue)) return;
+      if (!bin || rowsByBin.has(bin)) {
+        if (bin && rowsByBin.has(bin)) {
+          console.warn(
+            `LeadTimeBinPlot received duplicate rows for lead time bin ${bin}; using the first row only.`,
+          );
+        }
+        return;
+      }
 
-      const existing = grouped.get(bin) || { sum: 0, count: 0 };
-      grouped.set(bin, {
-        sum: existing.sum + numericValue,
-        count: existing.count + 1,
+      const value = parseFiniteMetricValue(row[metricName]);
+      const lowerBound = parseFiniteMetricValue(row[lowerBoundMetricName]);
+      const upperBound = parseFiniteMetricValue(row[upperBoundMetricName]);
+
+      if (value === null) {
+        return;
+      }
+
+      const hasConfidenceInterval = lowerBound !== null && upperBound !== null;
+
+      rowsByBin.set(bin, {
+        value,
+        lowerBound: hasConfidenceInterval ? lowerBound : null,
+        upperBound: hasConfidenceInterval ? upperBound : null,
+        hasConfidenceInterval,
       });
     });
 
     const availableBins = Array.isArray(leadTimeBins)
-      ? leadTimeBins.filter((bin) => grouped.has(bin))
+      ? leadTimeBins.filter((bin) => rowsByBin.has(bin))
       : [];
-    const fallbackBins = Array.from(grouped.keys()).sort();
+    const fallbackBins = Array.from(rowsByBin.keys()).sort();
     const orderedBins = availableBins.length ? availableBins : fallbackBins;
 
     const points = orderedBins
       .map((bin) => {
-        const item = grouped.get(bin);
-        if (!item || item.count === 0) return null;
+        const item = rowsByBin.get(bin);
+        if (!item) return null;
 
         const minLeadTimeHours = getMinimumLeadTimeHours(bin);
         if (minLeadTimeHours === null) return null;
@@ -88,18 +116,52 @@ const LeadTimeBinPlot = ({
         return {
           bin,
           minLeadTimeHours,
-          value: item.sum / item.count,
+          value: item.value,
+          lowerBound: item.lowerBound,
+          upperBound: item.upperBound,
+          hasConfidenceInterval: item.hasConfidenceInterval,
         };
       })
       .filter(Boolean)
       .sort((a, b) => a.minLeadTimeHours - b.minLeadTimeHours);
 
+    const pointsWithCi = points.filter((point) => point.hasConfidenceInterval);
+    const pointsWithoutCi = points.filter(
+      (point) => !point.hasConfidenceInterval,
+    );
+
     return {
       x: points.map((point) => point.minLeadTimeHours),
       y: points.map((point) => point.value),
-      bins: points.map((point) => point.bin),
+      withCi: {
+        x: pointsWithCi.map((point) => point.minLeadTimeHours),
+        y: pointsWithCi.map((point) => point.value),
+        errorUpper: pointsWithCi.map((point) => point.upperBound - point.value),
+        errorLower: pointsWithCi.map((point) => point.value - point.lowerBound),
+        customdata: pointsWithCi.map((point) => [
+          point.bin,
+          point.lowerBound,
+          point.upperBound,
+        ]),
+      },
+      withoutCi: {
+        x: pointsWithoutCi.map((point) => point.minLeadTimeHours),
+        y: pointsWithoutCi.map((point) => point.value),
+        customdata: pointsWithoutCi.map((point) => [point.bin]),
+      },
+      customdata: points.map((point) => [
+        point.bin,
+        point.lowerBound,
+        point.upperBound,
+      ]),
     };
-  }, [leadTimeBins, metricName, rows]);
+  }, [
+    leadTimeBins,
+    lowerBoundMetricName,
+    metricName,
+    rows,
+    upperBoundMetricName,
+  ]);
 
   useEffect(() => {
     if (!plotRef.current) return;
@@ -110,22 +172,48 @@ const LeadTimeBinPlot = ({
     }
 
     const metricLabel = getMetricLabel(metricName || "metric");
-    const traces = [
-      {
-        x: chartData.x,
-        y: chartData.y,
+    const traces = [];
+
+    if (chartData.withCi.x.length) {
+      traces.push({
+        x: chartData.withCi.x,
+        y: chartData.withCi.y,
         type: "bar",
         marker: {
           color: "#0d6efd",
           line: { color: "#0a58ca", width: 1 },
         },
-        customdata: chartData.bins,
+        error_y: {
+          type: "data",
+          array: chartData.withCi.errorUpper,
+          arrayminus: chartData.withCi.errorLower,
+          color: "#000000",
+          thickness: 1,
+          width: 6,
+        },
+        customdata: chartData.withCi.customdata,
         hovertemplate:
           "<b>Minimum Lead Time (h)</b>: %{x}<br>" +
-          "<b>Lead Time Bin</b>: %{customdata}<br>" +
-          `<b>${metricLabel}</b>: %{y:.4f}<extra></extra>`,
-      },
-    ];
+          `<b>${metricLabel}</b>: %{y:.2f}<br>` +
+          "<b>95% CI</b>: %{customdata[1]:.2f} -- %{customdata[2]:.2f}<extra></extra>",
+      });
+    }
+
+    if (chartData.withoutCi.x.length) {
+      traces.push({
+        x: chartData.withoutCi.x,
+        y: chartData.withoutCi.y,
+        type: "bar",
+        marker: {
+          color: "#0d6efd",
+          line: { color: "#0a58ca", width: 1 },
+        },
+        customdata: chartData.withoutCi.customdata,
+        hovertemplate:
+          "<b>Minimum Lead Time (h)</b>: %{x}<br>" +
+          `<b>${metricLabel}</b>: %{y:.2f}<extra></extra>`,
+      });
+    }
 
     const layout = {
       margin: { l: 70, r: 20, t: 20, b: 60 },
