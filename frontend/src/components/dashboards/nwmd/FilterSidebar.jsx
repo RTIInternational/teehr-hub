@@ -128,7 +128,10 @@ export const FilterSidebar = ({
             Object.values(allTableProps).forEach((tableProps) => {
               if (Array.isArray(tableProps?.metrics)) {
                 tableProps.metrics.forEach((metric) => {
-                  if (!allMetrics.includes(metric)) {
+                  if (
+                    !allMetrics.includes(metric) &&
+                    !metric.includes("_boot")
+                  ) {
                     allMetrics.push(metric);
                   }
                 });
