@@ -8,7 +8,8 @@ const PlotlyChart = ({
   selectedLocation,
   filters,
   height = '500px',
-  allowForecastSelect = false
+  allowForecastSelect = false,
+  showLegend = true,
 }) => {
   const plotRef = useRef(null);
   const selectedForecastTraceRef = useRef(null);
@@ -32,7 +33,7 @@ const PlotlyChart = ({
           type: 'scatter',
           mode: 'lines',
           line: { color: '#000000', width: 2.5 },
-          showlegend: true,
+          showlegend: showLegend,
           hovertemplate: 
             '<b>%{fullData.name}</b><br>' +
             'Date: %{x}<br>' +
@@ -157,7 +158,7 @@ const PlotlyChart = ({
         lastTraceIndexPerConfig.set(trace.name, index);
       });
       lastTraceIndexPerConfig.forEach((index) => {
-        secondaryTraces[index].showlegend = true;
+        secondaryTraces[index].showlegend = showLegend;
       });
     }
 
@@ -185,8 +186,8 @@ const PlotlyChart = ({
           font: { size: 14 }
         }
       },
-      margin: { l: 80, r: 200, t: 20, b: 60 },
-      showlegend: true,
+      margin: { l: 80, r: showLegend ? 200 : 40, t: 20, b: 60 },
+      showlegend: showLegend,
       legend: {
         x: 1.01,
         y: 0.95,
@@ -260,7 +261,7 @@ const PlotlyChart = ({
       plotElement.removeAllListeners?.('plotly_doubleclick');
     };
 
-  }, [primaryData, secondaryData, selectedLocation, filters, allowForecastSelect]);
+  }, [primaryData, secondaryData, selectedLocation, filters, allowForecastSelect, showLegend]);
 
   return <div ref={plotRef} style={{ width: '100%', height }} />;
 };
