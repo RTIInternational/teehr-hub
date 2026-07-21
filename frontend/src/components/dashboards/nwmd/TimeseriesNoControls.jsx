@@ -90,6 +90,7 @@ const TimeseriesNoControls = ({
                   secondaryData={timeseriesData.secondary}
                   height="100%"
                   allowForecastSelect={true}
+                  showLegend={false}
                 />
               </div>
             ) : (
