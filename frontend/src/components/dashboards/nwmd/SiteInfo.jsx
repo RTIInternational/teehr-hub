@@ -14,6 +14,12 @@ const getUsTimezoneRegion = (timezone) => {
   return null;
 };
 
+const getUsgsSiteUrl = (siteCode) => {
+  if (!siteCode) return null;
+
+  return `https://waterdata.usgs.gov/monitoring-location/${siteCode}`;
+};
+
 export const SiteInfo = ({
   selectedLocation,
   metadataLoading,
@@ -88,6 +94,7 @@ const SiteHeader = ({ locationMetadata, selectedLocation }) => {
     "";
   const primaryIdValue = String(primaryIdRaw).replace(/^usgs-/i, "");
   const secondaryIdValue = selectedLocation?.secondary_location_id;
+  const usgsUrl = getUsgsSiteUrl(data.id?.toUpperCase() || primaryIdRaw);
   const timezoneRegion = getUsTimezoneRegion(
     data.properties?.timezone || data.properties?.iana_timezone,
   );
@@ -98,7 +105,17 @@ const SiteHeader = ({ locationMetadata, selectedLocation }) => {
         <div>
           <h6 className="mb-1 fw-bold text-truncate">{data.properties.name}</h6>
           <div className="d-flex align-items-center gap-1">
-            <Badge bg="info" className="fs-8">
+            <Badge
+              as="a"
+              href={usgsUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              bg="info"
+              className="fs-8 text-decoration-none"
+              style={{cursor: "pointer"}}
+              aria-label={`Open USGS site details for ${data.properties.name}`}
+              title="Open USGS site details in a new tab"
+            >
               USGS-{primaryIdValue}
             </Badge>
             {secondaryIdValue ? (
@@ -295,26 +312,6 @@ const SiteDetailsSection = ({ locationMetadata }) => {
           </div>
         </Col>
       </Row>
-
-      {/* USGS Link */}
-      <div className="border-top pt-2 mt-2">
-        <UsgsLink locationMetadata={locationMetadata} />
-      </div>
     </div>
-  );
-};
-
-const UsgsLink = ({ locationMetadata }) => {
-  const siteCode = locationMetadata?.features?.[0]?.id.toUpperCase();
-  return (
-    <a
-      href={`https://waterdata.usgs.gov/monitoring-location/${siteCode}`}
-      target="_blank"
-      rel="noopener noreferrer"
-      className="btn btn-xs btn-outline-primary w-100"
-      style={{ fontSize: "0.8rem", padding: "0.25rem 0.5rem" }}
-    >
-      📊 USGS
-    </a>
   );
 };
