@@ -19,3 +19,15 @@ export const computeCdfData = (locations, metric) => {
 
   return cdfPoints;
 };
+
+export const NWMD_METRICS = new Set([
+  "relative_mean",
+  "relative_median",
+  "relative_minimum",
+  "relative_maximum",
+  "relative_standard_deviation",
+  "relative_bias",
+  "nash_sutcliffe_efficiency",
+  "kling_gupta_efficiency",
+  "pearson_correlation",
+]);
