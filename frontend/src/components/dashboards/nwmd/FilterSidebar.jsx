@@ -96,15 +96,22 @@ export const FilterSidebar = ({
         >
           <option value="">Select Threshold...</option>
           {Array.isArray(state.thresholds) &&
-            state.thresholds.map((threshold) => {
-              const optionValue = threshold === null ? NULL_OPTION : threshold;
-              const optionLabel = threshold === null ? "None" : threshold;
-              return (
-                <option key={String(optionValue)} value={optionValue}>
-                  {optionLabel}
-                </option>
-              );
-            })}
+            state.thresholds
+              .toSorted((a, b) => {
+                if (a === null) return -1;
+                if (b === null) return 1;
+                return a.localeCompare(b);
+              })
+              .map((threshold) => {
+                const optionValue =
+                  threshold === null ? NULL_OPTION : threshold;
+                const optionLabel = threshold === null ? "None" : threshold;
+                return (
+                  <option key={String(optionValue)} value={optionValue}>
+                    {optionLabel}
+                  </option>
+                );
+              })}
         </Form.Select>
       </Form.Group>
 
