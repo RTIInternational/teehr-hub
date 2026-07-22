@@ -1,5 +1,6 @@
 import { Form } from "react-bootstrap";
 import LeadTimeRangeFilter from "./LeadTimeRangeFilter";
+import { NWMD_METRICS } from "./utils";
 
 const NULL_OPTION = "__NULL__";
 
@@ -128,21 +129,20 @@ export const FilterSidebar = ({
             Object.values(allTableProps).forEach((tableProps) => {
               if (Array.isArray(tableProps?.metrics)) {
                 tableProps.metrics.forEach((metric) => {
-                  if (
-                    !allMetrics.includes(metric) &&
-                    !metric.includes("_boot")
-                  ) {
+                  if (!allMetrics.includes(metric)) {
                     allMetrics.push(metric);
                   }
                 });
               }
             });
 
-            return allMetrics.map((metricName) => (
-              <option key={metricName} value={metricName}>
-                {metricName}
-              </option>
-            ));
+            return allMetrics
+              .filter((metric) => NWMD_METRICS.has(metric))
+              .map((metricName) => (
+                <option key={metricName} value={metricName}>
+                  {metricName}
+                </option>
+              ));
           })()}
         </Form.Select>
       </Form.Group>
