@@ -2,6 +2,7 @@ import { useCallback } from 'react';
 import { useForecastDashboard, ActionTypes } from '../context/ForecastDashboardContext.jsx';
 import { apiService } from '../services/api';
 import { extractTableProperties } from '../utils/ogcTransformers';
+import { groupVariablesByDuration, toPrimaryVariableName, ISO_TO_DURATION_NAME, expandPrimaryVariables } from '../utils/durationUtils';
 
 // Custom hooks for forecast dashboard data fetching
 export const useForecastDataFetching = () => {
@@ -31,6 +32,16 @@ export const useForecastDataFetching = () => {
     }
   }, [dispatch]);
   
+  // Load primary_timeseries variable names and expand them using DURATION_NAME_TO_ISO
+  const loadPrimaryVariables = useCallback(async () => {
+    try {
+      const rawVariables = await apiService.getVariables('primary_timeseries');
+      dispatch({ type: ActionTypes.SET_PRIMARY_VARIABLES, payload: expandPrimaryVariables(rawVariables) });
+    } catch (error) {
+      dispatch({ type: ActionTypes.SET_ERROR, payload: `Failed to load primary variables: ${error.message}` });
+    }
+  }, [dispatch]);
+
   // Load table properties (batch) from queryables
   const loadTableProperties = useCallback(async (tables) => {
     try {
@@ -120,21 +131,40 @@ export const useForecastDataFetching = () => {
         throw new Error('Missing required parameters: primary_location_id, primary.variables, secondary.variables, and secondary.configurations are required');
       }
 
-      // Load primary data (USGS observations)
-      const primaryData = await apiService.getPrimaryTimeseries(primary_location_id, {
-        variable: primaryFilters.variables,
-        start_date: primaryFilters.start_date,
-        end_date: primaryFilters.end_date
-      });
-      dispatch({ type: ActionTypes.SET_PRIMARY_TIMESERIES, payload: primaryData });
+      // Group variables by duration and issue one call per unique duration group.
+      // Variables with a non-'inst' statistic (e.g. _mean) have duration=null and
+      // are passed through without a duration filter.
+      const primaryGroups = groupVariablesByDuration(primaryFilters.variables);
+      const secondaryGroups = groupVariablesByDuration(secondaryFilters.variables);
 
-      // Load secondary data with multi-value configuration and variable filters
-      const secondaryData = await apiService.getSecondaryTimeseries(primary_location_id, {
-        variable: secondaryFilters.variables,
-        reference_start_date: secondaryFilters.reference_start_date,
-        reference_end_date: secondaryFilters.reference_end_date,
-        configuration: secondaryFilters.configurations
-      });
+      const [primaryData, secondaryData] = await Promise.all([
+        Promise.all(
+          Array.from(primaryGroups.entries()).map(([duration, variables]) =>
+            apiService.getPrimaryTimeseries(primary_location_id, {
+              variable: variables.map(toPrimaryVariableName),
+              start_date: primaryFilters.start_date,
+              end_date: primaryFilters.end_date,
+              ...(duration && { duration })
+            }).then(results => results.map(series => ({
+              ...series,
+              duration_token: duration ? ISO_TO_DURATION_NAME[duration] : null
+            })))
+          )
+        ).then(results => results.flat()),
+        Promise.all(
+          Array.from(secondaryGroups.entries()).map(([duration, variables]) =>
+            apiService.getSecondaryTimeseries(primary_location_id, {
+              variable: variables,
+              reference_start_date: secondaryFilters.reference_start_date,
+              reference_end_date: secondaryFilters.reference_end_date,
+              configuration: secondaryFilters.configurations,
+              ...(duration && { duration })
+            })
+          )
+        ).then(results => results.flat())
+      ]);
+
+      dispatch({ type: ActionTypes.SET_PRIMARY_TIMESERIES, payload: primaryData });
       dispatch({ type: ActionTypes.SET_SECONDARY_TIMESERIES, payload: secondaryData });
       
     } catch (error) {
@@ -192,6 +222,7 @@ export const useForecastDataFetching = () => {
   return {
     loadConfigurations,
     loadVariables,
+    loadPrimaryVariables,
     loadTableProperties,
     loadLocations,
     loadTimeseries,

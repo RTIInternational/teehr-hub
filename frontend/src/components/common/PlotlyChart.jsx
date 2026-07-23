@@ -11,27 +11,32 @@ const PlotlyChart = ({ primaryData, secondaryData, selectedLocation, filters, he
     const primaryTraces = [];
     const secondaryTraces = [];
 
-    // Primary trace (observations)
+    // Primary trace(s) - one trace per series, observations rendered last (on top)
     if (primaryData?.length > 0) {
-      // Take the first series for primary data
-      const primarySeries = primaryData[0];
-      if (primarySeries?.timeseries?.length > 0) {
-        const configName = primarySeries.configuration_name || 'USGS';
-        primaryTraces.push({
-          x: primarySeries.timeseries.map(d => d.value_time),
-          y: primarySeries.timeseries.map(d => d.value),
-          name: 'Observed (' + configName + ')',
-          type: 'scatter',
-          mode: 'lines',
-          line: { color: '#000000', width: 2.5 },
-          showlegend: true,
-          hovertemplate: 
-            '<b>%{fullData.name}</b><br>' +
-            'Date: %{x}<br>' +
-            `${formatVariableName(primarySeries.variable_name || filters.variable)}: %{y}${primarySeries.unit_name ? ' ' + formatUnitName(primarySeries.unit_name) : ''}<br>` +
-            '<extra></extra>'
-        });
-      }
+      const primaryColors = ['#000000', '#444444', '#1a1a6e', '#6e1a1a'];
+      primaryData.forEach((series, index) => {
+        if (series?.timeseries?.length > 0) {
+          const configName = series.configuration_name || 'USGS';
+          const varName = formatVariableName(series.variable_name || filters?.variable);
+          const traceName = series.duration_token
+            ? `Observed (${configName}) - ${series.duration_token}`
+            : `Observed (${configName})`;
+          primaryTraces.push({
+            x: series.timeseries.map(d => d.value_time),
+            y: series.timeseries.map(d => d.value),
+            name: traceName,
+            type: 'scatter',
+            mode: 'lines',
+            line: { color: primaryColors[index % primaryColors.length], width: 2.5 },
+            showlegend: true,
+            hovertemplate:
+              '<b>%{fullData.name}</b><br>' +
+              'Date: %{x}<br>' +
+              `${varName}: %{y}${series.unit_name ? ' ' + formatUnitName(series.unit_name) : ''}<br>` +
+              '<extra></extra>'
+          });
+        }
+      });
     }
 
     // Secondary trace(s) - create a trace for each series
