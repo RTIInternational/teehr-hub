@@ -3,6 +3,14 @@ import LeadTimeRangeFilter from "./LeadTimeRangeFilter";
 import { NWMD_METRICS } from "./utils";
 
 const NULL_OPTION = "__NULL__";
+const ALT_HYPOTHESIS_OPTIONS = [
+  { value: "=0", label: "Metric = 0" },
+  { value: "!=0", label: "Metric != 0" },
+  { value: ">1", label: "Metric > 1" },
+  { value: "<1", label: "Metric < 1" },
+  { value: ">0", label: "Metric > 0" },
+  { value: "<0", label: "Metric < 0" },
+];
 
 export const FilterSidebar = ({
   state,
@@ -11,10 +19,12 @@ export const FilterSidebar = ({
   loadLocations,
 }) => {
   const handleMapFilterChange = async (filterType, value) => {
-    const newFilters = { ...mapFilters, [filterType]: value };
-    updateMapFilters({ [filterType]: value });
+    // Reset alt hypothesis when the metric changes — the operator is metric-specific
+    const extraUpdates = filterType === "metricName" ? { altHypothesis95: null } : {};
+    const newFilters = { ...mapFilters, [filterType]: value, ...extraUpdates };
+    updateMapFilters({ [filterType]: value, ...extraUpdates });
 
-    // Reload locations when base metrics change
+    // Reload locations when base filters change
     const reloadFilters = new Set([
       "quarter",
       "configuration",
@@ -22,6 +32,7 @@ export const FilterSidebar = ({
       "threshold",
       "aggMethod",
       "leadTimeBin",
+      "altHypothesis95",
     ]);
     if (reloadFilters.has(filterType)) {
       await loadLocations({
@@ -31,6 +42,8 @@ export const FilterSidebar = ({
         threshold: newFilters.threshold,
         aggMethod: newFilters.aggMethod,
         leadTimeBin: newFilters.leadTimeBin,
+        altHypothesis95: newFilters.altHypothesis95,
+        metricName: newFilters.metricName,
       });
     }
   };
@@ -183,6 +196,27 @@ export const FilterSidebar = ({
           selectedLeadTimeBin={mapFilters.leadTimeBin}
           onCommit={(nextBin) => handleMapFilterChange("leadTimeBin", nextBin)}
         />
+      </Form.Group>
+
+      {/* Alt Hypothesis Filter */}
+      <Form.Group className="mb-3">
+        <Form.Label className="small fw-bold">
+          Alt. Hypothesis (95% confidence)
+        </Form.Label>
+        <Form.Select
+          size="sm"
+          value={mapFilters.altHypothesis95 || ""}
+          onChange={(e) =>
+            handleMapFilterChange("altHypothesis95", e.target.value || null)
+          }
+        >
+          <option value="">Select Alt. Hypothesis...</option>
+          {ALT_HYPOTHESIS_OPTIONS.map((option) => (
+            <option key={option.value} value={option.value}>
+              {option.label}
+            </option>
+          ))}
+        </Form.Select>
       </Form.Group>
     </div>
   );
