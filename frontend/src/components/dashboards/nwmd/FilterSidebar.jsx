@@ -20,7 +20,8 @@ export const FilterSidebar = ({
 }) => {
   const handleMapFilterChange = async (filterType, value) => {
     // Reset alt hypothesis when the metric changes — the operator is metric-specific
-    const extraUpdates = filterType === "metricName" ? { altHypothesis95: null } : {};
+    const extraUpdates =
+      filterType === "metricName" ? { altHypothesis95: null } : {};
     const newFilters = { ...mapFilters, [filterType]: value, ...extraUpdates };
     updateMapFilters({ [filterType]: value, ...extraUpdates });
 
@@ -60,7 +61,6 @@ export const FilterSidebar = ({
             handleMapFilterChange("quarter", e.target.value || null)
           }
         >
-          <option value="">Select Quarter...</option>
           {Array.isArray(state.quarters) &&
             state.quarters.map((quarter) => (
               <option key={quarter} value={quarter}>
@@ -80,7 +80,6 @@ export const FilterSidebar = ({
             handleMapFilterChange("configuration", e.target.value || null)
           }
         >
-          <option value="">Select Configuration...</option>
           {Array.isArray(state.configurations) &&
             state.configurations.map((config) => (
               <option key={config} value={config}>
@@ -107,7 +106,6 @@ export const FilterSidebar = ({
             )
           }
         >
-          <option value="">Select Threshold...</option>
           {Array.isArray(state.thresholds) &&
             state.thresholds
               .toSorted((a, b) => {
@@ -138,7 +136,6 @@ export const FilterSidebar = ({
             handleMapFilterChange("metricName", e.target.value || null);
           }}
         >
-          <option value="">Select Metric...</option>
           {(() => {
             // Try to find metrics from any available table in the batch response
             // This works for both single-table and multi-table dashboards
@@ -179,7 +176,6 @@ export const FilterSidebar = ({
             handleMapFilterChange("aggMethod", e.target.value || null)
           }
         >
-          <option value="">Select Aggregation Method...</option>
           {Array.isArray(state.aggMethods) &&
             state.aggMethods.map((aggMethod) => (
               <option key={aggMethod} value={aggMethod}>
@@ -210,7 +206,7 @@ export const FilterSidebar = ({
             handleMapFilterChange("altHypothesis95", e.target.value || null)
           }
         >
-          <option value="">Select Alt. Hypothesis...</option>
+          <option value="">None</option>
           {ALT_HYPOTHESIS_OPTIONS.map((option) => (
             <option key={option.value} value={option.value}>
               {option.label}

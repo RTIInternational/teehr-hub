@@ -14,7 +14,6 @@ export const CdfSidebar = ({ state, plotIds, setCdfPlotMetric }) => {
               setCdfPlotMetric(plotId, e.target.value);
             }}
           >
-            <option value="">Select Metric...</option>
             {(() => {
               // Try to find metrics from any available table in the batch response
               // This works for both single-table and multi-table dashboards
