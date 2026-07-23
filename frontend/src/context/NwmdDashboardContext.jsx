@@ -57,6 +57,7 @@ const initialNwmdState = {
     threshold: undefined,
     aggMethod: undefined,
     leadTimeBin: undefined,
+    altHypothesis95: undefined,
     metricName: "relative_bias",
   },
 

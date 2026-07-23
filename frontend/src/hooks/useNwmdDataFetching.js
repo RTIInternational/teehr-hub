@@ -1,4 +1,5 @@
 import { useCallback } from "react";
+import { applyAltHypothesisFilter } from "../components/dashboards/nwmd/utils";
 import {
   useNwmdDashboard,
   ActionTypes,
@@ -8,7 +9,7 @@ import { extractTableProperties } from "../utils/ogcTransformers";
 
 // Custom hooks for nwmd dashboard data fetching
 export const useNwmdDataFetching = () => {
-  const { dispatch } = useNwmdDashboard();
+  const { state, dispatch } = useNwmdDashboard();
 
   const loadQuarters = useCallback(
     async (table) => {
@@ -219,9 +220,19 @@ export const useNwmdDataFetching = () => {
           payload: { locations: true },
         });
 
-        const locations = await apiService.getMetrics({ ...filters, table });
+        const { altHypothesis95, metricName, ...apiFilters } = filters || {};
 
-        dispatch({ type: ActionTypes.SET_LOCATIONS, payload: locations });
+        const locations = await apiService.getMetrics({ ...apiFilters, table });
+        const filteredLocations = applyAltHypothesisFilter(
+          locations,
+          metricName || state.mapFilters.metricName,
+          altHypothesis95,
+        );
+
+        dispatch({
+          type: ActionTypes.SET_LOCATIONS,
+          payload: filteredLocations,
+        });
       } catch (error) {
         console.error("useNwmdDataFetching: Error loading locations:", error);
         dispatch({
@@ -234,7 +245,7 @@ export const useNwmdDataFetching = () => {
         });
       }
     },
-    [dispatch],
+    [dispatch, state.mapFilters.metricName],
   );
 
   // Load timeseries data
