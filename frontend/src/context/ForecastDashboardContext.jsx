@@ -14,21 +14,22 @@ const getToday = () => {
   return date.toISOString().slice(0, 16); // Format: YYYY-MM-DDTHH:MM
 };
 
-// Initial state for forecast dashboard  
+// Initial state for forecast dashboard
 const initialForecastState = {
   // Data
   locations: { features: [] },
   configurations: [],
   variables: [],
+  primaryVariables: [],
   tableProperties: {}, // Will contain { "table_name": { metrics: [], group_by: [], description: "" } }
-  
+
   // Map filters (original structure)
   mapFilters: {
     configuration: null,
     variable: null,
     metricName: 'relative_bias'
   },
-  
+
   // Timeseries filters (forecast-specific defaults)
   timeseriesFilters: {
     primary: {
@@ -43,28 +44,28 @@ const initialForecastState = {
       reference_end_date: getToday()
     }
   },
-  
+
   // Selected location
   selectedLocation: null,
-  
+
   // Timeseries data (structured as expected by components)
   timeseriesData: {
     primary: [],
     secondary: []
   },
-  
+
   // Location metrics
   locationMetrics: [],
-  
+
   // Loading states
   locationsLoading: false,
   timeseriesLoading: false,
   metricsLoading: false,
   tablePropertiesLoading: false,
-  
+
   // Map state
   mapLoaded: false,
-  
+
   // Error state
   error: null
 };
@@ -75,30 +76,31 @@ export const ActionTypes = {
   SET_LOCATIONS: 'SET_LOCATIONS',
   SET_CONFIGURATIONS: 'SET_CONFIGURATIONS',
   SET_VARIABLES: 'SET_VARIABLES',
+  SET_PRIMARY_VARIABLES: 'SET_PRIMARY_VARIABLES',
   SET_TABLE_PROPERTIES: 'SET_TABLE_PROPERTIES',
-  
+
   // Filter updates
   UPDATE_MAP_FILTERS: 'UPDATE_MAP_FILTERS',
   UPDATE_TIMESERIES_FILTERS: 'UPDATE_TIMESERIES_FILTERS',
-  
+
   // Location selection
   SELECT_LOCATION: 'SELECT_LOCATION',
-  
+
   // Timeseries data
   SET_PRIMARY_TIMESERIES: 'SET_PRIMARY_TIMESERIES',
   SET_SECONDARY_TIMESERIES: 'SET_SECONDARY_TIMESERIES',
   CLEAR_TIMESERIES: 'CLEAR_TIMESERIES',
-  
+
   // Location metrics
   SET_LOCATION_METRICS: 'SET_LOCATION_METRICS',
   CLEAR_LOCATION_METRICS: 'CLEAR_LOCATION_METRICS',
-  
+
   // Loading states
   SET_LOADING: 'SET_LOADING',
-  
+
   // Map state
   SET_MAP_LOADED: 'SET_MAP_LOADED',
-  
+
   // Error handling
   SET_ERROR: 'SET_ERROR',
   CLEAR_ERROR: 'CLEAR_ERROR'
@@ -113,7 +115,7 @@ const forecastDashboardReducer = (state, action) => {
         locations: action.payload,
         locationsLoading: false
       };
-      
+
     case ActionTypes.SET_CONFIGURATIONS: {
       const configurations = Array.isArray(action.payload) ? action.payload : [];
       const defaultConfig = selectDefault(FORECAST_DASHBOARD_DEFAULTS.preferredConfiguration, configurations);
@@ -136,7 +138,7 @@ const forecastDashboardReducer = (state, action) => {
         }
       };
     }
-      
+
     case ActionTypes.SET_VARIABLES: {
       const variables = Array.isArray(action.payload) ? action.payload : [];
       const defaultVariable = selectDefault(FORECAST_DASHBOARD_DEFAULTS.preferredVariable, variables);
@@ -165,7 +167,12 @@ const forecastDashboardReducer = (state, action) => {
         }
       };
     }
-      
+
+    case ActionTypes.SET_PRIMARY_VARIABLES: {
+      const primaryVariables = Array.isArray(action.payload) ? action.payload : [];
+      return { ...state, primaryVariables };
+    }
+
     case ActionTypes.SET_TABLE_PROPERTIES: {
       const tableProperties = action.payload || {};
       return {
@@ -174,7 +181,7 @@ const forecastDashboardReducer = (state, action) => {
         tablePropertiesLoading: false
       };
     }
-      
+
     case ActionTypes.UPDATE_MAP_FILTERS:
       // Keep timeseries defaults in sync with map display filters.
       // This mirrors retrospective behavior where map filter changes reset
@@ -207,7 +214,7 @@ const forecastDashboardReducer = (state, action) => {
           ...mapTimeseriesSync
         }
       };
-      
+
     case ActionTypes.UPDATE_TIMESERIES_FILTERS: {
       // Support both nested ({ primary, secondary }) and legacy flat payloads.
       const { primary, secondary, ...legacy } = action.payload || {};
@@ -257,13 +264,13 @@ const forecastDashboardReducer = (state, action) => {
         }
       };
     }
-      
+
     case ActionTypes.SELECT_LOCATION:
       return {
         ...state,
         selectedLocation: action.payload
       };
-      
+
     case ActionTypes.SET_PRIMARY_TIMESERIES:
       return {
         ...state,
@@ -272,7 +279,7 @@ const forecastDashboardReducer = (state, action) => {
           primary: action.payload
         }
       };
-      
+
     case ActionTypes.SET_SECONDARY_TIMESERIES:
       return {
         ...state,
@@ -282,7 +289,7 @@ const forecastDashboardReducer = (state, action) => {
         },
         timeseriesLoading: false
       };
-      
+
     case ActionTypes.CLEAR_TIMESERIES:
       return {
         ...state,
@@ -291,7 +298,7 @@ const forecastDashboardReducer = (state, action) => {
           secondary: []
         }
       };
-      
+
     case ActionTypes.SET_LOADING: {
       // Map shorthand keys to actual state property names
       const loadingUpdates = {};
@@ -318,39 +325,39 @@ const forecastDashboardReducer = (state, action) => {
         ...loadingUpdates
       };
     }
-      
+
     case ActionTypes.SET_MAP_LOADED:
       return {
         ...state,
         mapLoaded: action.payload
       };
-      
+
     case ActionTypes.SET_ERROR:
       return {
         ...state,
         error: action.payload
       };
-      
+
     case ActionTypes.CLEAR_ERROR:
       return {
         ...state,
         error: null
       };
-      
+
     case ActionTypes.SET_LOCATION_METRICS:
       return {
         ...state,
         locationMetrics: action.payload,
         metricsLoading: false
       };
-      
+
     case ActionTypes.CLEAR_LOCATION_METRICS:
       return {
         ...state,
         locationMetrics: [],
         metricsLoading: false
       };
-      
+
     default:
       return state;
   }
@@ -362,7 +369,7 @@ const ForecastDashboardContext = createContext();
 // Provider component
 export const ForecastDashboardProvider = ({ children }) => {
   const [state, dispatch] = useReducer(forecastDashboardReducer, initialForecastState);
-  
+
   return (
     <ForecastDashboardContext.Provider value={{ state, dispatch }}>
       {children}

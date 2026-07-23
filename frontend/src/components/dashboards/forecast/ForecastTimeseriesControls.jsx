@@ -86,7 +86,7 @@ const ForecastTimeseriesControls = ({
                 <Form.Group>
                   <Form.Label className="small fw-bold">Variable</Form.Label>
                   <MultiSelectDropdown
-                    options={Array.isArray(state.variables) ? state.variables : []}
+                    options={Array.isArray(state.primaryVariables) ? state.primaryVariables : []}
                     selected={primaryFilters.variables}
                     onChange={(selected) => handlePrimaryFilterChange('variables', selected)}
                     allSelectedText="All variables"

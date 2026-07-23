@@ -9,18 +9,19 @@
  */
 export const formatVariableName = (variableName) => {
   if (!variableName) return 'Value';
-  
+
   // Lookup table for variable name overrides
   const variableLookup = {
     'streamflow_hourly_inst': 'Streamflow (Hourly Instantaneous)',
+    'streamflow_none_inst': 'Streamflow (Instantaneous)',
     'streamflow_daily_mean': 'Streamflow (Daily Mean)',
     'precipitation': 'Precipitation',
     'temperature': 'Temperature',
     'water_temperature': 'Water Temperature'
   };
-  
+
   // Return override if exists, otherwise convert snake_case to Title Case
-  return variableLookup[variableName] || 
+  return variableLookup[variableName] ||
     variableName
       .split('_')
       .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
@@ -34,7 +35,7 @@ export const formatVariableName = (variableName) => {
  */
 export const formatUnitName = (unitName) => {
   if (!unitName) return '';
-  
+
   // Lookup table for unit overrides
   const unitLookup = {
     'm3/s': 'm³/s',
@@ -52,7 +53,7 @@ export const formatUnitName = (unitName) => {
     'meters': 'm',
     'feet': 'ft'
   };
-  
+
   // Return override if exists, otherwise return raw string
   return unitLookup[unitName.toLowerCase()] || unitName;
 };
@@ -60,7 +61,7 @@ export const formatUnitName = (unitName) => {
 /**
  * Create a formatted Y-axis title with variable name and units
  * @param {Array} primaryData - Primary timeseries data
- * @param {Array} secondaryData - Secondary timeseries data  
+ * @param {Array} secondaryData - Secondary timeseries data
  * @param {Object} filters - Current filter settings
  * @returns {string} Formatted Y-axis title
  */
@@ -68,7 +69,7 @@ export const getYAxisTitle = (primaryData, secondaryData, filters) => {
   // Try to get unit from the data first
   let unit = null;
   let variable = null;
-  
+
   if (primaryData?.length > 0 && primaryData[0]?.unit_name) {
     unit = primaryData[0].unit_name;
     variable = primaryData[0].variable_name || filters.variable;
@@ -76,15 +77,15 @@ export const getYAxisTitle = (primaryData, secondaryData, filters) => {
     unit = secondaryData[0].unit_name;
     variable = secondaryData[0].variable_name || filters.variable;
   }
-  
+
   // Format the variable and unit names
   const formattedVariable = formatVariableName(variable || filters.variable);
   const formattedUnit = formatUnitName(unit);
-  
+
   // Return formatted title
   if (formattedUnit) {
     return `${formattedVariable} (${formattedUnit})`;
   }
-  
+
   return formattedVariable;
 };
