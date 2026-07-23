@@ -1,13 +1,27 @@
 // API configuration - OGC-compliant endpoints
 import { ensureFreshToken, getKeycloak } from '../auth/keycloak';
+import {
+  groupPrimaryTimeseriesItems,
+  groupSecondaryTimeseriesItems,
+} from '../utils/timeseries';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8000';
 const API_KEY = import.meta.env.VITE_API_KEY || '';
 
+const normalizeEndpoint = (endpoint) => {
+  if (!endpoint) return endpoint;
+  if (endpoint.startsWith('http://') || endpoint.startsWith('https://')) {
+    const parsed = new URL(endpoint);
+    return `${parsed.pathname}${parsed.search}`;
+  }
+  return endpoint;
+};
+
 // Helper function for API calls
 const apiCall = async (endpoint, options = {}) => {
   try {
-    const url = `${API_BASE_URL}${endpoint}`;
+    const normalizedEndpoint = normalizeEndpoint(endpoint);
+    const url = `${API_BASE_URL}${normalizedEndpoint}`;
     const refreshedToken = await ensureFreshToken();
     const token = refreshedToken || getKeycloak().token || null;
     const { headers: extraHeaders = {}, ...restOptions } = options;
@@ -153,7 +167,7 @@ export const apiService = {
   },
 
   // Get primary timeseries (simple JSON array format)
-  getPrimaryTimeseries: (primaryLocationId, filters = {}) => {
+  getPrimaryTimeseries: async (primaryLocationId, filters = {}) => {
     const params = new URLSearchParams();
     params.append('primary_location_id', primaryLocationId);
 
@@ -176,13 +190,29 @@ export const apiService = {
     } else if (filters.configuration) {
       params.append('configuration_name', filters.configuration);
     }
-    params.append('f', 'timeseries'); // Request timeseries format
 
-    return apiCall(`/collections/primary_timeseries/items?${params.toString()}`);
+    params.append('f', 'json');
+    if (Number.isFinite(filters.limit)) {
+      params.append('limit', Math.max(1, Number(filters.limit)));
+    }
+
+    let nextEndpoint = `/collections/primary_timeseries/items?${params.toString()}`;
+    const allItems = [];
+
+    while (nextEndpoint) {
+      const response = await apiCall(nextEndpoint);
+      const pageItems = Array.isArray(response?.items) ? response.items : [];
+      allItems.push(...pageItems);
+
+      const nextHref = response?.links?.find((link) => link.rel === 'next')?.href;
+      nextEndpoint = nextHref ? normalizeEndpoint(nextHref) : null;
+    }
+
+    return groupPrimaryTimeseriesItems(allItems);
   },
 
   // Get secondary timeseries (simple JSON array format)
-  getSecondaryTimeseries: (primaryLocationId, filters = {}) => {
+  getSecondaryTimeseries: async (primaryLocationId, filters = {}) => {
     const params = new URLSearchParams();
     params.append('primary_location_id', primaryLocationId);
 
@@ -212,9 +242,27 @@ export const apiService = {
     } else if (filters.variable) {
       params.append('variable_name', filters.variable);
     }
-    params.append('f', 'timeseries'); // Request timeseries format
 
-    return apiCall(`/collections/secondary_timeseries/items?${params.toString()}`);
+    // Use paged JSON retrieval so we can follow next links and fetch all rows,
+    // then regroup into the historical timeseries response shape expected by the UI.
+    params.append('f', 'json');
+    if (Number.isFinite(filters.limit)) {
+      params.append('limit', Math.max(1, Number(filters.limit)));
+    }
+
+    let nextEndpoint = `/collections/secondary_timeseries/items?${params.toString()}`;
+    const allItems = [];
+
+    while (nextEndpoint) {
+      const response = await apiCall(nextEndpoint);
+      const pageItems = Array.isArray(response?.items) ? response.items : [];
+      allItems.push(...pageItems);
+
+      const nextHref = response?.links?.find((link) => link.rel === 'next')?.href;
+      nextEndpoint = nextHref ? normalizeEndpoint(nextHref) : null;
+    }
+    const groupedSecondaryItems = groupSecondaryTimeseriesItems(allItems)
+    return groupedSecondaryItems;
   },
 
   // Get available collections (OGC API - Common)
