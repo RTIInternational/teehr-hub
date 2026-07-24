@@ -33,9 +33,10 @@ const initialForecastState = {
   // Timeseries filters (forecast-specific defaults)
   timeseriesFilters: {
     primary: {
-      variables: [],
+      variables: [FORECAST_DASHBOARD_DEFAULTS.preferredObservationsVariable],
       start_date: getTenDaysAgo(),
-      end_date: getToday()
+      end_date: getToday(),
+      duration: FORECAST_DASHBOARD_DEFAULTS.preferredObservationsDuration
     },
     secondary: {
       configurations: [], // Array for multi-select
@@ -152,12 +153,9 @@ const forecastDashboardReducer = (state, action) => {
         },
         timeseriesFilters: {
           ...state.timeseriesFilters,
-          primary: {
-            ...state.timeseriesFilters.primary,
-            variables: state.timeseriesFilters.primary?.variables?.length > 0
-              ? state.timeseriesFilters.primary.variables
-              : (defaultVariable ? [defaultVariable] : [])
-          },
+          // primary.variables is intentionally NOT set here — it is only populated
+          // from SET_PRIMARY_VARIABLES (Observations dropdown) to avoid passing
+          // fcst_metrics variable names (e.g. streamflow_6hr_inst) to duration parsing.
           secondary: {
             ...state.timeseriesFilters.secondary,
             variables: state.timeseriesFilters.secondary?.variables?.length > 0
@@ -170,7 +168,21 @@ const forecastDashboardReducer = (state, action) => {
 
     case ActionTypes.SET_PRIMARY_VARIABLES: {
       const primaryVariables = Array.isArray(action.payload) ? action.payload : [];
-      return { ...state, primaryVariables };
+      return {
+        ...state,
+        primaryVariables,
+        // Initialize primary.variables to the first available option if not yet set.
+        // This is the only place primary.variables is ever auto-populated.
+        timeseriesFilters: {
+          ...state.timeseriesFilters,
+          primary: {
+            ...state.timeseriesFilters.primary,
+            variables: state.timeseriesFilters.primary?.variables?.length > 0
+              ? state.timeseriesFilters.primary.variables
+              : (primaryVariables.length > 0 ? [primaryVariables[0]] : [])
+          }
+        }
+      };
     }
 
     case ActionTypes.SET_TABLE_PROPERTIES: {
@@ -194,10 +206,8 @@ const forecastDashboardReducer = (state, action) => {
         };
       }
       if (action.payload.variable !== undefined) {
-        mapTimeseriesSync.primary = {
-          ...state.timeseriesFilters.primary,
-          variables: action.payload.variable ? [action.payload.variable] : []
-        };
+        // primary.variables is NOT synced from the map variable — it is controlled
+        // exclusively by the Observations dropdown (state.primaryVariables).
         mapTimeseriesSync.secondary = {
           ...(mapTimeseriesSync.secondary || state.timeseriesFilters.secondary),
           variables: action.payload.variable ? [action.payload.variable] : []

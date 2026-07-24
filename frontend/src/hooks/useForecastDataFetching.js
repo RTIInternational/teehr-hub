@@ -2,7 +2,7 @@ import { useCallback } from 'react';
 import { useForecastDashboard, ActionTypes } from '../context/ForecastDashboardContext.jsx';
 import { apiService } from '../services/api';
 import { extractTableProperties } from '../utils/ogcTransformers';
-import { groupVariablesByDuration, toPrimaryVariableName, ISO_TO_DURATION_NAME, expandPrimaryVariables } from '../utils/durationUtils';
+import { isTimestepVariable, ISO_TO_DURATION_NAME } from '../utils/durationUtils';
 
 // Custom hooks for forecast dashboard data fetching
 export const useForecastDataFetching = () => {
@@ -36,7 +36,7 @@ export const useForecastDataFetching = () => {
   const loadPrimaryVariables = useCallback(async () => {
     try {
       const rawVariables = await apiService.getVariables('primary_timeseries');
-      dispatch({ type: ActionTypes.SET_PRIMARY_VARIABLES, payload: expandPrimaryVariables(rawVariables) });
+      dispatch({ type: ActionTypes.SET_PRIMARY_VARIABLES, payload: rawVariables });
     } catch (error) {
       dispatch({ type: ActionTypes.SET_ERROR, payload: `Failed to load primary variables: ${error.message}` });
     }
@@ -112,7 +112,8 @@ export const useForecastDataFetching = () => {
       const primaryFilters = {
         variables: primary.variables ?? legacyVariables,
         start_date: primary.start_date ?? start_date,
-        end_date: primary.end_date ?? end_date
+        end_date: primary.end_date ?? end_date,
+        duration: primary.duration ?? null
       };
 
       const secondaryFilters = {
@@ -131,25 +132,19 @@ export const useForecastDataFetching = () => {
         throw new Error('Missing required parameters: primary_location_id, primary.variables, secondary.variables, and secondary.configurations are required');
       }
 
-      // Group variables by duration and issue one call per unique duration group.
-      // Variables with a non-'inst' statistic (e.g. _mean) have duration=null and
-      // are passed through without a duration filter.
-      const primaryGroups = groupVariablesByDuration(primaryFilters.variables);
+      const hasTimestepVar = primaryFilters.variables?.some(isTimestepVariable);
+      const primaryDuration = hasTimestepVar ? primaryFilters.duration : null;
 
       const [primaryData, secondaryData] = await Promise.all([
-        Promise.all(
-          Array.from(primaryGroups.entries()).map(([duration, variables]) =>
-            apiService.getPrimaryTimeseries(primary_location_id, {
-              variable: variables.map(toPrimaryVariableName),
-              start_date: primaryFilters.start_date,
-              end_date: primaryFilters.end_date,
-              ...(duration && { duration })
-            }).then(results => results.map(series => ({
-              ...series,
-              duration_token: duration ? ISO_TO_DURATION_NAME[duration] : null
-            })))
-          )
-        ).then(results => results.flat()),
+        apiService.getPrimaryTimeseries(primary_location_id, {
+          variable: primaryFilters.variables,
+          start_date: primaryFilters.start_date,
+          end_date: primaryFilters.end_date,
+          ...(primaryDuration && { duration: primaryDuration })
+        }).then(results => results.map(series => ({
+          ...series,
+          duration_token: primaryDuration ? ISO_TO_DURATION_NAME[primaryDuration] : null
+        }))),
         apiService.getSecondaryTimeseries(primary_location_id, {
           variable: secondaryFilters.variables,
           reference_start_date: secondaryFilters.reference_start_date,

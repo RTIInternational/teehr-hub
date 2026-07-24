@@ -30,7 +30,11 @@ export const FORECAST_DASHBOARD_DEFAULTS = {
   preferredVariable: 'streamflow_hourly_inst',
 
   // Default metric for map coloring
-  defaultMetricName: 'relative_bias'
+  defaultMetricName: 'relative_bias',
+
+  // Default variable and duration for the Observations (primary timeseries) controls
+  preferredObservationsVariable: 'streamflow_none_inst',
+  preferredObservationsDuration: 'PT1H'
 };
 
 export const DATA_DASHBOARD_DEFAULTS = {

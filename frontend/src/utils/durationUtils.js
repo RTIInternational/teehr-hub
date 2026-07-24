@@ -6,8 +6,8 @@
  * To support a new duration, add an entry here — no other code changes are needed.
  */
 export const DURATION_NAME_TO_ISO = {
-  '15min': 'PT15M',
-  'hourly': 'PT1H',
+  'Hourly': 'PT1H',
+  '15 min': 'PT15M',
 };
 
 /**
@@ -19,107 +19,41 @@ export const ISO_TO_DURATION_NAME = Object.fromEntries(
 );
 
 /**
- * Parse duration info from a variable name of the form
- * <variable>_<duration>_<statistic> (e.g. "streamflow_hourly_inst").
+ * Convert a raw primary_timeseries variable name to a display name.
+ * Replaces the '_none_inst' suffix with '_inst'.
+ * All other variable names are returned unchanged.
  *
- * Returns { duration: isoCode } when the statistic token is "inst" and the
- * duration token is recognised in DURATION_NAME_TO_ISO.
- * Returns { duration: null } for all non-inst statistics (e.g. _mean, _max).
- *
- * Throws if the variable name has fewer than three underscore-separated parts,
- * or if the statistic is "inst" but the duration token is not in the map.
- *
- * @param {string} variableName
- * @returns {{ duration: string|null }}
- */
-export function parseVariableInfo(variableName) {
-  const parts = variableName.split('_');
-  if (parts.length < 3) {
-    throw new Error(
-      `Variable name "${variableName}" does not match the expected ` +
-      '<variable>_<duration>_<statistic> format.'
-    );
-  }
-
-  const statistic = parts[parts.length - 1];
-  if (statistic !== 'inst') {
-    return { duration: null };
-  }
-
-  const durationToken = parts[parts.length - 2];
-  const isoCode = DURATION_NAME_TO_ISO[durationToken];
-  if (!isoCode) {
-    throw new Error(
-      `Unrecognised duration token "${durationToken}" in variable "${variableName}". ` +
-      'Add it to DURATION_NAME_TO_ISO in durationUtils.js to support it.'
-    );
-  }
-
-  return { duration: isoCode };
-}
-
-/**
- * Convert a variable name to its primary_timeseries equivalent by replacing
- * the duration token with "none" (e.g. "streamflow_hourly_inst" -> "streamflow_none_inst").
- *
- * Only applies when the statistic token is "inst". Non-inst variables are returned unchanged.
- *
- * @param {string} variableName
+ * @param {string} rawName
  * @returns {string}
  */
-export function toPrimaryVariableName(variableName) {
-  const parts = variableName.split('_');
-  if (parts.length < 3) return variableName;
-  if (parts[parts.length - 1] !== 'inst') return variableName;
-  const result = [...parts];
-  result[result.length - 2] = 'none';
-  return result.join('_');
-}
-
-/**
- * Expand primary_timeseries variable names (e.g. 'streamflow_none_inst') into
- * all duration variants by replacing the 'none' token with every key in
- * DURATION_NAME_TO_ISO (e.g. ['streamflow_15min_inst', 'streamflow_hourly_inst']).
- *
- * Variables that do not match the <var>_none_inst pattern are returned unchanged.
- *
- * @param {string[]} primaryVariableNames
- * @returns {string[]}
- */
-export function expandPrimaryVariables(primaryVariableNames) {
-  const durationKeys = Object.keys(DURATION_NAME_TO_ISO);
-  return primaryVariableNames.flatMap(varName => {
-    const parts = varName.split('_');
-    if (
-      parts.length < 3 ||
-      parts[parts.length - 2] !== 'none' ||
-      parts[parts.length - 1] !== 'inst'
-    ) {
-      return [varName];
-    }
-    return durationKeys.map(token => {
-      const result = [...parts];
-      result[result.length - 2] = token;
-      return result.join('_');
-    });
-  });
-}
-
-/**
- * Group an array of variable names by their ISO 8601 duration code.
- * Variables whose statistic is not "inst" are grouped under the null key.
- *
- * @param {string[]} variables
- * @returns {Map<string|null, string[]>}
- */
-export function groupVariablesByDuration(variables) {
-  const groups = new Map();
-  for (const variable of variables) {
-    const { duration } = parseVariableInfo(variable);
-    if (!groups.has(duration)) {
-      groups.set(duration, []);
-    }
-    groups.get(duration).push(variable);
+export function toDisplayVariableName(rawName) {
+  if (rawName && rawName.endsWith('_none_inst')) {
+    return rawName.slice(0, -'_none_inst'.length) + '_inst';
   }
-  return groups;
+  return rawName;
+}
+
+/**
+ * Inverse of toDisplayVariableName.
+ * Converts '_inst' suffix back to '_none_inst'.
+ *
+ * @param {string} displayName
+ * @returns {string}
+ */
+export function fromDisplayVariableName(displayName) {
+  if (displayName && displayName.endsWith('_inst')) {
+    return displayName.slice(0, -'_inst'.length) + '_none_inst';
+  }
+  return displayName;
+}
+
+/**
+ * Returns true when the raw variable name ends with '_none_inst',
+ * indicating it supports timestep duration filtering.
+ *
+ * @param {string} rawName
+ * @returns {boolean}
+ */
+export function isTimestepVariable(rawName) {
+  return rawName ? rawName.endsWith('_none_inst') : false;
 }
