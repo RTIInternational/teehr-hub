@@ -28,7 +28,8 @@ const initialRetrospectiveState = {
     start_date: DEFAULT_START_DATE,
     end_date: DEFAULT_END_DATE,
     reference_start_date: null,
-    reference_end_date: null
+    reference_end_date: null,
+    duration: RETROSPECTIVE_DASHBOARD_DEFAULTS.preferredObservationsDuration
   },
   
   // Selected location

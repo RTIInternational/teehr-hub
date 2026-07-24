@@ -1,23 +1,24 @@
 import { Form, Row, Col, Button } from 'react-bootstrap';
 import MultiSelectDropdown from '../MultiSelectDropdown';
+import { DURATION_NAME_TO_ISO } from '../../../utils/durationUtils';
 
-const TimeseriesControls = ({ 
-  state, 
-  timeseriesFilters, 
-  updateTimeseriesFilters, 
-  loadTimeseries, 
+const TimeseriesControls = ({
+  state,
+  timeseriesFilters,
+  updateTimeseriesFilters,
+  loadTimeseries,
   selectedLocation,
   mapFilters,
   onViewModeChange
 }) => {
-  
+
   const handleFilterChange = (field, value) => {
     updateTimeseriesFilters({ [field]: value });
   };
 
   const handleLoadData = async () => {
     if (!selectedLocation?.primary_location_id) return;
-    
+
     await loadTimeseries({
       primary_location_id: selectedLocation.primary_location_id,
       configurations: timeseriesFilters.configurations,
@@ -25,9 +26,10 @@ const TimeseriesControls = ({
       start_date: timeseriesFilters.start_date,
       end_date: timeseriesFilters.end_date,
       reference_start_date: timeseriesFilters.reference_start_date,
-      reference_end_date: timeseriesFilters.reference_end_date
+      reference_end_date: timeseriesFilters.reference_end_date,
+      duration: timeseriesFilters.duration
     });
-    
+
     // Switch to plot view after loading data
     if (onViewModeChange) {
       onViewModeChange('plot');
@@ -35,8 +37,8 @@ const TimeseriesControls = ({
   };
 
   // Get selected configurations or use map configuration as fallback
-  const selectedConfigurations = timeseriesFilters.configurations?.length > 0 
-    ? timeseriesFilters.configurations 
+  const selectedConfigurations = timeseriesFilters.configurations?.length > 0
+    ? timeseriesFilters.configurations
     : (mapFilters.configuration ? [mapFilters.configuration] : []);
 
   return (
@@ -44,7 +46,7 @@ const TimeseriesControls = ({
       <Form className="flex-grow-1">
         <Row className="g-2 align-content-start">
           {/* Configuration - Multi-select */}
-          <Col md={6}>
+          <Col md={12}>
             <Form.Group>
               <Form.Label className="small fw-bold">Configurations</Form.Label>
               <MultiSelectDropdown
@@ -71,6 +73,23 @@ const TimeseriesControls = ({
                 <option key={variable} value={variable}>
                   {variable}
                 </option>
+              ))}
+            </Form.Select>
+          </Form.Group>
+        </Col>
+
+        {/* Inst observations timestep */}
+        <Col md={6}>
+          <Form.Group>
+            <Form.Label className="small fw-bold">Obs timestep (where available)</Form.Label>
+            <Form.Select
+              size="sm"
+              value={timeseriesFilters.duration || ''}
+              disabled={!timeseriesFilters.variable?.endsWith('_inst')}
+              onChange={(e) => handleFilterChange('duration', e.target.value)}
+            >
+              {Object.entries(DURATION_NAME_TO_ISO).map(([label, iso]) => (
+                <option key={iso} value={iso}>{label}</option>
               ))}
             </Form.Select>
           </Form.Group>
@@ -131,9 +150,9 @@ const TimeseriesControls = ({
         {/* Load Button */}
         <Col md={12}>
           <div className="d-flex justify-content-end mt-2">
-            <Button 
-              variant="primary" 
-              size="sm" 
+            <Button
+              variant="primary"
+              size="sm"
               onClick={handleLoadData}
               disabled={!selectedLocation?.primary_location_id || !timeseriesFilters.configurations?.length || !timeseriesFilters.variable}
             >

@@ -6,8 +6,8 @@
  * To support a new duration, add an entry here — no other code changes are needed.
  */
 export const DURATION_NAME_TO_ISO = {
-  'Hourly': 'PT1H',
-  '15 min': 'PT15M',
+  'Hourly (inst)': 'PT1H',
+  '15 min (inst)': 'PT15M',
 };
 
 /**
@@ -56,4 +56,23 @@ export function fromDisplayVariableName(displayName) {
  */
 export function isTimestepVariable(rawName) {
   return rawName ? rawName.endsWith('_none_inst') : false;
+}
+
+/**
+ * Convert a duration-specific variable name to its primary_timeseries equivalent
+ * by replacing the duration token with 'none'
+ * (e.g. 'streamflow_hourly_inst' -> 'streamflow_none_inst').
+ *
+ * Only applies when the statistic token is 'inst'. Non-inst variables are returned unchanged.
+ *
+ * @param {string} variableName
+ * @returns {string}
+ */
+export function toPrimaryVariableName(variableName) {
+  const parts = variableName.split('_');
+  if (parts.length < 3) return variableName;
+  if (parts[parts.length - 1] !== 'inst') return variableName;
+  const result = [...parts];
+  result[result.length - 2] = 'none';
+  return result.join('_');
 }

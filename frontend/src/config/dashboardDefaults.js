@@ -19,7 +19,10 @@ export const RETROSPECTIVE_DASHBOARD_DEFAULTS = {
 
   // Default date range for retrospective analysis
   defaultStartDate: '2020-01-01T00:00',
-  defaultEndDate: '2020-12-31T23:59'
+  defaultEndDate: '2020-12-31T23:59',
+
+  // Default duration for the Observations (primary timeseries) timestep control
+  preferredObservationsDuration: 'PT1H'
 };
 
 export const FORECAST_DASHBOARD_DEFAULTS = {

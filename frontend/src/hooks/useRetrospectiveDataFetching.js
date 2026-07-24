@@ -2,6 +2,7 @@ import { useCallback } from 'react';
 import { useRetrospectiveDashboard, ActionTypes } from '../context/RetrospectiveDashboardContext.jsx';
 import { apiService } from '../services/api';
 import { extractTableProperties } from '../utils/ogcTransformers';
+import { toPrimaryVariableName } from '../utils/durationUtils';
 
 // Custom hooks for retrospective dashboard data fetching
 export const useRetrospectiveDataFetching = () => {
@@ -97,17 +98,21 @@ export const useRetrospectiveDataFetching = () => {
         dispatch({ type: ActionTypes.CLEAR_TIMESERIES });
         dispatch({ type: ActionTypes.SET_LOADING, payload: { timeseries: true } });
         
-        const { primary_location_id, configurations, variable, start_date, end_date } = filters;
+        const { primary_location_id, configurations, variable, start_date, end_date, duration } = filters;
         
         if (!primary_location_id || !configurations?.length || !variable) {
           throw new Error('Missing required parameters: primary_location_id, configurations, and variable are required');
         }
   
         // Load primary data (USGS observations)
+        // Convert _inst variable names to primary_timeseries canonical form (e.g. streamflow_hourly_inst -> streamflow_none_inst)
+        // and include duration filter only for instantaneous (_inst) variables
+        const primaryVariable = variable?.endsWith('_inst') ? toPrimaryVariableName(variable) : variable;
         const primaryFilters = {
-          variable,
+          variable: primaryVariable,
           start_date,
-          end_date
+          end_date,
+          ...(variable?.endsWith('_inst') && duration && { duration })
         };
         const primaryData = await apiService.getPrimaryTimeseries(primary_location_id, primaryFilters);
         dispatch({ type: ActionTypes.SET_PRIMARY_TIMESERIES, payload: primaryData });
