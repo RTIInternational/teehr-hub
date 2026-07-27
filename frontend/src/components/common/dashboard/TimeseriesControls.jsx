@@ -81,7 +81,7 @@ const TimeseriesControls = ({
         {/* Inst observations timestep */}
         <Col md={6}>
           <Form.Group>
-            <Form.Label className="small fw-bold">Obs timestep (where available)</Form.Label>
+            <Form.Label className="small fw-bold">Obs timestep (if available)</Form.Label>
             <Form.Select
               size="sm"
               value={timeseriesFilters.duration || ''}
