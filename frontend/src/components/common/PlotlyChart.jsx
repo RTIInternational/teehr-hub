@@ -18,9 +18,7 @@ const PlotlyChart = ({ primaryData, secondaryData, selectedLocation, filters, he
         if (series?.timeseries?.length > 0) {
           const configName = series.configuration_name || 'USGS';
           const varName = formatVariableName(series.variable_name || filters?.variable);
-          const traceName = series.duration_token
-            ? `Observed (${configName}) - ${series.duration_token}`
-            : `Observed (${configName})`;
+          const traceName = `Observed (${configName})`;
           primaryTraces.push({
             x: series.timeseries.map(d => d.value_time),
             y: series.timeseries.map(d => d.value),
@@ -52,7 +50,7 @@ const PlotlyChart = ({ primaryData, secondaryData, selectedLocation, filters, he
         { r: 253, g: 126, b: 20 },  // #fd7e14 orange
         { r: 32, g: 201, b: 151 }   // #20c997 teal
       ];
-      
+
       // First pass: group series by configuration_name and collect reference_times
       const configGroups = new Map();
       secondaryData.forEach(series => {
@@ -66,7 +64,7 @@ const PlotlyChart = ({ primaryData, secondaryData, selectedLocation, filters, he
           }
         }
       });
-      
+
       // Assign colors to each configuration and sort reference_times
       const configColorMap = new Map();
       const configRefTimesMap = new Map();
@@ -78,7 +76,7 @@ const PlotlyChart = ({ primaryData, secondaryData, selectedLocation, filters, he
         configRefTimesMap.set(configName, sortedRefTimes);
         colorIndex++;
       });
-      
+
       // Helper to calculate opacity based on reference_time position
       const getOpacity = (configName, refTime) => {
         const sortedRefTimes = configRefTimesMap.get(configName);
@@ -92,14 +90,14 @@ const PlotlyChart = ({ primaryData, secondaryData, selectedLocation, filters, he
       };
 
       const getLegendGroup = (configName) => `forecast:${configName || 'unknown'}`;
-      
+
       secondaryData.forEach(series => {
         if (series?.timeseries?.length > 0) {
           const key = `${series.configuration_name}|${series.variable_name}|${series.reference_time}`;
-          
+
           if (!traceMap.has(key)) {
             const configName = series.configuration_name;
-            
+
             // Display trace name with reference_time details in hover, but keep legend simple
             const traceName = configName;
             let hoverName = configName;
@@ -116,12 +114,12 @@ const PlotlyChart = ({ primaryData, secondaryData, selectedLocation, filters, he
                 hoverName = `${configName} (${series.reference_time})`;
               }
             }
-            
+
             // Get base color for this configuration and calculate opacity
             const baseColor = configColorMap.get(configName) || baseColors[0];
             const opacity = getOpacity(configName, series.reference_time);
             const rgbaColor = `rgba(${baseColor.r}, ${baseColor.g}, ${baseColor.b}, ${opacity})`;
-            
+
             const trace = {
               x: series.timeseries.map(d => d.value_time),
               y: series.timeseries.map(d => d.value),
@@ -129,16 +127,16 @@ const PlotlyChart = ({ primaryData, secondaryData, selectedLocation, filters, he
               legendgroup: getLegendGroup(configName),
               type: 'scatter',
               mode: 'lines',
-              line: { 
-                color: rgbaColor, 
-                width: 2 
+              line: {
+                color: rgbaColor,
+                width: 2
               },
               showlegend: false, // Will be set to true for last occurrence only
-              hovertemplate: 
+              hovertemplate:
                 '<b>' + hoverName + '</b><br>' +
                 'Date: %{x}<br>' +
                 `${formatVariableName(series.variable_name || filters.variable)}: %{y}${series.unit_name ? ' ' + formatUnitName(series.unit_name) : ''}<br>` +
-                (series.reference_time && series.reference_time !== 'null' ? 
+                (series.reference_time && series.reference_time !== 'null' ?
                   `Reference: ${series.reference_time}<br>` : '') +
                 '<extra></extra>'
             };
@@ -147,7 +145,7 @@ const PlotlyChart = ({ primaryData, secondaryData, selectedLocation, filters, he
           }
         }
       });
-      
+
       // Set showlegend only for the last trace of each configuration
       const lastTraceIndexPerConfig = new Map();
       secondaryTraces.forEach((trace, index) => {
@@ -167,15 +165,15 @@ const PlotlyChart = ({ primaryData, secondaryData, selectedLocation, filters, he
     }
 
     const yAxisTitle = getYAxisTitle(primaryData, secondaryData, filters);
-    
+
     const layout = {
-      xaxis: { 
+      xaxis: {
         title: {
           text: 'Date',
           font: { size: 14 }
         }
       },
-      yaxis: { 
+      yaxis: {
         title: {
           text: yAxisTitle,
           font: { size: 14 }
@@ -195,7 +193,7 @@ const PlotlyChart = ({ primaryData, secondaryData, selectedLocation, filters, he
       }
     };
 
-    Plotly.react(plotRef.current, traces, layout, { 
+    Plotly.react(plotRef.current, traces, layout, {
       responsive: true,
       displayModeBar: 'hover'
     });

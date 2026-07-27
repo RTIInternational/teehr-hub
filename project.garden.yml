@@ -23,7 +23,7 @@ environments:
     variables:
       hostname: teehr.local.app.garden
       certificateIssuerName: letsencrypt-prod
-      devTeehrVersion: 267f8a75034132aefe84749af10ab1562a6ac169
+      devTeehrVersion: 5963958df973e3859f656456c9e73a3a6c8a8022
       stableTeehrVersion: place-holder # Needed for sync to work for some reason.
       iceberg:
         inCluster: "true"
