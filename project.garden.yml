@@ -44,7 +44,7 @@ environments:
     variables:
       hostname: teehr.rtiamanzi.org
       certificateIssuerName: letsencrypt-prod
-      devTeehrVersion: 996fc1dc6c359590d3f2d0ebcb17a854b051246f
+      devTeehrVersion: 5963958df973e3859f656456c9e73a3a6c8a8022
       stableTeehrVersion: v0.6.5
       previousTeehrVersion: v0.5.3
       irsa:
