@@ -85,7 +85,7 @@ const TimeseriesControls = ({
             <Form.Select
               size="sm"
               value={timeseriesFilters.duration || ''}
-              disabled={!timeseriesFilters.variable?.endsWith('_inst')}
+              disabled={!(timeseriesFilters.variable || mapFilters.variable)?.endsWith('_inst')}
               onChange={(e) => handleFilterChange('duration', e.target.value)}
             >
               {Object.entries(DURATION_NAME_TO_ISO).map(([label, iso]) => (
