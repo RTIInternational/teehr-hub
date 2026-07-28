@@ -124,7 +124,7 @@ const Navbar = () => {
   };
 
   return (
-    <nav className="navbar navbar-expand-lg navbar-dark bg-primary">
+    <nav className="navbar navbar-expand-lg navbar-dark bg-primary" style={{ zIndex: 1300 }}>
       <div className="container-fluid px-4 d-flex align-items-center">
         <div className="navbar-brand me-3 d-flex align-items-center gap-2">
           <Link to="/" className="d-inline-flex align-items-center" aria-label="TEEHR-Cloud Home">
