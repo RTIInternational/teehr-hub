@@ -39,6 +39,16 @@ Use these instructions when adding or changing the FIRO dashboard experience, it
 - Verify the change with the relevant local workflow, such as the API, frontend build, or a targeted manual check in the local environment.
 - When in doubt, favor the simplest implementation that can be explained clearly and extended later.
 
+## Repository boundaries and submodule guidance
+
+- Treat [teehr-cloud-core](teehr-cloud-core) as shared backend infrastructure, not as the main place for FIRO-specific dashboard implementation.
+- Prefer keeping FIRO dashboard work isolated to this repository whenever possible.
+- Do not modify the submodule unless a shared backend capability is genuinely required and cannot be achieved with existing endpoints, queryables, or frontend-side adaptation.
+- When implementing dashboard features, first try to use existing API contracts and data shapes from the shared core service.
+- If a backend change is truly necessary and it is reusable across projects, keep that change scoped and isolated in a dedicated submodule branch.
+- If the change is dashboard-specific and not broadly reusable, prefer implementing it in this repository and avoid touching the submodule.
+- Keep any submodule change minimal, well-documented, and clearly separated from UI and deployment work in this repo.
+
 ## Backend
 
 ### Backend guidance
@@ -116,7 +126,6 @@ Use these instructions when adding or changing the FIRO dashboard experience, it
   - `joined_timeseries` → timeseries endpoint data source for paired forecasts/observations
 - If a component needs a new field, prefer exposing it via properties on the existing GeoJSON or timeseries payload rather than changing the UI shape.
 
-
 ## Frontend
 
 ### Frontend guidance
@@ -139,12 +148,12 @@ Use these instructions when adding or changing the FIRO dashboard experience, it
 #### Timeseries component
 - Use the existing `TimeseriesComponent.jsx` for all timeseries rendering. Do not modify it.
 - Should a new timeseries feature be needed, create a new component that wraps `TimeseriesComponent.jsx` and adds the desired behavior.
-- This timeseries should display the timeseries data for the selected location, configuration_name, and variable_name shown in the map display settings dropdown of the map component. 
+- This timeseries should display the timeseries data for the selected location, configuration_name, and variable_name shown in the map display settings dropdown of the map component.
 - Prior to plotting the timeseries data, there should be filters on the start data and end date for both primary and secondary timeseries data. The user should be able to select the start and end date for both primary and secondary timeseries data, and the timeseries component should update accordingly. This functionality is already present in the Forecast Anaylsis dashboard.
 
 #### Location Analysis component
 - This component will be new and is not present in the existing dashboards.
-- This component will be responsible for displaying the metrics data for the selected location, configuraiton_name, and variable_name shown in the map display settings dropdown of the map component. In addition to the map display settings dropdown, there will be an additional pair of dropdowns/filters for the user to select the season, threshold, and metric values for the metrics data. The data will plot the metric value against forecast_lead_time_bin for the selected season and threshold. 
+- This component will be responsible for displaying the metrics data for the selected location, configuraiton_name, and variable_name shown in the map display settings dropdown of the map component. In addition to the map display settings dropdown, there will be an additional pair of dropdowns/filters for the user to select the season, threshold, and metric values for the metrics data. The data will plot the metric value against forecast_lead_time_bin for the selected season and threshold.
   - Unique values to filter on for the season and threshold can be extracted from the locations_metrics table via the 'season' and 'threshold' columns. Note that both contain a 'None' value alongside their string values. The 'None' value should be included in the dropdowns/filters for the user to select.
   - Unique values to filter on for the metric values can be extracted from the locations_metrics table via the column names. All columns aside from [primary_location_id, configuration_name, variable_name, season, forecast_lead_time_bin, threshold, created_at, updated_at] are metric values and should be included in the dropdowns/filters for the user to select. The metric value selected will determine which column is plotted against forecast_lead_time_bin.
 - The user should be able to view the filtered data as a table AND as a plot (toggled between the two). The plot should show forecast_lead_time_bin on the x-axis and the selected metric value on the y-axis.
@@ -152,7 +161,7 @@ Use these instructions when adding or changing the FIRO dashboard experience, it
 #### Event viewer component
 - This component will be new and is not present in the existing dashboards.
 - This component will be responsible for displaying the event-based data for the selected location, configuration_name, and variable_name shown in the map display settings dropdown of the map component. In addition to the map display settings dropdown, there will be an additional pair of dropdowns/filters for the user to select which event to view and which lead time to view the ensemble data for.
-  - The event viewer will display the observed timeseries for the full event, the ensemble mean timeseries for the full event, and the ensemble members according to the lead time selected in the event viewer reference time dropdown.  
+  - The event viewer will display the observed timeseries for the full event, the ensemble mean timeseries for the full event, and the ensemble members according to the lead time selected in the event viewer reference time dropdown.
 
 #### Event heatmap component
 - This component will be new and is not present in the existing dashboards.
@@ -161,7 +170,7 @@ Use these instructions when adding or changing the FIRO dashboard experience, it
 
 #### Ensemble performance component
 - This component will be new and is not present in the existing dashboards.
-- This component will be responsible for displaying the range of simulated values for each observed values at various lead times for the selected location, configuration_name, and variable_name shown in the map display settings dropdown of the map component. In addition to the map display settings dropdown, there will be an additional dropdown/filter for the user to select  which lead time to view the ensemble data for.
+- This component will be responsible for displaying the range of simulated values for each observed values at various lead times for the selected location, configuration_name, and variable_name shown in the map display settings dropdown of the map component. In addition to the map display settings dropdown, there will be an additional dropdown/filter for the user to select which lead time to view the ensemble data for.
 - The Y axis will be observations and the X axis will be the simulated values. The X values will be shown as a boxplot that shows the range of simulated values for each observed value at the selected lead time.
 
 ## FIRO tables
@@ -199,7 +208,7 @@ Use these instructions when adding or changing the FIRO dashboard experience, it
 
 ### event_rankings
 
-#### Schema 
+#### Schema
 - primary_location_id: object
 - configuration_name: object
 - variable_name: object
