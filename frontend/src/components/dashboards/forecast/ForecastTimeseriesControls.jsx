@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { Form, Row, Col, Button, Tabs, Tab } from 'react-bootstrap';
 import MultiSelectDropdown from '../../common/MultiSelectDropdown';
+import { toDisplayVariableName, fromDisplayVariableName, isTimestepVariable, DURATION_NAME_TO_ISO } from '../../../utils/durationUtils';
 
 const ForecastTimeseriesControls = ({
   state,
@@ -17,7 +18,8 @@ const ForecastTimeseriesControls = ({
     return {
       variables: nested.variables ?? (timeseriesFilters?.variable ? [timeseriesFilters.variable] : []),
       start_date: nested.start_date ?? timeseriesFilters?.start_date ?? null,
-      end_date: nested.end_date ?? timeseriesFilters?.end_date ?? null
+      end_date: nested.end_date ?? timeseriesFilters?.end_date ?? null,
+      duration: nested.duration ?? null
     };
   }, [timeseriesFilters]);
 
@@ -82,16 +84,31 @@ const ForecastTimeseriesControls = ({
         >
           <Tab eventKey="observations" title="Observations (Primary)">
             <Row className="g-2">
-              <Col md={12}>
+              <Col md={6}>
                 <Form.Group>
                   <Form.Label className="small fw-bold">Variable</Form.Label>
                   <MultiSelectDropdown
-                    options={Array.isArray(state.variables) ? state.variables : []}
-                    selected={primaryFilters.variables}
-                    onChange={(selected) => handlePrimaryFilterChange('variables', selected)}
+                    options={(Array.isArray(state.primaryVariables) ? state.primaryVariables : []).map(toDisplayVariableName)}
+                    selected={(primaryFilters.variables || []).map(toDisplayVariableName)}
+                    onChange={(displaySelected) => handlePrimaryFilterChange('variables', displaySelected.map(fromDisplayVariableName))}
                     allSelectedText="All variables"
                     noneSelectedText="Select variables..."
                   />
+                </Form.Group>
+              </Col>
+              <Col md={6}>
+                <Form.Group>
+                  <Form.Label className="small fw-bold">Obs timestep (if available)</Form.Label>
+                  <Form.Select
+                    size="sm"
+                    value={primaryFilters.duration || ''}
+                    disabled={!(primaryFilters.variables || []).some(isTimestepVariable)}
+                    onChange={(e) => handlePrimaryFilterChange('duration', e.target.value)}
+                  >
+                    {Object.entries(DURATION_NAME_TO_ISO).map(([label, iso]) => (
+                      <option key={iso} value={iso}>{label}</option>
+                    ))}
+                  </Form.Select>
                 </Form.Group>
               </Col>
 
