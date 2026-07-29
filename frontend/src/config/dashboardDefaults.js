@@ -51,7 +51,11 @@ export const NWMD_DASHBOARD_DEFAULTS = {
   preferredThreshold: null,
   preferredAggMethod: 'mean',
   preferredLeadTimeBin: 'PT0S_P1DT0H',
-  defaultMetricName: 'relative_bias'
+  defaultMetricName: 'relative_bias',
+
+  // Default variable and duration for the Observations (primary timeseries) controls
+  preferredObservationsVariable: 'streamflow_none_inst',
+  preferredObservationsDuration: 'PT1H',
 };
 
 /**

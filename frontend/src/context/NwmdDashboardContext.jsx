@@ -64,9 +64,10 @@ const initialNwmdState = {
   // Timeseries filters (nwmd-specific defaults)
   timeseriesFilters: {
     primary: {
-      variables: [],
+      variables: [NWMD_DASHBOARD_DEFAULTS.preferredObservationsVariable],
       start_date: getTenDaysAgo(),
       end_date: getToday(),
+      duration: NWMD_DASHBOARD_DEFAULTS.preferredObservationsDuration,
     },
     secondary: {
       configurations: [], // Array for multi-select
