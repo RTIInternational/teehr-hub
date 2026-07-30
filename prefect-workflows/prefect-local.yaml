@@ -46,6 +46,8 @@ definitions:
         REMOTE_CATALOG_TYPE: "{{ $REMOTE_CATALOG_TYPE }}"
         REMOTE_WAREHOUSE_S3_PATH: "{{ $REMOTE_WAREHOUSE_S3_PATH }}"
         IN_CLUSTER: "{{ $IN_CLUSTER }}"
+        ICECHUNK_BUCKET: "{{ $ICECHUNK_BUCKET }}"
+        ICECHUNK_PREFIX: "{{ $ICECHUNK_PREFIX }}"
       node_selector:
         teehr-hub/nodegroup-name: spark-r5-4xlarge
       tolerations:
@@ -570,4 +572,116 @@ deployments:
     description: Calculate configuration summary statistics and update the configuration summary table
     entrypoint: workflows/data_management/update_configurations_summary.py:update_configurations_summary_table
     parameters: {"temp_dir_path": *temp_dir_path, "start_spark_cluster": false}
+    work_pool: *work_pool
+
+  # Gridded Data Ingests
+  - name: ingest-nwm30-forcing-analysis-assim-grids
+    version:
+    tags: []
+    description: Ingest NWM 3.0 forcing analysis and assimilation data into an IceChunk S3 repository using VirtualiZarr
+    entrypoint: workflows/ingests/ingest_gridded_data.py:ingest_gridded_data
+    parameters: {
+      "args": {
+        "x_dim": "x",
+        "y_dim": "y",
+        "factors": [1, 2, 4],
+        "source_data_storage": "gcs",
+        "glob_pattern": "gs://national-water-model/nwm.20260606/forcing_analysis_assim/nwm.t*z.analysis_assim.forcing.tm00.conus.nc",
+        "source_bucket": "gs://national-water-model",
+        "configuration_name": "nwm30-forcing-analysis-assim",
+        "variable_names": ["RAINRATE"],
+        "concat_dim": "time",
+        "parser_type": "hdf",
+        "fsspec_kwargs": {"token": "anon"},
+        "obstore_kwargs": {"skip_signature": true},
+        "s3_storage_kwargs": {
+            "region": "us-east-1",  # placeholder
+            "access_key_id": "minioadmin",
+            "secret_access_key": "minioadmin123",
+            "endpoint_url": "http://minio:9000",
+            "allow_http": true,
+            "force_path_style": true 
+        },
+        "xconcat_kwargs": {
+          "coords": "minimal",
+          "compat": "override",
+          "combine_attrs": "override"
+        }
+      }
+    }
+    work_pool: *work_pool
+
+  # Gridded Pyramid Builds
+  - name: build-nwm30-forcing-analysis-assim-grids-pyramids
+    version:
+    tags: []
+    description: Build multiscale pyramids for the NWM 3.0 forcing analysis/assimilation IceChunk repository
+    entrypoint: workflows/ingests/build_geozarr_pyramids.py:build_pyramids
+    parameters: {
+      "args": {
+        "x_dim": "x",
+        "y_dim": "y",
+        "source_bucket": "gs://national-water-model",
+        "glob_pattern": "",
+        "configuration_name": "nwm30-forcing-analysis-assim",
+        "factors": [1, 2, 4],
+        "s3_storage_kwargs": {
+            "region": "us-east-1",
+            "access_key_id": "minioadmin",
+            "secret_access_key": "minioadmin123",
+            "endpoint_url": "http://minio:9000",
+            "allow_http": true,
+            "force_path_style": true
+        }
+      }
+    }
+    work_pool: *work_pool
+
+  # Mean Areal Value Workflows
+  - name: calculate-nwm30-conus-forcing-pixel-coverage-weights
+    version:
+    tags: []
+    description: Calculate pixel coverage weights for a given grid template and polygon shapefile
+    entrypoint: workflows/ingests/pixel_coverage_weights.py:calculate_pixel_coverage_weights
+    parameters: {
+      "args": {
+        "temp_dir_path": *temp_dir_path,
+        "location_id_prefix": "huc12",
+        "configuration_name": "nwm30-forcing-analysis-assim",
+        "grid_variable_name": "RAINRATE",
+        "domain_name": "nwm30_forcing_conus",
+        "s3_storage_kwargs": {
+            "region": "us-east-1",
+            "access_key_id": "minioadmin",
+            "secret_access_key": "minioadmin123",
+            "endpoint_url": "http://minio:9000",
+            "allow_http": true,
+            "force_path_style": true
+        }
+      }
+    }
+    work_pool: *work_pool
+
+  - name: calculate-nwm30-forcing-analysis-assim-mean-areal-values
+    version:
+    tags: []
+    description: Calculate mean areal values for a given grid template and polygon shapefile
+    entrypoint: workflows/ingests/mean_areal_values.py:calculate_mean_areal_values
+    parameters: {
+      "args": {
+        "temp_dir_path": *temp_dir_path,
+        "location_id_prefix": "huc12",
+        "configuration_name": "nwm30-forcing-analysis-assim",
+        "grid_variable_name": "RAINRATE",
+        "domain_name": "nwm30_forcing_conus",
+        "s3_storage_kwargs": {
+            "region": "us-east-1",
+            "access_key_id": "minioadmin",
+            "secret_access_key": "minioadmin123",
+            "endpoint_url": "http://minio:9000",
+            "allow_http": true,
+            "force_path_style": true
+        }
+      }
+    }
     work_pool: *work_pool
