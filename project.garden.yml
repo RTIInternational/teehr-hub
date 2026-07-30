@@ -25,6 +25,7 @@ environments:
       certificateIssuerName: letsencrypt-prod
       devTeehrVersion: fc20673a371187241a57e39e542ae8aadbc80a13
       stableTeehrVersion: place-holder # Needed for sync to work for some reason.
+      previousTeehrVersion: place-holder
       iceberg:
         inCluster: "true"
         catalogS3PathStyleAccess: "true"
