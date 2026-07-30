@@ -29,6 +29,11 @@ spec:
             configMapKeyRef:
               name: teehr-frontend-config
               key: VITE_API_BASE_URL
+        - name: VITE_XPUBLISH_API_BASE_URL
+          valueFrom:
+            configMapKeyRef:
+              name: teehr-frontend-config
+              key: VITE_XPUBLISH_API_BASE_URL
         - name: VITE_ALLOWED_HOSTS
           valueFrom:
             configMapKeyRef:

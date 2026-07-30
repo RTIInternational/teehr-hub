@@ -43,6 +43,7 @@ environments:
       icechunk:
         bucket: "warehouse"
         prefix: "icechunk-ingests"
+        repos: "nwm30-forcing-analysis-assim"
   - name: remote
     defaultNamespace: ${project.name}
     variables:
@@ -75,6 +76,7 @@ environments:
       icechunk:
         bucket: "dev-teehr-icechunk-warehouse"
         prefix: "icechunk-ingests"
+        repos: "nwm30-forcing-analysis-assim"
 providers:
   # The name of the provider plugin to use.
   - name: local-kubernetes
