@@ -9,10 +9,12 @@ import { DataDashboard } from './components/dashboards/data_management';
 import { ForecastDashboard } from './components/dashboards/forecast';
 import { Dashboard } from './components/dashboards/retrospective';
 import { NwmdDashboard } from './components/dashboards/nwmd/index.js';
+import GriddedDashboard from './components/dashboards/gridded/index.js';
 import { DataDashboardProvider } from './context/DataDashboardContext.jsx';
 import { ForecastDashboardProvider } from './context/ForecastDashboardContext.jsx';
 import { NwmdDashboardProvider } from './context/NwmdDashboardContext.jsx';
 import { RetrospectiveDashboardProvider } from './context/RetrospectiveDashboardContext.jsx';
+import { GriddedDashboardProvider } from './context/GriddedDashboardContext.jsx';
 import { useAuth } from './hooks/useAuth.js';
 import 'bootstrap/dist/css/bootstrap.min.css';
 import './App.css';
@@ -130,6 +132,16 @@ const AppRoutes = () => {
                 <NwmdDashboardProvider>
                   <NwmdDashboard />
                 </NwmdDashboardProvider>
+              </RequireAuth>
+            }
+          />
+          <Route
+            path="/gridded"
+            element={
+              <RequireAuth>
+                <GriddedDashboardProvider>
+                  <GriddedDashboard />
+                </GriddedDashboardProvider>
               </RequireAuth>
             }
           />

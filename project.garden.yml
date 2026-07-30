@@ -23,7 +23,7 @@ environments:
     variables:
       hostname: teehr.local.app.garden
       certificateIssuerName: letsencrypt-prod
-      devTeehrVersion: fc20673a371187241a57e39e542ae8aadbc80a13
+      devTeehrVersion: 86a4e506a794699b2b1546da9ed5ecda98f318ec
       stableTeehrVersion: place-holder # Needed for sync to work for some reason.
       previousTeehrVersion: place-holder
       iceberg:
@@ -40,12 +40,16 @@ environments:
         catalog: iceberg
         schema: teehr
       allowedOrigins: "https://dashboards.${var.hostname},https://api.${var.hostname}"
+      icechunk:
+        bucket: "warehouse"
+        prefix: "icechunk-ingests"
+        repos: "nwm30-forcing-analysis-assim"
   - name: remote
     defaultNamespace: ${project.name}
     variables:
       hostname: teehr.rtiamanzi.org
       certificateIssuerName: letsencrypt-prod
-      devTeehrVersion: fc20673a371187241a57e39e542ae8aadbc80a13
+      devTeehrVersion: 86a4e506a794699b2b1546da9ed5ecda98f318ec
       stableTeehrVersion: v0.6.6
       previousTeehrVersion: v0.5.3
       irsa:
@@ -69,6 +73,10 @@ environments:
         catalog: iceberg
         schema: teehr
       allowedOrigins: "https://dashboards.${var.hostname},https://api.${var.hostname}"
+      icechunk:
+        bucket: "dev-teehr-icechunk-warehouse"
+        prefix: "icechunk-ingests"
+        repos: "nwm30-forcing-analysis-assim"
 providers:
   # The name of the provider plugin to use.
   - name: local-kubernetes
