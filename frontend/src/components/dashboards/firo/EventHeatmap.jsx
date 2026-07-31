@@ -52,11 +52,11 @@ const EventHeatmap = ({ selectedLocation, eventHeatmap = [], loading = false, er
   if (!selectedLocation) return null;
 
   return (
-    <Card className="shadow-sm h-100" style={{ borderRadius: '8px' }}>
+    <Card className="shadow-sm" style={{ borderRadius: '8px', height: '100%', display: 'flex', flexDirection: 'column' }}>
       <Card.Header className="py-2">
         <strong>Event Heatmap</strong>
       </Card.Header>
-      <Card.Body className="d-flex flex-column" style={{ gap: '10px' }}>
+      <Card.Body className="d-flex flex-column" style={{ gap: '10px', flex: '1 1 0', minHeight: 0 }}>
         {loading ? (
           <div className="text-muted small">Loading heatmap...</div>
         ) : error ? (
@@ -82,7 +82,7 @@ const EventHeatmap = ({ selectedLocation, eventHeatmap = [], loading = false, er
                 </Form.Select>
               </div>
             </div>
-            <div ref={plotRef} style={{ width: '100%', height: '280px' }} />
+            <div ref={plotRef} style={{ width: '100%', flex: '1 1 0', minHeight: '200px' }} />
           </>
         )}
       </Card.Body>

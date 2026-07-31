@@ -44,11 +44,11 @@ const EnsemblePerformance = ({ selectedLocation, joinedTimeseries = [], loading 
   if (!selectedLocation) return null;
 
   return (
-    <Card className="shadow-sm h-100" style={{ borderRadius: '8px' }}>
+    <Card className="shadow-sm" style={{ borderRadius: '8px', height: '100%', display: 'flex', flexDirection: 'column' }}>
       <Card.Header className="py-2">
         <strong>Ensemble Performance</strong>
       </Card.Header>
-      <Card.Body className="d-flex flex-column" style={{ gap: '10px' }}>
+      <Card.Body className="d-flex flex-column" style={{ gap: '10px', flex: '1 1 0', minHeight: 0 }}>
         {loading ? (
           <div className="text-muted small">Loading ensemble performance...</div>
         ) : error ? (
@@ -62,7 +62,7 @@ const EnsemblePerformance = ({ selectedLocation, joinedTimeseries = [], loading 
                 <option key={leadTime} value={leadTime}>{leadTime}</option>
               ))}
             </Form.Select>
-            <div ref={plotRef} style={{ width: '100%', height: '280px' }} />
+            <div ref={plotRef} style={{ width: '100%', flex: '1 1 0', minHeight: '200px' }} />
           </>
         )}
       </Card.Body>

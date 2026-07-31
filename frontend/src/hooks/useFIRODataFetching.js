@@ -57,9 +57,25 @@ export const useFIRODataFetching = () => {
   const loadLocations = useCallback(async (filters = {}, table = 'locations_metrics') => {
     try {
       dispatch({ type: ActionTypes.SET_LOADING, payload: { locations: true } });
-      const locations = filters.configuration && filters.variable
-        ? await apiService.getMetrics({ ...filters, table })
-        : await apiService.getLocations();
+      // FIRO metric tables have no geometry column so they cannot be used as
+      // map layers.  Always load the base locations collection for the map.
+      const locations = await apiService.getLocations();
+
+      // getLocations() returns features with properties.id, but MapComponent
+      // expects properties.primary_location_id.  Normalise in place.
+      if (locations?.features) {
+        locations.features = locations.features.map((feature) => {
+          const props = feature.properties || {};
+          if (!props.primary_location_id && props.id) {
+            return {
+              ...feature,
+              properties: { ...props, primary_location_id: props.id },
+            };
+          }
+          return feature;
+        });
+      }
+
       dispatch({ type: ActionTypes.SET_LOCATIONS, payload: locations });
       return locations;
     } catch (error) {
@@ -117,8 +133,8 @@ export const useFIRODataFetching = () => {
   const loadLocationMetrics = useCallback(async (primaryLocationId, table = 'locations_metrics') => {
     try {
       dispatch({ type: ActionTypes.SET_LOADING, payload: { metricsLoading: true } });
-      const metricsData = await apiService.getMetrics({ primary_location_id: primaryLocationId, table });
-      const locationData = metricsData?.features?.map((feature) => feature.properties || {}) || [];
+      const response = await apiService.getFIROTableItems(table, { primary_location_id: primaryLocationId });
+      const locationData = response?.items || [];
       dispatch({ type: ActionTypes.SET_LOCATION_METRICS, payload: locationData });
       return locationData;
     } catch (error) {
@@ -130,15 +146,21 @@ export const useFIRODataFetching = () => {
 
   const loadFIROSupplementaryData = useCallback(async (primaryLocationId, filters = {}) => {
     try {
-      const [eventRankingsData, eventHeatmapData, joinedTimeseriesData] = await Promise.all([
-        apiService.getMetrics({ primary_location_id: primaryLocationId, table: 'event_rankings', ...filters }),
-        apiService.getMetrics({ primary_location_id: primaryLocationId, table: 'event_heatmap', ...filters }),
-        apiService.getMetrics({ primary_location_id: primaryLocationId, table: 'joined_timeseries', ...filters }),
+      const baseFilters = {
+        primary_location_id: primaryLocationId,
+        ...(filters.configuration_name ? { configuration_name: filters.configuration_name } : {}),
+        ...(filters.variable_name ? { variable_name: filters.variable_name } : {}),
+      };
+
+      const [eventRankingsResp, eventHeatmapResp, joinedTimeseriesResp] = await Promise.all([
+        apiService.getFIROTableItems('event_rankings', baseFilters),
+        apiService.getFIROTableItems('event_heatmap', baseFilters),
+        apiService.getFIROTableItems('joined_timeseries', baseFilters),
       ]);
 
-      dispatch({ type: ActionTypes.SET_EVENT_RANKINGS, payload: eventRankingsData?.features?.map((feature) => feature.properties || {}) || [] });
-      dispatch({ type: ActionTypes.SET_EVENT_HEATMAP, payload: eventHeatmapData?.features?.map((feature) => feature.properties || {}) || [] });
-      dispatch({ type: ActionTypes.SET_JOINED_TIMESERIES, payload: joinedTimeseriesData?.features?.map((feature) => feature.properties || {}) || [] });
+      dispatch({ type: ActionTypes.SET_EVENT_RANKINGS, payload: eventRankingsResp?.items || [] });
+      dispatch({ type: ActionTypes.SET_EVENT_HEATMAP, payload: eventHeatmapResp?.items || [] });
+      dispatch({ type: ActionTypes.SET_JOINED_TIMESERIES, payload: joinedTimeseriesResp?.items || [] });
     } catch (error) {
       dispatch({ type: ActionTypes.SET_ERROR, payload: `Failed to load FIRO supplementary data: ${error.message}` });
     }

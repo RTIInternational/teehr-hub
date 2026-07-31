@@ -1,5 +1,4 @@
 import { useEffect } from 'react';
-import { Card } from 'react-bootstrap';
 import { useFIRODashboard, ActionTypes } from '../../../context/FIRODashboardContext.jsx';
 import { useFIRODataFetching, useFIROFilters, useFIROLocationSelection } from '../../../hooks/useFIRODataFetching';
 import { LocationCard, LocationMetrics } from '../../common';
@@ -57,30 +56,20 @@ const Dashboard = () => {
   }, [state.selectedLocation?.primary_location_id, state.mapFilters.configuration, state.mapFilters.variable, loadFIROSupplementaryData]);
 
   return (
-    <div className="d-flex flex-column" style={{ height: 'calc(100dvh - 56px)', minHeight: 0 }}>
-      <div className="container-fluid flex-grow-1 p-0" style={{ minHeight: 0, overflow: 'hidden' }}>
-        <div
-          className="dashboard-grid h-100"
-          style={{
-            display: 'grid',
-            gridTemplateColumns: '1fr 1fr',
-            gridTemplateRows: 'auto minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1.2fr) minmax(0, 1fr) minmax(0, 1fr)',
-            gap: '12px',
-            padding: '12px',
-            height: '100%',
-            minHeight: 0,
-            overflow: 'hidden',
-          }}
-        >
-          {state.error && (
-            <div className="alert alert-danger alert-dismissible" role="alert" style={{ gridColumn: '1 / -1', gridRow: '1 / 2', zIndex: 1000, margin: 0 }}>
-              <i className="bi bi-exclamation-triangle-fill me-2"></i>
-              <strong>Error:</strong> {state.error}
-              <button type="button" className="btn-close" onClick={() => dispatch({ type: ActionTypes.CLEAR_ERROR })} aria-label="Close"></button>
-            </div>
-          )}
+    <div style={{ overflowY: 'auto', height: 'calc(100dvh - 56px)' }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', padding: '12px' }}>
 
-          <div className="map-panel" style={{ gridColumn: '1 / 2', gridRow: state.error ? '2 / 4' : '1 / 4', border: '1px solid #e0e0e0', borderRadius: '8px', overflow: 'hidden', position: 'relative', minHeight: 0 }}>
+        {state.error && (
+          <div className="alert alert-danger alert-dismissible" role="alert" style={{ margin: 0 }}>
+            <i className="bi bi-exclamation-triangle-fill me-2"></i>
+            <strong>Error:</strong> {state.error}
+            <button type="button" className="btn-close" onClick={() => dispatch({ type: ActionTypes.CLEAR_ERROR })} aria-label="Close"></button>
+          </div>
+        )}
+
+        {/* ── Row 1: Map + Location card + Timeseries ───────────────────── */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gridTemplateRows: 'auto minmax(0, 1fr)', gap: '12px', height: '60vh', minHeight: '480px' }}>
+          <div style={{ gridColumn: '1 / 2', gridRow: '1 / 3', border: '1px solid #e0e0e0', borderRadius: '8px', overflow: 'hidden', position: 'relative' }}>
             <MapComponent
               state={state}
               dispatch={dispatch}
@@ -91,12 +80,10 @@ const Dashboard = () => {
               getMetricLabel={getMetricLabel}
             />
           </div>
-
-          <div style={{ gridColumn: '2 / 3', gridRow: state.error ? '2 / 3' : '1 / 2', minHeight: 0 }}>
+          <div style={{ gridColumn: '2 / 3', gridRow: '1 / 2' }}>
             <LocationCard selectedLocation={state.selectedLocation} onClose={() => selectLocation(null)} />
           </div>
-
-          <div className="timeseries-panel" style={{ gridColumn: '2 / 3', gridRow: state.error ? '3 / 4' : '2 / 4', border: '1px solid #e0e0e0', borderRadius: '8px', overflow: 'hidden', minHeight: 0 }}>
+          <div style={{ gridColumn: '2 / 3', gridRow: '2 / 3', border: '1px solid #e0e0e0', borderRadius: '8px', overflow: 'hidden' }}>
             {state.selectedLocation ? (
               <TimeseriesComponent state={state} TimeseriesControls={FIROTimeseriesControls} />
             ) : (
@@ -109,32 +96,33 @@ const Dashboard = () => {
               </div>
             )}
           </div>
+        </div>
 
-          <div className="metrics-panel" style={{ gridColumn: '1 / -1', gridRow: state.error ? '5 / 6' : '4 / 5', border: '1px solid #e0e0e0', borderRadius: '8px', minHeight: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-            {state.selectedLocation ? (
-              <LocationMetrics
-                selectedLocation={state.selectedLocation}
-                locationMetrics={state.locationMetrics}
-                metricsLoading={state.metricsLoading}
-                error={state.error}
-                loadLocationMetrics={loadLocationMetrics}
-                tableProperties={state.tableProperties}
-                defaultTable="locations_metrics"
-              />
-            ) : (
-              <Card className="shadow-lg h-100" style={{ borderRadius: '8px', border: 'none' }}>
-                <Card.Body className="d-flex align-items-center justify-content-center text-muted">
-                  <div className="text-center">
-                    <div style={{ fontSize: '2rem' }}>📊</div>
-                    <h6>FIRO Metrics</h6>
-                    <p className="small">Select a location to view metrics.</p>
-                  </div>
-                </Card.Body>
-              </Card>
-            )}
-          </div>
+        {/* ── Row 2: Location Metrics ────────────────────────────────────── */}
+        <div style={{ height: '55vh', minHeight: '400px', border: '1px solid #e0e0e0', borderRadius: '8px', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+          {state.selectedLocation ? (
+            <LocationMetrics
+              selectedLocation={state.selectedLocation}
+              locationMetrics={state.locationMetrics}
+              metricsLoading={state.metricsLoading}
+              error={state.error}
+              loadLocationMetrics={loadLocationMetrics}
+              tableProperties={state.tableProperties}
+              defaultTable="locations_metrics"
+            />
+          ) : (
+            <div className="d-flex align-items-center justify-content-center h-100 text-muted">
+              <div className="text-center">
+                <div style={{ fontSize: '2rem' }}>📊</div>
+                <p className="small mb-0">Select a location to view FIRO metrics.</p>
+              </div>
+            </div>
+          )}
+        </div>
 
-          <div style={{ gridColumn: '1 / 2', gridRow: state.error ? '6 / 7' : '5 / 6', minHeight: 0 }}>
+        {/* ── Row 3: Event Viewer + Event Heatmap ───────────────────────── */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', height: '55vh', minHeight: '400px' }}>
+          <div style={{ overflow: 'hidden' }}>
             <EventViewer
               selectedLocation={state.selectedLocation}
               mapFilters={state.mapFilters}
@@ -144,8 +132,7 @@ const Dashboard = () => {
               error={state.error}
             />
           </div>
-
-          <div style={{ gridColumn: '2 / 3', gridRow: state.error ? '6 / 7' : '5 / 6', minHeight: 0 }}>
+          <div style={{ overflow: 'hidden' }}>
             <EventHeatmap
               selectedLocation={state.selectedLocation}
               eventHeatmap={state.eventHeatmap}
@@ -153,19 +140,22 @@ const Dashboard = () => {
               error={state.error}
             />
           </div>
-
-          <div style={{ gridColumn: '1 / -1', gridRow: state.error ? '7 / 8' : '6 / 7', minHeight: 0 }}>
-            <EnsemblePerformance
-              selectedLocation={state.selectedLocation}
-              joinedTimeseries={state.joinedTimeseries}
-              loading={state.timeseriesLoading}
-              error={state.error}
-            />
-          </div>
         </div>
+
+        {/* ── Row 4: Ensemble Performance ───────────────────────────────── */}
+        <div style={{ height: '55vh', minHeight: '400px', overflow: 'hidden' }}>
+          <EnsemblePerformance
+            selectedLocation={state.selectedLocation}
+            joinedTimeseries={state.joinedTimeseries}
+            loading={state.timeseriesLoading}
+            error={state.error}
+          />
+        </div>
+
       </div>
     </div>
   );
 };
 
 export default Dashboard;
+
