@@ -5,6 +5,7 @@ import reactRefresh from 'eslint-plugin-react-refresh';
 import jsxA11y from 'eslint-plugin-jsx-a11y';
 import importPlugin from 'eslint-plugin-import';
 import globals from 'globals';
+import eslintPluginPrettierRecommended from "eslint-plugin-prettier/recommended";
 
 export default [
   {
@@ -90,4 +91,5 @@ export default [
       'jsx-a11y/aria-unsupported-elements': 'warn',
     },
   },
+  eslintPluginPrettierRecommended,
 ];
