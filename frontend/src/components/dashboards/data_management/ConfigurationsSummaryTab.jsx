@@ -14,7 +14,7 @@ import { useEffect, useState, useCallback, useMemo } from 'react';
 import { Spinner, Alert } from 'react-bootstrap';
 import SimpleMapPanel from './SimpleMapPanel';
 import { apiService } from '../../../services/api';
-import { useSortableTable } from '../../../hooks/useSortableTable.jsx';
+import { useSortableTable } from '../../../hooks/useSortableTable';
 import { DashboardPanel } from '../../common/dashboard';
 import SharedDataTable from '../../common/SharedDataTable';
 

@@ -1,5 +1,5 @@
 import { useCallback } from 'react';
-import { useDataDashboard, ActionTypes } from '../context/DataDashboardContext.jsx';
+import { useDataDashboard, ActionTypes } from '../context/DataDashboardContext';
 import { apiService } from '../services/api';
 
 export const useDataDashboardFetching = () => {

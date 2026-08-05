@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Alert, Button, Card, Col, Form, Row, Table } from 'react-bootstrap';
-import { apiService } from '../../services/api.js';
+import { apiService } from '../../services/api';
 
 const ApiKeysAdmin = () => {
   const [loading, setLoading] = useState(false);

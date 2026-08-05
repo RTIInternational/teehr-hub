@@ -2,7 +2,7 @@ import { useEffect } from 'react';
 import {
   useRetrospectiveDashboard,
   ActionTypes,
-} from '../../../context/RetrospectiveDashboardContext.jsx';
+} from '../../../context/RetrospectiveDashboardContext';
 import {
   useRetrospectiveLocationSelection,
   useRetrospectiveFilters,
@@ -14,7 +14,7 @@ import {
   MapFilterButton,
   TimeseriesControls,
 } from '../../common/dashboard';
-import { getMetricLabel } from '../../common/dashboard/utils.js';
+import { getMetricLabel } from '../../common/dashboard/utils';
 import { useRetrospectiveData } from './useRetrospectiveData';
 
 const Dashboard = () => {

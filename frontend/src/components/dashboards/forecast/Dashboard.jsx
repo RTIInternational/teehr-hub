@@ -1,12 +1,12 @@
 import { useEffect } from 'react';
-import { useForecastDashboard, ActionTypes } from '../../../context/ForecastDashboardContext.jsx';
+import { useForecastDashboard, ActionTypes } from '../../../context/ForecastDashboardContext';
 import {
   useForecastLocationSelection,
   useForecastFilters,
 } from '../../../hooks/useForecastDataFetching';
 import { LocationMetrics, LocationCard } from '../../common';
 import { MapComponent, TimeseriesComponent, MapFilterButton } from '../../common/dashboard';
-import { getMetricLabel } from '../../common/dashboard/utils.js';
+import { getMetricLabel } from '../../common/dashboard/utils';
 import ForecastTimeseriesFilters from './ForecastTimeseriesControls';
 import { useForecastData } from './useForecastData';
 

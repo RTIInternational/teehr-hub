@@ -1,6 +1,6 @@
 import { useCallback } from 'react';
 import { applyAltHypothesisFilter } from '../components/dashboards/nwmd/utils';
-import { useNwmdDashboard, ActionTypes } from '../context/NwmdDashboardContext.jsx';
+import { useNwmdDashboard, ActionTypes } from '../context/NwmdDashboardContext';
 import { apiService } from '../services/api';
 import { extractTableProperties } from '../utils/ogcTransformers';
 
