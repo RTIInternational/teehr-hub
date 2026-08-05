@@ -7,6 +7,7 @@ import virtualizarr as vz
 import icechunk as ic
 from pyproj import CRS as PyprojCRS
 import zarr
+import os
 
 from prefect import task, get_run_logger
 from prefect.cache_policies import NO_CACHE
@@ -51,6 +52,29 @@ def create_objectstore_registry(bucket: str, **kwargs) -> ObjectStoreRegistry:
     return registry
 
 
+def build_icechunk_s3_storage(bucket: str, prefix: str, **kwargs) -> ic.storage.Storage:
+    """Build an IceChunk S3 storage object, injecting MinIO connection options from the environment when present.
+
+    Parameters
+    ----------
+    bucket : str
+        The S3 bucket name.
+    prefix : str
+        The key prefix within the bucket.
+    **kwargs : dict
+        Additional keyword arguments passed to ``ic.s3_storage``. If ``endpoint_url`` is
+        not provided and ``REMOTE_CATALOG_S3_ENDPOINT`` is set, that value is used along
+        with ``allow_http=True`` and ``force_path_style=True``.
+    """
+    # Inject MinIO endpoint from env when not explicitly provided
+    endpoint = os.environ.get("REMOTE_CATALOG_S3_ENDPOINT")
+    if "endpoint_url" not in kwargs and endpoint:
+        kwargs.setdefault("endpoint_url", endpoint)
+        kwargs.setdefault("allow_http", True)
+        kwargs.setdefault("force_path_style", True)
+    return ic.s3_storage(bucket=bucket, prefix=prefix, **kwargs)
+
+
 @task(cache_policy=NO_CACHE)
 def configure_icechunk_s3_repo(
     source_bucket: str,
@@ -78,10 +102,10 @@ def configure_icechunk_s3_repo(
     """
     logger = get_run_logger()
 
-    storage = ic.s3_storage(
+    storage = build_icechunk_s3_storage(
         bucket=dest_bucket,
         prefix=prefix,
-        **kwargs,
+        **kwargs
     )
     logger.info(
         f"Configuring IceChunk S3 repository for bucket: {dest_bucket}, prefix: {prefix}"

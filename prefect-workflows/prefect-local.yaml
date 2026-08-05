@@ -595,12 +595,9 @@ deployments:
         "fsspec_kwargs": {"token": "anon"},
         "obstore_kwargs": {"skip_signature": true},
         "s3_storage_kwargs": {
-            "region": "us-east-1",  # placeholder
-            "access_key_id": "minioadmin",
-            "secret_access_key": "minioadmin123",
-            "endpoint_url": "http://minio:9000",
             "allow_http": true,
-            "force_path_style": true 
+            "force_path_style": true,
+            "from_env": true
         },
         "xconcat_kwargs": {
           "coords": "minimal",
@@ -626,12 +623,9 @@ deployments:
         "configuration_name": "nwm30-forcing-analysis-assim",
         "factors": [1, 2, 4],
         "s3_storage_kwargs": {
-            "region": "us-east-1",
-            "access_key_id": "minioadmin",
-            "secret_access_key": "minioadmin123",
-            "endpoint_url": "http://minio:9000",
             "allow_http": true,
-            "force_path_style": true
+            "force_path_style": true,
+            "from_env": true
         }
       }
     }
@@ -651,12 +645,9 @@ deployments:
         "grid_variable_name": "RAINRATE",
         "domain_name": "nwm30_forcing_conus",
         "s3_storage_kwargs": {
-            "region": "us-east-1",
-            "access_key_id": "minioadmin",
-            "secret_access_key": "minioadmin123",
-            "endpoint_url": "http://minio:9000",
             "allow_http": true,
-            "force_path_style": true
+            "force_path_style": true,
+            "from_env": true
         }
       }
     }
@@ -675,12 +666,9 @@ deployments:
         "grid_variable_name": "RAINRATE",
         "domain_name": "nwm30_forcing_conus",
         "s3_storage_kwargs": {
-            "region": "us-east-1",
-            "access_key_id": "minioadmin",
-            "secret_access_key": "minioadmin123",
-            "endpoint_url": "http://minio:9000",
             "allow_http": true,
-            "force_path_style": true
+            "force_path_style": true,
+            "from_env": true
         }
       }
     }

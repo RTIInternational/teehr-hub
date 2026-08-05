@@ -32,7 +32,7 @@ def build_pyramids(args: BuildPyramidsDataInput) -> None:
     """
     logger = get_run_logger()
 
-    storage = ic.s3_storage(
+    storage = gu.build_icechunk_s3_storage(
         bucket=args.dest_bucket,
         prefix=f"{args.base_prefix}/{args.configuration_name}",
         **args.s3_storage_kwargs
