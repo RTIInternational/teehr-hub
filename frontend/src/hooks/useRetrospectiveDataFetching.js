@@ -2,7 +2,7 @@ import { useCallback } from 'react';
 import {
   useRetrospectiveDashboard,
   ActionTypes,
-} from '../context/RetrospectiveDashboardContext.jsx';
+} from '../context/RetrospectiveDashboardContext';
 import { apiService } from '../services/api';
 import { extractTableProperties } from '../utils/ogcTransformers';
 import { toPrimaryVariableName } from '../utils/durationUtils';

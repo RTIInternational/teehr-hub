@@ -1,12 +1,9 @@
-import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
+import { defineConfig } from 'vite';
 
 // https://vitejs.dev/config/
 export default defineConfig({
   plugins: [react()],
-  build: {
-    sourcemap: false, // Disable source maps in production to avoid dev tools errors
-  },
   server: {
     host: '0.0.0.0', // Allow external connections in Docker
     port: 8080,
@@ -29,6 +26,7 @@ export default defineConfig({
   },
   build: {
     outDir: 'build',
+    sourcemap: false, // Disable source maps in production to avoid dev tools errors
   },
   publicDir: 'public',
 });

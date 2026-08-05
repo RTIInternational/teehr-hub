@@ -2,17 +2,17 @@ import { useCallback, useEffect } from 'react';
 import { Card } from 'react-bootstrap';
 import Tab from 'react-bootstrap/Tab';
 import Tabs from 'react-bootstrap/Tabs';
-import { useNwmdDashboard, ActionTypes } from '../../../context/NwmdDashboardContext.jsx';
+import { useNwmdDashboard, ActionTypes } from '../../../context/NwmdDashboardContext';
 import { useNwmdLocationSelection, useNwmdFilters } from '../../../hooks/useNwmdDataFetching';
-import { getMetricLabel } from '../../common/dashboard/utils.js';
-import { CdfPlot } from './CdfPlot.jsx';
-import { CdfSidebar } from './CdfSidebar.jsx';
-import { FilterSidebar } from './FilterSidebar.jsx';
-import LeadTimeBinPlot from './LeadTimeBinPlot.jsx';
-import { NwmdMapComponent } from './NwmdMapComponent.jsx';
-import { SiteInfo } from './SiteInfo.jsx';
-import TimeseriesNoControls from './TimeseriesNoControls.jsx';
-import { useCdfPlots } from './useCdfPlots.js';
+import { getMetricLabel } from '../../common/dashboard/utils';
+import { CdfPlot } from './CdfPlot';
+import { CdfSidebar } from './CdfSidebar';
+import { FilterSidebar } from './FilterSidebar';
+import LeadTimeBinPlot from './LeadTimeBinPlot';
+import { NwmdMapComponent } from './NwmdMapComponent';
+import { SiteInfo } from './SiteInfo';
+import TimeseriesNoControls from './TimeseriesNoControls';
+import { useCdfPlots } from './useCdfPlots';
 import { useNwmdData } from './useNwmdData';
 
 const Dashboard = () => {

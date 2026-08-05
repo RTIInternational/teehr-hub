@@ -10,7 +10,7 @@
  * so that map state is preserved across tab switches.
  */
 import { useState } from 'react';
-import { useDataDashboard, ActionTypes } from '../../../context/DataDashboardContext.jsx';
+import { useDataDashboard, ActionTypes } from '../../../context/DataDashboardContext';
 import ConfigurationsSummaryTab from './ConfigurationsSummaryTab';
 import LocationsSummaryTab from './LocationsSummaryTab';
 import CompletenessTab from './CompletenessTab';

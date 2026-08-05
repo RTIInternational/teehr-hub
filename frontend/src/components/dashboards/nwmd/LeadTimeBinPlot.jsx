@@ -1,7 +1,7 @@
 import Plotly from 'plotly.js-dist-min';
 import { useEffect, useMemo, useRef } from 'react';
 import { Card, Spinner } from 'react-bootstrap';
-import { getMetricLabel } from '../../common/dashboard/utils.js';
+import { getMetricLabel } from '../../common/dashboard/utils';
 import { parseDurationToHours } from './leadTimeBins';
 
 const getMinimumLeadTimeHours = (leadTimeBin) => {

@@ -1,5 +1,5 @@
 import { useCallback } from 'react';
-import { useForecastDashboard, ActionTypes } from '../context/ForecastDashboardContext.jsx';
+import { useForecastDashboard, ActionTypes } from '../context/ForecastDashboardContext';
 import { apiService } from '../services/api';
 import { extractTableProperties } from '../utils/ogcTransformers';
 import { isTimestepVariable, ISO_TO_DURATION_NAME } from '../utils/durationUtils';

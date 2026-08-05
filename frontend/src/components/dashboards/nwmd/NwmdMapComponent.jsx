@@ -1,8 +1,8 @@
 import maplibregl from 'maplibre-gl';
 import { useEffect, useRef, useCallback, useMemo, useState } from 'react';
 import 'maplibre-gl/dist/maplibre-gl.css';
-import MapLegend from '../../common/dashboard/MapLegend.jsx';
-import { getMetricColorExpression } from '../../common/dashboard/utils.js';
+import MapLegend from '../../common/dashboard/MapLegend';
+import { getMetricColorExpression } from '../../common/dashboard/utils';
 
 export const NwmdMapComponent = ({
   state,
