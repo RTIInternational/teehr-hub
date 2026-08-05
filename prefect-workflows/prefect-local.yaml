@@ -594,11 +594,6 @@ deployments:
         "parser_type": "hdf",
         "fsspec_kwargs": {"token": "anon"},
         "obstore_kwargs": {"skip_signature": true},
-        "s3_storage_kwargs": {
-            "allow_http": true,
-            "force_path_style": true,
-            "from_env": true
-        },
         "xconcat_kwargs": {
           "coords": "minimal",
           "compat": "override",
@@ -621,12 +616,7 @@ deployments:
         "source_bucket": "gs://national-water-model",
         "glob_pattern": "",
         "configuration_name": "nwm30-forcing-analysis-assim",
-        "factors": [1, 2, 4],
-        "s3_storage_kwargs": {
-            "allow_http": true,
-            "force_path_style": true,
-            "from_env": true
-        }
+        "factors": [1, 2, 4]
       }
     }
     work_pool: *work_pool
@@ -643,12 +633,7 @@ deployments:
         "location_id_prefix": "huc12",
         "configuration_name": "nwm30-forcing-analysis-assim",
         "grid_variable_name": "RAINRATE",
-        "domain_name": "nwm30_forcing_conus",
-        "s3_storage_kwargs": {
-            "allow_http": true,
-            "force_path_style": true,
-            "from_env": true
-        }
+        "domain_name": "nwm30_forcing_conus"
       }
     }
     work_pool: *work_pool
@@ -664,12 +649,7 @@ deployments:
         "location_id_prefix": "huc12",
         "configuration_name": "nwm30-forcing-analysis-assim",
         "grid_variable_name": "RAINRATE",
-        "domain_name": "nwm30_forcing_conus",
-        "s3_storage_kwargs": {
-            "allow_http": true,
-            "force_path_style": true,
-            "from_env": true
-        }
+        "domain_name": "nwm30_forcing_conus"
       }
     }
     work_pool: *work_pool
