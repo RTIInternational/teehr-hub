@@ -75,6 +75,28 @@ def build_icechunk_s3_storage(bucket: str, prefix: str, **kwargs) -> ic.storage.
     return ic.s3_storage(bucket=bucket, prefix=prefix, **kwargs)
 
 
+def _resolve_virtual_chunk_credentials(
+    url_prefix: str,
+    credentials_kwargs: dict = {"anonymous": True}
+) -> ic.Credentials | None:
+    """Resolve credentials for a virtual chunk container based on the URL prefix.
+    
+    Pass credentials_kwargs to override s3 or gcs defaults. Current defaults are anonymous
+    access for both s3 and gcs. These give the Icechunk repo access to the source
+    data virtually.
+    """
+    scheme = url_prefix.split("://", 1)[0]
+    if scheme in ("http", "https"):
+        return ic.credentials.HttpAccess
+    if scheme == "file":
+        return ic.credentials.LocalFileSystemAccess
+    if scheme in ("gs", "gcs"):
+        return ic.Credentials.Gcs(ic.credentials.gcs_credentials(**credentials_kwargs))
+    if scheme == "s3":
+        return ic.Credentials.S3(ic.credentials.s3_credentials(**credentials_kwargs))
+    return None
+
+
 @task(cache_policy=NO_CACHE)
 def configure_icechunk_s3_repo(
     source_bucket: str,
@@ -123,20 +145,21 @@ def configure_icechunk_s3_repo(
         store=virtual_store
     )
     config.set_virtual_chunk_container(container)
+    vc_credentials = _resolve_virtual_chunk_credentials(url_prefix)
 
     if ic.Repository.exists(storage):
         logger.info(f"Existing IceChunk repository found at bucket: {dest_bucket}, prefix: {prefix}. Opening repository.")
         repo = ic.Repository.open(
             storage,
             config=config,
-            authorize_virtual_chunk_access={url_prefix: None}
+            authorize_virtual_chunk_access={url_prefix: vc_credentials}
         )
     else:
         logger.info(f"No existing IceChunk repository found at bucket: {dest_bucket}, prefix: {prefix}. Creating new repository.")
         repo = ic.Repository.create(
             storage,
             config=config,
-            authorize_virtual_chunk_access={url_prefix: None}
+            authorize_virtual_chunk_access={url_prefix: vc_credentials}
         )
     repo.save_config()
     logger.info(f"IceChunk repository configured at bucket: {dest_bucket}, prefix: {prefix}")
