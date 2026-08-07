@@ -1,17 +1,34 @@
-import { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Card, Spinner, ButtonGroup, Button } from 'react-bootstrap';
+import { usePrimaryTimeseries, useSecondaryTimeseries } from '../../../shared/queries/timeseries';
+import type { TimeseriesFilters, TimeseriesState } from '../../../shared/types/timeseries';
 import { PlotlyChart } from '../../common';
 
-const TimeseriesComponent = ({ state, TimeseriesControls, timeseriesControlsProps = {} }) => {
-  const [viewMode, setViewMode] = useState('filters');
-  const hasData =
-    state.timeseriesData.primary?.length > 0 || state.timeseriesData.secondary?.length > 0;
+type TimeseriesControlInjectedProps = {
+  setRequestFilters: (filters: TimeseriesFilters) => void;
+  onViewModeChange: (viewMode: string) => void;
+};
 
-  // Reset to filters view when location changes - this is a valid pattern for resetting
-  // local state when a prop changes (see React docs on "Resetting state when a prop changes")
-  useEffect(() => {
-    setViewMode('filters');
-  }, [state.selectedLocation]);
+type TimeseriesComponentProps<TControlsProps extends object> = {
+  state: TimeseriesState;
+  Controls: React.ComponentType<TControlsProps & TimeseriesControlInjectedProps>;
+  controlsProps: TControlsProps;
+};
+
+const TimeseriesComponent = <TControlsProps extends object>({
+  state,
+  Controls,
+  controlsProps,
+}: TimeseriesComponentProps<TControlsProps>) => {
+  const [viewMode, setViewMode] = useState('filters');
+  const [requestFilters, setRequestFilters] = useState<TimeseriesFilters>();
+  const primary = usePrimaryTimeseries(requestFilters);
+  const secondary = useSecondaryTimeseries(requestFilters);
+
+  const primaryData = primary.data ?? [];
+  const secondaryData = secondary.data ?? [];
+
+  const hasData = primaryData.length > 0 || secondaryData.length > 0;
 
   return (
     <Card className="shadow-lg h-100 d-flex flex-column" style={{ borderRadius: '8px' }}>
@@ -49,7 +66,7 @@ const TimeseriesComponent = ({ state, TimeseriesControls, timeseriesControlsProp
               <p>Click on a location on the map to view its time series data.</p>
             </div>
           </div>
-        ) : state.timeseriesLoading ? (
+        ) : primary.isLoading || secondary.isLoading ? (
           <div className="d-flex justify-content-center align-items-center flex-grow-1">
             <div className="text-center">
               <Spinner animation="border" variant="primary" />
@@ -63,8 +80,10 @@ const TimeseriesComponent = ({ state, TimeseriesControls, timeseriesControlsProp
               hasData ? (
                 <div className="flex-grow-1 p-2" style={{ overflow: 'hidden', minHeight: 0 }}>
                   <PlotlyChart
-                    primaryData={state.timeseriesData.primary}
-                    secondaryData={state.timeseriesData.secondary}
+                    primaryData={primaryData}
+                    secondaryData={secondaryData}
+                    selectedLocation={state.selectedLocation}
+                    filters={state.timeseriesFilters}
                     height="100%"
                   />
                 </div>
@@ -82,7 +101,11 @@ const TimeseriesComponent = ({ state, TimeseriesControls, timeseriesControlsProp
               )
             ) : (
               <div className="p-3 flex-grow-1 overflow-auto">
-                <TimeseriesControls {...timeseriesControlsProps} onViewModeChange={setViewMode} />
+                <Controls
+                  {...controlsProps}
+                  setRequestFilters={setRequestFilters}
+                  onViewModeChange={setViewMode}
+                />
               </div>
             )}
           </>

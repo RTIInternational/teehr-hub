@@ -1,48 +1,39 @@
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
 import { Form, Row, Col, Button, Tabs, Tab } from 'react-bootstrap';
-import MultiSelectDropdown from '../../common/MultiSelectDropdown';
+import type { MapLocation } from '../../../shared/types/locations';
+import type { MapFilters } from '../../../shared/types/maps';
+import type { TimeseriesFilters, TimeseriesState } from '../../../shared/types/timeseries';
 import {
   toDisplayVariableName,
   fromDisplayVariableName,
   isTimestepVariable,
   DURATION_NAME_TO_ISO,
 } from '../../../utils/durationUtils';
+import MultiSelectDropdown from '../../common/MultiSelectDropdown';
+
+export type ForecastTimeseriesControlsProps = {
+  state: TimeseriesState;
+  timeseriesFilters: TimeseriesFilters;
+  updateTimeseriesFilters: (patch: Partial<TimeseriesFilters>) => void;
+  setRequestFilters: (filters: TimeseriesFilters) => void;
+  selectedLocation: MapLocation;
+  mapFilters: MapFilters;
+  onViewModeChange: (viewMode: string) => void;
+};
 
 const ForecastTimeseriesControls = ({
   state,
   timeseriesFilters,
   updateTimeseriesFilters,
-  loadTimeseries,
+  setRequestFilters,
   selectedLocation,
   onViewModeChange,
-}) => {
+}: ForecastTimeseriesControlsProps) => {
   const [activeTab, setActiveTab] = useState('observations');
+  const primaryFilters = timeseriesFilters.primary;
+  const secondaryFilters = timeseriesFilters.secondary;
 
-  const primaryFilters = useMemo(() => {
-    const nested = timeseriesFilters?.primary || {};
-    return {
-      variables:
-        nested.variables ?? (timeseriesFilters?.variable ? [timeseriesFilters.variable] : []),
-      start_date: nested.start_date ?? timeseriesFilters?.start_date ?? null,
-      end_date: nested.end_date ?? timeseriesFilters?.end_date ?? null,
-      duration: nested.duration ?? null,
-    };
-  }, [timeseriesFilters]);
-
-  const secondaryFilters = useMemo(() => {
-    const nested = timeseriesFilters?.secondary || {};
-    return {
-      configurations: nested.configurations ?? timeseriesFilters?.configurations ?? [],
-      variables:
-        nested.variables ?? (timeseriesFilters?.variable ? [timeseriesFilters.variable] : []),
-      reference_start_date:
-        nested.reference_start_date ?? timeseriesFilters?.reference_start_date ?? null,
-      reference_end_date:
-        nested.reference_end_date ?? timeseriesFilters?.reference_end_date ?? null,
-    };
-  }, [timeseriesFilters]);
-
-  const handlePrimaryFilterChange = (field, value) => {
+  const handlePrimaryFilterChange = (field: string, value: unknown) => {
     updateTimeseriesFilters({
       primary: {
         ...primaryFilters,
@@ -51,7 +42,7 @@ const ForecastTimeseriesControls = ({
     });
   };
 
-  const handleSecondaryFilterChange = (field, value) => {
+  const handleSecondaryFilterChange = (field: string, value: unknown) => {
     updateTimeseriesFilters({
       secondary: {
         ...secondaryFilters,
@@ -70,7 +61,7 @@ const ForecastTimeseriesControls = ({
   const handleLoadData = async () => {
     if (!canLoadTimeseries) return;
 
-    await loadTimeseries({
+    setRequestFilters({
       primary_location_id: selectedLocation.primary_location_id,
       primary: primaryFilters,
       secondary: secondaryFilters,

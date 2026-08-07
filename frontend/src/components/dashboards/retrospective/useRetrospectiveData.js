@@ -6,7 +6,7 @@ import { useRetrospectiveDataFetching } from '../../../hooks/useRetrospectiveDat
  * Handles the sim_metrics_by_location table specifically
  */
 export const useRetrospectiveData = () => {
-  const { loadConfigurations, loadVariables, loadLocations, loadTimeseries, ...otherHooks } =
+  const { loadConfigurations, loadVariables, loadLocations, ...otherHooks } =
     useRetrospectiveDataFetching();
 
   // Table name for retrospective dashboard
@@ -30,14 +30,6 @@ export const useRetrospectiveData = () => {
     [loadLocations]
   );
 
-  // Load timeseries with retrospective table context
-  const loadSimTimeseries = useCallback(
-    async (filters = {}) => {
-      return loadTimeseries({ ...filters, table: TABLE_NAME });
-    },
-    [loadTimeseries]
-  );
-
   // Initialize all retrospective data
   const initializeRetrospectiveData = useCallback(async () => {
     console.log('useRetrospectiveData: Starting initialization...');
@@ -55,7 +47,6 @@ export const useRetrospectiveData = () => {
     loadConfigurations: loadSimConfigurations,
     loadVariables: loadSimVariables,
     loadLocations: loadSimLocations,
-    loadTimeseries: loadSimTimeseries,
     initializeRetrospectiveData,
     tableName: TABLE_NAME,
   };

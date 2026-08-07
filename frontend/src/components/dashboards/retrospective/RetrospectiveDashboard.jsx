@@ -21,7 +21,7 @@ export const RetrospectiveDashboard = () => {
   const tables = ['sim_metrics_by_location'];
 
   const { state, dispatch } = useRetrospectiveDashboard();
-  const { initializeRetrospectiveData, loadLocations, loadTimeseries } = useRetrospectiveData();
+  const { initializeRetrospectiveData, loadLocations } = useRetrospectiveData();
   const { selectLocation, selectedLocation } = useRetrospectiveLocationSelection();
   const { mapFilters, updateMapFilters, timeseriesFilters, updateTimeseriesFilters } =
     useRetrospectiveFilters();
@@ -34,18 +34,6 @@ export const RetrospectiveDashboard = () => {
       mapFilters={mapFilters}
       updateMapFilters={updateMapFilters}
       loadLocations={loadLocations}
-    />
-  );
-
-  const RetrospectiveTimeseriesControls = ({ onViewModeChange }) => (
-    <TimeseriesControls
-      state={state}
-      timeseriesFilters={timeseriesFilters}
-      updateTimeseriesFilters={updateTimeseriesFilters}
-      loadTimeseries={loadTimeseries}
-      selectedLocation={selectedLocation}
-      onViewModeChange={onViewModeChange}
-      mapFilters={mapFilters}
     />
   );
 
@@ -155,8 +143,16 @@ export const RetrospectiveDashboard = () => {
           >
             {state.selectedLocation ? (
               <TimeseriesComponent
+                key={selectedLocation.primary_location_id}
                 state={state}
-                TimeseriesControls={RetrospectiveTimeseriesControls}
+                Controls={TimeseriesControls}
+                controlsProps={{
+                  state,
+                  timeseriesFilters,
+                  updateTimeseriesFilters,
+                  selectedLocation,
+                  mapFilters,
+                }}
               />
             ) : (
               <div className="d-flex align-items-center justify-content-center h-100 text-muted">

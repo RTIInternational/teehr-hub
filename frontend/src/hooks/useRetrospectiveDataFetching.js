@@ -1,7 +1,6 @@
 import { useCallback } from 'react';
 import { useRetrospectiveDashboard, ActionTypes } from '../context/RetrospectiveDashboardContext';
 import { apiService } from '../services/api';
-import { toPrimaryVariableName } from '../utils/durationUtils';
 
 // Custom hooks for retrospective dashboard data fetching
 export const useRetrospectiveDataFetching = () => {
@@ -78,66 +77,6 @@ export const useRetrospectiveDataFetching = () => {
     [dispatch]
   );
 
-  // Load timeseries data
-  const loadTimeseries = useCallback(
-    async (filters = {}) => {
-      try {
-        // Clear existing timeseries data first
-        dispatch({ type: ActionTypes.CLEAR_TIMESERIES });
-        dispatch({ type: ActionTypes.SET_LOADING, payload: { timeseries: true } });
-
-        const { primary_location_id, configurations, variable, start_date, end_date, duration } =
-          filters;
-
-        if (!primary_location_id || !configurations?.length || !variable) {
-          throw new Error(
-            'Missing required parameters: primary_location_id, configurations, and variable are required'
-          );
-        }
-
-        // Load primary data (USGS observations)
-        // Convert _inst variable names to primary_timeseries canonical form (e.g. streamflow_hourly_inst -> streamflow_none_inst)
-        // and include duration filter only for instantaneous (_inst) variables
-        const primaryVariable = variable?.endsWith('_inst')
-          ? toPrimaryVariableName(variable)
-          : variable;
-        const primaryFilters = {
-          variable: primaryVariable,
-          start_date,
-          end_date,
-          ...(variable?.endsWith('_inst') && duration && { duration }),
-        };
-        const primaryData = await apiService.getPrimaryTimeseries(
-          primary_location_id,
-          primaryFilters
-        );
-        dispatch({ type: ActionTypes.SET_PRIMARY_TIMESERIES, payload: primaryData });
-
-        // Load secondary data with multi-value configuration filtering
-        const secondaryFilters = {
-          variable,
-          start_date,
-          end_date,
-          configuration: configurations,
-        };
-
-        const secondaryData = await apiService.getSecondaryTimeseries(
-          primary_location_id,
-          secondaryFilters
-        );
-        dispatch({ type: ActionTypes.SET_SECONDARY_TIMESERIES, payload: secondaryData });
-      } catch (error) {
-        console.error('Error loading timeseries:', error);
-        dispatch({ type: ActionTypes.SET_LOADING, payload: { timeseries: false } });
-        dispatch({
-          type: ActionTypes.SET_ERROR,
-          payload: `Failed to load timeseries: ${error.message}`,
-        });
-      }
-    },
-    [dispatch]
-  );
-
   // Initialize all data
   const initializeData = useCallback(async () => {
     try {
@@ -151,7 +90,6 @@ export const useRetrospectiveDataFetching = () => {
     loadConfigurations,
     loadVariables,
     loadLocations,
-    loadTimeseries,
     initializeData,
   };
 };

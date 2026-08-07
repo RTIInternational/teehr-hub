@@ -1,7 +1,12 @@
-import React from 'react';
 import { Card, CloseButton } from 'react-bootstrap';
+import type { MapLocation } from '../../shared/types/locations';
 
-const LocationCard = ({ selectedLocation, onClose }) => {
+type LocationCardProps = {
+  selectedLocation: MapLocation;
+  onClose: () => void;
+};
+
+const LocationCard = ({ selectedLocation, onClose }: LocationCardProps) => {
   return (
     <Card className="shadow-sm" style={{ borderRadius: '8px' }}>
       <Card.Header className="py-2 px-3 d-flex justify-content-between align-items-center bg-light">
@@ -14,9 +19,7 @@ const LocationCard = ({ selectedLocation, onClose }) => {
             {selectedLocation ? selectedLocation.name : 'Select a Location'}
           </span>
         </div>
-        {selectedLocation && (
-          <CloseButton size="sm" aria-label="Close" onClick={onClose} className="ms-2" />
-        )}
+        {selectedLocation && <CloseButton aria-label="Close" onClick={onClose} className="ms-2" />}
       </Card.Header>
     </Card>
   );
