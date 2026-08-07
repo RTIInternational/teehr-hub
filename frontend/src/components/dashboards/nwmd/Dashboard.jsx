@@ -16,6 +16,8 @@ import { useCdfPlots } from './useCdfPlots';
 import { useNwmdData } from './useNwmdData';
 
 const Dashboard = () => {
+  const tables = ['nwmd_metrics_by_location'];
+
   const { state, dispatch } = useNwmdDashboard();
   const {
     initializeNwmdData,
@@ -107,13 +109,19 @@ const Dashboard = () => {
               <Tab eventKey="filter" title="Filters" className="overflow-y-auto">
                 <FilterSidebar
                   state={state}
+                  tables={tables}
                   mapFilters={mapFilters}
                   updateMapFilters={updateMapFilters}
                   loadLocations={loadLocations}
                 />
               </Tab>
               <Tab eventKey="cdf" title="CDF Config">
-                <CdfSidebar state={state} plotIds={plotIds} setCdfPlotMetric={setCdfPlotMetric} />
+                <CdfSidebar
+                  state={state}
+                  tables={tables}
+                  plotIds={plotIds}
+                  setCdfPlotMetric={setCdfPlotMetric}
+                />
               </Tab>
             </Tabs>
           </div>

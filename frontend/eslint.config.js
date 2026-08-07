@@ -56,6 +56,7 @@ const sharedRules = {
   'no-console': ['warn', { allow: ['warn', 'error'] }],
   'prefer-const': 'warn',
   'no-var': 'error',
+  'no-console': 'off',
 
   // React specific
   'react/prop-types': 'off',
@@ -113,6 +114,7 @@ export default [
       ...sharedRules,
       ...tsPlugin.configs.recommended.rules,
       'no-unused-vars': 'off',
+      'no-undef': 'off',
       '@typescript-eslint/no-unused-vars': ['warn', { argsIgnorePattern: '^_' }],
     },
   },

@@ -21,7 +21,6 @@ const initialForecastState = {
   configurations: [],
   variables: [],
   primaryVariables: [],
-  tableProperties: {}, // Will contain { "table_name": { metrics: [], group_by: [], description: "" } }
 
   // Map filters (original structure)
   mapFilters: {
@@ -55,14 +54,9 @@ const initialForecastState = {
     secondary: [],
   },
 
-  // Location metrics
-  locationMetrics: [],
-
   // Loading states
   locationsLoading: false,
   timeseriesLoading: false,
-  metricsLoading: false,
-  tablePropertiesLoading: false,
 
   // Map state
   mapLoaded: false,
@@ -78,7 +72,6 @@ export const ActionTypes = {
   SET_CONFIGURATIONS: 'SET_CONFIGURATIONS',
   SET_VARIABLES: 'SET_VARIABLES',
   SET_PRIMARY_VARIABLES: 'SET_PRIMARY_VARIABLES',
-  SET_TABLE_PROPERTIES: 'SET_TABLE_PROPERTIES',
 
   // Filter updates
   UPDATE_MAP_FILTERS: 'UPDATE_MAP_FILTERS',
@@ -91,10 +84,6 @@ export const ActionTypes = {
   SET_PRIMARY_TIMESERIES: 'SET_PRIMARY_TIMESERIES',
   SET_SECONDARY_TIMESERIES: 'SET_SECONDARY_TIMESERIES',
   CLEAR_TIMESERIES: 'CLEAR_TIMESERIES',
-
-  // Location metrics
-  SET_LOCATION_METRICS: 'SET_LOCATION_METRICS',
-  CLEAR_LOCATION_METRICS: 'CLEAR_LOCATION_METRICS',
 
   // Loading states
   SET_LOADING: 'SET_LOADING',
@@ -200,19 +189,8 @@ const forecastDashboardReducer = (state, action) => {
       };
     }
 
-    case ActionTypes.SET_TABLE_PROPERTIES: {
-      const tableProperties = action.payload || {};
-      return {
-        ...state,
-        tableProperties,
-        tablePropertiesLoading: false,
-      };
-    }
-
-    case ActionTypes.UPDATE_MAP_FILTERS:
-      // Keep timeseries defaults in sync with map display filters.
-      // This mirrors retrospective behavior where map filter changes reset
-      // the default timeseries selections.
+    case ActionTypes.UPDATE_MAP_FILTERS: {
+      // the default timeseries selections. // This mirrors retrospective behavior where map filter changes reset // Keep timeseries defaults in sync with map display filters.
       const mapTimeseriesSync = {};
       if (action.payload.configuration !== undefined) {
         mapTimeseriesSync.secondary = {
@@ -239,6 +217,7 @@ const forecastDashboardReducer = (state, action) => {
           ...mapTimeseriesSync,
         },
       };
+    }
 
     case ActionTypes.UPDATE_TIMESERIES_FILTERS: {
       // Support both nested ({ primary, secondary }) and legacy flat payloads.
@@ -333,12 +312,6 @@ const forecastDashboardReducer = (state, action) => {
       if ('timeseries' in action.payload) {
         loadingUpdates.timeseriesLoading = action.payload.timeseries;
       }
-      if ('metricsLoading' in action.payload) {
-        loadingUpdates.metricsLoading = action.payload.metricsLoading;
-      }
-      if ('tablePropertiesLoading' in action.payload) {
-        loadingUpdates.tablePropertiesLoading = action.payload.tablePropertiesLoading;
-      }
       if ('configurations' in action.payload) {
         loadingUpdates.configurationsLoading = action.payload.configurations;
       }
@@ -367,20 +340,6 @@ const forecastDashboardReducer = (state, action) => {
       return {
         ...state,
         error: null,
-      };
-
-    case ActionTypes.SET_LOCATION_METRICS:
-      return {
-        ...state,
-        locationMetrics: action.payload,
-        metricsLoading: false,
-      };
-
-    case ActionTypes.CLEAR_LOCATION_METRICS:
-      return {
-        ...state,
-        locationMetrics: [],
-        metricsLoading: false,
       };
 
     default:

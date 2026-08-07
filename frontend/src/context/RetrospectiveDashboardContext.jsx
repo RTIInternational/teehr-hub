@@ -12,7 +12,6 @@ const initialRetrospectiveState = {
   locations: { features: [] },
   configurations: [],
   variables: [],
-  tableProperties: {}, // Will contain { "table_name": { metrics: [], group_by: [], description: "" } }
 
   // Map filters (original structure)
   mapFilters: {
@@ -41,14 +40,9 @@ const initialRetrospectiveState = {
     secondary: [],
   },
 
-  // Metrics table data
-  locationMetrics: [],
-
   // Loading states
   locationsLoading: false,
   timeseriesLoading: false,
-  metricsLoading: false,
-  tablePropertiesLoading: false,
 
   // Map state
   mapLoaded: false,
@@ -63,7 +57,6 @@ export const ActionTypes = {
   SET_LOCATIONS: 'SET_LOCATIONS',
   SET_CONFIGURATIONS: 'SET_CONFIGURATIONS',
   SET_VARIABLES: 'SET_VARIABLES',
-  SET_TABLE_PROPERTIES: 'SET_TABLE_PROPERTIES',
 
   // Filter updates
   UPDATE_MAP_FILTERS: 'UPDATE_MAP_FILTERS',
@@ -76,10 +69,6 @@ export const ActionTypes = {
   SET_PRIMARY_TIMESERIES: 'SET_PRIMARY_TIMESERIES',
   SET_SECONDARY_TIMESERIES: 'SET_SECONDARY_TIMESERIES',
   CLEAR_TIMESERIES: 'CLEAR_TIMESERIES',
-
-  // Location metrics
-  SET_LOCATION_METRICS: 'SET_LOCATION_METRICS',
-  CLEAR_LOCATION_METRICS: 'CLEAR_LOCATION_METRICS',
 
   // Loading states
   SET_LOADING: 'SET_LOADING',
@@ -102,7 +91,7 @@ const retrospectiveDashboardReducer = (state, action) => {
         locationsLoading: false,
       };
 
-    case ActionTypes.SET_CONFIGURATIONS:
+    case ActionTypes.SET_CONFIGURATIONS: {
       const configurations = Array.isArray(action.payload) ? action.payload : [];
       const defaultConfig = selectDefault(
         RETROSPECTIVE_DASHBOARD_DEFAULTS.preferredConfiguration,
@@ -126,8 +115,9 @@ const retrospectiveDashboardReducer = (state, action) => {
                 : [],
         },
       };
+    }
 
-    case ActionTypes.SET_VARIABLES:
+    case ActionTypes.SET_VARIABLES: {
       const variables = Array.isArray(action.payload) ? action.payload : [];
       const defaultVariable = selectDefault(
         RETROSPECTIVE_DASHBOARD_DEFAULTS.preferredVariable,
@@ -146,18 +136,10 @@ const retrospectiveDashboardReducer = (state, action) => {
           variable: state.timeseriesFilters.variable || defaultVariable,
         },
       };
+    }
 
-    case ActionTypes.SET_TABLE_PROPERTIES:
-      const tableProperties = action.payload || {};
-      return {
-        ...state,
-        tableProperties,
-        tablePropertiesLoading: false,
-      };
-
-    case ActionTypes.UPDATE_MAP_FILTERS:
-      // Keep map display and default timeseries filters aligned.
-      // NOTE: This behavior is intentionally mirrored in ForecastDashboardContext.
+    case ActionTypes.UPDATE_MAP_FILTERS: {
+      // NOTE: This behavior is intentionally mirrored in ForecastDashboardContext. // Keep map display and default timeseries filters aligned.
       const mapTimeseriesSync = {};
       if (action.payload.configuration !== undefined) {
         // Sync map configuration to timeseries configurations array
@@ -179,6 +161,7 @@ const retrospectiveDashboardReducer = (state, action) => {
           ...mapTimeseriesSync,
         },
       };
+    }
 
     case ActionTypes.UPDATE_TIMESERIES_FILTERS:
       return {
@@ -223,7 +206,7 @@ const retrospectiveDashboardReducer = (state, action) => {
         },
       };
 
-    case ActionTypes.SET_LOADING:
+    case ActionTypes.SET_LOADING: {
       // Map shorthand keys to actual state property names
       const loadingUpdates = {};
       if ('locations' in action.payload) {
@@ -231,12 +214,6 @@ const retrospectiveDashboardReducer = (state, action) => {
       }
       if ('timeseries' in action.payload) {
         loadingUpdates.timeseriesLoading = action.payload.timeseries;
-      }
-      if ('metricsLoading' in action.payload) {
-        loadingUpdates.metricsLoading = action.payload.metricsLoading;
-      }
-      if ('tablePropertiesLoading' in action.payload) {
-        loadingUpdates.tablePropertiesLoading = action.payload.tablePropertiesLoading;
       }
       if ('configurations' in action.payload) {
         loadingUpdates.configurationsLoading = action.payload.configurations;
@@ -248,6 +225,7 @@ const retrospectiveDashboardReducer = (state, action) => {
         ...state,
         ...loadingUpdates,
       };
+    }
 
     case ActionTypes.SET_MAP_LOADED:
       return {
@@ -265,20 +243,6 @@ const retrospectiveDashboardReducer = (state, action) => {
       return {
         ...state,
         error: null,
-      };
-
-    case ActionTypes.SET_LOCATION_METRICS:
-      return {
-        ...state,
-        locationMetrics: action.payload,
-        metricsLoading: false,
-      };
-
-    case ActionTypes.CLEAR_LOCATION_METRICS:
-      return {
-        ...state,
-        locationMetrics: [],
-        metricsLoading: false,
       };
 
     default:

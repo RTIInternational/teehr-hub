@@ -1,7 +1,6 @@
 import { useCallback } from 'react';
 import { useForecastDashboard, ActionTypes } from '../context/ForecastDashboardContext';
 import { apiService } from '../services/api';
-import { extractTableProperties } from '../utils/ogcTransformers';
 import { isTimestepVariable, ISO_TO_DURATION_NAME } from '../utils/durationUtils';
 
 // Custom hooks for forecast dashboard data fetching
@@ -56,36 +55,6 @@ export const useForecastDataFetching = () => {
       });
     }
   }, [dispatch]);
-
-  // Load table properties (batch) from queryables
-  const loadTableProperties = useCallback(
-    async (tables) => {
-      try {
-        dispatch({ type: ActionTypes.SET_LOADING, payload: { tablePropertiesLoading: true } });
-        const tableArray = Array.isArray(tables) ? tables : [tables];
-
-        const results = await Promise.all(
-          tableArray.map(async (table) => {
-            const queryables = await apiService.getQueryables(table);
-            return { table, properties: extractTableProperties(queryables) };
-          })
-        );
-
-        const tableProperties = results.reduce((acc, { table, properties }) => {
-          acc[table] = properties;
-          return acc;
-        }, {});
-
-        dispatch({ type: ActionTypes.SET_TABLE_PROPERTIES, payload: tableProperties });
-      } catch (error) {
-        dispatch({
-          type: ActionTypes.SET_ERROR,
-          payload: `Failed to load table properties: ${error.message}`,
-        });
-      }
-    },
-    [dispatch]
-  );
 
   // Load locations with filtering
   const loadLocations = useCallback(
@@ -199,62 +168,21 @@ export const useForecastDataFetching = () => {
     [dispatch]
   );
 
-  // Load location-specific metrics
-  const loadLocationMetrics = useCallback(
-    async (primaryLocationId, table) => {
-      try {
-        console.log('Loading metrics for location:', primaryLocationId, 'table:', table);
-        dispatch({ type: ActionTypes.SET_LOADING, payload: { metricsLoading: true } });
-
-        const metricsData = await apiService.getMetrics({
-          primary_location_id: primaryLocationId,
-          table: table,
-        });
-
-        console.log('Location metrics GeoJSON loaded:', metricsData);
-
-        // Extract raw properties from GeoJSON features for pivoting
-        let locationData = [];
-        if (metricsData?.features && metricsData.features.length > 0) {
-          // Convert each feature to a row of data
-          locationData = metricsData.features.map((feature) => {
-            return feature.properties || {};
-          });
-        }
-
-        console.log('Raw location data for pivoting:', locationData);
-        dispatch({ type: ActionTypes.SET_LOCATION_METRICS, payload: locationData });
-        return locationData;
-      } catch (error) {
-        console.error('Error loading location metrics:', error);
-        dispatch({
-          type: ActionTypes.SET_ERROR,
-          payload: `Failed to load location metrics: ${error.message}`,
-        });
-        dispatch({ type: ActionTypes.CLEAR_LOCATION_METRICS });
-        throw error;
-      }
-    },
-    [dispatch]
-  );
-
   // Initialize all data
   const initializeData = useCallback(async () => {
     try {
-      await Promise.all([loadConfigurations(), loadVariables(), loadTableProperties()]);
+      await Promise.all([loadConfigurations(), loadVariables()]);
     } catch (error) {
       console.error('Failed to initialize data:', error);
     }
-  }, [loadConfigurations, loadVariables, loadTableProperties]);
+  }, [loadConfigurations, loadVariables]);
 
   return {
     loadConfigurations,
     loadVariables,
     loadPrimaryVariables,
-    loadTableProperties,
     loadLocations,
     loadTimeseries,
-    loadLocationMetrics,
     initializeData,
   };
 };
@@ -294,8 +222,6 @@ export const useForecastLocationSelection = () => {
       dispatch({ type: ActionTypes.SELECT_LOCATION, payload: location });
       // Always clear timeseries when location changes (including deselection)
       dispatch({ type: ActionTypes.CLEAR_TIMESERIES });
-      // Clear metrics when location changes
-      dispatch({ type: ActionTypes.CLEAR_LOCATION_METRICS });
     },
     [dispatch]
   );

@@ -19,7 +19,6 @@ export const useNwmdData = () => {
     loadTableProperties,
     loadLocations,
     loadTimeseries,
-    loadLocationMetrics,
     loadLeadTimeBinMetrics,
     loadLocationMetadata,
     ...otherHooks
@@ -75,14 +74,6 @@ export const useNwmdData = () => {
     [loadTimeseries]
   );
 
-  // Load location metrics with nwmd table context
-  const loadNwmdLocationMetrics = useCallback(
-    async (primaryLocationId, selectedTable = TABLE_NAMES[0]) => {
-      return loadLocationMetrics(primaryLocationId, selectedTable);
-    },
-    [loadLocationMetrics]
-  );
-
   const loadNwmdLocationMetadata = useCallback(
     async (primaryLocationId) => {
       return loadLocationMetadata(primaryLocationId);
@@ -130,7 +121,6 @@ export const useNwmdData = () => {
     loadTableProperties: loadNwmdTableProperties,
     loadLocations: loadNwmdLocations,
     loadTimeseries: loadNwmdTimeseries,
-    loadLocationMetrics: loadNwmdLocationMetrics,
     loadLeadTimeBinMetrics: loadNwmdLeadTimeBinMetrics,
     loadLocationMetadata: loadNwmdLocationMetadata,
     initializeNwmdData: initializeNwmdData,
