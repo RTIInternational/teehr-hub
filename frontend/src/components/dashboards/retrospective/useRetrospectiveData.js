@@ -6,15 +6,8 @@ import { useRetrospectiveDataFetching } from '../../../hooks/useRetrospectiveDat
  * Handles the sim_metrics_by_location table specifically
  */
 export const useRetrospectiveData = () => {
-  const {
-    loadConfigurations,
-    loadVariables,
-    loadTableProperties,
-    loadLocations,
-    loadTimeseries,
-    loadLocationMetrics,
-    ...otherHooks
-  } = useRetrospectiveDataFetching();
+  const { loadConfigurations, loadVariables, loadLocations, loadTimeseries, ...otherHooks } =
+    useRetrospectiveDataFetching();
 
   // Table name for retrospective dashboard
   const TABLE_NAME = 'sim_metrics_by_location';
@@ -28,11 +21,6 @@ export const useRetrospectiveData = () => {
   const loadSimVariables = useCallback(async () => {
     return loadVariables(TABLE_NAME);
   }, [loadVariables]);
-
-  // Load table properties for simulation metrics
-  const loadSimTableProperties = useCallback(async () => {
-    return loadTableProperties([TABLE_NAME]);
-  }, [loadTableProperties]);
 
   // Load locations with retrospective table context
   const loadSimLocations = useCallback(
@@ -50,38 +38,24 @@ export const useRetrospectiveData = () => {
     [loadTimeseries]
   );
 
-  // Load location metrics with retrospective table context
-  const loadSimLocationMetrics = useCallback(
-    async (primaryLocationId) => {
-      return loadLocationMetrics(primaryLocationId, TABLE_NAME);
-    },
-    [loadLocationMetrics]
-  );
-
   // Initialize all retrospective data
   const initializeRetrospectiveData = useCallback(async () => {
     console.log('useRetrospectiveData: Starting initialization...');
     try {
-      const results = await Promise.all([
-        loadSimConfigurations(),
-        loadSimVariables(),
-        loadSimTableProperties(),
-      ]);
+      const results = await Promise.all([loadSimConfigurations(), loadSimVariables()]);
       console.log('useRetrospectiveData: Initialization completed successfully', results);
     } catch (error) {
       console.error('Failed to initialize retrospective data:', error);
       throw error;
     }
-  }, [loadSimConfigurations, loadSimVariables, loadSimTableProperties]);
+  }, [loadSimConfigurations, loadSimVariables]);
 
   return {
     ...otherHooks,
     loadConfigurations: loadSimConfigurations,
     loadVariables: loadSimVariables,
-    loadTableProperties: loadSimTableProperties,
     loadLocations: loadSimLocations,
     loadTimeseries: loadSimTimeseries,
-    loadLocationMetrics: loadSimLocationMetrics,
     initializeRetrospectiveData,
     tableName: TABLE_NAME,
   };

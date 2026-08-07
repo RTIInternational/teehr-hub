@@ -5,6 +5,10 @@
  * Specifically handles queryables responses with x-teehr-role extensions.
  */
 
+import type { FeatureCollection } from 'geojson';
+import type { CqlFilters } from '../shared/types/ogc';
+import type { QueryablesResponse, TableProperties } from '../shared/types/queryables';
+
 /**
  * Extract table properties from an OGC queryables response.
  *
@@ -19,7 +23,7 @@
  *   - description: Table description from schema
  *   - allProperties: Array of all property names
  */
-export const extractTableProperties = (queryables) => {
+export const extractTableProperties = (queryables: QueryablesResponse): TableProperties => {
   if (!queryables || typeof queryables !== 'object') {
     return {
       metrics: [],
@@ -70,7 +74,7 @@ export const extractTableProperties = (queryables) => {
  * @param {Object} featureCollection - GeoJSON FeatureCollection
  * @returns {Array} Array of feature properties
  */
-export const extractFeatureProperties = (featureCollection) => {
+export const extractFeatureProperties = (featureCollection: FeatureCollection) => {
   if (!featureCollection?.features) {
     return [];
   }
@@ -84,7 +88,7 @@ export const extractFeatureProperties = (featureCollection) => {
  * @param {Object} filters - Filter key-value pairs
  * @returns {string} CQL filter string
  */
-export const buildCqlFilter = (filters) => {
+export const buildCqlFilter = (filters: CqlFilters) => {
   const conditions = [];
 
   for (const [key, value] of Object.entries(filters)) {

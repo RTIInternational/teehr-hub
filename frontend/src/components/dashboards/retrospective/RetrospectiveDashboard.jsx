@@ -17,10 +17,11 @@ import {
 import { getMetricLabel } from '../../common/dashboard/utils';
 import { useRetrospectiveData } from './useRetrospectiveData';
 
-const Dashboard = () => {
+export const RetrospectiveDashboard = () => {
+  const tables = ['sim_metrics_by_location'];
+
   const { state, dispatch } = useRetrospectiveDashboard();
-  const { initializeRetrospectiveData, loadLocations, loadTimeseries, loadLocationMetrics } =
-    useRetrospectiveData();
+  const { initializeRetrospectiveData, loadLocations, loadTimeseries } = useRetrospectiveData();
   const { selectLocation, selectedLocation } = useRetrospectiveLocationSelection();
   const { mapFilters, updateMapFilters, timeseriesFilters, updateTimeseriesFilters } =
     useRetrospectiveFilters();
@@ -29,6 +30,7 @@ const Dashboard = () => {
   const RetrospectiveMapFilterButton = () => (
     <MapFilterButton
       state={state}
+      tables={tables}
       mapFilters={mapFilters}
       updateMapFilters={updateMapFilters}
       loadLocations={loadLocations}
@@ -182,15 +184,7 @@ const Dashboard = () => {
             }}
           >
             {state.selectedLocation ? (
-              <LocationMetrics
-                selectedLocation={state.selectedLocation}
-                locationMetrics={state.locationMetrics}
-                metricsLoading={state.metricsLoading}
-                error={state.error}
-                loadLocationMetrics={loadLocationMetrics}
-                tableProperties={state.tableProperties}
-                defaultTable="sim_metrics_by_location"
-              />
+              <LocationMetrics selectedLocation={state.selectedLocation} tables={tables} />
             ) : (
               <div className="d-flex align-items-center justify-content-center h-100 text-muted">
                 <div className="text-center">
@@ -206,5 +200,3 @@ const Dashboard = () => {
     </div>
   );
 };
-
-export default Dashboard;

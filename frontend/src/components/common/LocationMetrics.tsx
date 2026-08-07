@@ -1,24 +1,38 @@
-import { useEffect, useState } from 'react';
+import { useState, type ComponentType } from 'react';
 import { Card, Form, ButtonGroup, Button } from 'react-bootstrap';
+import { useLocationMetrics } from '../../shared/queries/metrics';
+import { useTableProperties } from '../../shared/queries/queryables';
+import type { MapLocation } from '../../shared/types/locations';
+import type { TableProperties } from '../../shared/types/queryables';
 import MetricsTable from './MetricsTable';
 
-const LocationMetrics = ({
-  selectedLocation,
-  locationMetrics,
-  metricsLoading,
-  error,
-  loadLocationMetrics,
-  tableProperties = {}, // Available tables with their properties
-  defaultTable = null, // Default table to use
-}) => {
-  // Get available tables that have metrics
-  const availableTables = Object.keys(tableProperties).filter(
-    (tableName) => tableProperties[tableName]?.metrics?.length > 0
-  );
+// Typed facade — remove when MetricsTable is migrated to .tsx
+type MetricsTableProps = {
+  metrics?: { [name: string]: unknown }[];
+  loading: boolean;
+  error?: string | null;
+  title?: string;
+  emptyMessage?: string;
+  showTitle?: boolean;
+  tableProperties: TableProperties | null;
+  viewMode: string;
+  onViewModeChange: (mode: string) => void;
+};
+const TypedMetricsTable = MetricsTable as unknown as ComponentType<MetricsTableProps>;
+
+type LocationMetricsProps = {
+  selectedLocation: MapLocation;
+  tables: string[];
+};
+
+const LocationMetrics = ({ selectedLocation, tables = [] }: LocationMetricsProps) => {
+  const { data: tableProperties = {} } = useTableProperties(tables);
 
   // State for selected table and view mode
-  const [selectedTable, setSelectedTable] = useState(defaultTable || availableTables[0] || null);
+  const [selectedTable, setSelectedTable] = useState(tables[0] || null);
   const [viewMode, setViewMode] = useState('table');
+
+  const metrics = useLocationMetrics(selectedLocation?.primary_location_id, selectedTable);
 
   // Check if current table has group_by fields for filter capability
   const hasFilters = selectedTable && tableProperties[selectedTable]?.group_by?.length > 0;
@@ -27,24 +41,10 @@ const LocationMetrics = ({
   const hasLeadTimeBin =
     selectedTable &&
     tableProperties[selectedTable]?.group_by?.some(
-      (field) =>
+      (field: string) =>
         field.toLowerCase().includes('lead_time_bin') ||
         field.toLowerCase().includes('forecast_lead_time_bin')
     );
-
-  // Update selected table when default changes or tables become available
-  useEffect(() => {
-    if (!selectedTable && availableTables.length > 0) {
-      setSelectedTable(defaultTable || availableTables[0]);
-    }
-  }, [defaultTable, availableTables, selectedTable]);
-
-  // Load metrics when location or table selection changes
-  useEffect(() => {
-    if (selectedLocation?.primary_location_id && selectedTable) {
-      loadLocationMetrics(selectedLocation.primary_location_id, selectedTable);
-    }
-  }, [selectedLocation?.primary_location_id, selectedTable, loadLocationMetrics]);
 
   if (!selectedLocation) {
     return null;
@@ -60,7 +60,7 @@ const LocationMetrics = ({
           <Card.Title as="h6" className="mb-0">
             📊 Metrics
           </Card.Title>
-          {availableTables.length > 1 && (
+          {tables.length > 1 && (
             <Form.Select
               size="sm"
               value={selectedTable || ''}
@@ -68,7 +68,7 @@ const LocationMetrics = ({
               style={{ width: 'auto', minWidth: '200px' }}
             >
               <option value="">Select Table...</option>
-              {availableTables.map((tableName) => {
+              {tables.map((tableName) => {
                 const description = tableProperties[tableName]?.description || tableName;
                 return (
                   <option key={tableName} value={tableName}>
@@ -110,10 +110,10 @@ const LocationMetrics = ({
         </div>
       </Card.Header>
       <Card.Body className="p-0 flex-grow-1" style={{ overflow: 'hidden', minHeight: 0 }}>
-        <MetricsTable
-          metrics={locationMetrics}
-          loading={metricsLoading}
-          error={error}
+        <TypedMetricsTable
+          metrics={metrics.data}
+          loading={metrics.isLoading}
+          error={metrics.error?.message}
           title="Metrics"
           emptyMessage={
             selectedTable

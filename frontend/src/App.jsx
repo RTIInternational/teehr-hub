@@ -7,8 +7,8 @@ import KeycloakAdmin from './components/admin/KeycloakAdmin';
 import { Home, DashboardsHome, Navbar } from './components/common';
 import { DataDashboard } from './components/dashboards/data_management';
 import { ForecastDashboard } from './components/dashboards/forecast';
-import { Dashboard } from './components/dashboards/retrospective';
 import { NwmdDashboard } from './components/dashboards/nwmd/index';
+import { RetrospectiveDashboard } from './components/dashboards/retrospective/RetrospectiveDashboard';
 import { DataDashboardProvider } from './context/DataDashboardContext';
 import { ForecastDashboardProvider } from './context/ForecastDashboardContext';
 import { NwmdDashboardProvider } from './context/NwmdDashboardContext';
@@ -97,7 +97,7 @@ const AppRoutes = () => {
             element={
               <RequireAuth>
                 <RetrospectiveDashboardProvider>
-                  <Dashboard />
+                  <RetrospectiveDashboard />
                 </RetrospectiveDashboardProvider>
               </RequireAuth>
             }

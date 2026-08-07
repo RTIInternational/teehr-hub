@@ -1,7 +1,10 @@
 import { Form } from 'react-bootstrap';
 import { NWMD_METRICS } from './utils';
+import { useTableProperties } from '../../../shared/queries/queryables';
 
-export const CdfSidebar = ({ state, plotIds, setCdfPlotMetric }) => {
+export const CdfSidebar = ({ state, tables, plotIds, setCdfPlotMetric }) => {
+  const tableProperties = useTableProperties(tables);
+
   return (
     <div className="p-3">
       {plotIds.map((plotId) => (
@@ -17,7 +20,7 @@ export const CdfSidebar = ({ state, plotIds, setCdfPlotMetric }) => {
             {(() => {
               // Try to find metrics from any available table in the batch response
               // This works for both single-table and multi-table dashboards
-              const allTableProps = state.tableProperties || {};
+              const allTableProps = tableProperties.data || {};
               const allMetrics = [];
 
               // Collect all unique metrics from all tables

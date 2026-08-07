@@ -323,51 +323,6 @@ export const useNwmdDataFetching = () => {
     [dispatch]
   );
 
-  // Load location-specific metrics
-  const loadLocationMetrics = useCallback(
-    async (primaryLocationId, table) => {
-      try {
-        console.log('Loading metrics for location:', primaryLocationId, 'table:', table);
-        dispatch({
-          type: ActionTypes.SET_LOADING,
-          payload: { metricsLoading: true },
-        });
-
-        const metricsData = await apiService.getMetrics({
-          primary_location_id: primaryLocationId,
-          table: table,
-        });
-
-        console.log('Location metrics GeoJSON loaded:', metricsData);
-
-        // Extract raw properties from GeoJSON features for pivoting
-        let locationData = [];
-        if (metricsData?.features && metricsData.features.length > 0) {
-          // Convert each feature to a row of data
-          locationData = metricsData.features.map((feature) => {
-            return feature.properties || {};
-          });
-        }
-
-        console.log('Raw location data for pivoting:', locationData);
-        dispatch({
-          type: ActionTypes.SET_LOCATION_METRICS,
-          payload: locationData,
-        });
-        return locationData;
-      } catch (error) {
-        console.error('Error loading location metrics:', error);
-        dispatch({
-          type: ActionTypes.SET_ERROR,
-          payload: `Failed to load location metrics: ${error.message}`,
-        });
-        dispatch({ type: ActionTypes.CLEAR_LOCATION_METRICS });
-        throw error;
-      }
-    },
-    [dispatch]
-  );
-
   const loadLeadTimeBinMetrics = useCallback(
     async (filters = {}, table) => {
       try {
@@ -461,7 +416,6 @@ export const useNwmdDataFetching = () => {
     loadTableProperties,
     loadLocations,
     loadTimeseries,
-    loadLocationMetrics,
     loadLeadTimeBinMetrics,
     loadLocationMetadata,
     initializeData,

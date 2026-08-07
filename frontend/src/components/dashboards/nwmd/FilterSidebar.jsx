@@ -1,6 +1,7 @@
 import { Form } from 'react-bootstrap';
 import LeadTimeRangeFilter from './LeadTimeRangeFilter';
 import { NWMD_METRICS } from './utils';
+import { useTableProperties } from '../../../shared/queries/queryables';
 
 const NULL_OPTION = '__NULL__';
 const ALT_HYPOTHESIS_OPTIONS = [
@@ -12,7 +13,9 @@ const ALT_HYPOTHESIS_OPTIONS = [
   { value: '<0', label: 'Metric < 0' },
 ];
 
-export const FilterSidebar = ({ state, mapFilters, updateMapFilters, loadLocations }) => {
+export const FilterSidebar = ({ state, tables, mapFilters, updateMapFilters, loadLocations }) => {
+  const tableProperties = useTableProperties(tables);
+
   const handleMapFilterChange = async (filterType, value) => {
     // Reset alt hypothesis when the metric changes — the operator is metric-specific
     const extraUpdates = filterType === 'metricName' ? { altHypothesis95: null } : {};
@@ -124,7 +127,7 @@ export const FilterSidebar = ({ state, mapFilters, updateMapFilters, loadLocatio
           {(() => {
             // Try to find metrics from any available table in the batch response
             // This works for both single-table and multi-table dashboards
-            const allTableProps = state.tableProperties || {};
+            const allTableProps = tableProperties.data || {};
             const allMetrics = [];
 
             // Collect all unique metrics from all tables

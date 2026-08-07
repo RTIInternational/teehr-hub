@@ -10,10 +10,8 @@ export const useForecastData = () => {
     loadConfigurations,
     loadVariables,
     loadPrimaryVariables,
-    loadTableProperties,
     loadLocations,
     loadTimeseries,
-    loadLocationMetrics,
     ...otherHooks
   } = useForecastDataFetching();
 
@@ -29,11 +27,6 @@ export const useForecastData = () => {
   const loadForecastVariables = useCallback(async () => {
     return loadVariables(TABLE_NAMES[0]); // Use location table for variables
   }, [loadVariables]);
-
-  // Load table properties for forecast metrics
-  const loadForecastTableProperties = useCallback(async () => {
-    return loadTableProperties(TABLE_NAMES);
-  }, [loadTableProperties]);
 
   // Load locations with forecast table context
   const loadForecastLocations = useCallback(
@@ -51,14 +44,6 @@ export const useForecastData = () => {
     [loadTimeseries]
   );
 
-  // Load location metrics with forecast table context
-  const loadForecastLocationMetrics = useCallback(
-    async (primaryLocationId, selectedTable = TABLE_NAMES[0]) => {
-      return loadLocationMetrics(primaryLocationId, selectedTable);
-    },
-    [loadLocationMetrics]
-  );
-
   // Initialize all forecast data
   const initializeForecastData = useCallback(async () => {
     try {
@@ -66,27 +51,19 @@ export const useForecastData = () => {
         loadForecastConfigurations(),
         loadForecastVariables(),
         loadPrimaryVariables(),
-        loadForecastTableProperties(),
       ]);
     } catch (error) {
       console.error('Failed to initialize forecast data:', error);
       throw error;
     }
-  }, [
-    loadForecastConfigurations,
-    loadForecastVariables,
-    loadPrimaryVariables,
-    loadForecastTableProperties,
-  ]);
+  }, [loadForecastConfigurations, loadForecastVariables, loadPrimaryVariables]);
 
   return {
     ...otherHooks,
     loadConfigurations: loadForecastConfigurations,
     loadVariables: loadForecastVariables,
-    loadTableProperties: loadForecastTableProperties,
     loadLocations: loadForecastLocations,
     loadTimeseries: loadForecastTimeseries,
-    loadLocationMetrics: loadForecastLocationMetrics,
     initializeForecastData,
     tableName: TABLE_NAMES[0], // Default to location table
     tableNames: TABLE_NAMES,

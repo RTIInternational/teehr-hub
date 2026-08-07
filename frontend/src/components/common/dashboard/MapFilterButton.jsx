@@ -1,8 +1,11 @@
 import { useState } from 'react';
 import { Dropdown, Form } from 'react-bootstrap';
+import { useTableProperties } from '../../../shared/queries/queryables';
 
-const MapFilterButton = ({ state, mapFilters, updateMapFilters, loadLocations }) => {
+const MapFilterButton = ({ state, tables, mapFilters, updateMapFilters, loadLocations }) => {
   const [showDropdown, setShowDropdown] = useState(false);
+
+  const tableProperties = useTableProperties(tables);
 
   const handleMapFilterChange = async (filterType, value) => {
     const newFilters = { ...mapFilters, [filterType]: value };
@@ -74,7 +77,7 @@ const MapFilterButton = ({ state, mapFilters, updateMapFilters, loadLocations })
                 {(() => {
                   // Try to find metrics from any available table in the batch response
                   // This works for both single-table and multi-table dashboards
-                  const allTableProps = state.tableProperties || {};
+                  const allTableProps = tableProperties.data || {};
                   const allMetrics = [];
 
                   // Collect all unique metrics from all tables

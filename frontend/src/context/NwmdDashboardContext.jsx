@@ -83,9 +83,6 @@ const initialNwmdState = {
     secondary: [],
   },
 
-  // Location metrics
-  locationMetrics: [],
-
   // Lead-time bin metrics for selected location plot
   leadTimeBinMetrics: [],
 
@@ -112,7 +109,6 @@ const initialNwmdState = {
   // Loading states
   locationsLoading: false,
   timeseriesLoading: false,
-  metricsLoading: false,
   metadataLoading: false,
   tablePropertiesLoading: false,
   quartersLoading: false,
@@ -535,9 +531,6 @@ const nwmdDashboardReducer = (state, action) => {
       if ('timeseries' in action.payload) {
         loadingUpdates.timeseriesLoading = action.payload.timeseries;
       }
-      if ('metricsLoading' in action.payload) {
-        loadingUpdates.metricsLoading = action.payload.metricsLoading;
-      }
       if ('metadata' in action.payload) {
         loadingUpdates.metadataLoading = action.payload.metadata;
       }
@@ -593,20 +586,6 @@ const nwmdDashboardReducer = (state, action) => {
       return {
         ...state,
         error: null,
-      };
-
-    case ActionTypes.SET_LOCATION_METRICS:
-      return {
-        ...state,
-        locationMetrics: action.payload,
-        metricsLoading: false,
-      };
-
-    case ActionTypes.CLEAR_LOCATION_METRICS:
-      return {
-        ...state,
-        locationMetrics: [],
-        metricsLoading: false,
       };
 
     case ActionTypes.SET_LEAD_TIME_BIN_METRICS:
