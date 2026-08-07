@@ -7,14 +7,14 @@ import {
 import { LocationMetrics, LocationCard } from '../../common';
 import { MapComponent, TimeseriesComponent, MapFilterButton } from '../../common/dashboard';
 import { getMetricLabel } from '../../common/dashboard/utils';
-import ForecastTimeseriesFilters from './ForecastTimeseriesControls';
+import ForecastTimeseriesControls from './ForecastTimeseriesControls';
 import { useForecastData } from './useForecastData';
 
 const Dashboard = () => {
   const tables = ['fcst_metrics_by_location', 'fcst_metrics_by_lead_time_bins'];
 
   const { state, dispatch } = useForecastDashboard();
-  const { initializeForecastData, loadLocations, loadTimeseries } = useForecastData();
+  const { initializeForecastData, loadLocations } = useForecastData();
   const { selectLocation, selectedLocation } = useForecastLocationSelection();
   const { mapFilters, updateMapFilters, timeseriesFilters, updateTimeseriesFilters } =
     useForecastFilters();
@@ -136,14 +136,15 @@ const Dashboard = () => {
           >
             {state.selectedLocation ? (
               <TimeseriesComponent
+                key={selectedLocation.primary_location_id}
                 state={state}
-                TimeseriesControls={ForecastTimeseriesFilters}
-                timeseriesControlsProps={{
+                Controls={ForecastTimeseriesControls}
+                controlsProps={{
                   state,
                   timeseriesFilters,
                   updateTimeseriesFilters,
-                  loadTimeseries,
                   selectedLocation,
+                  mapFilters,
                 }}
               />
             ) : (

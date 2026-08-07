@@ -1,32 +1,65 @@
 import { Form, Row, Col, Button } from 'react-bootstrap';
+import type { MapLocation } from '../../../shared/types/locations';
+import type { MapFilters } from '../../../shared/types/maps';
+import type {
+  TimeseriesFilters,
+  TimeseriesFiltersFlat,
+  TimeseriesState,
+} from '../../../shared/types/timeseries';
+import {
+  DURATION_NAME_TO_ISO,
+  toDisplayVariableName,
+  toPrimaryVariableName,
+} from '../../../utils/durationUtils';
 import MultiSelectDropdown from '../MultiSelectDropdown';
-import { DURATION_NAME_TO_ISO } from '../../../utils/durationUtils';
+
+export type TimeseriesControlsProps = {
+  state: TimeseriesState;
+  timeseriesFilters: TimeseriesFiltersFlat;
+  updateTimeseriesFilters: (patch: Partial<TimeseriesFilters>) => void;
+  setRequestFilters: (filters: TimeseriesFilters) => void;
+  selectedLocation: MapLocation;
+  mapFilters: MapFilters;
+  onViewModeChange: (viewMode: string) => void;
+};
 
 const TimeseriesControls = ({
   state,
   timeseriesFilters,
   updateTimeseriesFilters,
-  loadTimeseries,
+  setRequestFilters,
   selectedLocation,
   mapFilters,
   onViewModeChange,
-}) => {
-  const handleFilterChange = (field, value) => {
+}: TimeseriesControlsProps) => {
+  const handleFilterChange = (field: string, value: unknown) => {
     updateTimeseriesFilters({ [field]: value });
   };
 
   const handleLoadData = async () => {
     if (!selectedLocation?.primary_location_id) return;
 
-    await loadTimeseries({
+    const primaryVariable = timeseriesFilters.variable?.endsWith('_inst')
+      ? toPrimaryVariableName(timeseriesFilters.variable)
+      : timeseriesFilters.variable;
+
+    setRequestFilters({
       primary_location_id: selectedLocation.primary_location_id,
-      configurations: timeseriesFilters.configurations,
-      variable: timeseriesFilters.variable,
-      start_date: timeseriesFilters.start_date,
-      end_date: timeseriesFilters.end_date,
-      reference_start_date: timeseriesFilters.reference_start_date,
-      reference_end_date: timeseriesFilters.reference_end_date,
-      duration: timeseriesFilters.duration,
+      primary: {
+        variables: [primaryVariable],
+        start_date: timeseriesFilters.start_date,
+        end_date: timeseriesFilters.end_date,
+        duration: timeseriesFilters.duration,
+      },
+      secondary: {
+        configurations: timeseriesFilters.configurations,
+        variables: [timeseriesFilters.variable],
+        start_date: timeseriesFilters.start_date,
+        end_date: timeseriesFilters.end_date,
+        // Drop reference dates to match existing retrospective functionality
+        // reference_start_date: timeseriesFilters.reference_start_date,
+        // reference_end_date: timeseriesFilters.reference_end_date,
+      },
     });
 
     // Switch to plot view after loading data
@@ -37,7 +70,7 @@ const TimeseriesControls = ({
 
   // Get selected configurations or use map configuration as fallback
   const selectedConfigurations =
-    timeseriesFilters.configurations?.length > 0
+    !!timeseriesFilters.configurations && timeseriesFilters.configurations?.length > 0
       ? timeseriesFilters.configurations
       : mapFilters.configuration
         ? [mapFilters.configuration]
@@ -72,8 +105,8 @@ const TimeseriesControls = ({
               >
                 <option value="">Select Variable...</option>
                 {Array.isArray(state.variables) &&
-                  state.variables.map((variable) => (
-                    <option key={variable} value={variable}>
+                  state.variables.map((variable: string) => (
+                    <option key={variable} value={toDisplayVariableName(variable)}>
                       {variable}
                     </option>
                   ))}

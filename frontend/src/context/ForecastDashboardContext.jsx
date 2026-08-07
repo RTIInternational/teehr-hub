@@ -48,15 +48,8 @@ const initialForecastState = {
   // Selected location
   selectedLocation: null,
 
-  // Timeseries data (structured as expected by components)
-  timeseriesData: {
-    primary: [],
-    secondary: [],
-  },
-
   // Loading states
   locationsLoading: false,
-  timeseriesLoading: false,
 
   // Map state
   mapLoaded: false,
@@ -79,11 +72,6 @@ export const ActionTypes = {
 
   // Location selection
   SELECT_LOCATION: 'SELECT_LOCATION',
-
-  // Timeseries data
-  SET_PRIMARY_TIMESERIES: 'SET_PRIMARY_TIMESERIES',
-  SET_SECONDARY_TIMESERIES: 'SET_SECONDARY_TIMESERIES',
-  CLEAR_TIMESERIES: 'CLEAR_TIMESERIES',
 
   // Loading states
   SET_LOADING: 'SET_LOADING',
@@ -275,42 +263,11 @@ const forecastDashboardReducer = (state, action) => {
         selectedLocation: action.payload,
       };
 
-    case ActionTypes.SET_PRIMARY_TIMESERIES:
-      return {
-        ...state,
-        timeseriesData: {
-          ...state.timeseriesData,
-          primary: action.payload,
-        },
-      };
-
-    case ActionTypes.SET_SECONDARY_TIMESERIES:
-      return {
-        ...state,
-        timeseriesData: {
-          ...state.timeseriesData,
-          secondary: action.payload,
-        },
-        timeseriesLoading: false,
-      };
-
-    case ActionTypes.CLEAR_TIMESERIES:
-      return {
-        ...state,
-        timeseriesData: {
-          primary: [],
-          secondary: [],
-        },
-      };
-
     case ActionTypes.SET_LOADING: {
       // Map shorthand keys to actual state property names
       const loadingUpdates = {};
       if ('locations' in action.payload) {
         loadingUpdates.locationsLoading = action.payload.locations;
-      }
-      if ('timeseries' in action.payload) {
-        loadingUpdates.timeseriesLoading = action.payload.timeseries;
       }
       if ('configurations' in action.payload) {
         loadingUpdates.configurationsLoading = action.payload.configurations;

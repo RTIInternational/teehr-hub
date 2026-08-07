@@ -1,5 +1,14 @@
-import { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Form } from 'react-bootstrap';
+
+type MultiSelectDropdownProps = {
+  options?: string[];
+  selected?: string[];
+  onChange: (options: string[]) => void;
+  allSelectedText?: string;
+  noneSelectedText?: string;
+  style?: React.CSSProperties;
+};
 
 /**
  * A clean multi-select dropdown component
@@ -9,18 +18,21 @@ const MultiSelectDropdown = ({
   options = [],
   selected = [],
   onChange,
-  placeholder = 'Select...',
   allSelectedText = 'All selected',
   noneSelectedText = 'None selected',
   style = {},
-}) => {
+}: MultiSelectDropdownProps) => {
   const [isOpen, setIsOpen] = useState(false);
-  const containerRef = useRef(null);
+  const containerRef = useRef<HTMLDivElement>(null);
 
   // Close dropdown when clicking outside
   useEffect(() => {
-    const handleClickOutside = (event) => {
-      if (containerRef.current && !containerRef.current.contains(event.target)) {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        containerRef.current &&
+        event.target instanceof Node &&
+        !containerRef.current.contains(event.target)
+      ) {
         setIsOpen(false);
       }
     };
@@ -34,7 +46,7 @@ const MultiSelectDropdown = ({
     };
   }, [isOpen]);
 
-  const handleToggle = (value) => {
+  const handleToggle = (value: string) => {
     const newSelected = selected.includes(value)
       ? selected.filter((v) => v !== value)
       : [...selected, value];
