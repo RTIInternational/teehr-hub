@@ -485,7 +485,7 @@ def filter_for_new_data(
         logger.info("No new data steps found; all incoming steps already exist.")
         return None
 
-    ds_filtered = incoming_ds.sel({append_dim: list(new_steps)})
+    ds_filtered = incoming_ds.sel({append_dim: sorted(new_steps)})
     logger.info(f"Filtered dataset to {len(ds_filtered[append_dim])} new steps along '{append_dim}'.")
     return ds_filtered
 

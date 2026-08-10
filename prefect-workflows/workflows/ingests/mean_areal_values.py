@@ -90,6 +90,8 @@ def calculate_all_polygons(flat_da, weights_df):
         pixel_matrix = swe_matrix[:, inds]
         weighted_sum = np.sum(pixel_matrix * weights, axis=1)
         total_weight = np.sum(weights)
+        if not total_weight > 0:
+            raise ValueError(f"Total coverage weight is 0 for location_id '{location_id}'.")
         time_series_result = weighted_sum / total_weight
         results.append({
             "location_id": location_id,

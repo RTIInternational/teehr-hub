@@ -6,6 +6,9 @@ import { griddedApiService, GRIDDED_API_BASE_URL } from '../../../services/gridd
 import { ensureFreshToken } from '../../../auth/keycloak.js';
 import { OVERLAY_LAYERS } from './overlayLayers.js';
 
+const escapeHtml = (str) =>
+  String(str).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
 const GriddedMapComponent = () => {
   const { state, dispatch } = useGriddedDashboard();
   const { mapFilters, mapLoaded, activeOverlays } = state;
@@ -200,11 +203,11 @@ const GriddedMapComponent = () => {
         );
         popup.current.setHTML(`
           <div style="padding:8px; font-size:0.85rem;">
-            <div style="font-weight:600; margin-bottom:4px; color:#495057;">${variable}</div>
-            <div><strong>Value:</strong> ${value !== null && value !== undefined ? (typeof value === 'number' ? value.toFixed(2) : value) : 'N/A'}</div>
+            <div style="font-weight:600; margin-bottom:4px; color:#495057;">${escapeHtml(variable)}</div>
+            <div><strong>Value:</strong> ${value !== null && value !== undefined ? (typeof value === 'number' ? value.toFixed(2) : escapeHtml(value)) : 'N/A'}</div>
             <div><strong>Lat:</strong> ${lat.toFixed(4)}</div>
             <div><strong>Lon:</strong> ${lng.toFixed(4)}</div>
-            <div style="margin-top:4px; font-size:0.75rem; color:#6c757d;">${currentTimestep}</div>
+            <div style="margin-top:4px; font-size:0.75rem; color:#6c757d;">${escapeHtml(currentTimestep)}</div>
           </div>
         `);
       } catch (err) {
