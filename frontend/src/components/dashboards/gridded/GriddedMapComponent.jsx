@@ -2,7 +2,7 @@ import maplibregl from 'maplibre-gl';
 import { useEffect, useRef, useCallback, useState } from 'react';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import { useGriddedDashboard, ActionTypes } from '../../../context/GriddedDashboardContext.jsx';
-import { griddedApiService, GRIDDED_API_BASE_URL } from '../../../services/api.js';
+import { griddedApiService, GRIDDED_API_BASE_URL } from '../../../services/griddedApi.js';
 import { ensureFreshToken } from '../../../auth/keycloak.js';
 import { OVERLAY_LAYERS } from './overlayLayers.js';
 
