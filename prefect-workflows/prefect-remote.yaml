@@ -835,13 +835,11 @@ deployments:
         "y_dim": "y",
         "factors": [1, 2, 4],
         "source_data_storage": "gcs",
-        "glob_pattern": "gs://national-water-model/nwm.20260606/forcing_analysis_assim/nwm.t*z.analysis_assim.forcing.tm00.conus.nc",
-        "source_bucket": "gs://national-water-model",
         "configuration_name": "nwm30-forcing-analysis-assim",
         "variable_names": ["RAINRATE"],
-        "concat_dim": "time",
         "parser_type": "hdf",
-        "fsspec_kwargs": {"token": "anon"},
+        "end_dt": null,
+        "num_lookback_days": 1,
         "obstore_kwargs": {"skip_signature": true},
         "xconcat_kwargs": {
           "coords": "minimal",
@@ -862,8 +860,6 @@ deployments:
       "args": {
         "x_dim": "x",
         "y_dim": "y",
-        "source_bucket": "gs://national-water-model",
-        "glob_pattern": "",
         "configuration_name": "nwm30-forcing-analysis-assim",
         "factors": [1, 2, 4]
       }

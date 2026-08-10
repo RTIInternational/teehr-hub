@@ -1,4 +1,3 @@
-import fsspec
 import xarray as xr
 from obstore.store import from_url
 from obspec_utils.registry import ObjectStoreRegistry
@@ -14,41 +13,22 @@ from prefect.cache_policies import NO_CACHE
 
 
 @task(cache_policy=NO_CACHE)
-def create_file_list(source_data_storage: str, glob_pattern: str, **kwargs) -> list:
-    """Create a list of files from a source_data_storage and path.
-
-    Parameters
-    ----------
-    source_data_storage : str
-        The source_data_storage to use (e.g., "s3", "gcs", "local", "http").
-    glob_pattern : str
-        The glob pattern to match files.
-    **kwargs : dict
-        Additional keyword arguments to pass to the fsspec filesystem.
-    """
-    fs = fsspec.filesystem(source_data_storage, **kwargs)
-    file_list = fs.glob(glob_pattern)
-    # If source_data_storage is gcs, prepend "gs://" to each file path
-    if source_data_storage == "gcs":
-        file_list = [f"gs://{file}" for file in file_list]
-    return file_list
-
-
-@task(cache_policy=NO_CACHE)
 def create_objectstore_registry(bucket: str, **kwargs) -> ObjectStoreRegistry:
     """Create an ObjectStoreRegistry for a given bucket.
 
     Parameters
     ----------
     bucket : str
-        The name of the bucket. Must contain the trailing slash (e.g., "s3://my-bucket/").
+        The name of the bucket. Must contain the trailing slash (e.g., "s3://my-bucket/"),
+        will be added if missing.
     **kwargs : dict
         Additional keyword arguments to pass to from_url.
     """
     logger = get_run_logger()
-    logger.info(f"Creating ObjectStoreRegistry for bucket: {bucket} and kwargs: {kwargs}")
-    store = from_url(bucket, **kwargs)
-    registry = ObjectStoreRegistry({bucket: store})
+    bucket_key = bucket if bucket.endswith("/") else f"{bucket}/"
+    logger.info(f"Creating ObjectStoreRegistry for bucket: {bucket_key} and kwargs: {kwargs}")
+    store = from_url(bucket_key, **kwargs)
+    registry = ObjectStoreRegistry({bucket_key: store})
     return registry
 
 
@@ -166,12 +146,35 @@ def configure_icechunk_s3_repo(
     return repo
 
 
+def _open_virtual_safe(
+    url: str,
+    registry: ObjectStoreRegistry,
+    parser: vz.parsers,
+    ignore_missing_file: bool,
+) -> xr.Dataset | None:
+    """Open a virtual dataset safely, handling missing or unreadable files."""
+    logger = get_run_logger()
+    try:
+        return open_virtual_dataset(url, registry=registry, parser=parser)
+    except FileNotFoundError:
+        if not ignore_missing_file:
+            raise
+        logger.warning(f"Missing file skipped: {url}")
+        return None
+    except Exception as e:
+        if not ignore_missing_file:
+            raise
+        logger.warning(f"Corrupt or unreadable file skipped: {url} ({e})")
+        return None
+
+
 @task(cache_policy=NO_CACHE)
 def create_virtual_xarray_dataset(
     file_list: list,
     registry: ObjectStoreRegistry,
     parser: vz.parsers,
     concat_dim: str,
+    ignore_missing_file: bool = True,
     **kwargs
 ) -> xr.Dataset:
     """Create a virtual xarray dataset from a list of files.
@@ -186,14 +189,22 @@ def create_virtual_xarray_dataset(
         The parser to use for reading the files.
     concat_dim : str
         The dimension along which to concatenate the datasets.
+    ignore_missing_file : bool, optional
+        Whether to ignore missing or unreadable files. Default is True.
     **kwargs : dict
         Additional keyword arguments to pass to xr.concat.
     """
+    logger = get_run_logger()
     virtual_datasets = [
-        open_virtual_dataset(url, registry=registry, parser=parser) for url in file_list
+        ds for ds in (
+            _open_virtual_safe(url, registry, parser, ignore_missing_file)
+            for url in file_list
+        )
+        if ds is not None
     ]
     if len(virtual_datasets) == 0:
         raise ValueError("No virtual datasets were created. Check the file list and registry of the source data.")
+    logger.info(f"Found {len(virtual_datasets)} virtual datasets from {len(file_list)} files.")
     virtual_ds = xr.concat(
         virtual_datasets,
         dim=concat_dim,

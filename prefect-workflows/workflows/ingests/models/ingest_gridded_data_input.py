@@ -1,5 +1,6 @@
 import os
-from typing import Any
+from datetime import datetime
+from typing import Any, Union
 from enum import Enum
 from pydantic import BaseModel, Field
 
@@ -7,8 +8,8 @@ from pydantic import BaseModel, Field
 PYRAMID_GROUP_PATH = "/pyramids"
 RAW_DATA_GROUP_PATH = "/raw_data"
 REFERENCES_GROUP_PATH = "/references"
-ICECHUNK_BUCKET = os.environ["ICECHUNK_BUCKET"]
-ICECHUNK_PREFIX = os.environ["ICECHUNK_PREFIX"]
+ICECHUNK_BUCKET = os.getenv("ICECHUNK_BUCKET")
+ICECHUNK_PREFIX = os.getenv("ICECHUNK_PREFIX")
 
 class ParserType(str, Enum):
     """Supported parsers for reading virtual datasets."""
@@ -94,13 +95,13 @@ class IngestGriddedDataInput(BuildPyramidsDataInput):
         default=StorageType.http,
         description="Storage type of the source data (e.g., 's3', 'gcs', 'local', 'http')"
     )
-    glob_pattern: str = Field(
-        ...,
-        description="Glob pattern used to match files for ingestion"
+    end_dt: Union[str, datetime, None] = Field(
+        default=None,
+        description="End datetime for ingestion. Defaults to current UTC time if not provided."
     )
-    source_bucket: str = Field(
-        ...,
-        description="Bucket or base URL for the source data files passed to the ObjectStoreRegistry (e.g., 'https://climate.arizona.edu')"
+    num_lookback_days: Union[int, None] = Field(
+        default=1,
+        description="Number of days before end_dt to use as start_dt. If None, start_dt is derived from the latest value in the store."
     )
     variable_names: list[str] = Field(
         default=["SWE", "DEPTH"],
@@ -120,10 +121,6 @@ class IngestGriddedDataInput(BuildPyramidsDataInput):
     )
 
     # --- Per-component extra kwargs ---
-    fsspec_kwargs: dict[str, Any] = Field(
-        ...,
-        description="Extra keyword arguments passed to fsspec.filesystem(filesystem, **fsspec_kwargs)"
-    )
     obstore_kwargs: dict[str, Any] = Field(
         ...,
         description="Extra keyword arguments passed to obstore.store.from_url(url, **obstore_kwargs)"
