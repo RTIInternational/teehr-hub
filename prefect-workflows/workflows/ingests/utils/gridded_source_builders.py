@@ -20,9 +20,9 @@ class NWMForcing(GriddedSource):
         configuration: str,
         output_type: str,
         analysis_config_dict: dict,
-        t_minus_hours: Optional[Iterable[int]] = None,
+        t_minus_hours: Optional[Iterable[int]] = [0],
         ignore_missing_file: bool = True,
-        prioritize_analysis_value_time: bool = True,
+        prioritize_analysis_value_time: bool = False,
         drop_overlapping_assimilation_values: bool = True,
     ):
         self.configuration = configuration
