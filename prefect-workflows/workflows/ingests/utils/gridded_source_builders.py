@@ -23,7 +23,7 @@ class NWMForcing(GriddedSource):
         t_minus_hours: Optional[Iterable[int]] = [0],
         ignore_missing_file: bool = True,
         prioritize_analysis_value_time: bool = False,
-        drop_overlapping_assimilation_values: bool = True,
+        drop_overlapping_assimilation_values: bool = False,
     ):
         self.configuration = configuration
         self.output_type = output_type
@@ -34,7 +34,7 @@ class NWMForcing(GriddedSource):
         self.drop_overlapping_assimilation_values = drop_overlapping_assimilation_values
 
     def build_file_list(self, start_dt: datetime, end_dt: datetime) -> list[str]:
-        return build_remote_nwm_filelist(
+        file_list = build_remote_nwm_filelist(
             configuration=self.configuration,
             output_type=self.output_type,
             start_dt=start_dt,
@@ -45,3 +45,5 @@ class NWMForcing(GriddedSource):
             prioritize_analysis_value_time=self.prioritize_analysis_value_time,
             drop_overlapping_assimilation_values=self.drop_overlapping_assimilation_values,
         )
+        # Replace the gcs prefix with gs
+        return [f.replace("gcs://", "gs://") for f in file_list]
