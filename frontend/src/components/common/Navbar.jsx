@@ -89,7 +89,6 @@ const Navbar = () => {
     const pathMap = {
       '/retrospective': 'Retrospective Simulations',
       '/forecast': 'Forecast Analysis',
-      '/firo': 'FIRO Dashboard',
       '/data': 'Data Availability',
       '/nwmd': 'National Water Model Diagnostics',
       '/admin': 'Admin Page',
@@ -175,11 +174,6 @@ const Navbar = () => {
               <li>
                 <Link className="dropdown-item ps-4" to="/forecast" onClick={() => setIsDashboardsOpen(false)}>
                   Forecast Analysis
-                </Link>
-              </li>
-              <li>
-                <Link className="dropdown-item ps-4" to="/firo" onClick={() => setIsDashboardsOpen(false)}>
-                  FIRO Dashboard
                 </Link>
               </li>
             </ul>

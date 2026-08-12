@@ -48,20 +48,6 @@ const DashboardsHome = () => {
       image: '/api/static/preview-forecast.png', // placeholder
       color: 'secondary'
     },
-    {
-      id: 'firo-dashboard',
-      title: 'FIRO Dashboard',
-      description: 'Explore FIRO locations, forecast metrics, and event-based evaluation views with a map-driven workflow.',
-      features: [
-        'Map-based location selection',
-        'Timeseries and metrics views',
-        'FIRO-specific filtering for lead times and thresholds'
-      ],
-      path: '/firo',
-      status: 'available',
-      image: '/api/static/preview-data.png', // placeholder
-      color: 'info'
-    },
     // Future dashboards
     {
       id: 'retrospective-model-comparisons',

@@ -315,25 +315,6 @@ export const apiService = {
     if (filters.variable_name) params.append('variable_name', filters.variable_name);
     return apiCall(`/collections/configurations_by_location/locations-geojson?${params.toString()}`);
   },
-
-  // ---- FIRO-specific endpoints (/firo/collections/{table}/items) ----------
-  // These tables have no geometry column and no Iceberg table properties so
-  // they cannot flow through the shared OGC /collections/{id}/items pathway.
-  // The FIRO router returns plain JSON: { table, numberReturned, items: [...] }
-  getFIROTableItems: (tableName, filters = {}) => {
-    const params = new URLSearchParams();
-    if (filters.primary_location_id) params.append('location_id', filters.primary_location_id);
-    if (filters.configuration_name) params.append('configuration_name', filters.configuration_name);
-    if (filters.variable_name) params.append('variable_name', filters.variable_name);
-    if (filters.season) params.append('season', filters.season);
-    if (filters.forecast_lead_time_bin) params.append('forecast_lead_time_bin', filters.forecast_lead_time_bin);
-    if (filters.threshold) params.append('threshold', filters.threshold);
-    if (filters.reference_time) params.append('reference_time', filters.reference_time);
-    if (filters.member) params.append('member', filters.member);
-    if (filters.event_id) params.append('event_id', filters.event_id);
-    const qs = params.toString();
-    return apiCall(`/firo/collections/${tableName}/items${qs ? `?${qs}` : ''}`);
-  },
 };
 
 export default apiService;
