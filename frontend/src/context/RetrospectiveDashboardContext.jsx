@@ -9,7 +9,6 @@ const DEFAULT_END_DATE = RETROSPECTIVE_DASHBOARD_DEFAULTS.defaultEndDate;
 // Initial state for retrospective dashboard
 const initialRetrospectiveState = {
   // Data
-  locations: { features: [] },
   configurations: [],
   variables: [],
 
@@ -34,9 +33,6 @@ const initialRetrospectiveState = {
   // Selected location
   selectedLocation: null,
 
-  // Loading states
-  locationsLoading: false,
-
   // Map state
   mapLoaded: false,
 
@@ -47,7 +43,6 @@ const initialRetrospectiveState = {
 // Action types (same as original)
 export const ActionTypes = {
   // Data loading
-  SET_LOCATIONS: 'SET_LOCATIONS',
   SET_CONFIGURATIONS: 'SET_CONFIGURATIONS',
   SET_VARIABLES: 'SET_VARIABLES',
 
@@ -72,13 +67,6 @@ export const ActionTypes = {
 // Reducer function (same logic as original)
 const retrospectiveDashboardReducer = (state, action) => {
   switch (action.type) {
-    case ActionTypes.SET_LOCATIONS:
-      return {
-        ...state,
-        locations: action.payload,
-        locationsLoading: false,
-      };
-
     case ActionTypes.SET_CONFIGURATIONS: {
       const configurations = Array.isArray(action.payload) ? action.payload : [];
       const defaultConfig = selectDefault(
@@ -169,9 +157,6 @@ const retrospectiveDashboardReducer = (state, action) => {
     case ActionTypes.SET_LOADING: {
       // Map shorthand keys to actual state property names
       const loadingUpdates = {};
-      if ('locations' in action.payload) {
-        loadingUpdates.locationsLoading = action.payload.locations;
-      }
       if ('configurations' in action.payload) {
         loadingUpdates.configurationsLoading = action.payload.configurations;
       }

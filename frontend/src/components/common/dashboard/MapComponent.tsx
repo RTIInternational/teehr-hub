@@ -1,33 +1,61 @@
-import maplibregl from 'maplibre-gl';
-import { useEffect, useRef, useCallback, useMemo, useState } from 'react';
+import type { Feature, FeatureCollection, Point } from 'geojson';
+import maplibregl, {
+  Map,
+  Popup,
+  type FilterSpecification,
+  type MapLayerMouseEvent,
+} from 'maplibre-gl';
+import React, { useEffect, useRef, useCallback, useMemo, useState } from 'react';
 import 'maplibre-gl/dist/maplibre-gl.css';
+import { useLocations } from '../../../shared/queries/locations';
+import type { MapLocation } from '../../../shared/types/locations';
+import type { InvalidFeature, MapMetricClamped, MapState } from '../../../shared/types/maps';
 import MapLegend from './MapLegend';
-import { getMetricColorExpression } from './utils';
+import { getMetricColorExpression, getMetricLabel, isLngLatTuple } from './utils';
+
+type MapComponentProps = {
+  state: MapState;
+  dispatch: ({ type, payload }: { type: string; payload: unknown }) => void;
+  table: string;
+  ActionTypes: Record<string, string>;
+  selectLocation: (location?: MapLocation) => void;
+  MapFilterButton: React.ComponentType;
+  showSearch?: boolean;
+  overlayLocations?: FeatureCollection;
+  overlayVisible?: boolean;
+  hoveredOverlayId?: string;
+};
 
 const MapComponent = ({
   state,
   dispatch,
+  table,
   ActionTypes,
   selectLocation,
-  loadLocations,
   MapFilterButton,
-  getMetricLabel,
   showSearch = true,
-  overlayLocations = null,
+  overlayLocations,
   overlayVisible = true,
-  hoveredOverlayId = null,
-}) => {
-  const mapContainer = useRef(null);
-  const map = useRef(null);
-  const popup = useRef(null);
+  hoveredOverlayId,
+}: MapComponentProps) => {
+  const mapContainer = useRef<HTMLDivElement>(null);
+  const map = useRef<Map>(null);
+  const popup = useRef<Popup>(null);
   const [searchTerm, setSearchTerm] = useState('');
 
+  const locations = useLocations({
+    table,
+    configuration: state.mapFilters.configuration,
+    variable: state.mapFilters.variable,
+  });
+
   const selectFeatureOnMap = useCallback(
-    (feature, options = {}) => {
+    (feature: Feature<Point>, options: { flyTo?: boolean } = {}) => {
       if (!feature?.geometry?.coordinates || !feature?.properties) return;
+      if (!isLngLatTuple(feature.geometry.coordinates)) return;
 
       const { flyTo = true } = options;
-      const coordinates = feature.geometry.coordinates.slice();
+      const coordinates = feature.geometry.coordinates;
       const properties = feature.properties;
 
       selectLocation({
@@ -59,12 +87,12 @@ const MapComponent = ({
 
   const matchedLocations = useMemo(() => {
     const term = searchTerm.trim().toLowerCase();
-    const features = state.locations?.features || [];
+    const features = locations.data?.features || [];
 
     if (!term) return [];
 
     return features
-      .filter((feature) => {
+      .filter((feature: Feature) => {
         const props = feature?.properties || {};
         const primaryId = String(props.primary_location_id || '').toLowerCase();
         const secondaryId = String(props.secondary_location_id || '').toLowerCase();
@@ -73,7 +101,7 @@ const MapComponent = ({
         return primaryId.includes(term) || secondaryId.includes(term) || name.includes(term);
       })
       .slice(0, 15);
-  }, [searchTerm, state.locations]);
+  }, [searchTerm, locations.data]);
 
   // Initialize map function
   const initializeMap = useCallback(() => {
@@ -104,6 +132,8 @@ const MapComponent = ({
       });
 
       map.current.on('load', () => {
+        if (!map.current) return;
+
         // Add OpenStreetMap background
         map.current.addSource('osm', {
           type: 'raster',
@@ -122,6 +152,8 @@ const MapComponent = ({
 
       // Add click handler for empty space (deselect location)
       map.current.on('click', (e) => {
+        if (!map.current) return;
+
         // Only deselect if we didn't click on a location feature
         const features = map.current.queryRenderedFeatures(e.point, {
           layers: ['locations-layer'],
@@ -129,7 +161,7 @@ const MapComponent = ({
 
         if (features.length === 0) {
           // Clicked on empty space - deselect location
-          selectLocation(null);
+          selectLocation();
 
           // Clear map selection
           if (map.current.getLayer('locations-selected')) {
@@ -137,7 +169,7 @@ const MapComponent = ({
           }
 
           // Close popup
-          popup.current.remove();
+          if (popup.current) popup.current.remove();
         }
       });
 
@@ -149,10 +181,11 @@ const MapComponent = ({
         });
       });
     } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
       console.error('MapComponent: Error creating map:', error);
       dispatch({
         type: ActionTypes.SET_ERROR,
-        payload: `Map initialization failed: ${error.message}`,
+        payload: `Map initialization failed: ${message}`,
       });
     }
   }, [dispatch, selectLocation, ActionTypes]);
@@ -169,16 +202,6 @@ const MapComponent = ({
     };
   }, [initializeMap]);
 
-  // Load initial locations when map is ready and filters are available
-  useEffect(() => {
-    if (state.mapLoaded && state.mapFilters.configuration && state.mapFilters.variable) {
-      loadLocations({
-        configuration: state.mapFilters.configuration,
-        variable: state.mapFilters.variable,
-      });
-    }
-  }, [state.mapLoaded, state.mapFilters.configuration, state.mapFilters.variable, loadLocations]);
-
   // Update map when locations change
   useEffect(() => {
     if (!map.current || !state.mapLoaded) return;
@@ -186,12 +209,12 @@ const MapComponent = ({
     const mapInstance = map.current;
 
     // Validate GeoJSON structure
-    if (!state.locations || !state.locations.features || !Array.isArray(state.locations.features)) {
+    if (!locations.data || !locations.data?.features || !Array.isArray(locations.data?.features)) {
       return;
     }
 
     // Clear existing layers when there's no data
-    if (state.locations.features.length === 0) {
+    if (locations.data.features.length === 0) {
       // Remove existing layers and sources to clear old data from the map
       if (mapInstance.getLayer('locations-layer')) {
         mapInstance.removeLayer('locations-layer');
@@ -210,26 +233,31 @@ const MapComponent = ({
     }
 
     // Define event handlers outside try block so they're accessible in cleanup
-    const handleLocationClick = (e) => {
-      if (e.features.length > 0) {
-        const feature = e.features[0];
+    const handleLocationClick = (e: MapLayerMouseEvent) => {
+      if (e.features && e.features.length > 0) {
+        const feature = e.features[0] as Feature<Point>;
         selectFeatureOnMap(feature, { flyTo: false });
       }
     };
 
-    const handleLocationHover = (e) => {
+    const handleLocationHover = (e: MapLayerMouseEvent) => {
       mapInstance.getCanvas().style.cursor = 'pointer';
 
-      const coordinates = e.features[0].geometry.coordinates.slice();
-      const properties = e.features[0].properties;
+      if (!e.features?.length) return;
+      const feature = e.features[0] as Feature<Point>;
+      const coordinates = feature.geometry.coordinates;
+      const properties = feature.properties;
+
+      if (!properties || !state.mapFilters.metricName || !isLngLatTuple(coordinates)) return;
 
       const metricValue = properties[state.mapFilters.metricName];
       const metricLabel = getMetricLabel(state.mapFilters.metricName);
 
-      popup.current
-        .setLngLat(coordinates)
-        .setHTML(
-          `
+      if (popup.current)
+        popup.current
+          .setLngLat(coordinates)
+          .setHTML(
+            `
           <div style="padding: 8px; font-size: 0.85rem;">
             <div style="font-weight: 600; margin-bottom: 4px; color: #495057;">${properties.name}</div>
             <div style="margin: 2px 0;"><strong>ID:</strong> ${properties.primary_location_id}</div>
@@ -239,13 +267,13 @@ const MapComponent = ({
             <div style="margin-top: 4px; font-size: 0.75rem; color: #6c757d;">Click to select</div>
           </div>
         `
-        )
-        .addTo(mapInstance);
+          )
+          .addTo(mapInstance);
     };
 
     const handleLocationLeave = () => {
       mapInstance.getCanvas().style.cursor = '';
-      popup.current.remove();
+      if (popup.current) popup.current.remove();
     };
 
     try {
@@ -261,11 +289,11 @@ const MapComponent = ({
       }
 
       // Validate GeoJSON format before adding to map
-      const validFeatures = [];
-      const invalidFeatures = [];
-      const clampedMetrics = [];
+      const validFeatures: Feature<Point>[] = [];
+      const invalidFeatures: InvalidFeature[] = [];
+      const clampedMetrics: MapMetricClamped[] = [];
 
-      state.locations.features.forEach((feature, index) => {
+      locations.data.features.forEach((feature: Feature<Point>, index) => {
         // Basic structure validation
         if (
           !feature.type ||
@@ -317,6 +345,7 @@ const MapComponent = ({
         // Validate and clamp ALL numeric properties that might cause varint issues
         if (feature.properties) {
           Object.keys(feature.properties).forEach((key) => {
+            if (!feature.properties) return;
             const value = feature.properties[key];
             if (typeof value === 'number') {
               if (!isFinite(value)) {
@@ -342,7 +371,7 @@ const MapComponent = ({
       // Log validation results in a single message
       if (invalidFeatures.length > 0 || clampedMetrics.length > 0) {
         console.warn('MapComponent: Data validation results:', {
-          totalFeatures: state.locations.features.length,
+          totalFeatures: locations.data.features.length,
           validFeatures: validFeatures.length,
           invalidFeatures: invalidFeatures.length,
           clampedMetrics: clampedMetrics.length,
@@ -351,7 +380,7 @@ const MapComponent = ({
         });
       }
 
-      const geojsonData = {
+      const geojsonData: FeatureCollection<Point> = {
         type: 'FeatureCollection',
         features: validFeatures,
       };
@@ -372,17 +401,20 @@ const MapComponent = ({
           type: 'geojson',
           data: geojsonData,
         });
-      } catch (sourceError) {
-        console.error('MapComponent: Error adding GeoJSON source:', sourceError);
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        console.error('MapComponent: Error adding GeoJSON source:', error);
         dispatch({
           type: ActionTypes.SET_ERROR,
-          payload: `Map source error: ${sourceError.message}`,
+          payload: `Map source error: ${message}`,
         });
         return;
       }
 
       // Get color expression for metric-based coloring
-      const colorExpression = getMetricColorExpression(state.mapFilters.metricName);
+      const colorExpression = getMetricColorExpression(
+        state.mapFilters.metricName ?? 'relative_bias'
+      );
 
       // Add locations layer with error handling
       try {
@@ -398,11 +430,12 @@ const MapComponent = ({
             'circle-opacity': 0.8,
           },
         });
-      } catch (layerError) {
-        console.error('MapComponent: Error adding locations layer:', layerError);
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        console.error('MapComponent: Error adding locations layer:', error);
         dispatch({
           type: ActionTypes.SET_ERROR,
-          payload: `Map layer error: ${layerError.message}`,
+          payload: `Map layer error: ${message}`,
         });
         return;
       }
@@ -422,11 +455,12 @@ const MapComponent = ({
           },
           filter: ['==', 'primary_location_id', ''],
         });
-      } catch (selectedLayerError) {
-        console.error('MapComponent: Error adding selected locations layer:', selectedLayerError);
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        console.error('MapComponent: Error adding selected locations layer:', error);
         dispatch({
           type: ActionTypes.SET_ERROR,
-          payload: `Map selected layer error: ${selectedLayerError.message}`,
+          payload: `Map selected layer error: ${message}`,
         });
         return;
       }
@@ -461,10 +495,11 @@ const MapComponent = ({
         }
       }
     } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
       console.error('MapComponent: Error adding locations to map:', error);
       dispatch({
         type: ActionTypes.SET_ERROR,
-        payload: `Failed to add locations to map: ${error.message}`,
+        payload: `Failed to add locations to map: ${message}`,
       });
       return;
     }
@@ -482,13 +517,12 @@ const MapComponent = ({
       }
     };
   }, [
-    state.locations,
+    locations.data,
     state.mapLoaded,
     state.mapFilters.metricName,
     selectLocation,
     dispatch,
     ActionTypes,
-    getMetricLabel,
     selectFeatureOnMap,
   ]);
 
@@ -577,6 +611,7 @@ const MapComponent = ({
     if (!map.current || !state.mapLoaded) return;
     const visibility = overlayVisible ? 'visible' : 'none';
     ['overlay-fill', 'overlay-line', 'overlay-highlight'].forEach((id) => {
+      if (!map.current) return;
       if (map.current.getLayer(id)) map.current.setLayoutProperty(id, 'visibility', visibility);
     });
   }, [overlayVisible, state.mapLoaded]);
@@ -585,7 +620,7 @@ const MapComponent = ({
   useEffect(() => {
     if (!map.current || !state.mapLoaded) return;
     if (!map.current.getLayer('overlay-highlight')) return;
-    const filter = hoveredOverlayId
+    const filter: FilterSpecification = hoveredOverlayId
       ? ['any', ['==', ['get', 'id'], hoveredOverlayId], ['==', ['id'], hoveredOverlayId]]
       : ['any', ['==', ['get', 'id'], ''], ['==', ['id'], -1]];
     map.current.setFilter('overlay-highlight', filter);
@@ -604,7 +639,7 @@ const MapComponent = ({
         )}
 
         {/* Loading overlay for fetching locations */}
-        {state.mapLoaded && state.locationsLoading && (
+        {state.mapLoaded && locations.isLoading && (
           <div
             className="position-absolute top-0 start-0 w-100 h-100 d-flex align-items-center justify-content-center"
             style={{
@@ -671,7 +706,7 @@ const MapComponent = ({
                 style={{ maxHeight: '260px', overflowY: 'auto' }}
               >
                 {matchedLocations.length > 0 ? (
-                  matchedLocations.map((feature) => {
+                  matchedLocations.map((feature: Feature<Point>) => {
                     const props = feature.properties || {};
                     return (
                       <button
@@ -708,9 +743,7 @@ const MapComponent = ({
         )}
 
         {/* Map Legend */}
-        {state.mapLoaded && (
-          <MapLegend metric={state.mapFilters.metricName} getMetricLabel={getMetricLabel} />
-        )}
+        {state.mapLoaded && <MapLegend metric={state.mapFilters.metricName} />}
       </div>
     </div>
   );

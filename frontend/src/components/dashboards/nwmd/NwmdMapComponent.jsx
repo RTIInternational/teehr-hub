@@ -2,7 +2,7 @@ import maplibregl from 'maplibre-gl';
 import { useEffect, useRef, useCallback, useMemo, useState } from 'react';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import MapLegend from '../../common/dashboard/MapLegend';
-import { getMetricColorExpression } from '../../common/dashboard/utils';
+import { getMetricColorExpression, getMetricLabel } from '../../common/dashboard/utils';
 
 export const NwmdMapComponent = ({
   state,
@@ -10,7 +10,6 @@ export const NwmdMapComponent = ({
   ActionTypes,
   selectLocation,
   loadLocations,
-  getMetricLabel,
   showSearch = true,
   overlayLocations = null,
   overlayVisible = true,
@@ -536,7 +535,6 @@ export const NwmdMapComponent = ({
     selectLocation,
     dispatch,
     ActionTypes,
-    getMetricLabel,
     selectFeatureOnMap,
   ]);
 
@@ -777,9 +775,7 @@ export const NwmdMapComponent = ({
         )}
 
         {/* Map Legend */}
-        {state.mapLoaded && (
-          <MapLegend metric={state.mapFilters.metricName} getMetricLabel={getMetricLabel} />
-        )}
+        {state.mapLoaded && <MapLegend metric={state.mapFilters.metricName} />}
       </div>
     </div>
   );

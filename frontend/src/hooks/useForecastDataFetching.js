@@ -55,31 +55,6 @@ export const useForecastDataFetching = () => {
     }
   }, [dispatch]);
 
-  // Load locations with filtering
-  const loadLocations = useCallback(
-    async (filters = {}, table = null) => {
-      try {
-        dispatch({ type: ActionTypes.SET_LOADING, payload: { locations: true } });
-
-        // Use getMetrics for filtered location data with metrics, or getLocations for basic locations
-        const locations =
-          filters.configuration && filters.variable
-            ? await apiService.getMetrics({ ...filters, table })
-            : await apiService.getLocations();
-
-        dispatch({ type: ActionTypes.SET_LOCATIONS, payload: locations });
-      } catch (error) {
-        console.error('useForecastDataFetching: Error loading locations:', error);
-        dispatch({ type: ActionTypes.SET_LOADING, payload: { locations: false } });
-        dispatch({
-          type: ActionTypes.SET_ERROR,
-          payload: `Failed to load locations: ${error.message}`,
-        });
-      }
-    },
-    [dispatch]
-  );
-
   // Initialize all data
   const initializeData = useCallback(async () => {
     try {
@@ -93,7 +68,6 @@ export const useForecastDataFetching = () => {
     loadConfigurations,
     loadVariables,
     loadPrimaryVariables,
-    loadLocations,
     initializeData,
   };
 };

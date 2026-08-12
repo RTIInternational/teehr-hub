@@ -1,23 +1,23 @@
 import { useState } from 'react';
 import { Dropdown, Form } from 'react-bootstrap';
 import { useTableProperties } from '../../../shared/queries/queryables';
+import type { DashboardState } from '../../../shared/types/dashboard';
+import type { MapFilters } from '../../../shared/types/maps';
 
-const MapFilterButton = ({ state, tables, mapFilters, updateMapFilters, loadLocations }) => {
+type MapFilterButtonProps = {
+  state: DashboardState;
+  tables: string[];
+  mapFilters: MapFilters;
+  updateMapFilters: (filter: { [filter: string]: unknown }) => void;
+};
+
+const MapFilterButton = ({ state, tables, mapFilters, updateMapFilters }: MapFilterButtonProps) => {
   const [showDropdown, setShowDropdown] = useState(false);
 
   const tableProperties = useTableProperties(tables);
 
-  const handleMapFilterChange = async (filterType, value) => {
-    const newFilters = { ...mapFilters, [filterType]: value };
+  const handleMapFilterChange = async (filterType: string, value: unknown) => {
     updateMapFilters({ [filterType]: value });
-
-    // Reload locations when configuration or variable changes
-    if (filterType === 'configuration' || filterType === 'variable') {
-      await loadLocations({
-        configuration: newFilters.configuration,
-        variable: newFilters.variable,
-      });
-    }
   };
 
   return (
@@ -78,7 +78,7 @@ const MapFilterButton = ({ state, tables, mapFilters, updateMapFilters, loadLoca
                   // Try to find metrics from any available table in the batch response
                   // This works for both single-table and multi-table dashboards
                   const allTableProps = tableProperties.data || {};
-                  const allMetrics = [];
+                  const allMetrics: string[] = [];
 
                   // Collect all unique metrics from all tables
                   Object.values(allTableProps).forEach((tableProps) => {

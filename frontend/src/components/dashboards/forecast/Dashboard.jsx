@@ -6,7 +6,6 @@ import {
 } from '../../../hooks/useForecastDataFetching';
 import { LocationMetrics, LocationCard } from '../../common';
 import { MapComponent, TimeseriesComponent, MapFilterButton } from '../../common/dashboard';
-import { getMetricLabel } from '../../common/dashboard/utils';
 import ForecastTimeseriesControls from './ForecastTimeseriesControls';
 import { useForecastData } from './useForecastData';
 
@@ -14,7 +13,7 @@ const Dashboard = () => {
   const tables = ['fcst_metrics_by_location', 'fcst_metrics_by_lead_time_bins'];
 
   const { state, dispatch } = useForecastDashboard();
-  const { initializeForecastData, loadLocations } = useForecastData();
+  const { initializeForecastData } = useForecastData();
   const { selectLocation, selectedLocation } = useForecastLocationSelection();
   const { mapFilters, updateMapFilters, timeseriesFilters, updateTimeseriesFilters } =
     useForecastFilters();
@@ -26,7 +25,6 @@ const Dashboard = () => {
       tables={tables}
       mapFilters={mapFilters}
       updateMapFilters={updateMapFilters}
-      loadLocations={loadLocations}
     />
   );
 
@@ -100,11 +98,10 @@ const Dashboard = () => {
             <MapComponent
               state={state}
               dispatch={dispatch}
+              table={tables[0]}
               ActionTypes={ActionTypes}
               selectLocation={selectLocation}
-              loadLocations={loadLocations}
               MapFilterButton={ForecastMapFilterButton}
-              getMetricLabel={getMetricLabel}
             />
           </div>
 
