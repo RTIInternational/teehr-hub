@@ -23,8 +23,9 @@ environments:
     variables:
       hostname: teehr.local.app.garden
       certificateIssuerName: letsencrypt-prod
-      devTeehrVersion: fc20673a371187241a57e39e542ae8aadbc80a13
+      devTeehrVersion: 826e7e47fae1a05b089ca69c65ace06d6db78a64
       stableTeehrVersion: place-holder # Needed for sync to work for some reason.
+      previousTeehrVersion: place-holder
       iceberg:
         inCluster: "true"
         catalogS3PathStyleAccess: "true"
@@ -44,12 +45,15 @@ environments:
     variables:
       hostname: teehr.rtiamanzi.org
       certificateIssuerName: letsencrypt-prod
-      devTeehrVersion: fc20673a371187241a57e39e542ae8aadbc80a13
+      devTeehrVersion: 826e7e47fae1a05b089ca69c65ace06d6db78a64
       stableTeehrVersion: v0.6.6
       previousTeehrVersion: v0.5.3
       irsa:
-        icebergReadOnlyRoleArn: arn:aws:iam::935462133478:role/teehr-hub-iceberg-s3-warehouse-readonly-irsa
-        icebergReadWriteRoleArn: arn:aws:iam::935462133478:role/teehr-hub-iceberg-s3-warehouse-irsa
+        icebergRestRoleArn: arn:aws:iam::935462133478:role/teehr-hub-iceberg-s3-warehouse-irsa
+        jupyterRoleArn: arn:aws:iam::935462133478:role/teehr-hub-iceberg-s3-warehouse-readonly-irsa
+        prefectJobRoleArn: arn:aws:iam::935462133478:role/teehr-hub-iceberg-s3-warehouse-irsa
+        sparkRoleArn: arn:aws:iam::935462133478:role/teehr-hub-iceberg-s3-warehouse-readonly-irsa
+        trinoRoleArn: arn:aws:iam::935462133478:role/teehr-hub-iceberg-s3-warehouse-irsa
       iceberg:
         inCluster: "false"
         catalogS3PathStyleAccess: "false"
