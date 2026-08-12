@@ -14,14 +14,13 @@ import {
   MapFilterButton,
   TimeseriesControls,
 } from '../../common/dashboard';
-import { getMetricLabel } from '../../common/dashboard/utils';
 import { useRetrospectiveData } from './useRetrospectiveData';
 
 export const RetrospectiveDashboard = () => {
   const tables = ['sim_metrics_by_location'];
 
   const { state, dispatch } = useRetrospectiveDashboard();
-  const { initializeRetrospectiveData, loadLocations } = useRetrospectiveData();
+  const { initializeRetrospectiveData } = useRetrospectiveData();
   const { selectLocation, selectedLocation } = useRetrospectiveLocationSelection();
   const { mapFilters, updateMapFilters, timeseriesFilters, updateTimeseriesFilters } =
     useRetrospectiveFilters();
@@ -33,7 +32,6 @@ export const RetrospectiveDashboard = () => {
       tables={tables}
       mapFilters={mapFilters}
       updateMapFilters={updateMapFilters}
-      loadLocations={loadLocations}
     />
   );
 
@@ -107,11 +105,10 @@ export const RetrospectiveDashboard = () => {
             <MapComponent
               state={state}
               dispatch={dispatch}
+              table={tables[0]}
               ActionTypes={ActionTypes}
               selectLocation={selectLocation}
-              loadLocations={loadLocations}
               MapFilterButton={RetrospectiveMapFilterButton}
-              getMetricLabel={getMetricLabel}
             />
           </div>
 

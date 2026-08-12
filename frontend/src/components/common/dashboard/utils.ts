@@ -1,20 +1,23 @@
-export const getMetricDisplay = (metric) => {
+import type { ExpressionSpecification } from 'maplibre-gl';
+import type { LngLatTuple } from '../../../shared/types/maps';
+
+export const getMetricDisplay = (metric: keyof typeof metricDisplay) => {
   return metricDisplay[metric];
 };
 
 // Helper function to get metric label display name
-export const getMetricLabel = (metric) => {
+export const getMetricLabel = (metric: keyof typeof metricDisplay) => {
   const display = getMetricDisplay(metric);
   return display?.label || metric;
 };
 
-export const getMetricStops = (metric) => {
+export const getMetricStops = (metric: keyof typeof metricDisplay) => {
   const display = getMetricDisplay(metric);
   return display?.stops || undefined;
 };
 
 // Helper function for metric color expression
-export const getMetricColorExpression = (metric) => {
+export const getMetricColorExpression = (metric: keyof typeof metricDisplay) => {
   if (!metric) return '#0d6efd';
 
   const display = getMetricDisplay(metric);
@@ -25,10 +28,10 @@ export const getMetricColorExpression = (metric) => {
     ['linear'],
     ['get', metric],
     ...display.stops.flatMap((stop, i) => [stop, display.colors[i]]),
-  ];
+  ] as ExpressionSpecification;
 };
 
-const metricDisplay = {
+export const metricDisplay = {
   relative_bias: {
     label: 'Relative Bias',
     colors: ['#4575b4', '#91bfdb', '#e0f3f8', '#f7f7f7', '#fee090', '#fc8d59', '#d73027'],
@@ -150,3 +153,12 @@ const metricDisplay = {
     stopLabels: ['Low', 'Medium', 'High', 'Very High'],
   },
 };
+
+export function isLngLatTuple(value: readonly number[] | null | undefined): value is LngLatTuple {
+  return (
+    Array.isArray(value) &&
+    value.length == 2 &&
+    Number.isFinite(value[0]) &&
+    Number.isFinite(value[1])
+  );
+}

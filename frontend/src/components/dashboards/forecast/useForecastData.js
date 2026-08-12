@@ -6,7 +6,7 @@ import { useForecastDataFetching } from '../../../hooks/useForecastDataFetching'
  * Handles the forecast_metrics_by_location table specifically
  */
 export const useForecastData = () => {
-  const { loadConfigurations, loadVariables, loadPrimaryVariables, loadLocations, ...otherHooks } =
+  const { loadConfigurations, loadVariables, loadPrimaryVariables, ...otherHooks } =
     useForecastDataFetching();
 
   // Table names for forecast dashboard
@@ -21,14 +21,6 @@ export const useForecastData = () => {
   const loadForecastVariables = useCallback(async () => {
     return loadVariables(TABLE_NAMES[0]); // Use location table for variables
   }, [loadVariables]);
-
-  // Load locations with forecast table context
-  const loadForecastLocations = useCallback(
-    async (filters = {}) => {
-      return loadLocations(filters, TABLE_NAMES[0]); // Use location table for map
-    },
-    [loadLocations]
-  );
 
   // Initialize all forecast data
   const initializeForecastData = useCallback(async () => {
@@ -48,7 +40,6 @@ export const useForecastData = () => {
     ...otherHooks,
     loadConfigurations: loadForecastConfigurations,
     loadVariables: loadForecastVariables,
-    loadLocations: loadForecastLocations,
     initializeForecastData,
     tableName: TABLE_NAMES[0], // Default to location table
     tableNames: TABLE_NAMES,

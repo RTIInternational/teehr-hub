@@ -4,7 +4,6 @@ import Tab from 'react-bootstrap/Tab';
 import Tabs from 'react-bootstrap/Tabs';
 import { useNwmdDashboard, ActionTypes } from '../../../context/NwmdDashboardContext';
 import { useNwmdLocationSelection, useNwmdFilters } from '../../../hooks/useNwmdDataFetching';
-import { getMetricLabel } from '../../common/dashboard/utils';
 import { CdfPlot } from './CdfPlot';
 import { CdfSidebar } from './CdfSidebar';
 import { FilterSidebar } from './FilterSidebar';
@@ -145,7 +144,6 @@ const Dashboard = () => {
               ActionTypes={ActionTypes}
               selectLocation={selectLocation}
               loadLocations={loadLocations}
-              getMetricLabel={getMetricLabel}
               onViewportBoundsChange={handleViewportBoundsChange}
             />
           </div>
