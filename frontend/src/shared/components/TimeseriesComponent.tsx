@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
 import { Card, Spinner, ButtonGroup, Button } from 'react-bootstrap';
-import { usePrimaryTimeseries, useSecondaryTimeseries } from '../../../shared/queries/timeseries';
-import type { TimeseriesRequestFilters, TimeseriesState } from '../../../shared/types/timeseries';
-import { PlotlyChart } from '../../common';
+import { PlotlyChart } from '@/components/common';
+import { usePrimaryTimeseries, useSecondaryTimeseries } from '@/shared/queries/timeseries';
+import type { TimeseriesRequestFilters, TimeseriesState } from '@/shared/types/timeseries';
 
 type TimeseriesControlInjectedProps = {
   setRequestFilters: (filters: TimeseriesRequestFilters) => void;

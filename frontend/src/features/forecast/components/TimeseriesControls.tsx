@@ -1,19 +1,19 @@
 import { useState } from 'react';
 import { Form, Row, Col, Button, Tabs, Tab } from 'react-bootstrap';
-import { useConfigurations } from '../../../shared/queries/configurations';
-import { useVariables } from '../../../shared/queries/variables';
-import type { MapLocation } from '../../../shared/types/locations';
-import type { MapFilters } from '../../../shared/types/maps';
-import type { TimeseriesFilters, TimeseriesRequestFilters } from '../../../shared/types/timeseries';
+import MultiSelectDropdown from '@/shared/components/MultiSelectDropdown';
+import { useConfigurations } from '@/shared/queries/configurations';
+import { useVariables } from '@/shared/queries/variables';
+import type { MapLocation } from '@/shared/types/locations';
+import type { MapFilters } from '@/shared/types/maps';
+import type { TimeseriesFilters, TimeseriesRequestFilters } from '@/shared/types/timeseries';
 import {
   toDisplayVariableName,
   fromDisplayVariableName,
   isTimestepVariable,
   DURATION_NAME_TO_ISO,
-} from '../../../utils/durationUtils';
-import MultiSelectDropdown from '../../common/MultiSelectDropdown';
+} from '@/utils/durationUtils';
 
-export type ForecastTimeseriesControlsProps = {
+export type TimeseriesControlsProps = {
   table: string;
   timeseriesFilters: TimeseriesFilters;
   updateTimeseriesFilters: (patch: Partial<TimeseriesFilters>) => void;
@@ -23,14 +23,14 @@ export type ForecastTimeseriesControlsProps = {
   onViewModeChange: (viewMode: string) => void;
 };
 
-const ForecastTimeseriesControls = ({
+const TimeseriesControls = ({
   table,
   timeseriesFilters,
   updateTimeseriesFilters,
   setRequestFilters,
   selectedLocation,
   onViewModeChange,
-}: ForecastTimeseriesControlsProps) => {
+}: TimeseriesControlsProps) => {
   const [activeTab, setActiveTab] = useState('observations');
 
   const configurations = useConfigurations(table);
@@ -234,4 +234,4 @@ const ForecastTimeseriesControls = ({
   );
 };
 
-export default ForecastTimeseriesControls;
+export default TimeseriesControls;

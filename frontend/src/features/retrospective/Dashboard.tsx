@@ -1,29 +1,22 @@
-import {
-  useRetrospectiveDashboard,
-  ActionTypes,
-} from '../../../context/RetrospectiveDashboardContext';
-import {
-  useRetrospectiveLocationSelection,
-  useRetrospectiveFilters,
-} from '../../../hooks/useRetrospectiveDataFetching';
-import { LocationMetrics, LocationCard } from '../../common';
-import {
-  MapComponent,
-  TimeseriesComponent,
-  MapFilterButton,
-  TimeseriesControls,
-} from '../../common/dashboard';
-import { useInitialRetrospectiveFilters } from './useInitialRetrospectiveFilters';
+import LocationCard from '@/shared/components/LocationCard';
+import LocationMetrics from '@/shared/components/LocationMetrics';
+import MapComponent from '@/shared/components/MapComponent';
+import MapFilterButton from '@/shared/components/MapFilterButton';
+import TimeseriesComponent from '@/shared/components/TimeseriesComponent';
+import TimeseriesControls from './components/TimeseriesControls';
+import { useDashboard, ActionTypes } from './DashboardContext';
+import { useFilters } from './hooks/useFilters';
+import { useInitialFilters } from './hooks/useInitialFilters';
+import { useLocationSelection } from './hooks/useLocationSelection';
 
-export const RetrospectiveDashboard = () => {
+export const Dashboard = () => {
   const tables = ['sim_metrics_by_location'];
 
-  const { state, dispatch } = useRetrospectiveDashboard();
-  const { selectLocation, selectedLocation } = useRetrospectiveLocationSelection();
-  const { mapFilters, updateMapFilters, timeseriesFilters, updateTimeseriesFilters } =
-    useRetrospectiveFilters();
+  const { state, dispatch } = useDashboard();
+  const { selectLocation, selectedLocation } = useLocationSelection();
+  const { mapFilters, updateMapFilters, timeseriesFilters, updateTimeseriesFilters } = useFilters();
 
-  useInitialRetrospectiveFilters(tables[0]);
+  useInitialFilters(tables[0]);
 
   return (
     <div className="d-flex flex-column" style={{ height: 'calc(100dvh - 56px)', minHeight: 0 }}>

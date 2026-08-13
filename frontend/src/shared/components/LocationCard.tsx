@@ -1,5 +1,5 @@
 import { Card, CloseButton } from 'react-bootstrap';
-import type { MapLocation } from '../../shared/types/locations';
+import type { MapLocation } from '@/shared/types/locations';
 
 type LocationCardProps = {
   selectedLocation: MapLocation | null;

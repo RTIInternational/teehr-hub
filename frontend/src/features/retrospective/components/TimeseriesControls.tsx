@@ -1,18 +1,15 @@
 import { Form, Row, Col, Button } from 'react-bootstrap';
-import { useConfigurations } from '../../../shared/queries/configurations';
-import { useVariables } from '../../../shared/queries/variables';
-import type { MapLocation } from '../../../shared/types/locations';
-import type { MapFilters } from '../../../shared/types/maps';
-import type {
-  TimeseriesFiltersFlat,
-  TimeseriesRequestFilters,
-} from '../../../shared/types/timeseries';
+import MultiSelectDropdown from '@/shared/components/MultiSelectDropdown';
+import { useConfigurations } from '@/shared/queries/configurations';
+import { useVariables } from '@/shared/queries/variables';
+import type { MapLocation } from '@/shared/types/locations';
+import type { MapFilters } from '@/shared/types/maps';
+import type { TimeseriesFiltersFlat, TimeseriesRequestFilters } from '@/shared/types/timeseries';
 import {
   DURATION_NAME_TO_ISO,
   toDisplayVariableName,
   toPrimaryVariableName,
-} from '../../../utils/durationUtils';
-import MultiSelectDropdown from '../MultiSelectDropdown';
+} from '@/utils/durationUtils';
 
 export type TimeseriesControlsProps = {
   table: string;

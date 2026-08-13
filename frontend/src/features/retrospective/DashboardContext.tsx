@@ -1,11 +1,11 @@
 /* eslint-disable react-refresh/only-export-components */
 import React, { createContext, useContext, useReducer, type Dispatch } from 'react';
-import { RETROSPECTIVE_DASHBOARD_DEFAULTS } from '../config/dashboardDefaults';
-import type { MapLocation } from '../shared/types/locations';
-import type { MapFilters } from '../shared/types/maps';
-import type { TimeseriesFiltersFlat } from '../shared/types/timeseries';
+import { RETROSPECTIVE_DASHBOARD_DEFAULTS } from '@/config/dashboardDefaults';
+import type { MapLocation } from '@/shared/types/locations';
+import type { MapFilters } from '@/shared/types/maps';
+import type { TimeseriesFiltersFlat } from '@/shared/types/timeseries';
 
-export type RetrospectiveDashboardState = {
+export type DashboardState = {
   mapFilters: MapFilters;
   timeseriesFilters: TimeseriesFiltersFlat;
   selectedLocation: MapLocation | null;
@@ -13,7 +13,7 @@ export type RetrospectiveDashboardState = {
   error: string | null;
 };
 
-type RetrospectiveDashboardAction =
+type DashboardAction =
   | {
       type: typeof ActionTypes.INITIALIZE_FILTERS;
       payload: { configuration: string | null; variable: string | null };
@@ -47,7 +47,7 @@ const DEFAULT_START_DATE = RETROSPECTIVE_DASHBOARD_DEFAULTS.defaultStartDate;
 const DEFAULT_END_DATE = RETROSPECTIVE_DASHBOARD_DEFAULTS.defaultEndDate;
 
 // Initial state for retrospective dashboard
-const initialRetrospectiveState: RetrospectiveDashboardState = {
+const initialState: DashboardState = {
   // Map filters (original structure)
   mapFilters: {
     configuration: null,
@@ -99,10 +99,7 @@ export const ActionTypes = {
 } as const;
 
 // Reducer function (same logic as original)
-const retrospectiveDashboardReducer = (
-  state: RetrospectiveDashboardState,
-  action: RetrospectiveDashboardAction
-) => {
+const reducer = (state: DashboardState, action: DashboardAction) => {
   switch (action.type) {
     case ActionTypes.INITIALIZE_FILTERS: {
       const { configuration, variable } = action.payload;
@@ -193,33 +190,29 @@ const retrospectiveDashboardReducer = (
 };
 
 // Create context
-type RetrospectiveDashboardContextType = {
-  state: RetrospectiveDashboardState;
-  dispatch: Dispatch<RetrospectiveDashboardAction>;
+type DashboardContextValue = {
+  state: DashboardState;
+  dispatch: Dispatch<DashboardAction>;
 };
 
-const RetrospectiveDashboardContext = createContext<RetrospectiveDashboardContextType | null>(null);
+const DashboardContext = createContext<DashboardContextValue | null>(null);
 
 // Provider component
-export const RetrospectiveDashboardProvider = ({ children }: React.PropsWithChildren) => {
-  const [state, dispatch] = useReducer(retrospectiveDashboardReducer, initialRetrospectiveState);
+export const DashboardProvider = ({ children }: React.PropsWithChildren) => {
+  const [state, dispatch] = useReducer(reducer, initialState);
 
   return (
-    <RetrospectiveDashboardContext.Provider value={{ state, dispatch }}>
-      {children}
-    </RetrospectiveDashboardContext.Provider>
+    <DashboardContext.Provider value={{ state, dispatch }}>{children}</DashboardContext.Provider>
   );
 };
 
 // Hook to use the context
-export const useRetrospectiveDashboard = () => {
-  const context = useContext(RetrospectiveDashboardContext);
+export const useDashboard = () => {
+  const context = useContext(DashboardContext);
   if (!context) {
-    throw new Error(
-      'useRetrospectiveDashboard must be used within a RetrospectiveDashboardProvider'
-    );
+    throw new Error('useDashboard must be used within a DashboardProvider');
   }
   return context;
 };
 
-export default RetrospectiveDashboardContext;
+export default DashboardContext;

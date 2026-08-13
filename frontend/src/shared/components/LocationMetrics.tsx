@@ -1,10 +1,10 @@
 import { useState, type ComponentType } from 'react';
 import { Card, Form, ButtonGroup, Button } from 'react-bootstrap';
-import { useLocationMetrics } from '../../shared/queries/metrics';
-import { useTableProperties } from '../../shared/queries/queryables';
-import type { MapLocation } from '../../shared/types/locations';
-import type { TableProperties } from '../../shared/types/queryables';
-import MetricsTable from './MetricsTable';
+import { MetricsTable } from '@/components/common';
+import { useLocationMetrics } from '@/shared/queries/metrics';
+import { useTableProperties } from '@/shared/queries/queryables';
+import type { MapLocation } from '@/shared/types/locations';
+import type { TableProperties } from '@/shared/types/queryables';
 
 // Typed facade — remove when MetricsTable is migrated to .tsx
 type MetricsTableProps = {

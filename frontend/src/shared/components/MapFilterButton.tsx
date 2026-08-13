@@ -1,9 +1,9 @@
 import { useState } from 'react';
 import { Dropdown, Form } from 'react-bootstrap';
-import { useConfigurations } from '../../../shared/queries/configurations';
-import { useTableProperties } from '../../../shared/queries/queryables';
-import { useVariables } from '../../../shared/queries/variables';
-import type { MapFilters } from '../../../shared/types/maps';
+import { useConfigurations } from '@/shared/queries/configurations';
+import { useTableProperties } from '@/shared/queries/queryables';
+import { useVariables } from '@/shared/queries/variables';
+import type { MapFilters } from '@/shared/types/maps';
 
 type MapFilterButtonProps = {
   tables: string[];

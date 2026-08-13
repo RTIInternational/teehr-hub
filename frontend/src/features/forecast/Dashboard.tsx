@@ -1,22 +1,22 @@
-import { useForecastDashboard, ActionTypes } from '../../../context/ForecastDashboardContext';
-import {
-  useForecastLocationSelection,
-  useForecastFilters,
-} from '../../../hooks/useForecastDataFetching';
-import { LocationMetrics, LocationCard } from '../../common';
-import { MapComponent, TimeseriesComponent, MapFilterButton } from '../../common/dashboard';
-import ForecastTimeseriesControls from './ForecastTimeseriesControls';
-import { useInitialForecastFilters } from './useInitialForecastFilters';
+import LocationCard from '@/shared/components/LocationCard';
+import LocationMetrics from '@/shared/components/LocationMetrics';
+import MapComponent from '@/shared/components/MapComponent';
+import MapFilterButton from '@/shared/components/MapFilterButton';
+import TimeseriesComponent from '@/shared/components/TimeseriesComponent';
+import TimeseriesControls from './components/TimeseriesControls';
+import { useDashboard, ActionTypes } from './DashboardContext';
+import { useFilters } from './hooks/useFilters';
+import { useInitialFilters } from './hooks/useInitialFilters';
+import { useLocationSelection } from './hooks/useLocationSelection';
 
-const Dashboard = () => {
+export const Dashboard = () => {
   const tables = ['fcst_metrics_by_location', 'fcst_metrics_by_lead_time_bins'];
 
-  const { state, dispatch } = useForecastDashboard();
-  const { selectLocation, selectedLocation } = useForecastLocationSelection();
-  const { mapFilters, updateMapFilters, timeseriesFilters, updateTimeseriesFilters } =
-    useForecastFilters();
+  const { state, dispatch } = useDashboard();
+  const { selectLocation, selectedLocation } = useLocationSelection();
+  const { mapFilters, updateMapFilters, timeseriesFilters, updateTimeseriesFilters } = useFilters();
 
-  useInitialForecastFilters(tables[0]);
+  useInitialFilters(tables[0]);
 
   return (
     <div className="d-flex flex-column" style={{ height: 'calc(100dvh - 56px)', minHeight: 0 }}>
@@ -118,7 +118,7 @@ const Dashboard = () => {
               <TimeseriesComponent
                 key={selectedLocation.primary_location_id}
                 state={state}
-                Controls={ForecastTimeseriesControls}
+                Controls={TimeseriesControls}
                 controlsProps={{
                   table: tables[0],
                   timeseriesFilters,
@@ -169,5 +169,3 @@ const Dashboard = () => {
     </div>
   );
 };
-
-export default Dashboard;
