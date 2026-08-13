@@ -1,5 +1,5 @@
 import type { ExpressionSpecification } from 'maplibre-gl';
-import type { LngLatTuple } from '../../../shared/types/maps';
+import type { LngLatTuple } from '@/shared/types/maps';
 
 export const getMetricDisplay = (metric: keyof typeof metricDisplay) => {
   return metricDisplay[metric];

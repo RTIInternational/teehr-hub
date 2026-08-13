@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
-import { apiService } from '../../services/api';
-import { extractFeatureProperties } from '../../utils/ogcTransformers';
+import { apiService } from '@/services/api';
+import { extractFeatureProperties } from '@/utils/ogcTransformers';
 
 export const useLocationMetrics = (primaryLocationId: string | null, table: string | null) =>
   useQuery({

@@ -1,9 +1,9 @@
 /* eslint-disable react-refresh/only-export-components */
 import React, { createContext, useContext, useReducer, type Dispatch } from 'react';
-import { FORECAST_DASHBOARD_DEFAULTS } from '../config/dashboardDefaults';
-import type { MapLocation } from '../shared/types/locations';
-import type { MapFilters } from '../shared/types/maps';
-import type { TimeseriesFilters } from '../shared/types/timeseries';
+import { FORECAST_DASHBOARD_DEFAULTS } from '@/config/dashboardDefaults';
+import type { MapLocation } from '@/shared/types/locations';
+import type { MapFilters } from '@/shared/types/maps';
+import type { TimeseriesFilters } from '@/shared/types/timeseries';
 
 // Dynamic date helpers - returns dates for 10 days ago through today
 const getTenDaysAgo = () => {
@@ -17,7 +17,7 @@ const getToday = () => {
   return date.toISOString().slice(0, 16); // Format: YYYY-MM-DDTHH:MM
 };
 
-export type ForecastDashboardState = {
+export type DashboardState = {
   mapFilters: MapFilters;
   timeseriesFilters: TimeseriesFilters;
   selectedLocation: MapLocation | null;
@@ -25,7 +25,7 @@ export type ForecastDashboardState = {
   error: string | null;
 };
 
-type ForecastDashboardAction =
+type DashboardAction =
   | {
       type: typeof ActionTypes.INITIALIZE_FILTERS;
       payload: { configuration: string | null; variable: string | null };
@@ -55,7 +55,7 @@ type ForecastDashboardAction =
     };
 
 // Initial state for forecast dashboard
-const initialForecastState: ForecastDashboardState = {
+const initialState: DashboardState = {
   // Map filters (original structure)
   mapFilters: {
     configuration: null,
@@ -108,10 +108,7 @@ export const ActionTypes = {
 } as const;
 
 // Reducer function (same logic as retrospective)
-const forecastDashboardReducer = (
-  state: ForecastDashboardState,
-  action: ForecastDashboardAction
-) => {
+const reducer = (state: DashboardState, action: DashboardAction) => {
   switch (action.type) {
     case ActionTypes.INITIALIZE_FILTERS: {
       const { configuration, variable } = action.payload;
@@ -223,31 +220,29 @@ const forecastDashboardReducer = (
 };
 
 // Create context
-type ForecastDashboardContextType = {
-  state: ForecastDashboardState;
-  dispatch: Dispatch<ForecastDashboardAction>;
+type DashboardContextValue = {
+  state: DashboardState;
+  dispatch: Dispatch<DashboardAction>;
 };
 
-const ForecastDashboardContext = createContext<ForecastDashboardContextType | null>(null);
+const DashboardContext = createContext<DashboardContextValue | null>(null);
 
 // Provider component
-export const ForecastDashboardProvider = ({ children }: React.PropsWithChildren) => {
-  const [state, dispatch] = useReducer(forecastDashboardReducer, initialForecastState);
+export const DashboardProvider = ({ children }: React.PropsWithChildren) => {
+  const [state, dispatch] = useReducer(reducer, initialState);
 
   return (
-    <ForecastDashboardContext.Provider value={{ state, dispatch }}>
-      {children}
-    </ForecastDashboardContext.Provider>
+    <DashboardContext.Provider value={{ state, dispatch }}>{children}</DashboardContext.Provider>
   );
 };
 
 // Hook to use the context
-export const useForecastDashboard = () => {
-  const context = useContext(ForecastDashboardContext);
+export const useDashboard = () => {
+  const context = useContext(DashboardContext);
   if (!context) {
     throw new Error('useForecastDashboard must be used within a ForecastDashboardProvider');
   }
   return context;
 };
 
-export default ForecastDashboardContext;
+export default DashboardContext;

@@ -1,6 +1,6 @@
 import Plotly from 'plotly.js-dist-min';
 import { useEffect, useRef } from 'react';
-import { getMetricDisplay, getMetricLabel } from '../../common/dashboard/utils';
+import { getMetricDisplay, getMetricLabel } from '../../../shared/utils/utils';
 import { useCdfPlot } from './useCdfPlots';
 
 export const CdfPlot = ({ plotId }) => {

@@ -1,11 +1,16 @@
 import { useEffect } from 'react';
-import { FORECAST_DASHBOARD_DEFAULTS, selectDefault } from '../../../config/dashboardDefaults';
-import { ActionTypes, useForecastDashboard } from '../../../context/ForecastDashboardContext';
-import { useConfigurations } from '../../../shared/queries/configurations';
-import { useVariables } from '../../../shared/queries/variables';
+import { FORECAST_DASHBOARD_DEFAULTS, selectDefault } from '@/config/dashboardDefaults';
+import { ActionTypes, useDashboard } from '@/features/forecast/DashboardContext';
+import { useConfigurations } from '@/shared/queries/configurations';
+import { useVariables } from '@/shared/queries/variables';
 
-export const useInitialForecastFilters = (table: string) => {
-  const { dispatch } = useForecastDashboard();
+/**
+ * Load filters from data warehouse API and apply defaults
+ * @param table Data warehouse table to reference in queries
+ * @returns UseQueryResult objects for configurations and variables
+ */
+export const useInitialFilters = (table: string) => {
+  const { dispatch } = useDashboard();
 
   const configurations = useConfigurations(table);
   const variables = useVariables(table);

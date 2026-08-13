@@ -1,14 +1,16 @@
 import { useEffect } from 'react';
-import { RETROSPECTIVE_DASHBOARD_DEFAULTS, selectDefault } from '../../../config/dashboardDefaults';
-import {
-  ActionTypes,
-  useRetrospectiveDashboard,
-} from '../../../context/RetrospectiveDashboardContext';
-import { useConfigurations } from '../../../shared/queries/configurations';
-import { useVariables } from '../../../shared/queries/variables';
+import { RETROSPECTIVE_DASHBOARD_DEFAULTS, selectDefault } from '@/config/dashboardDefaults';
+import { useConfigurations } from '@/shared/queries/configurations';
+import { useVariables } from '@/shared/queries/variables';
+import { ActionTypes, useDashboard } from '../DashboardContext';
 
-export const useInitialRetrospectiveFilters = (table: string) => {
-  const { dispatch } = useRetrospectiveDashboard();
+/**
+ * Load filters from data warehouse API and apply defaults
+ * @param table Data warehouse table to reference in queries
+ * @returns UseQueryResult objects for configurations and variables
+ */
+export const useInitialFilters = (table: string) => {
+  const { dispatch } = useDashboard();
 
   const configurations = useConfigurations(table);
   const variables = useVariables(table);

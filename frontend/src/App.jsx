@@ -6,14 +6,13 @@ import ApiKeysAdmin from './components/admin/ApiKeysAdmin';
 import KeycloakAdmin from './components/admin/KeycloakAdmin';
 import { Home, DashboardsHome, Navbar } from './components/common';
 import { DataDashboard } from './components/dashboards/data_management';
-import { ForecastDashboard } from './components/dashboards/forecast';
 import { NwmdDashboard } from './components/dashboards/nwmd/index';
-import { RetrospectiveDashboard } from './components/dashboards/retrospective/RetrospectiveDashboard';
 import { DataDashboardProvider } from './context/DataDashboardContext';
-import { ForecastDashboardProvider } from './context/ForecastDashboardContext';
 import { NwmdDashboardProvider } from './context/NwmdDashboardContext';
-import { RetrospectiveDashboardProvider } from './context/RetrospectiveDashboardContext';
+import { ForecastDashboard, ForecastDashboardProvider } from './features/forecast';
+import { RetrospectiveDashboardProvider, RetrospectiveDashboard } from './features/retrospective';
 import { useAuth } from './hooks/useAuth';
+
 import 'bootstrap/dist/css/bootstrap.min.css';
 import './App.css';
 

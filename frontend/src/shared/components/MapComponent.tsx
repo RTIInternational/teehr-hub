@@ -7,11 +7,11 @@ import maplibregl, {
 } from 'maplibre-gl';
 import React, { useEffect, useRef, useCallback, useMemo, useState, type Dispatch } from 'react';
 import 'maplibre-gl/dist/maplibre-gl.css';
-import { useLocations } from '../../../shared/queries/locations';
-import type { MapLocation } from '../../../shared/types/locations';
-import type { InvalidFeature, MapMetricClamped, MapState } from '../../../shared/types/maps';
-import MapLegend from './MapLegend';
-import { getMetricColorExpression, getMetricLabel, isLngLatTuple } from './utils';
+import MapLegend from '@/shared/components/MapLegend';
+import { useLocations } from '@/shared/queries/locations';
+import type { MapLocation } from '@/shared/types/locations';
+import type { InvalidFeature, MapMetricClamped, MapState } from '@/shared/types/maps';
+import { getMetricColorExpression, getMetricLabel, isLngLatTuple } from '@/shared/utils/utils';
 
 type MapComponentProps<TActionTypes extends ActionTypesShape> = {
   state: MapState;
