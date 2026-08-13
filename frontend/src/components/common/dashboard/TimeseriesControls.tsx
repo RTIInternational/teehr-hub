@@ -1,10 +1,11 @@
 import { Form, Row, Col, Button } from 'react-bootstrap';
+import { useConfigurations } from '../../../shared/queries/configurations';
+import { useVariables } from '../../../shared/queries/variables';
 import type { MapLocation } from '../../../shared/types/locations';
 import type { MapFilters } from '../../../shared/types/maps';
 import type {
-  TimeseriesFilters,
   TimeseriesFiltersFlat,
-  TimeseriesState,
+  TimeseriesRequestFilters,
 } from '../../../shared/types/timeseries';
 import {
   DURATION_NAME_TO_ISO,
@@ -14,17 +15,17 @@ import {
 import MultiSelectDropdown from '../MultiSelectDropdown';
 
 export type TimeseriesControlsProps = {
-  state: TimeseriesState;
+  table: string;
   timeseriesFilters: TimeseriesFiltersFlat;
-  updateTimeseriesFilters: (patch: Partial<TimeseriesFilters>) => void;
-  setRequestFilters: (filters: TimeseriesFilters) => void;
+  updateTimeseriesFilters: (patch: Partial<TimeseriesFiltersFlat>) => void;
+  setRequestFilters: (filters: TimeseriesRequestFilters) => void;
   selectedLocation: MapLocation;
   mapFilters: MapFilters;
   onViewModeChange: (viewMode: string) => void;
 };
 
 const TimeseriesControls = ({
-  state,
+  table,
   timeseriesFilters,
   updateTimeseriesFilters,
   setRequestFilters,
@@ -32,12 +33,15 @@ const TimeseriesControls = ({
   mapFilters,
   onViewModeChange,
 }: TimeseriesControlsProps) => {
+  const configurations = useConfigurations(table);
+  const variables = useVariables(table);
+
   const handleFilterChange = (field: string, value: unknown) => {
     updateTimeseriesFilters({ [field]: value });
   };
 
   const handleLoadData = async () => {
-    if (!selectedLocation?.primary_location_id) return;
+    if (!selectedLocation?.primary_location_id || !timeseriesFilters.variable) return;
 
     const primaryVariable = timeseriesFilters.variable?.endsWith('_inst')
       ? toPrimaryVariableName(timeseriesFilters.variable)
@@ -85,7 +89,7 @@ const TimeseriesControls = ({
             <Form.Group>
               <Form.Label className="small fw-bold">Configurations</Form.Label>
               <MultiSelectDropdown
-                options={Array.isArray(state.configurations) ? state.configurations : []}
+                options={Array.isArray(configurations.data) ? configurations.data : []}
                 selected={selectedConfigurations}
                 onChange={(selected) => handleFilterChange('configurations', selected)}
                 allSelectedText="All configurations"
@@ -104,8 +108,8 @@ const TimeseriesControls = ({
                 onChange={(e) => handleFilterChange('variable', e.target.value || null)}
               >
                 <option value="">Select Variable...</option>
-                {Array.isArray(state.variables) &&
-                  state.variables.map((variable: string) => (
+                {Array.isArray(variables.data) &&
+                  variables.data.map((variable: string) => (
                     <option key={variable} value={toDisplayVariableName(variable)}>
                       {variable}
                     </option>

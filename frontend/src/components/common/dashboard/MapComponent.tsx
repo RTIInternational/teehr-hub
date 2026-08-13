@@ -5,7 +5,7 @@ import maplibregl, {
   type FilterSpecification,
   type MapLayerMouseEvent,
 } from 'maplibre-gl';
-import React, { useEffect, useRef, useCallback, useMemo, useState } from 'react';
+import React, { useEffect, useRef, useCallback, useMemo, useState, type Dispatch } from 'react';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import { useLocations } from '../../../shared/queries/locations';
 import type { MapLocation } from '../../../shared/types/locations';
@@ -13,41 +13,61 @@ import type { InvalidFeature, MapMetricClamped, MapState } from '../../../shared
 import MapLegend from './MapLegend';
 import { getMetricColorExpression, getMetricLabel, isLngLatTuple } from './utils';
 
-type MapComponentProps = {
+type MapComponentProps<TActionTypes extends ActionTypesShape> = {
   state: MapState;
-  dispatch: ({ type, payload }: { type: string; payload: unknown }) => void;
+  dispatch: Dispatch<MapComponentAction<TActionTypes>>;
   table: string;
-  ActionTypes: Record<string, string>;
-  selectLocation: (location?: MapLocation) => void;
-  MapFilterButton: React.ComponentType;
+  ActionTypes: TActionTypes;
+  selectLocation: (location: MapLocation | null) => void;
+  mapFilterControls?: React.ReactNode;
   showSearch?: boolean;
   overlayLocations?: FeatureCollection;
   overlayVisible?: boolean;
   hoveredOverlayId?: string;
 };
 
-const MapComponent = ({
+type ActionTypesShape = {
+  SET_MAP_LOADED: string;
+  SET_ERROR: string;
+};
+
+type MapComponentAction<TActionTypes extends ActionTypesShape> =
+  | {
+      type: TActionTypes['SET_MAP_LOADED'];
+      payload: boolean;
+    }
+  | {
+      type: TActionTypes['SET_ERROR'];
+      payload: string;
+    };
+
+const MapComponent = <TActionTypes extends ActionTypesShape>({
   state,
   dispatch,
   table,
   ActionTypes,
   selectLocation,
-  MapFilterButton,
+  mapFilterControls,
   showSearch = true,
   overlayLocations,
   overlayVisible = true,
   hoveredOverlayId,
-}: MapComponentProps) => {
+}: MapComponentProps<TActionTypes>) => {
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<Map>(null);
   const popup = useRef<Popup>(null);
   const [searchTerm, setSearchTerm] = useState('');
 
-  const locations = useLocations({
-    table,
-    configuration: state.mapFilters.configuration,
-    variable: state.mapFilters.variable,
-  });
+  const locationFilters =
+    state.mapFilters.configuration && state.mapFilters.variable
+      ? {
+          table,
+          configuration: state.mapFilters.configuration,
+          variable: state.mapFilters.variable,
+        }
+      : undefined;
+
+  const locations = useLocations(locationFilters);
 
   const selectFeatureOnMap = useCallback(
     (feature: Feature<Point>, options: { flyTo?: boolean } = {}) => {
@@ -161,7 +181,7 @@ const MapComponent = ({
 
         if (features.length === 0) {
           // Clicked on empty space - deselect location
-          selectLocation();
+          selectLocation(null);
 
           // Clear map selection
           if (map.current.getLayer('locations-selected')) {
@@ -658,7 +678,7 @@ const MapComponent = ({
         )}
 
         {/* Map Controls */}
-        {state.mapLoaded && MapFilterButton && <MapFilterButton />}
+        {state.mapLoaded && mapFilterControls}
 
         {/* Location search */}
         {state.mapLoaded && showSearch && (

@@ -1,8 +1,10 @@
 import { useState } from 'react';
 import { Form, Row, Col, Button, Tabs, Tab } from 'react-bootstrap';
+import { useConfigurations } from '../../../shared/queries/configurations';
+import { useVariables } from '../../../shared/queries/variables';
 import type { MapLocation } from '../../../shared/types/locations';
 import type { MapFilters } from '../../../shared/types/maps';
-import type { TimeseriesFilters, TimeseriesState } from '../../../shared/types/timeseries';
+import type { TimeseriesFilters, TimeseriesRequestFilters } from '../../../shared/types/timeseries';
 import {
   toDisplayVariableName,
   fromDisplayVariableName,
@@ -12,17 +14,17 @@ import {
 import MultiSelectDropdown from '../../common/MultiSelectDropdown';
 
 export type ForecastTimeseriesControlsProps = {
-  state: TimeseriesState;
+  table: string;
   timeseriesFilters: TimeseriesFilters;
   updateTimeseriesFilters: (patch: Partial<TimeseriesFilters>) => void;
-  setRequestFilters: (filters: TimeseriesFilters) => void;
+  setRequestFilters: (filters: TimeseriesRequestFilters) => void;
   selectedLocation: MapLocation;
   mapFilters: MapFilters;
   onViewModeChange: (viewMode: string) => void;
 };
 
 const ForecastTimeseriesControls = ({
-  state,
+  table,
   timeseriesFilters,
   updateTimeseriesFilters,
   setRequestFilters,
@@ -30,6 +32,11 @@ const ForecastTimeseriesControls = ({
   onViewModeChange,
 }: ForecastTimeseriesControlsProps) => {
   const [activeTab, setActiveTab] = useState('observations');
+
+  const configurations = useConfigurations(table);
+  const variables = useVariables(table);
+  const primaryVariables = useVariables('primary_timeseries');
+
   const primaryFilters = timeseriesFilters.primary;
   const secondaryFilters = timeseriesFilters.secondary;
 
@@ -88,8 +95,8 @@ const ForecastTimeseriesControls = ({
                 <Form.Group>
                   <Form.Label className="small fw-bold">Variable</Form.Label>
                   <MultiSelectDropdown
-                    options={(Array.isArray(state.primaryVariables)
-                      ? state.primaryVariables
+                    options={(Array.isArray(primaryVariables.data)
+                      ? primaryVariables.data
                       : []
                     ).map(toDisplayVariableName)}
                     selected={(primaryFilters.variables || []).map(toDisplayVariableName)}
@@ -156,7 +163,7 @@ const ForecastTimeseriesControls = ({
                 <Form.Group>
                   <Form.Label className="small fw-bold">Configurations</Form.Label>
                   <MultiSelectDropdown
-                    options={Array.isArray(state.configurations) ? state.configurations : []}
+                    options={Array.isArray(configurations.data) ? configurations.data : []}
                     selected={secondaryFilters.configurations}
                     onChange={(selected) => handleSecondaryFilterChange('configurations', selected)}
                     allSelectedText="All configurations"
@@ -169,7 +176,7 @@ const ForecastTimeseriesControls = ({
                 <Form.Group>
                   <Form.Label className="small fw-bold">Variable</Form.Label>
                   <MultiSelectDropdown
-                    options={Array.isArray(state.variables) ? state.variables : []}
+                    options={Array.isArray(variables.data) ? variables.data : []}
                     selected={secondaryFilters.variables}
                     onChange={(selected) => handleSecondaryFilterChange('variables', selected)}
                     allSelectedText="All variables"

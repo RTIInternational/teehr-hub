@@ -4,9 +4,9 @@ import type { OgcLink } from './ogc';
 export type MetricsFeature = Feature<Point, MetricsProperties>;
 
 export type MetricsFilters = {
-  configuration?: string;
-  table?: string;
-  variable?: string;
+  configuration: string;
+  table: string;
+  variable: string;
 };
 
 export type MetricsProperties = {

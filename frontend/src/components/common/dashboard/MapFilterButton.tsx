@@ -1,19 +1,21 @@
 import { useState } from 'react';
 import { Dropdown, Form } from 'react-bootstrap';
+import { useConfigurations } from '../../../shared/queries/configurations';
 import { useTableProperties } from '../../../shared/queries/queryables';
-import type { DashboardState } from '../../../shared/types/dashboard';
+import { useVariables } from '../../../shared/queries/variables';
 import type { MapFilters } from '../../../shared/types/maps';
 
 type MapFilterButtonProps = {
-  state: DashboardState;
   tables: string[];
   mapFilters: MapFilters;
   updateMapFilters: (filter: { [filter: string]: unknown }) => void;
 };
 
-const MapFilterButton = ({ state, tables, mapFilters, updateMapFilters }: MapFilterButtonProps) => {
+const MapFilterButton = ({ tables, mapFilters, updateMapFilters }: MapFilterButtonProps) => {
   const [showDropdown, setShowDropdown] = useState(false);
 
+  const configurations = useConfigurations(tables[0]);
+  const variables = useVariables(tables[0]);
   const tableProperties = useTableProperties(tables);
 
   const handleMapFilterChange = async (filterType: string, value: unknown) => {
@@ -38,8 +40,8 @@ const MapFilterButton = ({ state, tables, mapFilters, updateMapFilters }: MapFil
                 onChange={(e) => handleMapFilterChange('configuration', e.target.value || null)}
               >
                 <option value="">Select Configuration...</option>
-                {Array.isArray(state.configurations) &&
-                  state.configurations.map((config) => (
+                {Array.isArray(configurations.data) &&
+                  configurations.data.map((config) => (
                     <option key={config} value={config}>
                       {config}
                     </option>
@@ -56,8 +58,8 @@ const MapFilterButton = ({ state, tables, mapFilters, updateMapFilters }: MapFil
                 onChange={(e) => handleMapFilterChange('variable', e.target.value || null)}
               >
                 <option value="">Select Variable...</option>
-                {Array.isArray(state.variables) &&
-                  state.variables.map((variable) => (
+                {Array.isArray(variables.data) &&
+                  variables.data.map((variable) => (
                     <option key={variable} value={variable}>
                       {variable}
                     </option>

@@ -1,17 +1,53 @@
 /* eslint-disable react-refresh/only-export-components */
-import { createContext, useContext, useReducer } from 'react';
-import { RETROSPECTIVE_DASHBOARD_DEFAULTS, selectDefault } from '../config/dashboardDefaults';
+import React, { createContext, useContext, useReducer, type Dispatch } from 'react';
+import { RETROSPECTIVE_DASHBOARD_DEFAULTS } from '../config/dashboardDefaults';
+import type { MapLocation } from '../shared/types/locations';
+import type { MapFilters } from '../shared/types/maps';
+import type { TimeseriesFiltersFlat } from '../shared/types/timeseries';
+
+export type RetrospectiveDashboardState = {
+  mapFilters: MapFilters;
+  timeseriesFilters: TimeseriesFiltersFlat;
+  selectedLocation: MapLocation | null;
+  mapLoaded: boolean;
+  error: string | null;
+};
+
+type RetrospectiveDashboardAction =
+  | {
+      type: typeof ActionTypes.INITIALIZE_FILTERS;
+      payload: { configuration: string | null; variable: string | null };
+    }
+  | {
+      type: typeof ActionTypes.UPDATE_MAP_FILTERS;
+      payload: Partial<MapFilters>;
+    }
+  | {
+      type: typeof ActionTypes.UPDATE_TIMESERIES_FILTERS;
+      payload: Partial<TimeseriesFiltersFlat>;
+    }
+  | {
+      type: typeof ActionTypes.SELECT_LOCATION;
+      payload: MapLocation | null;
+    }
+  | {
+      type: typeof ActionTypes.SET_MAP_LOADED;
+      payload: boolean;
+    }
+  | {
+      type: typeof ActionTypes.SET_ERROR;
+      payload: string;
+    }
+  | {
+      type: typeof ActionTypes.CLEAR_ERROR;
+    };
 
 // Static date defaults for retrospective - uses 2020 data
 const DEFAULT_START_DATE = RETROSPECTIVE_DASHBOARD_DEFAULTS.defaultStartDate;
 const DEFAULT_END_DATE = RETROSPECTIVE_DASHBOARD_DEFAULTS.defaultEndDate;
 
 // Initial state for retrospective dashboard
-const initialRetrospectiveState = {
-  // Data
-  configurations: [],
-  variables: [],
-
+const initialRetrospectiveState: RetrospectiveDashboardState = {
   // Map filters (original structure)
   mapFilters: {
     configuration: null,
@@ -47,14 +83,12 @@ export const ActionTypes = {
   SET_VARIABLES: 'SET_VARIABLES',
 
   // Filter updates
+  INITIALIZE_FILTERS: 'INITIALIZE_FILTERS',
   UPDATE_MAP_FILTERS: 'UPDATE_MAP_FILTERS',
   UPDATE_TIMESERIES_FILTERS: 'UPDATE_TIMESERIES_FILTERS',
 
   // Location selection
   SELECT_LOCATION: 'SELECT_LOCATION',
-
-  // Loading states
-  SET_LOADING: 'SET_LOADING',
 
   // Map state
   SET_MAP_LOADED: 'SET_MAP_LOADED',
@@ -62,61 +96,42 @@ export const ActionTypes = {
   // Error handling
   SET_ERROR: 'SET_ERROR',
   CLEAR_ERROR: 'CLEAR_ERROR',
-};
+} as const;
 
 // Reducer function (same logic as original)
-const retrospectiveDashboardReducer = (state, action) => {
+const retrospectiveDashboardReducer = (
+  state: RetrospectiveDashboardState,
+  action: RetrospectiveDashboardAction
+) => {
   switch (action.type) {
-    case ActionTypes.SET_CONFIGURATIONS: {
-      const configurations = Array.isArray(action.payload) ? action.payload : [];
-      const defaultConfig = selectDefault(
-        RETROSPECTIVE_DASHBOARD_DEFAULTS.preferredConfiguration,
-        configurations
-      );
+    case ActionTypes.INITIALIZE_FILTERS: {
+      const { configuration, variable } = action.payload;
+
       return {
         ...state,
-        configurations,
-        // Set defaults if first time loading - prefer configured default if available
+
         mapFilters: {
           ...state.mapFilters,
-          configuration: state.mapFilters.configuration || defaultConfig,
+          configuration: state.mapFilters.configuration ?? configuration,
+          variable: state.mapFilters.variable ?? variable,
         },
+
         timeseriesFilters: {
           ...state.timeseriesFilters,
           configurations:
             state.timeseriesFilters.configurations?.length > 0
               ? state.timeseriesFilters.configurations
-              : defaultConfig
-                ? [defaultConfig]
+              : configuration
+                ? [configuration]
                 : [],
-        },
-      };
-    }
-
-    case ActionTypes.SET_VARIABLES: {
-      const variables = Array.isArray(action.payload) ? action.payload : [];
-      const defaultVariable = selectDefault(
-        RETROSPECTIVE_DASHBOARD_DEFAULTS.preferredVariable,
-        variables
-      );
-      return {
-        ...state,
-        variables,
-        // Set defaults if first time loading - prefer configured default if available
-        mapFilters: {
-          ...state.mapFilters,
-          variable: state.mapFilters.variable || defaultVariable,
-        },
-        timeseriesFilters: {
-          ...state.timeseriesFilters,
-          variable: state.timeseriesFilters.variable || defaultVariable,
+          variable: state.timeseriesFilters.variable || variable,
         },
       };
     }
 
     case ActionTypes.UPDATE_MAP_FILTERS: {
       // NOTE: This behavior is intentionally mirrored in ForecastDashboardContext. // Keep map display and default timeseries filters aligned.
-      const mapTimeseriesSync = {};
+      const mapTimeseriesSync: Partial<TimeseriesFiltersFlat> = {};
       if (action.payload.configuration !== undefined) {
         // Sync map configuration to timeseries configurations array
         mapTimeseriesSync.configurations = action.payload.configuration
@@ -154,21 +169,6 @@ const retrospectiveDashboardReducer = (state, action) => {
         selectedLocation: action.payload,
       };
 
-    case ActionTypes.SET_LOADING: {
-      // Map shorthand keys to actual state property names
-      const loadingUpdates = {};
-      if ('configurations' in action.payload) {
-        loadingUpdates.configurationsLoading = action.payload.configurations;
-      }
-      if ('variables' in action.payload) {
-        loadingUpdates.variablesLoading = action.payload.variables;
-      }
-      return {
-        ...state,
-        ...loadingUpdates,
-      };
-    }
-
     case ActionTypes.SET_MAP_LOADED:
       return {
         ...state,
@@ -193,10 +193,15 @@ const retrospectiveDashboardReducer = (state, action) => {
 };
 
 // Create context
-const RetrospectiveDashboardContext = createContext();
+type RetrospectiveDashboardContextType = {
+  state: RetrospectiveDashboardState;
+  dispatch: Dispatch<RetrospectiveDashboardAction>;
+};
+
+const RetrospectiveDashboardContext = createContext<RetrospectiveDashboardContextType | null>(null);
 
 // Provider component
-export const RetrospectiveDashboardProvider = ({ children }) => {
+export const RetrospectiveDashboardProvider = ({ children }: React.PropsWithChildren) => {
   const [state, dispatch] = useReducer(retrospectiveDashboardReducer, initialRetrospectiveState);
 
   return (

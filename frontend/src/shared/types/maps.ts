@@ -10,8 +10,8 @@ export type InvalidFeature = {
 export type LngLatTuple = [number, number];
 
 export type MapFilters = {
-  configuration?: string;
-  variable?: string;
+  configuration?: string | null;
+  variable?: string | null;
   threshold?: string;
   aggMethod?: string;
   leadTimeBin?: string;

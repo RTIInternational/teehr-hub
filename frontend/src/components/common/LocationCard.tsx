@@ -2,7 +2,7 @@ import { Card, CloseButton } from 'react-bootstrap';
 import type { MapLocation } from '../../shared/types/locations';
 
 type LocationCardProps = {
-  selectedLocation: MapLocation;
+  selectedLocation: MapLocation | null;
   onClose: () => void;
 };
 
