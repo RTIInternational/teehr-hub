@@ -1,45 +1,29 @@
-import { useEffect } from 'react';
-import { useForecastDashboard, ActionTypes } from '../../../context/ForecastDashboardContext';
 import {
-  useForecastLocationSelection,
-  useForecastFilters,
-} from '../../../hooks/useForecastDataFetching';
+  useRetrospectiveDashboard,
+  ActionTypes,
+} from '../../../context/RetrospectiveDashboardContext';
+import {
+  useRetrospectiveLocationSelection,
+  useRetrospectiveFilters,
+} from '../../../hooks/useRetrospectiveDataFetching';
 import { LocationMetrics, LocationCard } from '../../common';
-import { MapComponent, TimeseriesComponent, MapFilterButton } from '../../common/dashboard';
-import ForecastTimeseriesControls from './ForecastTimeseriesControls';
-import { useForecastData } from './useForecastData';
+import {
+  MapComponent,
+  TimeseriesComponent,
+  MapFilterButton,
+  TimeseriesControls,
+} from '../../common/dashboard';
+import { useInitialRetrospectiveFilters } from './useInitialRetrospectiveFilters';
 
-const Dashboard = () => {
-  const tables = ['fcst_metrics_by_location', 'fcst_metrics_by_lead_time_bins'];
+export const RetrospectiveDashboard = () => {
+  const tables = ['sim_metrics_by_location'];
 
-  const { state, dispatch } = useForecastDashboard();
-  const { initializeForecastData } = useForecastData();
-  const { selectLocation, selectedLocation } = useForecastLocationSelection();
+  const { state, dispatch } = useRetrospectiveDashboard();
+  const { selectLocation, selectedLocation } = useRetrospectiveLocationSelection();
   const { mapFilters, updateMapFilters, timeseriesFilters, updateTimeseriesFilters } =
-    useForecastFilters();
+    useRetrospectiveFilters();
 
-  // Create dashboard-specific components with injected dependencies
-  const ForecastMapFilterButton = () => (
-    <MapFilterButton
-      state={state}
-      tables={tables}
-      mapFilters={mapFilters}
-      updateMapFilters={updateMapFilters}
-    />
-  );
-
-  // Load initial data when component mounts
-  useEffect(() => {
-    const initializeData = async () => {
-      try {
-        await initializeForecastData();
-      } catch (error) {
-        console.error('Forecast Dashboard: Error during initialization:', error);
-      }
-    };
-
-    initializeData();
-  }, [initializeForecastData]);
+  useInitialRetrospectiveFilters(tables[0]);
 
   return (
     <div className="d-flex flex-column" style={{ height: 'calc(100dvh - 56px)', minHeight: 0 }}>
@@ -51,7 +35,7 @@ const Dashboard = () => {
           style={{
             display: 'grid',
             gridTemplateColumns: '1fr 1fr',
-            gridTemplateRows: 'auto minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1.8fr)',
+            gridTemplateRows: 'auto minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1.1fr)',
             gap: '12px',
             padding: '12px',
             height: '100%',
@@ -101,7 +85,13 @@ const Dashboard = () => {
               table={tables[0]}
               ActionTypes={ActionTypes}
               selectLocation={selectLocation}
-              MapFilterButton={ForecastMapFilterButton}
+              mapFilterControls={
+                <MapFilterButton
+                  tables={tables}
+                  mapFilters={mapFilters}
+                  updateMapFilters={updateMapFilters}
+                />
+              }
             />
           </div>
 
@@ -114,7 +104,7 @@ const Dashboard = () => {
             }}
           >
             <LocationCard
-              selectedLocation={state.selectedLocation}
+              selectedLocation={selectedLocation}
               onClose={() => selectLocation(null)}
             />
           </div>
@@ -124,20 +114,20 @@ const Dashboard = () => {
             className="timeseries-panel"
             style={{
               gridColumn: '2 / 3',
-              gridRow: state.error ? '3 / 4' : '2 / 4', // Keep same positioning
+              gridRow: state.error ? '3 / 4' : '2 / 4',
               border: '1px solid #e0e0e0',
               borderRadius: '8px',
               overflow: 'hidden',
               minHeight: 0,
             }}
           >
-            {state.selectedLocation ? (
+            {selectedLocation ? (
               <TimeseriesComponent
                 key={selectedLocation.primary_location_id}
                 state={state}
-                Controls={ForecastTimeseriesControls}
+                Controls={TimeseriesControls}
                 controlsProps={{
-                  state,
+                  table: tables[0],
                   timeseriesFilters,
                   updateTimeseriesFilters,
                   selectedLocation,
@@ -169,8 +159,8 @@ const Dashboard = () => {
               overflow: 'hidden', // Prevent the panel itself from overflowing
             }}
           >
-            {state.selectedLocation ? (
-              <LocationMetrics selectedLocation={state.selectedLocation} tables={tables} />
+            {selectedLocation ? (
+              <LocationMetrics selectedLocation={selectedLocation} tables={tables} />
             ) : (
               <div className="d-flex align-items-center justify-content-center h-100 text-muted">
                 <div className="text-center">
@@ -186,5 +176,3 @@ const Dashboard = () => {
     </div>
   );
 };
-
-export default Dashboard;

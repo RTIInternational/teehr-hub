@@ -13,7 +13,6 @@ export type Timeseries = {
 };
 
 export type TimeseriesFilters = {
-  primary_location_id: string;
   primary: {
     variables: string[];
     start_date: string;
@@ -32,11 +31,11 @@ export type TimeseriesFilters = {
 
 export type TimeseriesFiltersFlat = {
   configurations: string[];
-  variable: string;
+  variable: string | null;
   start_date: string;
   end_date: string;
-  reference_start_date: string;
-  reference_end_date: string;
+  reference_start_date: string | null;
+  reference_end_date: string | null;
   duration: string;
 };
 
@@ -45,12 +44,13 @@ type TimeseriesPoint = {
   value: number;
 };
 
+export type TimeseriesRequestFilters = {
+  primary_location_id: string;
+} & TimeseriesFilters;
+
 export type TimeseriesResponse = Timeseries[];
 
 export type TimeseriesState = {
-  configurations: string[];
-  variables: string[];
-  primaryVariables?: string[];
-  selectedLocation: MapLocation;
-  timeseriesFilters: TimeseriesFilters;
+  selectedLocation: MapLocation | null;
+  timeseriesFilters: TimeseriesFilters | TimeseriesFiltersFlat;
 };

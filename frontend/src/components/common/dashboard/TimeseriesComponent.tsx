@@ -1,11 +1,11 @@
 import React, { useState } from 'react';
 import { Card, Spinner, ButtonGroup, Button } from 'react-bootstrap';
 import { usePrimaryTimeseries, useSecondaryTimeseries } from '../../../shared/queries/timeseries';
-import type { TimeseriesFilters, TimeseriesState } from '../../../shared/types/timeseries';
+import type { TimeseriesRequestFilters, TimeseriesState } from '../../../shared/types/timeseries';
 import { PlotlyChart } from '../../common';
 
 type TimeseriesControlInjectedProps = {
-  setRequestFilters: (filters: TimeseriesFilters) => void;
+  setRequestFilters: (filters: TimeseriesRequestFilters) => void;
   onViewModeChange: (viewMode: string) => void;
 };
 
@@ -21,7 +21,7 @@ const TimeseriesComponent = <TControlsProps extends object>({
   controlsProps,
 }: TimeseriesComponentProps<TControlsProps>) => {
   const [viewMode, setViewMode] = useState('filters');
-  const [requestFilters, setRequestFilters] = useState<TimeseriesFilters>();
+  const [requestFilters, setRequestFilters] = useState<TimeseriesRequestFilters>();
   const primary = usePrimaryTimeseries(requestFilters);
   const secondary = useSecondaryTimeseries(requestFilters);
 

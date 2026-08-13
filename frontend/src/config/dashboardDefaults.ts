@@ -64,13 +64,13 @@ export const NWMD_DASHBOARD_DEFAULTS = {
  * @param {Array} available - Array of available options
  * @returns {string|null} The selected default
  */
-export const selectDefault = (preferred, available) => {
+export const selectDefault = (preferred: string | null, available: string[]) => {
   if (!Array.isArray(available) || available.length === 0) {
     return null;
   }
 
   // If preferred value exists in available options, use it
-  if (preferred !== undefined && available.includes(preferred)) {
+  if (!!preferred && preferred !== undefined && available.includes(preferred)) {
     return preferred;
   }
 
