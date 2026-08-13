@@ -58,6 +58,7 @@ environments:
         prefectJobRoleArn: arn:aws:iam::935462133478:role/teehr-hub-iceberg-s3-warehouse-irsa
         sparkRoleArn: arn:aws:iam::935462133478:role/teehr-hub-iceberg-s3-warehouse-readonly-irsa
         trinoRoleArn: arn:aws:iam::935462133478:role/teehr-hub-iceberg-s3-warehouse-irsa
+        xpublishRoleArn: arn:aws:iam::794457362858:role/fved-iceberg-s3-warehouse-readonly-irsa
       iceberg:
         inCluster: "false"
         catalogS3PathStyleAccess: "false"
@@ -74,7 +75,7 @@ environments:
         schema: teehr
       allowedOrigins: "https://dashboards.${var.hostname},https://api.${var.hostname}"
       icechunk:
-        bucket: "dev-teehr-icechunk-warehouse"
+        bucket: "dev-fved-icechunk-warehouse-rti-use1"
         prefix: "icechunk-ingests"
         repos: "nwm30-forcing-analysis-assim"
 providers:
