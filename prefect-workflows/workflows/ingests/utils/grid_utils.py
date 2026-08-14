@@ -350,6 +350,7 @@ def standardize_and_inject_geozarr(
     source_crs: str | None = None,
     x_dim: str | None = None,
     y_dim: str | None = None,
+    variable_and_unit_mapper: dict | None = None
 ) -> xr.Dataset:
     """Write CF-1.11 and GeoZarr metadata to a dataset before writing to IceChunk.
 
@@ -445,6 +446,17 @@ def standardize_and_inject_geozarr(
             ds[var].attrs["grid_mapping"] = gm_coord
             ds[var].attrs["proj:wkt2"] = wkt_string
             ds[var].attrs["spatial:dimensions"] = [y_name, x_name]
+
+    # --- Apply variable and unit mapping if provided ---
+    if variable_and_unit_mapper:
+        for var_name in ds.data_vars:
+            if var_name in variable_and_unit_mapper["variable_name"]:
+                new_var_name = variable_and_unit_mapper["variable_name"].get(var_name, {}).get("name", var_name)
+                unit_name = ds[var_name].attrs.get("units")
+                if unit_name:
+                    new_unit_name = variable_and_unit_mapper["unit_name"].get(unit_name, {}).get("name", unit_name)
+                    ds[var_name].attrs["units"] = new_unit_name
+                ds = ds.rename({var_name: new_var_name})
 
     return ds
 
