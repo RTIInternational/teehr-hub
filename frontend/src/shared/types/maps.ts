@@ -1,5 +1,5 @@
 import type { Feature, Point } from 'geojson';
-import type { metricDisplay } from '@/shared/utils/utils';
+import type { metricDisplay } from '@/shared/utils/mapMetrics';
 
 export type InvalidFeature = {
   index: number;

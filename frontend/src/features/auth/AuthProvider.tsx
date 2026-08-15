@@ -1,21 +1,20 @@
-import { createContext, useEffect, useMemo, useState } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
+import { AuthContext } from './AuthContext';
 import {
-  ensureFreshToken,
-  getKeycloak,
   initKeycloak,
+  getKeycloak,
+  parseRoles,
+  ensureFreshToken,
   login,
   logout,
-  parseRoles,
   signup,
-} from '../auth/keycloak';
+} from './keycloak';
 
-const AuthContext = createContext(null);
-
-export const AuthProvider = ({ children }) => {
+export const AuthProvider = ({ children }: React.PropsWithChildren) => {
   const [ready, setReady] = useState(false);
   const [authenticated, setAuthenticated] = useState(false);
-  const [username, setUsername] = useState(null);
-  const [roles, setRoles] = useState([]);
+  const [username, setUsername] = useState<string | null>(null);
+  const [roles, setRoles] = useState<string[]>([]);
 
   useEffect(() => {
     let mounted = true;
@@ -82,5 +81,3 @@ export const AuthProvider = ({ children }) => {
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };
-
-export { AuthContext };

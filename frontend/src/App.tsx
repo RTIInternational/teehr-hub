@@ -1,22 +1,23 @@
 import { Container, Alert } from 'react-bootstrap';
 import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
-import AdminHome from './components/admin/AdminHome';
-import AdminLayout from './components/admin/AdminLayout';
-import ApiKeysAdmin from './components/admin/ApiKeysAdmin';
-import KeycloakAdmin from './components/admin/KeycloakAdmin';
-import { Home, DashboardsHome, Navbar } from './components/common';
-import { DataDashboard } from './components/dashboards/data_management';
-import { NwmdDashboard } from './components/dashboards/nwmd/index';
-import { DataDashboardProvider } from './context/DataDashboardContext';
-import { NwmdDashboardProvider } from './context/NwmdDashboardContext';
-import { ForecastDashboard, ForecastDashboardProvider } from './features/forecast';
-import { RetrospectiveDashboardProvider, RetrospectiveDashboard } from './features/retrospective';
-import { useAuth } from './hooks/useAuth';
+import { Home, DashboardsHome } from '@/components/common';
+import { DataDashboard } from '@/components/dashboards/data_management';
+import { NwmdDashboard } from '@/components/dashboards/nwmd/index';
+import { DataDashboardProvider } from '@/context/DataDashboardContext';
+import { NwmdDashboardProvider } from '@/context/NwmdDashboardContext';
+import { useAuth } from '@/features/auth';
+import { ForecastDashboard, ForecastDashboardProvider } from '@/features/forecast';
+import { RetrospectiveDashboardProvider, RetrospectiveDashboard } from '@/features/retrospective';
+import AdminHome from '@/pages/admin/AdminHome';
+import AdminLayout from '@/pages/admin/AdminLayout';
+import ApiKeysAdmin from '@/pages/admin/ApiKeysAdmin';
+import KeycloakAdmin from '@/pages/admin/KeycloakAdmin';
+import Navbar from '@/shared/components/Navbar';
 
 import 'bootstrap/dist/css/bootstrap.min.css';
 import './App.css';
 
-const RequireAuth = ({ children }) => {
+const RequireAuth = ({ children }: React.PropsWithChildren) => {
   const { ready, authenticated, login, signup } = useAuth();
   const location = useLocation();
 
@@ -56,7 +57,7 @@ const RequireAuth = ({ children }) => {
   return children;
 };
 
-const AdminRoute = ({ children }) => {
+const AdminRoute = ({ children }: React.PropsWithChildren) => {
   const { ready, authenticated, roles } = useAuth();
 
   if (!ready) {

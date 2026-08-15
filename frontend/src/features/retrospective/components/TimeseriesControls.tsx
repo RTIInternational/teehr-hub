@@ -4,17 +4,17 @@ import { useConfigurations } from '@/shared/queries/configurations';
 import { useVariables } from '@/shared/queries/variables';
 import type { MapLocation } from '@/shared/types/locations';
 import type { MapFilters } from '@/shared/types/maps';
-import type { TimeseriesFiltersFlat, TimeseriesRequestFilters } from '@/shared/types/timeseries';
+import type { TimeseriesFilters, TimeseriesRequestFilters } from '@/shared/types/timeseries';
 import {
   DURATION_NAME_TO_ISO,
   toDisplayVariableName,
   toPrimaryVariableName,
-} from '@/utils/durationUtils';
+} from '@/shared/utils/durationUtils';
 
 export type TimeseriesControlsProps = {
   table: string;
-  timeseriesFilters: TimeseriesFiltersFlat;
-  updateTimeseriesFilters: (patch: Partial<TimeseriesFiltersFlat>) => void;
+  timeseriesFilters: TimeseriesFilters;
+  updateTimeseriesFilters: (patch: Partial<TimeseriesFilters>) => void;
   setRequestFilters: (filters: TimeseriesRequestFilters) => void;
   selectedLocation: MapLocation;
   mapFilters: MapFilters;
@@ -33,34 +33,48 @@ const TimeseriesControls = ({
   const configurations = useConfigurations(table);
   const variables = useVariables(table);
 
-  const handleFilterChange = (field: string, value: unknown) => {
-    updateTimeseriesFilters({ [field]: value });
+  const primaryFilters = timeseriesFilters.primary;
+  const secondaryFilters = timeseriesFilters.secondary;
+
+  const handlePrimaryFilterChange = (field: string, value: unknown) => {
+    updateTimeseriesFilters({
+      primary: {
+        ...primaryFilters,
+        [field]: value,
+      },
+    });
+  };
+
+  const handleSecondaryFilterChange = (field: string, value: unknown) => {
+    updateTimeseriesFilters({
+      secondary: {
+        ...secondaryFilters,
+        [field]: value,
+      },
+    });
+  };
+
+  const handleVariableChange = (variable: string | null) => {
+    if (!variable) return;
+    updateTimeseriesFilters({
+      primary: {
+        ...primaryFilters,
+        variables: [toPrimaryVariableName(variable)],
+      },
+      secondary: {
+        ...secondaryFilters,
+        variables: [variable],
+      },
+    });
   };
 
   const handleLoadData = async () => {
-    if (!selectedLocation?.primary_location_id || !timeseriesFilters.variable) return;
-
-    const primaryVariable = timeseriesFilters.variable?.endsWith('_inst')
-      ? toPrimaryVariableName(timeseriesFilters.variable)
-      : timeseriesFilters.variable;
+    if (!selectedLocation?.primary_location_id || !timeseriesFilters.secondary.variables[0]) return;
 
     setRequestFilters({
       primary_location_id: selectedLocation.primary_location_id,
-      primary: {
-        variables: [primaryVariable],
-        start_date: timeseriesFilters.start_date,
-        end_date: timeseriesFilters.end_date,
-        duration: timeseriesFilters.duration,
-      },
-      secondary: {
-        configurations: timeseriesFilters.configurations,
-        variables: [timeseriesFilters.variable],
-        start_date: timeseriesFilters.start_date,
-        end_date: timeseriesFilters.end_date,
-        // Drop reference dates to match existing retrospective functionality
-        // reference_start_date: timeseriesFilters.reference_start_date,
-        // reference_end_date: timeseriesFilters.reference_end_date,
-      },
+      primary: primaryFilters,
+      secondary: secondaryFilters,
     });
 
     // Switch to plot view after loading data
@@ -71,8 +85,9 @@ const TimeseriesControls = ({
 
   // Get selected configurations or use map configuration as fallback
   const selectedConfigurations =
-    !!timeseriesFilters.configurations && timeseriesFilters.configurations?.length > 0
-      ? timeseriesFilters.configurations
+    !!timeseriesFilters.secondary.configurations &&
+    timeseriesFilters.secondary.configurations?.length > 0
+      ? timeseriesFilters.secondary.configurations
       : mapFilters.configuration
         ? [mapFilters.configuration]
         : [];
@@ -88,7 +103,7 @@ const TimeseriesControls = ({
               <MultiSelectDropdown
                 options={Array.isArray(configurations.data) ? configurations.data : []}
                 selected={selectedConfigurations}
-                onChange={(selected) => handleFilterChange('configurations', selected)}
+                onChange={(selected) => handleSecondaryFilterChange('configurations', selected)}
                 allSelectedText="All configurations"
                 noneSelectedText="Select configurations..."
               />
@@ -101,8 +116,8 @@ const TimeseriesControls = ({
               <Form.Label className="small fw-bold">Variable</Form.Label>
               <Form.Select
                 size="sm"
-                value={timeseriesFilters.variable || mapFilters.variable || ''}
-                onChange={(e) => handleFilterChange('variable', e.target.value || null)}
+                value={timeseriesFilters.secondary.variables[0] || mapFilters.variable || ''}
+                onChange={(e) => handleVariableChange(e.target.value || null)}
               >
                 <option value="">Select Variable...</option>
                 {Array.isArray(variables.data) &&
@@ -121,9 +136,13 @@ const TimeseriesControls = ({
               <Form.Label className="small fw-bold">Obs timestep (if available)</Form.Label>
               <Form.Select
                 size="sm"
-                value={timeseriesFilters.duration || ''}
-                disabled={!(timeseriesFilters.variable || mapFilters.variable)?.endsWith('_inst')}
-                onChange={(e) => handleFilterChange('duration', e.target.value)}
+                value={timeseriesFilters.primary.duration || ''}
+                disabled={
+                  !(timeseriesFilters.secondary.variables[0] || mapFilters.variable)?.endsWith(
+                    '_inst'
+                  )
+                }
+                onChange={(e) => handlePrimaryFilterChange('duration', e.target.value)}
               >
                 {Object.entries(DURATION_NAME_TO_ISO).map(([label, iso]) => (
                   <option key={iso} value={iso}>
@@ -141,8 +160,8 @@ const TimeseriesControls = ({
               <Form.Control
                 type="datetime-local"
                 size="sm"
-                value={timeseriesFilters.start_date || ''}
-                onChange={(e) => handleFilterChange('start_date', e.target.value || null)}
+                value={timeseriesFilters.primary.start_date || ''}
+                onChange={(e) => handlePrimaryFilterChange('start_date', e.target.value || null)}
               />
             </Form.Group>
           </Col>
@@ -154,8 +173,8 @@ const TimeseriesControls = ({
               <Form.Control
                 type="datetime-local"
                 size="sm"
-                value={timeseriesFilters.end_date || ''}
-                onChange={(e) => handleFilterChange('end_date', e.target.value || null)}
+                value={timeseriesFilters.primary.end_date || ''}
+                onChange={(e) => handlePrimaryFilterChange('end_date', e.target.value || null)}
               />
             </Form.Group>
           </Col>
@@ -167,8 +186,10 @@ const TimeseriesControls = ({
               <Form.Control
                 type="datetime-local"
                 size="sm"
-                value={timeseriesFilters.reference_start_date || ''}
-                onChange={(e) => handleFilterChange('reference_start_date', e.target.value || null)}
+                value={timeseriesFilters.secondary.reference_start_date || ''}
+                onChange={(e) =>
+                  handleSecondaryFilterChange('reference_start_date', e.target.value || null)
+                }
               />
             </Form.Group>
           </Col>
@@ -180,8 +201,10 @@ const TimeseriesControls = ({
               <Form.Control
                 type="datetime-local"
                 size="sm"
-                value={timeseriesFilters.reference_end_date || ''}
-                onChange={(e) => handleFilterChange('reference_end_date', e.target.value || null)}
+                value={timeseriesFilters.secondary.reference_end_date || ''}
+                onChange={(e) =>
+                  handleSecondaryFilterChange('reference_end_date', e.target.value || null)
+                }
               />
             </Form.Group>
           </Col>
@@ -195,8 +218,8 @@ const TimeseriesControls = ({
                 onClick={handleLoadData}
                 disabled={
                   !selectedLocation?.primary_location_id ||
-                  !timeseriesFilters.configurations?.length ||
-                  !timeseriesFilters.variable
+                  !timeseriesFilters.secondary.configurations?.length ||
+                  !timeseriesFilters.secondary.variables[0]
                 }
               >
                 Load Timeseries Data

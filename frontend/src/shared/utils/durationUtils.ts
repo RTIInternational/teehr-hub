@@ -26,7 +26,7 @@ export const ISO_TO_DURATION_NAME = Object.fromEntries(
  * @param {string} rawName
  * @returns {string}
  */
-export function toDisplayVariableName(rawName) {
+export function toDisplayVariableName(rawName: string) {
   if (rawName && rawName.endsWith('_none_inst')) {
     return rawName.slice(0, -'_none_inst'.length) + '_inst';
   }
@@ -40,7 +40,7 @@ export function toDisplayVariableName(rawName) {
  * @param {string} displayName
  * @returns {string}
  */
-export function fromDisplayVariableName(displayName) {
+export function fromDisplayVariableName(displayName: string) {
   if (displayName && displayName.endsWith('_inst')) {
     return displayName.slice(0, -'_inst'.length) + '_none_inst';
   }
@@ -54,7 +54,7 @@ export function fromDisplayVariableName(displayName) {
  * @param {string} rawName
  * @returns {boolean}
  */
-export function isTimestepVariable(rawName) {
+export function isTimestepVariable(rawName: string) {
   return rawName ? rawName.endsWith('_none_inst') : false;
 }
 
@@ -68,7 +68,7 @@ export function isTimestepVariable(rawName) {
  * @param {string} variableName
  * @returns {string}
  */
-export function toPrimaryVariableName(variableName) {
+export function toPrimaryVariableName(variableName: string) {
   const parts = variableName.split('_');
   if (parts.length < 3) return variableName;
   if (parts[parts.length - 1] !== 'inst') return variableName;

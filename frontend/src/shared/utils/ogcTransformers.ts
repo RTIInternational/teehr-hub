@@ -6,8 +6,8 @@
  */
 
 import type { FeatureCollection } from 'geojson';
-import type { CqlFilters } from '../shared/types/ogc';
-import type { QueryablesResponse, TableProperties } from '../shared/types/queryables';
+import type { CqlFilters } from '../types/ogc';
+import type { QueryablesResponse, TableProperties } from '../types/queryables';
 
 /**
  * Extract table properties from an OGC queryables response.

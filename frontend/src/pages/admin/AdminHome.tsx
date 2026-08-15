@@ -5,7 +5,25 @@ const KEYCLOAK_BASE_URL =
 const PREFECT_BASE_URL =
   import.meta.env.VITE_PREFECT_URL || 'https://prefect.teehr.local.app.garden';
 
-const cards = [
+type BaseCard = {
+  title: string;
+  description: string;
+  buttonLabel: string;
+};
+
+type InternalCard = BaseCard & {
+  to: string;
+  isExternal?: false;
+};
+
+type ExternalCard = BaseCard & {
+  href: string;
+  isExternal: true;
+};
+
+type Card = InternalCard | ExternalCard;
+
+const cards: Card[] = [
   {
     title: 'API Keys',
     description: 'Create, review, and revoke API keys for administrative workflows.',

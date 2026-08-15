@@ -1,39 +1,27 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Alert, Button, Card, Col, Form, Row, Table } from 'react-bootstrap';
-import { apiService } from '../../services/api';
+import { useApiKeys, useCreateApiKey, useRevokeApiKey } from '@/shared/queries/apiKeys';
+
+const getErrorMessage = (error: unknown, fallback: string) =>
+  error instanceof Error ? error.message : fallback;
 
 const ApiKeysAdmin = () => {
-  const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [items, setItems] = useState([]);
 
   const [createName, setCreateName] = useState('');
   const [createScopes, setCreateScopes] = useState('');
   const [createdKey, setCreatedKey] = useState('');
 
+  const apiKeysQuery = useApiKeys();
+  const createApiKeyMutation = useCreateApiKey();
+  const revokeApiKeyMutation = useRevokeApiKey();
+
   const sortedItems = useMemo(
-    () => [...items].sort((a, b) => (a.created_at < b.created_at ? 1 : -1)),
-    [items]
+    () => [...(apiKeysQuery.data || [])].sort((a, b) => (a.created_at < b.created_at ? 1 : -1)),
+    [apiKeysQuery.data]
   );
 
-  const loadKeys = async () => {
-    setLoading(true);
-    setError('');
-    try {
-      const data = await apiService.listApiKeys();
-      setItems(data?.items || []);
-    } catch (err) {
-      setError(err?.message || 'Failed to load API keys');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    loadKeys();
-  }, []);
-
-  const onCreate = async (event) => {
+  const onCreate = async (event: React.SubmitEvent<HTMLFormElement>) => {
     event.preventDefault();
     setError('');
     setCreatedKey('');
@@ -49,32 +37,27 @@ const ApiKeysAdmin = () => {
       .map((scope) => scope.trim())
       .filter(Boolean);
 
-    setLoading(true);
     try {
-      const created = await apiService.createApiKey(name, scopes);
+      const created = await createApiKeyMutation.mutateAsync({ name, scopes });
       setCreatedKey(created?.api_key || '');
       setCreateName('');
       setCreateScopes('');
-      await loadKeys();
-    } catch (err) {
-      setError(err?.message || 'Failed to create API key');
-    } finally {
-      setLoading(false);
+    } catch (error) {
+      setError(getErrorMessage(error, 'Failed to create API key'));
     }
   };
 
-  const onRevoke = async (keyId) => {
+  const onRevoke = async (keyId: string) => {
     setError('');
-    setLoading(true);
     try {
-      await apiService.revokeApiKey(keyId);
-      await loadKeys();
-    } catch (err) {
-      setError(err?.message || 'Failed to revoke API key');
-    } finally {
-      setLoading(false);
+      await revokeApiKeyMutation.mutateAsync(keyId);
+    } catch (error) {
+      setError(getErrorMessage(error, 'Failed to revoke API key'));
     }
   };
+
+  const isBusy =
+    apiKeysQuery.isLoading || createApiKeyMutation.isPending || revokeApiKeyMutation.isPending;
 
   return (
     <div className="p-3">
@@ -111,8 +94,8 @@ const ApiKeysAdmin = () => {
                   />
                 </Form.Group>
 
-                <Button type="submit" disabled={loading}>
-                  {loading ? 'Creating...' : 'Create Key'}
+                <Button type="submit" disabled={createApiKeyMutation.isPending}>
+                  {createApiKeyMutation.isPending ? 'Creating...' : 'Create Key'}
                 </Button>
               </Form>
 
@@ -131,7 +114,9 @@ const ApiKeysAdmin = () => {
             <Card.Body>
               <Card.Title>Existing API Keys</Card.Title>
 
-              {error && <Alert variant="danger">{error}</Alert>}
+              {(error || apiKeysQuery.error) && (
+                <Alert variant="danger">{error || apiKeysQuery.error?.message}</Alert>
+              )}
 
               <div className="table-responsive">
                 <Table striped bordered hover size="sm" className="mb-0 align-middle">
@@ -145,7 +130,14 @@ const ApiKeysAdmin = () => {
                     </tr>
                   </thead>
                   <tbody>
-                    {sortedItems.length === 0 && (
+                    {apiKeysQuery.isLoading && (
+                      <tr>
+                        <td colSpan={5} className="text-center text-muted py-3">
+                          Loading API keys...
+                        </td>
+                      </tr>
+                    )}
+                    {!apiKeysQuery.isLoading && sortedItems.length === 0 && (
                       <tr>
                         <td colSpan={5} className="text-center text-muted py-3">
                           No API keys yet.
@@ -167,10 +159,13 @@ const ApiKeysAdmin = () => {
                               <Button
                                 variant="outline-danger"
                                 size="sm"
-                                disabled={loading}
+                                disabled={isBusy}
                                 onClick={() => onRevoke(item.id)}
                               >
-                                Revoke
+                                {revokeApiKeyMutation.isPending &&
+                                revokeApiKeyMutation.variables === item.id
+                                  ? 'Revoking...'
+                                  : 'Revoke'}
                               </Button>
                             ) : (
                               '-'

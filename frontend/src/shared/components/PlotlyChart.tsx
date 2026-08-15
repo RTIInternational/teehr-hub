@@ -1,6 +1,18 @@
 import Plotly from 'plotly.js-dist-min';
 import { useEffect, useRef } from 'react';
-import { formatVariableName, formatUnitName, getYAxisTitle } from '../../utils/formatters';
+import type { MapLocation } from '@/shared/types/locations';
+import type { TimeseriesFilters, TimeseriesResponse } from '@/shared/types/timeseries';
+import { formatVariableName, formatUnitName, getYAxisTitle } from '@/shared/utils/formatters';
+
+type PlotlyChartProps = {
+  primaryData: TimeseriesResponse;
+  secondaryData: TimeseriesResponse;
+  selectedLocation: MapLocation;
+  filters?: TimeseriesFilters;
+  height: React.CSSProperties['height'];
+  allowForecastSelect?: boolean;
+  showLegend?: boolean;
+};
 
 const PlotlyChart = ({
   primaryData,
@@ -10,15 +22,15 @@ const PlotlyChart = ({
   height = '500px',
   allowForecastSelect = false,
   showLegend = true,
-}) => {
-  const plotRef = useRef(null);
-  const selectedForecastTraceRef = useRef(null);
+}: PlotlyChartProps) => {
+  const plotRef = useRef<HTMLDivElement & Plotly.PlotlyHTMLElement>(null);
+  const selectedForecastTraceRef = useRef<number>(null);
 
   useEffect(() => {
     if (!plotRef.current) return;
 
-    const primaryTraces = [];
-    const secondaryTraces = [];
+    const primaryTraces: Partial<Plotly.ScatterData>[] = [];
+    const secondaryTraces: Partial<Plotly.ScatterData>[] = [];
 
     // Primary trace(s) - one trace per series, observations rendered last (on top)
     if (primaryData?.length > 0) {
@@ -26,7 +38,9 @@ const PlotlyChart = ({
       primaryData.forEach((series, index) => {
         if (series?.timeseries?.length > 0) {
           const configName = series.configuration_name || 'USGS';
-          const varName = formatVariableName(series.variable_name || filters?.variable);
+          const varName = formatVariableName(
+            series.variable_name ?? filters?.primary.variables[index]
+          );
           const traceName = `Observed (${configName})`;
           primaryTraces.push({
             x: series.timeseries.map((d) => d.value_time),
@@ -61,15 +75,15 @@ const PlotlyChart = ({
       ];
 
       // First pass: group series by configuration_name and collect reference_times
-      const configGroups = new Map();
+      const configGroups = new Map<string, Set<string>>();
       secondaryData.forEach((series) => {
         if (series?.timeseries?.length > 0) {
           const configName = series.configuration_name;
           if (!configGroups.has(configName)) {
-            configGroups.set(configName, new Set());
+            configGroups.set(configName, new Set<string>());
           }
           if (series.reference_time && series.reference_time !== 'null') {
-            configGroups.get(configName).add(series.reference_time);
+            configGroups.get(configName)?.add(series.reference_time);
           }
         }
       });
@@ -81,13 +95,15 @@ const PlotlyChart = ({
       configGroups.forEach((refTimes, configName) => {
         configColorMap.set(configName, baseColors[colorIndex % baseColors.length]);
         // Sort reference_times oldest to newest
-        const sortedRefTimes = Array.from(refTimes).sort((a, b) => new Date(a) - new Date(b));
+        const sortedRefTimes = Array.from(refTimes).sort(
+          (a, b) => new Date(a).getTime() - new Date(b).getTime()
+        );
         configRefTimesMap.set(configName, sortedRefTimes);
         colorIndex++;
       });
 
       // Helper to calculate opacity based on reference_time position
-      const getOpacity = (configName, refTime) => {
+      const getOpacity = (configName: string, refTime: string | null) => {
         const sortedRefTimes = configRefTimesMap.get(configName);
         if (!sortedRefTimes || sortedRefTimes.length <= 1) return 1.0;
         const index = sortedRefTimes.indexOf(refTime);
@@ -98,9 +114,9 @@ const PlotlyChart = ({
         return minOpacity + (index / (sortedRefTimes.length - 1)) * (maxOpacity - minOpacity);
       };
 
-      const getLegendGroup = (configName) => `forecast:${configName || 'unknown'}`;
+      const getLegendGroup = (configName: string) => `forecast:${configName || 'unknown'}`;
 
-      secondaryData.forEach((series) => {
+      secondaryData.forEach((series, index) => {
         if (series?.timeseries?.length > 0) {
           const key = `${series.configuration_name}|${series.variable_name}|${series.reference_time}`;
 
@@ -134,8 +150,8 @@ const PlotlyChart = ({
               y: series.timeseries.map((d) => d.value),
               name: traceName,
               legendgroup: getLegendGroup(configName),
-              type: 'scatter',
-              mode: 'lines',
+              type: 'scatter' as const,
+              mode: 'lines' as const,
               line: {
                 color: rgbaColor,
                 width: 2,
@@ -146,7 +162,7 @@ const PlotlyChart = ({
                 hoverName +
                 '</b><br>' +
                 'Date: %{x}<br>' +
-                `${formatVariableName(series.variable_name || filters.variable)}: %{y}${series.unit_name ? ' ' + formatUnitName(series.unit_name) : ''}<br>` +
+                `${formatVariableName(series.variable_name || filters?.secondary.variables[index] || 'Unknown')}: %{y}${series.unit_name ? ' ' + formatUnitName(series.unit_name) : ''}<br>` +
                 (series.reference_time && series.reference_time !== 'null'
                   ? `Reference: ${series.reference_time}<br>`
                   : '') +
@@ -179,7 +195,7 @@ const PlotlyChart = ({
 
     const yAxisTitle = getYAxisTitle(primaryData, secondaryData, filters);
 
-    const layout = {
+    const layout: Partial<Plotly.Layout> = {
       xaxis: {
         title: {
           text: 'Date',
@@ -230,12 +246,12 @@ const PlotlyChart = ({
         {
           'line.width': forecastTraceIndexes.map(() => 2),
           opacity: forecastTraceIndexes.map(() => 1),
-        },
+        } as Plotly.Data,
         forecastTraceIndexes
       );
     };
 
-    const emphasizeForecastTrace = (traceIndex) => {
+    const emphasizeForecastTrace = (traceIndex: number) => {
       selectedForecastTraceRef.current = traceIndex;
 
       Plotly.restyle(
@@ -243,12 +259,12 @@ const PlotlyChart = ({
         {
           'line.width': forecastTraceIndexes.map((index) => (index === traceIndex ? 4 : 1.5)),
           opacity: forecastTraceIndexes.map((index) => (index === traceIndex ? 1 : 0.2)),
-        },
+        } as Plotly.Data,
         forecastTraceIndexes
       );
     };
 
-    const handlePlotClick = (event) => {
+    const handlePlotClick = (event: Plotly.PlotMouseEvent) => {
       const clickedTraceIndex = event?.points?.[0]?.curveNumber;
       if (clickedTraceIndex == null || clickedTraceIndex >= secondaryTraces.length) {
         return;

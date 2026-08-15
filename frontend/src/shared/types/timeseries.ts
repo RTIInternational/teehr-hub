@@ -29,16 +29,6 @@ export type TimeseriesFilters = {
   };
 };
 
-export type TimeseriesFiltersFlat = {
-  configurations: string[];
-  variable: string | null;
-  start_date: string;
-  end_date: string;
-  reference_start_date: string | null;
-  reference_end_date: string | null;
-  duration: string;
-};
-
 type TimeseriesPoint = {
   value_time: string;
   value: number;
@@ -52,5 +42,5 @@ export type TimeseriesResponse = Timeseries[];
 
 export type TimeseriesState = {
   selectedLocation: MapLocation | null;
-  timeseriesFilters: TimeseriesFilters | TimeseriesFiltersFlat;
+  timeseriesFilters: TimeseriesFilters;
 };

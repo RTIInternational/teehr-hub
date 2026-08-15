@@ -7,7 +7,7 @@ const keycloakConfig = {
 };
 
 const keycloak = new Keycloak(keycloakConfig);
-let initPromise;
+let initPromise: Promise<boolean>;
 
 export const initKeycloak = async () => {
   if (!initPromise) {
@@ -24,7 +24,7 @@ export const getKeycloak = () => keycloak;
 
 export const login = (options = {}) => keycloak.login(options);
 
-export const signup = (redirectUri) =>
+export const signup = (redirectUri: string) =>
   keycloak.login({
     action: 'register',
     ...(redirectUri ? { redirectUri } : {}),
