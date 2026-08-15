@@ -1,24 +1,9 @@
-import { useState, type ComponentType } from 'react';
+import { useState } from 'react';
 import { Card, Form, ButtonGroup, Button } from 'react-bootstrap';
-import { MetricsTable } from '@/components/common';
+import MetricsTable from '@/shared/components/MetricsTable';
 import { useLocationMetrics } from '@/shared/queries/metrics';
 import { useTableProperties } from '@/shared/queries/queryables';
 import type { MapLocation } from '@/shared/types/locations';
-import type { TableProperties } from '@/shared/types/queryables';
-
-// Typed facade — remove when MetricsTable is migrated to .tsx
-type MetricsTableProps = {
-  metrics?: { [name: string]: unknown }[];
-  loading: boolean;
-  error?: string | null;
-  title?: string;
-  emptyMessage?: string;
-  showTitle?: boolean;
-  tableProperties: TableProperties | null;
-  viewMode: string;
-  onViewModeChange: (mode: string) => void;
-};
-const TypedMetricsTable = MetricsTable as unknown as ComponentType<MetricsTableProps>;
 
 type LocationMetricsProps = {
   selectedLocation: MapLocation;
@@ -30,7 +15,7 @@ const LocationMetrics = ({ selectedLocation, tables = [] }: LocationMetricsProps
 
   // State for selected table and view mode
   const [selectedTable, setSelectedTable] = useState(tables[0] || null);
-  const [viewMode, setViewMode] = useState('table');
+  const [viewMode, setViewMode] = useState<'filters' | 'plot' | 'table'>('table');
 
   const metrics = useLocationMetrics(selectedLocation?.primary_location_id, selectedTable);
 
@@ -110,7 +95,7 @@ const LocationMetrics = ({ selectedLocation, tables = [] }: LocationMetricsProps
         </div>
       </Card.Header>
       <Card.Body className="p-0 flex-grow-1" style={{ overflow: 'hidden', minHeight: 0 }}>
-        <TypedMetricsTable
+        <MetricsTable
           metrics={metrics.data}
           loading={metrics.isLoading}
           error={metrics.error?.message}

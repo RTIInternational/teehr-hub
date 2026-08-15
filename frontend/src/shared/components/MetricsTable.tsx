@@ -2,9 +2,26 @@ import { Duration } from 'luxon';
 import Plotly from 'plotly.js-dist-min';
 import { useState, useMemo, useRef, useEffect, useCallback } from 'react';
 import { Button, ButtonGroup } from 'react-bootstrap';
-import MultiSelectDropdown from '../../shared/components/MultiSelectDropdown';
-import SharedDataTable from './SharedDataTable';
+import MultiSelectDropdown from '@/shared/components/MultiSelectDropdown';
+import SharedDataTable from '@/shared/components/SharedDataTable';
+import type { TableProperties } from '@/shared/types/queryables';
+
 import './MetricsTable.css';
+
+type FilteredItems = { [header: string]: string };
+type Row = Array<string>;
+
+type MetricsTableProps = {
+  metrics?: { [name: string]: unknown }[];
+  loading: boolean;
+  error?: string | null;
+  title: string;
+  emptyMessage: string;
+  showTitle: boolean;
+  tableProperties: TableProperties | null;
+  viewMode: 'filters' | 'plot' | 'table';
+  onViewModeChange: ((value: 'filters' | 'plot' | 'table') => void) | null;
+};
 
 const MetricsTable = ({
   metrics = [],
@@ -16,18 +33,24 @@ const MetricsTable = ({
   tableProperties = null, // Contains group_by and metrics info for pivoting
   viewMode = 'table', // Allow external control
   onViewModeChange = null, // Callback for view mode changes
-}) => {
+}: MetricsTableProps) => {
   const [internalViewMode, setInternalViewMode] = useState('table');
   const currentViewMode = onViewModeChange ? viewMode : internalViewMode;
   const setCurrentViewMode = onViewModeChange ? onViewModeChange : setInternalViewMode;
 
   const plotRef = useRef(null);
-  const [sortConfig, setSortConfig] = useState({ column: null, direction: 'asc' });
-  const [filters, setFilters] = useState({});
-  const [selectedMetrics, setSelectedMetrics] = useState([]);
+  const [sortConfig, setSortConfig] = useState<{
+    column: number | null;
+    direction: 'asc' | 'desc';
+  }>({
+    column: null,
+    direction: 'asc',
+  });
+  const [filters, setFilters] = useState<Record<number, string[]>>({});
+  const [selectedMetrics, setSelectedMetrics] = useState<string[]>([]);
 
   // Function to parse duration for sorting
-  const parseDurationForSort = useCallback((durationStr) => {
+  const parseDurationForSort = useCallback((durationStr: string) => {
     if (!durationStr || typeof durationStr !== 'string') return 0;
 
     // Handle BINSTART_BINEND format - use start time for sorting
@@ -42,12 +65,12 @@ const MetricsTable = ({
   }, []);
 
   // Function to format cell values based on field name and content
-  const formatCellValue = useCallback((header, value) => {
+  const formatCellValue = useCallback((header: string, value: unknown) => {
     if (value === null || value === undefined) return 'N/A';
 
     // Don't format forecast_lead_time_bin - show raw values
     if (header.toLowerCase().includes('forecast_lead_time_bin')) {
-      return value;
+      return String(value);
     }
 
     // Format numbers
@@ -55,12 +78,12 @@ const MetricsTable = ({
       return value.toFixed(4);
     }
 
-    return value;
+    return String(value);
   }, []);
 
   // Sorting function
-  const handleSort = (columnIndex, _header) => {
-    let direction = 'asc';
+  const handleSort = (columnIndex: number, _header: string) => {
+    let direction: 'asc' | 'desc' = 'asc';
     if (sortConfig.column === columnIndex && sortConfig.direction === 'asc') {
       direction = 'desc';
     }
@@ -74,7 +97,7 @@ const MetricsTable = ({
 
   // Initialize selectedMetrics with all metrics when tableProperties changes
   useEffect(() => {
-    if (tableProperties?.metrics?.length > 0) {
+    if (tableProperties && tableProperties?.metrics?.length > 0) {
       setSelectedMetrics(tableProperties.metrics.slice());
     }
   }, [tableProperties]);
@@ -98,10 +121,11 @@ const MetricsTable = ({
 
   // Function to sort rows - memoized for performance
   const sortRows = useCallback(
-    (rowsToSort, _headers) => {
+    (rowsToSort: Row[], _headers: string[]) => {
       if (sortConfig.column === null || !rowsToSort.length) return rowsToSort;
 
       return [...rowsToSort].sort((a, b) => {
+        if (!sortConfig.column) return 0;
         const aVal = a[sortConfig.column];
         const bVal = b[sortConfig.column];
 
@@ -123,7 +147,7 @@ const MetricsTable = ({
 
   // Function to filter rows - memoized for performance
   const filterRows = useCallback(
-    (rowsToFilter) => {
+    (rowsToFilter: Row[]) => {
       if (!rowsToFilter.length || !Object.keys(filters).length) return rowsToFilter;
 
       return rowsToFilter.filter((row) => {
@@ -132,13 +156,15 @@ const MetricsTable = ({
 
           const cellValue = String(row[parseInt(columnIndex)]);
 
+          return filterValue.includes(cellValue);
+
           // Handle checkbox-based filters (arrays) - most common case
-          if (Array.isArray(filterValue)) {
-            return filterValue.includes(cellValue);
-          }
+          // if (Array.isArray(filterValue)) {
+          //   return filterValue.includes(cellValue);
+          // }
 
           // Handle text-based filters (fallback)
-          return cellValue.toLowerCase().includes(filterValue.toLowerCase());
+          // return cellValue.toLowerCase().includes(filterValue.toLowerCase());
         });
       });
     },
@@ -150,7 +176,7 @@ const MetricsTable = ({
     headers,
     rows: rawRows,
     hasLeadTimeBin,
-  } = useMemo(() => {
+  } = useMemo((): { headers: string[]; rows: Row[]; hasLeadTimeBin: boolean } => {
     if (!tableProperties?.group_by || !tableProperties?.metrics || !Array.isArray(metrics)) {
       // Fallback to simple key-value pairs if no table properties
       if (Array.isArray(metrics) && metrics.length > 0) {
@@ -158,7 +184,7 @@ const MetricsTable = ({
         if (metrics[0].metric_name && metrics[0].metric_value !== undefined) {
           return {
             headers: ['Metric', 'Value'],
-            rows: metrics.map((m) => [m.metric_name || 'Unknown', m.metric_value]),
+            rows: metrics.map((m) => [String(m.metric_name) || 'Unknown', String(m.metric_value)]),
             hasLeadTimeBin: false,
           };
         }
@@ -184,6 +210,13 @@ const MetricsTable = ({
     const sortedMetrics =
       hasLeadTimeBin && leadTimeBinField
         ? [...metrics].sort((a, b) => {
+            if (
+              typeof a[leadTimeBinField] !== 'string' ||
+              typeof b[leadTimeBinField] !== 'string'
+            ) {
+              return 0;
+            }
+
             const aValue = parseDurationForSort(a[leadTimeBinField]);
             const bValue = parseDurationForSort(b[leadTimeBinField]);
             return aValue - bValue;
@@ -212,7 +245,7 @@ const MetricsTable = ({
   const uniqueValuesByColumn = useMemo(() => {
     if (!rawRows || rawRows.length === 0 || !tableProperties?.group_by) return {};
 
-    const uniqueValues = {};
+    const uniqueValues: { [index: number]: string[] } = {};
     const groupByLength = tableProperties.group_by.length;
 
     try {
@@ -277,7 +310,7 @@ const MetricsTable = ({
 
     // Convert filtered table rows back to objects for plotting
     const filteredData = processedRows.map((row) => {
-      const item = {};
+      const item: { [header: string]: string } = {};
       headers.forEach((header, index) => {
         item[header] = row[index];
       });
@@ -291,7 +324,7 @@ const MetricsTable = ({
     });
 
     // Group data by relevant non-lead-time columns (only those with multiple values)
-    const groupedData = {};
+    const groupedData: { [groupKey: string]: FilteredItems[] } = {};
     filteredData.forEach((item) => {
       // Create a key from relevant group_by values only
       const groupKey =
@@ -306,7 +339,7 @@ const MetricsTable = ({
     });
 
     // Create traces for each group and each metric
-    const traces = [];
+    const traces: Plotly.Data[] = [];
 
     Object.entries(groupedData).forEach(([groupKey, groupData]) => {
       // Sort group data by lead time bin for proper x-axis ordering
@@ -320,8 +353,8 @@ const MetricsTable = ({
         .filter((metric) => selectedMetrics.includes(metric))
         .forEach((metric) => {
           // Create step plot data using bin start values only
-          const stepXValues = [];
-          const stepYValues = [];
+          const stepXValues: Plotly.Datum[] = [];
+          const stepYValues: Plotly.Datum[] = [];
 
           // Now we can use the sorted group data directly since forecast_lead_time_bin is not formatted
           sortedGroupData.forEach((item, _index) => {
@@ -402,7 +435,7 @@ const MetricsTable = ({
   // Effect to render plot when in plot mode
   useEffect(() => {
     if (currentViewMode === 'plot' && hasLeadTimeBin && plotRef.current && plotData.length > 0) {
-      const layout = {
+      const layout: Partial<Plotly.Layout> = {
         title: {
           text: 'Metrics by Lead Time Bin',
           x: 0.5,
@@ -538,7 +571,9 @@ const MetricsTable = ({
         </div>
       )}
 
-      {currentViewMode === 'filters' && tableProperties?.group_by?.length > 0 ? (
+      {currentViewMode === 'filters' &&
+      tableProperties?.group_by &&
+      tableProperties?.group_by?.length > 0 ? (
         <div key="filters-view" className="table-filters p-3" style={{ overflow: 'auto', flex: 1 }}>
           <div className="row">
             {/* Metrics filter section - moved to top */}

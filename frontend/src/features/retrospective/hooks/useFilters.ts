@@ -1,7 +1,7 @@
 import { useCallback } from 'react';
 import { useDashboard, ActionTypes } from '@/features/retrospective/DashboardContext';
 import type { MapFilters } from '@/shared/types/maps';
-import type { TimeseriesFiltersFlat } from '@/shared/types/timeseries';
+import type { TimeseriesFilters } from '@/shared/types/timeseries';
 
 export const useFilters = () => {
   const { state, dispatch } = useDashboard();
@@ -14,7 +14,7 @@ export const useFilters = () => {
   );
 
   const updateTimeseriesFilters = useCallback(
-    (filters: Partial<TimeseriesFiltersFlat>) => {
+    (filters: Partial<TimeseriesFilters>) => {
       dispatch({ type: ActionTypes.UPDATE_TIMESERIES_FILTERS, payload: filters });
     },
     [dispatch]

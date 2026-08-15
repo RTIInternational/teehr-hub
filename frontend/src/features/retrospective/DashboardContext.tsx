@@ -3,11 +3,12 @@ import React, { createContext, useContext, useReducer, type Dispatch } from 'rea
 import { RETROSPECTIVE_DASHBOARD_DEFAULTS } from '@/config/dashboardDefaults';
 import type { MapLocation } from '@/shared/types/locations';
 import type { MapFilters } from '@/shared/types/maps';
-import type { TimeseriesFiltersFlat } from '@/shared/types/timeseries';
+import type { TimeseriesFilters } from '@/shared/types/timeseries';
+import { toPrimaryVariableName } from '@/shared/utils/durationUtils';
 
 export type DashboardState = {
   mapFilters: MapFilters;
-  timeseriesFilters: TimeseriesFiltersFlat;
+  timeseriesFilters: TimeseriesFilters;
   selectedLocation: MapLocation | null;
   mapLoaded: boolean;
   error: string | null;
@@ -24,7 +25,7 @@ type DashboardAction =
     }
   | {
       type: typeof ActionTypes.UPDATE_TIMESERIES_FILTERS;
-      payload: Partial<TimeseriesFiltersFlat>;
+      payload: Partial<TimeseriesFilters>;
     }
   | {
       type: typeof ActionTypes.SELECT_LOCATION;
@@ -55,15 +56,18 @@ const initialState: DashboardState = {
     metricName: 'relative_bias',
   },
 
-  // Timeseries filters (retrospective-specific defaults - year 2020)
+  // Timeseries filters (forecast-specific defaults)
   timeseriesFilters: {
-    configurations: [], // Array for multi-select
-    variable: null,
-    start_date: DEFAULT_START_DATE,
-    end_date: DEFAULT_END_DATE,
-    reference_start_date: null,
-    reference_end_date: null,
-    duration: RETROSPECTIVE_DASHBOARD_DEFAULTS.preferredObservationsDuration,
+    primary: {
+      variables: [],
+      start_date: DEFAULT_START_DATE,
+      end_date: DEFAULT_END_DATE,
+      duration: RETROSPECTIVE_DASHBOARD_DEFAULTS.preferredObservationsDuration,
+    },
+    secondary: {
+      configurations: [], // Array for multi-select
+      variables: [],
+    },
   },
 
   // Selected location
@@ -115,28 +119,54 @@ const reducer = (state: DashboardState, action: DashboardAction) => {
 
         timeseriesFilters: {
           ...state.timeseriesFilters,
-          configurations:
-            state.timeseriesFilters.configurations?.length > 0
-              ? state.timeseriesFilters.configurations
-              : configuration
-                ? [configuration]
-                : [],
-          variable: state.timeseriesFilters.variable || variable,
+          primary: {
+            ...state.timeseriesFilters.primary,
+            variables:
+              state.timeseriesFilters.secondary?.variables?.length > 0
+                ? state.timeseriesFilters.secondary.variables
+                : variable
+                  ? [toPrimaryVariableName(variable)]
+                  : [],
+          },
+          secondary: {
+            ...state.timeseriesFilters.secondary,
+            configurations:
+              state.timeseriesFilters.secondary.configurations.length > 0
+                ? state.timeseriesFilters.secondary.configurations
+                : configuration
+                  ? [configuration]
+                  : [],
+            variables:
+              state.timeseriesFilters.secondary?.variables?.length > 0
+                ? state.timeseriesFilters.secondary.variables
+                : variable
+                  ? [variable]
+                  : [],
+          },
         },
       };
     }
 
     case ActionTypes.UPDATE_MAP_FILTERS: {
       // NOTE: This behavior is intentionally mirrored in ForecastDashboardContext. // Keep map display and default timeseries filters aligned.
-      const mapTimeseriesSync: Partial<TimeseriesFiltersFlat> = {};
+      const mapTimeseriesSync: Partial<TimeseriesFilters> = {};
       if (action.payload.configuration !== undefined) {
-        // Sync map configuration to timeseries configurations array
-        mapTimeseriesSync.configurations = action.payload.configuration
-          ? [action.payload.configuration]
-          : [];
+        mapTimeseriesSync.secondary = {
+          ...state.timeseriesFilters.secondary,
+          configurations: action.payload.configuration ? [action.payload.configuration] : [],
+        };
       }
       if (action.payload.variable !== undefined) {
-        mapTimeseriesSync.variable = action.payload.variable;
+        mapTimeseriesSync.primary = {
+          ...(mapTimeseriesSync.primary || state.timeseriesFilters.primary),
+          variables: action.payload.variable
+            ? [toPrimaryVariableName(action.payload.variable)]
+            : [],
+        };
+        mapTimeseriesSync.secondary = {
+          ...(mapTimeseriesSync.secondary || state.timeseriesFilters.secondary),
+          variables: action.payload.variable ? [action.payload.variable] : [],
+        };
       }
       return {
         ...state,
@@ -151,14 +181,22 @@ const reducer = (state: DashboardState, action: DashboardAction) => {
       };
     }
 
-    case ActionTypes.UPDATE_TIMESERIES_FILTERS:
+    case ActionTypes.UPDATE_TIMESERIES_FILTERS: {
       return {
         ...state,
         timeseriesFilters: {
           ...state.timeseriesFilters,
-          ...action.payload,
+          primary: {
+            ...state.timeseriesFilters.primary,
+            ...(action.payload.primary || {}),
+          },
+          secondary: {
+            ...state.timeseriesFilters.secondary,
+            ...(action.payload.secondary || {}),
+          },
         },
       };
+    }
 
     case ActionTypes.SELECT_LOCATION:
       return {

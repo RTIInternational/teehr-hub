@@ -1,7 +1,7 @@
 /* eslint-disable react-refresh/only-export-components */
 import { createContext, useContext, useReducer } from 'react';
 import { NWMD_DASHBOARD_DEFAULTS, selectDefault } from '../config/dashboardDefaults';
-import { getQuarterDateRange } from '../utils/formatters.js';
+import { getQuarterDateRange } from '../shared/utils/formatters';
 
 // Dynamic date helpers - returns dates for 10 days ago through today
 const getTenDaysAgo = () => {

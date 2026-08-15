@@ -11,7 +11,7 @@ import {
   fromDisplayVariableName,
   isTimestepVariable,
   DURATION_NAME_TO_ISO,
-} from '@/utils/durationUtils';
+} from '@/shared/utils/durationUtils';
 
 export type TimeseriesControlsProps = {
   table: string;

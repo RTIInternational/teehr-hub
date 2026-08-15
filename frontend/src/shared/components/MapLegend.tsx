@@ -1,5 +1,5 @@
 // Shared Map Legend Component - shows color scale for any dashboard
-import { getMetricDisplay, getMetricLabel, metricDisplay } from '@/shared/utils/utils';
+import { getMetricDisplay, getMetricLabel, metricDisplay } from '@/shared/utils/mapMetrics';
 
 type MapLegendProps = {
   metric?: keyof typeof metricDisplay;

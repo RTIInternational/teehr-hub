@@ -14,7 +14,7 @@ import { Spinner, Alert } from 'react-bootstrap';
 import { useSortableTable } from '../../../hooks/useSortableTable';
 import { apiService } from '../../../services/api';
 import { DashboardPanel } from '../../common/dashboard';
-import SharedDataTable from '../../common/SharedDataTable';
+import SharedDataTable from '../../../shared/components/SharedDataTable';
 import SimpleMapPanel from './SimpleMapPanel';
 
 // ── Helpers ────────────────────────────────────────────────────────────────

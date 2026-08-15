@@ -76,8 +76,8 @@ src/
 ├── hooks/               # Custom hooks
 ├── services/            # API service layer
 ├── utils/               # Shared utility functions
-├── App.jsx              # Main app component
-└── index.jsx            # Application entry point
+├── App.tsx              # Main app component
+└── index.tsx            # Application entry point
 ```
 
 During migration, you will see a mix of `.js`, `.jsx`, `.ts`, and `.tsx` files.

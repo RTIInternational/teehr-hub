@@ -2,16 +2,18 @@
  * Utility functions for formatting variable names, units, and labels
  */
 
+import type { Timeseries, TimeseriesFilters } from '@/shared/types/timeseries';
+
 /**
  * Format variable names from snake_case to Title Case with optional lookup overrides
  * @param {string} variableName - The variable name to format
  * @returns {string} Formatted variable name
  */
-export const formatVariableName = (variableName) => {
+export const formatVariableName = (variableName?: string) => {
   if (!variableName) return 'Value';
 
   // Lookup table for variable name overrides
-  const variableLookup = {
+  const variableLookup: Record<string, string> = {
     streamflow_hourly_inst: 'Streamflow (Hourly Instantaneous)',
     streamflow_none_inst: 'Streamflow (Instantaneous)',
     streamflow_daily_mean: 'Streamflow (Daily Mean)',
@@ -25,7 +27,7 @@ export const formatVariableName = (variableName) => {
     variableLookup[variableName] ||
     variableName
       .split('_')
-      .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+      .map((word: string) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
       .join(' ')
   );
 };
@@ -35,11 +37,11 @@ export const formatVariableName = (variableName) => {
  * @param {string} unitName - The unit name to format
  * @returns {string} Formatted unit name
  */
-export const formatUnitName = (unitName) => {
+export const formatUnitName = (unitName: string | null) => {
   if (!unitName) return '';
 
   // Lookup table for unit overrides
-  const unitLookup = {
+  const unitLookup: Record<string, string> = {
     'm3/s': 'm³/s',
     'm^3/s': 'm³/s',
     cubic_meters_per_second: 'm³/s',
@@ -67,21 +69,25 @@ export const formatUnitName = (unitName) => {
  * @param {Object} filters - Current filter settings
  * @returns {string} Formatted Y-axis title
  */
-export const getYAxisTitle = (primaryData, secondaryData, filters) => {
+export const getYAxisTitle = (
+  primaryData: Timeseries[],
+  secondaryData: Timeseries[],
+  filters?: TimeseriesFilters
+) => {
   // Try to get unit from the data first
   let unit = null;
   let variable = null;
 
   if (primaryData?.length > 0 && primaryData[0]?.unit_name) {
     unit = primaryData[0].unit_name;
-    variable = primaryData[0].variable_name || filters.variable;
+    variable = primaryData[0].variable_name || filters?.primary.variables[0];
   } else if (secondaryData?.length > 0 && secondaryData[0]?.unit_name) {
     unit = secondaryData[0].unit_name;
-    variable = secondaryData[0].variable_name || filters.variable;
+    variable = secondaryData[0].variable_name || filters?.secondary.variables[0];
   }
 
   // Format the variable and unit names
-  const formattedVariable = formatVariableName(variable || filters.variable);
+  const formattedVariable = formatVariableName(variable || filters?.secondary.variables[0]);
   const formattedUnit = formatUnitName(unit);
 
   // Return formatted title
@@ -97,7 +103,7 @@ export const getYAxisTitle = (primaryData, secondaryData, filters) => {
  * @param {string} quarter - Quarter string in format "YYYY-Q#" (e.g., "2026-Q1")
  * @returns {{start_date: string, end_date: string} | null} Object with start_date and end_date in ISO format (YYYY-MM-DDTHH:MM), or null if invalid
  */
-export const getQuarterDateRange = (quarter) => {
+export const getQuarterDateRange = (quarter: string) => {
   if (!quarter) return null;
 
   const match = quarter.match(/^(\d{4})-Q([1-4])$/);
@@ -107,14 +113,14 @@ export const getQuarterDateRange = (quarter) => {
   const quarterNum = parseInt(match[2], 10);
 
   // Map quarters to month ranges
-  const quarterStartMonths = {
+  const quarterStartMonths: Record<number, number> = {
     1: 0, // January
     2: 3, // April
     3: 6, // July
     4: 9, // October
   };
 
-  const quarterEndMonths = {
+  const quarterEndMonths: Record<number, number> = {
     1: 2, // March (month 2, so Feb 28/29)
     2: 5, // June (month 5, so May 31)
     3: 8, // September (month 8, so Aug 31)

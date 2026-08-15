@@ -16,7 +16,7 @@ import SimpleMapPanel from './SimpleMapPanel';
 import { apiService } from '../../../services/api';
 import { useSortableTable } from '../../../hooks/useSortableTable';
 import { DashboardPanel } from '../../common/dashboard';
-import SharedDataTable from '../../common/SharedDataTable';
+import SharedDataTable from '../../../shared/components/SharedDataTable';
 
 // ── Helpers ────────────────────────────────────────────────────────────────
 const fmt = (val) => {

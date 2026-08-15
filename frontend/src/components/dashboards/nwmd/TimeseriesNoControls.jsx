@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 import { Card, Spinner } from 'react-bootstrap';
-import { PlotlyChart } from '../../common';
+import PlotlyChart from '../../../shared/components/PlotlyChart';
 
 const TimeseriesNoControls = ({
   selectedLocation,

@@ -11,7 +11,7 @@ import MapLegend from '@/shared/components/MapLegend';
 import { useLocations } from '@/shared/queries/locations';
 import type { MapLocation } from '@/shared/types/locations';
 import type { InvalidFeature, MapMetricClamped, MapState } from '@/shared/types/maps';
-import { getMetricColorExpression, getMetricLabel, isLngLatTuple } from '@/shared/utils/utils';
+import { getMetricColorExpression, getMetricLabel, isLngLatTuple } from '@/shared/utils/mapMetrics';
 
 type MapComponentProps<TActionTypes extends ActionTypesShape> = {
   state: MapState;

@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { apiService } from '@/services/api';
-import { extractTableProperties } from '@/utils/ogcTransformers';
+import { extractTableProperties } from '@/shared/utils/ogcTransformers';
 
 const fetchTableProperties = async (tables: string[]) => {
   const tableArray = Array.isArray(tables) ? tables : [tables];
