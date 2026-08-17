@@ -452,6 +452,8 @@ def standardize_and_inject_geozarr(
         for var_name in ds.data_vars:
             if var_name in variable_and_unit_mapper["variable_name"]:
                 new_var_name = variable_and_unit_mapper["variable_name"].get(var_name, {}).get("name", var_name)
+                new_long_name = variable_and_unit_mapper["variable_name"].get(var_name, {}).get("long_name", var_name)
+                ds[var_name].attrs["long_name"] = new_long_name
                 unit_name = ds[var_name].attrs.get("units")
                 if unit_name:
                     new_unit_name = variable_and_unit_mapper["unit_name"].get(unit_name, {}).get("name", unit_name)
