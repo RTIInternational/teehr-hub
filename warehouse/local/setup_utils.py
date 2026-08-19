@@ -1,6 +1,3 @@
-from teehr.evaluation.spark_session_utils import create_spark_session
-
-
 # Handpicked sites that seemed interesting
 DEV_LOCATION_ID_LIST = [
     # CONUS
@@ -29,14 +26,3 @@ DEV_LOCATION_ID_LIST = [
     "usgs-50011085",
     "usgs-50011128"
 ]
-
-def create_minio_spark_session():
-    """Start a Spark session with MinIO credentials and custom configuration."""
-    return create_spark_session(
-    aws_access_key_id="minioadmin",
-    aws_secret_access_key="minioadmin123",
-    update_configs={
-        "spark.hadoop.fs.s3a.aws.credentials.provider":
-        "org.apache.hadoop.fs.s3a.AnonymousAWSCredentialsProvider"
-    }
-)
