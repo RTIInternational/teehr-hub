@@ -780,7 +780,7 @@ deployments:
     work_pool: *work_pool
     schedule:
       cron: "15 3 * * *"
-      active: false
+      active: true
 
   # Data management dashboard workflows
   - name: update-completeness-summary

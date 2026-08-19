@@ -97,7 +97,7 @@ Loading data is a little fractured depending on what data you are loading.  For 
 
 1) To create the Iceberg warehouse and load some historic simulation data, start by going to the JupyterHub environment `hub.teehr.local.app.garden` and logging in with username: `user` and password: `password` (if unavailable, see [Create Keycloak User](#create-keycloak-user))
 
-2) Copy the contents of `examples/developer` to JupyterHub.  Note that the local_data folder and its contents will have to be uploaded as separate operations (i.e. create a folder manually, upload the file(s), and move into the folder).
+2) Copy the contents of `warehouse/local` to JupyterHub.  Note that the local_data folder and its contents will have to be uploaded as separate operations (i.e. create a folder manually, upload the file(s), and move into the folder).
 
 3) Run the following notebooks in order.  This will create an Iceberg data warehouse in the KinD cluster and populate it with historic observations and simulations for 10 sites.
 - `01_setup_minio_warehouse.ipynb`
