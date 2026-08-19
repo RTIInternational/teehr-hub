@@ -27,6 +27,7 @@ definitions:
       image: "{{ $PREFECT_TEEHR_IMAGE }}"
       image_pull_policy: Always
       namespace: "{{ $TEEHR_NAMESPACE }}"
+      service_account_name: prefect-job
       finished_job_ttl: 300
       job_watch_timeout_seconds: 900
       pod_watch_timeout_seconds: 300
@@ -574,4 +575,12 @@ deployments:
     description: Calculate configuration summary statistics and update the configuration summary table
     entrypoint: workflows/data_management/update_configurations_summary.py:update_configurations_summary_table
     parameters: {"temp_dir_path": *temp_dir_path, "start_spark_cluster": false}
+    work_pool: *work_pool
+
+  - name: test-distributed-rw-auth
+    version:
+    tags: []
+    description: Run distributed read/write auth test
+    entrypoint: workflows/tests/distributed_rw_auth_test.py:distributed_rw_auth
+    parameters: {"temp_dir_path": *temp_dir_path, "start_spark_cluster": true}
     work_pool: *work_pool
