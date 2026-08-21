@@ -48,6 +48,7 @@ definitions:
       POLARIS_CLIENT_ID: "{{ $POLARIS_CLIENT_ID }}"
       POLARIS_CLIENT_SECRET: "{{ $POLARIS_CLIENT_SECRET }}"
       POLARIS_DEFAULT_REALM: "{{ $POLARIS_DEFAULT_REALM }}"
+      POLARIS_USE_STS: "true"
       IN_CLUSTER: "{{ $IN_CLUSTER }}"
     node_selector:
       teehr-hub/nodegroup-name: spark-r5-4xlarge
