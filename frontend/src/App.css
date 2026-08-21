@@ -45,6 +45,25 @@ html {
   border-radius: 6px;
 }
 
+/* NWMD filter sidebar: make react-bootstrap's injected tab-content div scrollable */
+.nwmd-filter-tabs {
+  min-height: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.nwmd-filter-tabs .tab-content {
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  flex: 1;
+}
+
+.nwmd-filter-tabs .tab-content .tab-pane {
+  height: 100%;
+}
+
 /* Form styling */
 .form-select, .form-control {
   font-size: 0.9rem;

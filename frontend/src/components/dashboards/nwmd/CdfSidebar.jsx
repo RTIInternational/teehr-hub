@@ -1,4 +1,5 @@
 import { Form } from "react-bootstrap";
+import { NWMD_METRICS } from "./utils";
 
 export const CdfSidebar = ({ state, plotIds, setCdfPlotMetric }) => {
   return (
@@ -13,7 +14,6 @@ export const CdfSidebar = ({ state, plotIds, setCdfPlotMetric }) => {
               setCdfPlotMetric(plotId, e.target.value);
             }}
           >
-            <option value="">Select Metric...</option>
             {(() => {
               // Try to find metrics from any available table in the batch response
               // This works for both single-table and multi-table dashboards
@@ -31,11 +31,13 @@ export const CdfSidebar = ({ state, plotIds, setCdfPlotMetric }) => {
                 }
               });
 
-              return allMetrics.map((metricName) => (
-                <option key={metricName} value={metricName}>
-                  {metricName}
-                </option>
-              ));
+              return allMetrics
+                .filter((metric) => NWMD_METRICS.has(metric))
+                .map((metricName) => (
+                  <option key={metricName} value={metricName}>
+                    {metricName}
+                  </option>
+                ));
             })()}
           </Form.Select>
         </Form.Group>

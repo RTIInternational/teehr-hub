@@ -195,6 +195,7 @@ export const NwmdMapComponent = ({
   useEffect(() => {
     if (
       state.mapLoaded !== undefined &&
+      state.mapFilters.quarter !== undefined &&
       state.mapFilters.configuration !== undefined &&
       state.mapFilters.variable !== undefined &&
       state.mapFilters.threshold !== undefined &&
@@ -202,6 +203,7 @@ export const NwmdMapComponent = ({
       state.mapFilters.leadTimeBin !== undefined
     ) {
       loadLocations({
+        quarter: state.mapFilters.quarter,
         configuration: state.mapFilters.configuration,
         variable: state.mapFilters.variable,
         threshold: state.mapFilters.threshold,
@@ -211,6 +213,7 @@ export const NwmdMapComponent = ({
     }
   }, [
     state.mapLoaded,
+    state.mapFilters.quarter,
     state.mapFilters.configuration,
     state.mapFilters.variable,
     loadLocations,

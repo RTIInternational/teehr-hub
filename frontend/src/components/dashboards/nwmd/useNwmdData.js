@@ -10,6 +10,7 @@ const TABLE_NAMES = ["nwmd_metrics_by_location"];
  */
 export const useNwmdData = () => {
   const {
+    loadQuarters,
     loadConfigurations,
     loadVariables,
     loadThresholds,
@@ -23,6 +24,10 @@ export const useNwmdData = () => {
     loadLocationMetadata,
     ...otherHooks
   } = useNwmdDataFetching();
+
+  const loadNwmdQuarters = useCallback(async () => {
+    return loadQuarters(TABLE_NAMES[0]);
+  }, [loadQuarters]);
 
   // Load configurations for nwmd metrics
   const loadNwmdConfigurations = useCallback(async () => {
@@ -96,6 +101,7 @@ export const useNwmdData = () => {
   const initializeNwmdData = useCallback(async () => {
     try {
       await Promise.all([
+        loadNwmdQuarters(),
         loadNwmdConfigurations(),
         loadNwmdVariables(),
         loadNwmdThresholds(),
@@ -108,6 +114,7 @@ export const useNwmdData = () => {
       throw error;
     }
   }, [
+    loadNwmdQuarters,
     loadNwmdConfigurations,
     loadNwmdVariables,
     loadNwmdThresholds,

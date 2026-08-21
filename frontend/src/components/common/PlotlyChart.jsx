@@ -2,8 +2,17 @@ import Plotly from 'plotly.js-dist-min';
 import { useEffect, useRef } from 'react';
 import { formatVariableName, formatUnitName, getYAxisTitle } from '../../utils/formatters';
 
-const PlotlyChart = ({ primaryData, secondaryData, selectedLocation, filters, height = '500px' }) => {
+const PlotlyChart = ({
+  primaryData,
+  secondaryData,
+  selectedLocation,
+  filters,
+  height = '500px',
+  allowForecastSelect = false,
+  showLegend = true,
+}) => {
   const plotRef = useRef(null);
+  const selectedForecastTraceRef = useRef(null);
 
   useEffect(() => {
     if (!plotRef.current) return;
@@ -26,7 +35,7 @@ const PlotlyChart = ({ primaryData, secondaryData, selectedLocation, filters, he
             type: 'scatter',
             mode: 'lines',
             line: { color: primaryColors[index % primaryColors.length], width: 2.5 },
-            showlegend: true,
+            showlegend: showLegend,
             hovertemplate:
               '<b>%{fullData.name}</b><br>' +
               'Date: %{x}<br>' +
@@ -152,12 +161,13 @@ const PlotlyChart = ({ primaryData, secondaryData, selectedLocation, filters, he
         lastTraceIndexPerConfig.set(trace.name, index);
       });
       lastTraceIndexPerConfig.forEach((index) => {
-        secondaryTraces[index].showlegend = true;
+        secondaryTraces[index].showlegend = showLegend;
       });
     }
 
     // Draw forecasts first and observations last so primary lines remain on top.
     const traces = [...secondaryTraces, ...primaryTraces];
+    const forecastTraceIndexes = secondaryTraces.map((_, index) => index);
 
     // Only plot if we have traces
     if (traces.length === 0) {
@@ -179,8 +189,8 @@ const PlotlyChart = ({ primaryData, secondaryData, selectedLocation, filters, he
           font: { size: 14 }
         }
       },
-      margin: { l: 80, r: 200, t: 20, b: 60 },
-      showlegend: true,
+      margin: { l: 80, r: showLegend ? 200 : 40, t: 20, b: 60 },
+      showlegend: showLegend,
       legend: {
         x: 1.01,
         y: 0.95,
@@ -198,7 +208,63 @@ const PlotlyChart = ({ primaryData, secondaryData, selectedLocation, filters, he
       displayModeBar: 'hover'
     });
 
-  }, [primaryData, secondaryData, selectedLocation, filters]);
+    const plotElement = plotRef.current;
+    plotElement.removeAllListeners?.('plotly_click');
+    plotElement.removeAllListeners?.('plotly_doubleclick');
+
+    if (!allowForecastSelect) {
+      selectedForecastTraceRef.current = null;
+      return undefined;
+    }
+
+    const resetForecastStyles = () => {
+      selectedForecastTraceRef.current = null;
+
+      if (forecastTraceIndexes.length === 0) return;
+
+      Plotly.restyle(plotElement, {
+        'line.width': forecastTraceIndexes.map(() => 2),
+        opacity: forecastTraceIndexes.map(() => 1)
+      }, forecastTraceIndexes);
+    };
+
+    const emphasizeForecastTrace = (traceIndex) => {
+      selectedForecastTraceRef.current = traceIndex;
+
+      Plotly.restyle(plotElement, {
+        'line.width': forecastTraceIndexes.map((index) => (index === traceIndex ? 4 : 1.5)),
+        opacity: forecastTraceIndexes.map((index) => (index === traceIndex ? 1 : 0.2))
+      }, forecastTraceIndexes);
+    };
+
+    const handlePlotClick = (event) => {
+      const clickedTraceIndex = event?.points?.[0]?.curveNumber;
+      if (clickedTraceIndex == null || clickedTraceIndex >= secondaryTraces.length) {
+        return;
+      }
+
+      if (selectedForecastTraceRef.current === clickedTraceIndex) {
+        resetForecastStyles();
+        return;
+      }
+
+      emphasizeForecastTrace(clickedTraceIndex);
+    };
+
+    const handlePlotDoubleClick = () => {
+      resetForecastStyles();
+      return false;
+    };
+
+    plotElement.on?.('plotly_click', handlePlotClick);
+    plotElement.on?.('plotly_doubleclick', handlePlotDoubleClick);
+
+    return () => {
+      plotElement.removeAllListeners?.('plotly_click');
+      plotElement.removeAllListeners?.('plotly_doubleclick');
+    };
+
+  }, [primaryData, secondaryData, selectedLocation, filters, allowForecastSelect, showLegend]);
 
   return <div ref={plotRef} style={{ width: '100%', height }} />;
 };

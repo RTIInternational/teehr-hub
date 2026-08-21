@@ -1,4 +1,5 @@
 import { useCallback } from "react";
+import { applyAltHypothesisFilter } from "../components/dashboards/nwmd/utils";
 import {
   useNwmdDashboard,
   ActionTypes,
@@ -8,7 +9,30 @@ import { extractTableProperties } from "../utils/ogcTransformers";
 
 // Custom hooks for nwmd dashboard data fetching
 export const useNwmdDataFetching = () => {
-  const { dispatch } = useNwmdDashboard();
+  const { state, dispatch } = useNwmdDashboard();
+
+  const loadQuarters = useCallback(
+    async (table) => {
+      try {
+        dispatch({
+          type: ActionTypes.SET_LOADING,
+          payload: { quarters: true },
+        });
+        const quarters = await apiService.getDistinctValues(table, "quarter");
+        dispatch({ type: ActionTypes.SET_QUARTERS, payload: quarters });
+      } catch (error) {
+        dispatch({
+          type: ActionTypes.SET_ERROR,
+          payload: `Failed to load quarters: ${error.message}`,
+        });
+        dispatch({
+          type: ActionTypes.SET_LOADING,
+          payload: { quarters: false },
+        });
+      }
+    },
+    [dispatch],
+  );
 
   // Load configurations (distinct values from database)
   const loadConfigurations = useCallback(
@@ -196,9 +220,19 @@ export const useNwmdDataFetching = () => {
           payload: { locations: true },
         });
 
-        const locations = await apiService.getMetrics({ ...filters, table });
+        const { altHypothesis95, metricName, ...apiFilters } = filters || {};
 
-        dispatch({ type: ActionTypes.SET_LOCATIONS, payload: locations });
+        const locations = await apiService.getMetrics({ ...apiFilters, table });
+        const filteredLocations = applyAltHypothesisFilter(
+          locations,
+          metricName || state.mapFilters.metricName,
+          altHypothesis95,
+        );
+
+        dispatch({
+          type: ActionTypes.SET_LOCATIONS,
+          payload: filteredLocations,
+        });
       } catch (error) {
         console.error("useNwmdDataFetching: Error loading locations:", error);
         dispatch({
@@ -211,7 +245,7 @@ export const useNwmdDataFetching = () => {
         });
       }
     },
-    [dispatch],
+    [dispatch, state.mapFilters.metricName],
   );
 
   // Load timeseries data
@@ -375,6 +409,7 @@ export const useNwmdDataFetching = () => {
         const metricsData = await apiService.getMetrics({
           table,
           primary_location_id: filters.primary_location_id,
+          quarter: filters.quarter,
           configuration: filters.configuration,
           variable: filters.variable,
           threshold: filters.threshold,
@@ -440,6 +475,7 @@ export const useNwmdDataFetching = () => {
   const initializeData = useCallback(async () => {
     try {
       await Promise.all([
+        loadQuarters(),
         loadConfigurations(),
         loadVariables(),
         loadTableProperties(),
@@ -447,9 +483,10 @@ export const useNwmdDataFetching = () => {
     } catch (error) {
       console.error("Failed to initialize data:", error);
     }
-  }, [loadConfigurations, loadVariables, loadTableProperties]);
+  }, [loadQuarters, loadConfigurations, loadVariables, loadTableProperties]);
 
   return {
+    loadQuarters,
     loadConfigurations,
     loadVariables,
     loadThresholds,

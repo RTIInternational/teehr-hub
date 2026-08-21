@@ -45,12 +45,17 @@ export const DATA_DASHBOARD_DEFAULTS = {
 };
 
 export const NWMD_DASHBOARD_DEFAULTS = {
+  preferredQuarter: null,
   preferredConfiguration: 'nwm30_medium_range',
   preferredVariable: 'streamflow_hourly_inst',
   preferredThreshold: null,
   preferredAggMethod: 'mean',
   preferredLeadTimeBin: 'PT0S_P1DT0H',
-  defaultMetricName: 'relative_bias'
+  defaultMetricName: 'relative_bias',
+
+  // Default variable and duration for the Observations (primary timeseries) controls
+  preferredObservationsVariable: 'streamflow_none_inst',
+  preferredObservationsDuration: 'PT1H',
 };
 
 /**

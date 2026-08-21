@@ -4,6 +4,7 @@ import {
   NWMD_DASHBOARD_DEFAULTS,
   selectDefault,
 } from "../config/dashboardDefaults";
+import { getQuarterDateRange } from "../utils/formatters.js";
 
 // Dynamic date helpers - returns dates for 10 days ago through today
 const getTenDaysAgo = () => {
@@ -17,10 +18,29 @@ const getToday = () => {
   return date.toISOString().slice(0, 16); // Format: YYYY-MM-DDTHH:MM
 };
 
+const syncTimeseriesFiltersForQuarter = (timeseriesFilters, quarter) => {
+  const quarterRange = getQuarterDateRange(quarter);
+  if (!quarterRange) return {};
+
+  return {
+    primary: {
+      ...timeseriesFilters.primary,
+      start_date: quarterRange.start_date,
+      end_date: quarterRange.end_date,
+    },
+    secondary: {
+      ...timeseriesFilters.secondary,
+      reference_start_date: quarterRange.start_date,
+      reference_end_date: quarterRange.end_date,
+    },
+  };
+};
+
 // Initial state for nwmd dashboard
 const initialNwmdState = {
   // Data
   locations: { features: [] },
+  quarters: [],
   configurations: [],
   variables: [],
   thresholds: [],
@@ -31,20 +51,23 @@ const initialNwmdState = {
 
   // Map filters (original structure)
   mapFilters: {
+    quarter: undefined,
     configuration: undefined,
     variable: undefined,
     threshold: undefined,
     aggMethod: undefined,
     leadTimeBin: undefined,
+    altHypothesis95: undefined,
     metricName: "relative_bias",
   },
 
   // Timeseries filters (nwmd-specific defaults)
   timeseriesFilters: {
     primary: {
-      variables: [],
+      variables: [NWMD_DASHBOARD_DEFAULTS.preferredObservationsVariable],
       start_date: getTenDaysAgo(),
       end_date: getToday(),
+      duration: NWMD_DASHBOARD_DEFAULTS.preferredObservationsDuration,
     },
     secondary: {
       configurations: [], // Array for multi-select
@@ -95,6 +118,7 @@ const initialNwmdState = {
   metricsLoading: false,
   metadataLoading: false,
   tablePropertiesLoading: false,
+  quartersLoading: false,
   configurationsLoading: false,
   variablesLoading: false,
   thresholdsLoading: false,
@@ -113,6 +137,7 @@ const initialNwmdState = {
 export const ActionTypes = {
   // Data loading
   SET_LOCATIONS: "SET_LOCATIONS",
+  SET_QUARTERS: "SET_QUARTERS",
   SET_CONFIGURATIONS: "SET_CONFIGURATIONS",
   SET_VARIABLES: "SET_VARIABLES",
   SET_THRESHOLDS: "SET_THRESHOLDS",
@@ -168,6 +193,32 @@ const nwmdDashboardReducer = (state, action) => {
         locations: action.payload,
         locationsLoading: false,
       };
+
+    case ActionTypes.SET_QUARTERS: {
+      const quarters = Array.isArray(action.payload) ? action.payload : [];
+      const defaultQuarter = selectDefault(
+        NWMD_DASHBOARD_DEFAULTS.preferredQuarter,
+        quarters,
+      );
+      const quarterToUse = state.mapFilters.quarter || defaultQuarter;
+      const timeseriesSync = quarterToUse
+        ? syncTimeseriesFiltersForQuarter(state.timeseriesFilters, quarterToUse)
+        : {};
+
+      return {
+        ...state,
+        quarters,
+        quartersLoading: false,
+        mapFilters: {
+          ...state.mapFilters,
+          quarter: quarterToUse,
+        },
+        timeseriesFilters: {
+          ...state.timeseriesFilters,
+          ...timeseriesSync,
+        },
+      };
+    }
 
     case ActionTypes.SET_CONFIGURATIONS: {
       const configurations = Array.isArray(action.payload)
@@ -365,6 +416,20 @@ const nwmdDashboardReducer = (state, action) => {
           variables: action.payload.variable ? [action.payload.variable] : [],
         };
       }
+      if (action.payload.quarter !== undefined) {
+        const quarterTimeseriesSync = syncTimeseriesFiltersForQuarter(
+          state.timeseriesFilters,
+          action.payload.quarter,
+        );
+        mapTimeseriesSync.primary = {
+          ...(mapTimeseriesSync.primary || state.timeseriesFilters.primary),
+          ...(quarterTimeseriesSync.primary || {}),
+        };
+        mapTimeseriesSync.secondary = {
+          ...(mapTimeseriesSync.secondary || state.timeseriesFilters.secondary),
+          ...(quarterTimeseriesSync.secondary || {}),
+        };
+      }
       return {
         ...state,
         mapFilters: {
@@ -492,6 +557,9 @@ const nwmdDashboardReducer = (state, action) => {
       if ("tablePropertiesLoading" in action.payload) {
         loadingUpdates.tablePropertiesLoading =
           action.payload.tablePropertiesLoading;
+      }
+      if ("quarters" in action.payload) {
+        loadingUpdates.quartersLoading = action.payload.quarters;
       }
       if ("configurations" in action.payload) {
         loadingUpdates.configurationsLoading = action.payload.configurations;
