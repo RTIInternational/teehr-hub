@@ -24,14 +24,12 @@
     "start": "vite",
     "build": "tsc -b && vite build",
     "preview": "vite preview",
-    "format:check": "prettier --check '**/*.{js,mjs,jsx,ts,tsx,css}'",
-    "format:fix": "prettier --write '**/*.{js,mjs,jsx,ts,tsx,css}'",
-    "lint": "eslint . --ext js,jsx,ts,tsx --report-unused-disable-directives --max-warnings 0",
-    "lint:fix": "eslint . --ext js,jsx,ts,tsx --fix",
-    "types:check": "tsc -b"
+    "format:check": "oxfmt --check '**/*.{js,mjs,jsx,ts,tsx,css}'",
+    "format:fix": "oxfmt '**/*.{js,mjs,jsx,ts,tsx,css}'",
+    "lint": "oxlint . --report-unused-disable-directives --max-warnings 0",
+    "lint:fix": "oxlint . --fix"
   },
   "devDependencies": {
-    "@eslint/js": "^9.39.1",
     "@types/geojson": "^7946.0.16",
     "@types/luxon": "^3.7.4",
     "@types/node": "^26.1.2",
@@ -39,19 +37,11 @@
     "@types/react": "^19.2.18",
     "@types/react-dom": "^19.2.4",
     "@vitejs/plugin-react": "^5.1.1",
-    "eslint": "^9.39.1",
-    "eslint-config-prettier": "^10.1.8",
-    "eslint-import-resolver-typescript": "^4.4.5",
-    "eslint-plugin-import": "^2.32.0",
-    "eslint-plugin-jsx-a11y": "^6.10.2",
-    "eslint-plugin-prettier": "^5.5.6",
-    "eslint-plugin-react": "^7.37.5",
-    "eslint-plugin-react-hooks": "^7.0.1",
-    "eslint-plugin-react-refresh": "^0.4.24",
     "globals": "^16.5.0",
-    "prettier": "^3.9.6",
-    "typescript": "^6.0.3",
-    "typescript-eslint": "^8.66.0",
+    "oxfmt": "^0.64.0",
+    "oxlint": "^1.79.0",
+    "oxlint-tsgolint": "^7.0.2001",
+    "typescript": "^7.0.2",
     "vite": "^7.2.6"
   }
 }
