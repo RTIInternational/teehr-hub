@@ -6,19 +6,30 @@ This is the React frontend for the TEEHR Dashboard, a hydrological data visualiz
 
 - **React 19** - Frontend framework
 - **TypeScript** - Incrementally adopted for new development and ongoing migration
+- **TanStack Query** - Server-state fetching and caching for migrated features
 - **Vite** - Fast build tool and development server
 - **MapLibre GL JS** - Interactive mapping
 - **Plotly.js** - Data visualization and charting
 - **Bootstrap 5** - UI components and styling
 
-## TypeScript Migration
+## Migration Status
 
-This frontend is in the middle of an incremental migration from JavaScript to TypeScript.
+This frontend is in the middle of an incremental migration across three tracks:
 
-- New code should be written in TypeScript whenever practical.
-- Existing JavaScript files remain supported during the migration.
-- Older features should be converted to TypeScript as they are touched or refactored.
-- TypeScript is configured to allow `.js` and `.jsx` files so migration can happen gradually without blocking active work.
+- JavaScript to TypeScript
+- React Context based server-state handling to TanStack Query
+- Flat component organization to feature-based structure
+
+Current status:
+
+- **Migrated to TypeScript + TanStack Query + feature-based structure**:
+   - Retrospective dashboard and related components/hooks
+   - Forecast dashboard and related components/hooks
+- **Not yet migrated (still primarily JavaScript + existing context/data-fetching patterns)**:
+   - NWMD dashboard and related components/hooks
+   - Data management dashboard and related components/hooks
+
+This mixed architecture is expected during the migration window.
 
 Current migration-related configuration:
 
@@ -71,13 +82,25 @@ Runs Prettier across JavaScript, TypeScript, and CSS files.
 
 ```
 src/
-├── components/          # React components and dashboard views
-├── context/             # React context providers
-├── hooks/               # Custom hooks
-├── services/            # API service layer
-├── utils/               # Shared utility functions
-├── App.tsx              # Main app component
-└── index.tsx            # Application entry point
+├── features/
+│   ├── auth/                      # Auth provider and auth hooks (TS)
+│   ├── forecast/                  # Migrated dashboard feature (TS + TSQ)
+│   └── retrospective/             # Migrated dashboard feature (TS + TSQ)
+├── shared/
+│   ├── components/                # Reusable TS components
+│   ├── queries/                   # TanStack Query hooks
+│   ├── types/                     # Shared TypeScript types
+│   └── utils/                     # Shared utilities
+├── components/
+│   └── dashboards/
+│       ├── data_management/       # Not yet migrated dashboard modules
+│       └── nwmd/                  # Not yet migrated dashboard modules
+├── context/                       # Existing contexts used by non-migrated areas
+├── hooks/                         # Shared hooks (mixed JS/TS during migration)
+├── pages/                         # Route-level pages (e.g., admin)
+├── services/                      # API service layer
+├── App.tsx                        # Main app component
+└── index.tsx                      # Application entry point and QueryClientProvider
 ```
 
 During migration, you will see a mix of `.js`, `.jsx`, `.ts`, and `.tsx` files.
@@ -87,7 +110,7 @@ During migration, you will see a mix of `.js`, `.jsx`, `.ts`, and `.tsx` files.
 Create a `.env` file in the project root to configure the API endpoint and external service URLs:
 
 ```
-VITE_API_URL=http://localhost:8000
+VITE_API_BASE_URL=http://localhost:8000
 VITE_KEYCLOAK_URL=https://auth.teehr.local.app.garden
 VITE_PREFECT_URL=https://prefect.teehr.local.app.garden
 VITE_JUPYTERHUB_URL=https://hub.teehr.local.app.garden/hub/spawn
@@ -100,7 +123,7 @@ Note: Environment variables must be prefixed with `VITE_` to be accessible in th
 This frontend connects to a FastAPI backend. The Vite development server proxies API requests to the backend:
 
 - Frontend: http://localhost:8080
-- Backend API: configured by `VITE_API_BASE_URL` or defaults to `https://api.teehr.local.app.garden`
+- Backend API: configured by `VITE_API_BASE_URL` or defaults to `http://127.0.0.1:8000`
 - API endpoints are proxied from `/api/*` to the backend
 
 ## Features
@@ -135,6 +158,8 @@ This frontend connects to a FastAPI backend. The Vite development server proxies
 ## Development Guidance
 
 - Prefer `.ts` and `.tsx` for all new modules and components.
+- Prefer TanStack Query for new server-state fetching/caching work.
+- Place new dashboard code under `src/features/<feature-name>/` whenever practical.
 - When modifying older JavaScript-heavy areas, convert nearby files to TypeScript when the added scope remains manageable.
 - Keep migration changes incremental and reviewable rather than attempting broad rewrites.
 - Run `npm run lint`, `npm run types:check`, and `npm run build` before merging substantial migration work.
