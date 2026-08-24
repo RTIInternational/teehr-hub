@@ -1,9 +1,7 @@
 export const parseDurationToHours = (duration) => {
-  if (typeof duration !== "string" || !duration.startsWith("P")) return null;
+  if (typeof duration !== 'string' || !duration.startsWith('P')) return null;
 
-  const match = duration.match(
-    /^P(?:(\d+)D)?(?:T(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?)?$/,
-  );
+  const match = duration.match(/^P(?:(\d+)D)?(?:T(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?)?$/);
   if (!match) return null;
 
   const days = Number(match[1] || 0);
@@ -15,9 +13,9 @@ export const parseDurationToHours = (duration) => {
 };
 
 export const getLeadTimeBinBounds = (leadTimeBin) => {
-  if (typeof leadTimeBin !== "string") return null;
+  if (typeof leadTimeBin !== 'string') return null;
 
-  const [minDuration, maxDuration] = leadTimeBin.split("_");
+  const [minDuration, maxDuration] = leadTimeBin.split('_');
   const minHours = parseDurationToHours(minDuration);
   const maxHours = parseDurationToHours(maxDuration);
 
@@ -31,7 +29,7 @@ export const getLeadTimeBinBounds = (leadTimeBin) => {
 
 export const formatLeadTimeBinLabel = (leadTimeBin) => {
   const bounds = getLeadTimeBinBounds(leadTimeBin);
-  if (!bounds) return leadTimeBin || "";
+  if (!bounds) return leadTimeBin || '';
 
   return `${bounds.minHours} to <${bounds.maxHours}`;
 };

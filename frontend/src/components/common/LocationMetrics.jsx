@@ -2,35 +2,36 @@ import { useEffect, useState } from 'react';
 import { Card, Form, ButtonGroup, Button } from 'react-bootstrap';
 import MetricsTable from './MetricsTable';
 
-const LocationMetrics = ({ 
-  selectedLocation, 
-  locationMetrics, 
-  metricsLoading, 
-  error, 
+const LocationMetrics = ({
+  selectedLocation,
+  locationMetrics,
+  metricsLoading,
+  error,
   loadLocationMetrics,
   tableProperties = {}, // Available tables with their properties
-  defaultTable = null // Default table to use
+  defaultTable = null, // Default table to use
 }) => {
   // Get available tables that have metrics
-  const availableTables = Object.keys(tableProperties).filter(tableName => 
-    tableProperties[tableName]?.metrics?.length > 0
+  const availableTables = Object.keys(tableProperties).filter(
+    (tableName) => tableProperties[tableName]?.metrics?.length > 0
   );
-  
+
   // State for selected table and view mode
-  const [selectedTable, setSelectedTable] = useState(
-    defaultTable || availableTables[0] || null
-  );
+  const [selectedTable, setSelectedTable] = useState(defaultTable || availableTables[0] || null);
   const [viewMode, setViewMode] = useState('table');
-  
+
   // Check if current table has group_by fields for filter capability
   const hasFilters = selectedTable && tableProperties[selectedTable]?.group_by?.length > 0;
-  
+
   // Check if current table has lead time bins for plot capability
-  const hasLeadTimeBin = selectedTable && tableProperties[selectedTable]?.group_by?.some(field => 
-    field.toLowerCase().includes('lead_time_bin') || 
-    field.toLowerCase().includes('forecast_lead_time_bin')
-  );
-  
+  const hasLeadTimeBin =
+    selectedTable &&
+    tableProperties[selectedTable]?.group_by?.some(
+      (field) =>
+        field.toLowerCase().includes('lead_time_bin') ||
+        field.toLowerCase().includes('forecast_lead_time_bin')
+    );
+
   // Update selected table when default changes or tables become available
   useEffect(() => {
     if (!selectedTable && availableTables.length > 0) {
@@ -50,10 +51,15 @@ const LocationMetrics = ({
   }
 
   return (
-    <Card className="shadow-lg h-100" style={{ borderRadius: '8px', display: 'flex', flexDirection: 'column' }}>
+    <Card
+      className="shadow-lg h-100"
+      style={{ borderRadius: '8px', display: 'flex', flexDirection: 'column' }}
+    >
       <Card.Header className="py-2 d-flex justify-content-between align-items-center">
         <div className="d-flex align-items-center gap-2">
-          <Card.Title as="h6" className="mb-0">📊 Metrics</Card.Title>
+          <Card.Title as="h6" className="mb-0">
+            📊 Metrics
+          </Card.Title>
           {availableTables.length > 1 && (
             <Form.Select
               size="sm"
@@ -61,21 +67,21 @@ const LocationMetrics = ({
               onChange={(e) => setSelectedTable(e.target.value)}
               style={{ width: 'auto', minWidth: '200px' }}
             >
-            <option value="">Select Table...</option>
-            {availableTables.map(tableName => {
-              const description = tableProperties[tableName]?.description || tableName;
-              return (
-                <option key={tableName} value={tableName}>
-                  {description}
-                </option>
-              );
-            })}
+              <option value="">Select Table...</option>
+              {availableTables.map((tableName) => {
+                const description = tableProperties[tableName]?.description || tableName;
+                return (
+                  <option key={tableName} value={tableName}>
+                    {description}
+                  </option>
+                );
+              })}
             </Form.Select>
           )}
           {(hasLeadTimeBin || hasFilters) && (
             <ButtonGroup size="sm">
               {hasFilters && (
-                <Button 
+                <Button
                   variant={viewMode === 'filters' ? 'primary' : 'outline-primary'}
                   onClick={() => setViewMode('filters')}
                   style={{ fontSize: '11px' }}
@@ -83,7 +89,7 @@ const LocationMetrics = ({
                   🔍 Filters
                 </Button>
               )}
-              <Button 
+              <Button
                 variant={viewMode === 'table' ? 'primary' : 'outline-primary'}
                 onClick={() => setViewMode('table')}
                 style={{ fontSize: '11px' }}
@@ -91,7 +97,7 @@ const LocationMetrics = ({
                 📊 Table
               </Button>
               {hasLeadTimeBin && (
-                <Button 
+                <Button
                   variant={viewMode === 'plot' ? 'primary' : 'outline-primary'}
                   onClick={() => setViewMode('plot')}
                   style={{ fontSize: '11px' }}
@@ -109,7 +115,11 @@ const LocationMetrics = ({
           loading={metricsLoading}
           error={error}
           title="Metrics"
-          emptyMessage={selectedTable ? `No metrics available for this location in ${selectedTable}.` : "Select a table to view metrics."}
+          emptyMessage={
+            selectedTable
+              ? `No metrics available for this location in ${selectedTable}.`
+              : 'Select a table to view metrics.'
+          }
           showTitle={false}
           tableProperties={selectedTable ? tableProperties[selectedTable] : null}
           viewMode={viewMode}

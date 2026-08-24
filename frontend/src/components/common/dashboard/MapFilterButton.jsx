@@ -1,23 +1,18 @@
 import { useState } from 'react';
 import { Dropdown, Form } from 'react-bootstrap';
 
-const MapFilterButton = ({ 
-  state, 
-  mapFilters, 
-  updateMapFilters, 
-  loadLocations 
-}) => {
+const MapFilterButton = ({ state, mapFilters, updateMapFilters, loadLocations }) => {
   const [showDropdown, setShowDropdown] = useState(false);
 
   const handleMapFilterChange = async (filterType, value) => {
     const newFilters = { ...mapFilters, [filterType]: value };
     updateMapFilters({ [filterType]: value });
-    
+
     // Reload locations when configuration or variable changes
     if (filterType === 'configuration' || filterType === 'variable') {
       await loadLocations({
         configuration: newFilters.configuration,
-        variable: newFilters.variable
+        variable: newFilters.variable,
       });
     }
   };
@@ -40,11 +35,12 @@ const MapFilterButton = ({
                 onChange={(e) => handleMapFilterChange('configuration', e.target.value || null)}
               >
                 <option value="">Select Configuration...</option>
-                {Array.isArray(state.configurations) && state.configurations.map((config) => (
-                  <option key={config} value={config}>
-                    {config}
-                  </option>
-                ))}
+                {Array.isArray(state.configurations) &&
+                  state.configurations.map((config) => (
+                    <option key={config} value={config}>
+                      {config}
+                    </option>
+                  ))}
               </Form.Select>
             </Form.Group>
 
@@ -57,11 +53,12 @@ const MapFilterButton = ({
                 onChange={(e) => handleMapFilterChange('variable', e.target.value || null)}
               >
                 <option value="">Select Variable...</option>
-                {Array.isArray(state.variables) && state.variables.map((variable) => (
-                  <option key={variable} value={variable}>
-                    {variable}
-                  </option>
-                ))}
+                {Array.isArray(state.variables) &&
+                  state.variables.map((variable) => (
+                    <option key={variable} value={variable}>
+                      {variable}
+                    </option>
+                  ))}
               </Form.Select>
             </Form.Group>
 
@@ -79,18 +76,18 @@ const MapFilterButton = ({
                   // This works for both single-table and multi-table dashboards
                   const allTableProps = state.tableProperties || {};
                   const allMetrics = [];
-                  
+
                   // Collect all unique metrics from all tables
-                  Object.values(allTableProps).forEach(tableProps => {
+                  Object.values(allTableProps).forEach((tableProps) => {
                     if (Array.isArray(tableProps?.metrics)) {
-                      tableProps.metrics.forEach(metric => {
+                      tableProps.metrics.forEach((metric) => {
                         if (!allMetrics.includes(metric)) {
                           allMetrics.push(metric);
                         }
                       });
                     }
                   });
-                  
+
                   return allMetrics.map((metricName) => (
                     <option key={metricName} value={metricName}>
                       {metricName}

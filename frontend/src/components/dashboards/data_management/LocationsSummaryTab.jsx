@@ -20,7 +20,9 @@ import SimpleMapPanel from './SimpleMapPanel';
 // ── Helpers ────────────────────────────────────────────────────────────────
 const fmt = (val) => {
   if (val == null) return '—';
-  return String(val).replace('T', ' ').replace(/\.\d+Z?$/, '');
+  return String(val)
+    .replace('T', ' ')
+    .replace(/\.\d+Z?$/, '');
 };
 
 // Returns a raw sortable value for a column key
@@ -41,12 +43,12 @@ const sortValue = (row, key) => {
 
 // Default columns always shown
 const DEFAULT_COLUMNS = [
-  { key: 'location_id',        label: 'Location ID' },
-  { key: 'name',               label: 'Name' },
-  { key: 'state_name',         label: 'State' },
-  { key: 'drainage_area_km2',  label: 'Drainage Area (km²)' },
+  { key: 'location_id', label: 'Location ID' },
+  { key: 'name', label: 'Name' },
+  { key: 'state_name', label: 'State' },
+  { key: 'drainage_area_km2', label: 'Drainage Area (km²)' },
   { key: 'slope_mean_percent', label: 'Mean Slope (%)' },
-  { key: 'rfc',                label: 'RFC' },
+  { key: 'rfc', label: 'RFC' },
 ];
 
 const SIDE_PANEL_COLUMNS = [
@@ -109,7 +111,8 @@ const LocationsSummaryTab = ({ isActive = true }) => {
   const pickerRef = useRef(null);
 
   useEffect(() => {
-    apiService.getAttributes()
+    apiService
+      .getAttributes()
       .then((data) => {
         const defaultKeys = new Set(DEFAULT_COLUMNS.map((c) => c.key));
         const attrs = (data?.items || [])
@@ -118,7 +121,9 @@ const LocationsSummaryTab = ({ isActive = true }) => {
           .sort((a, b) => a.label.localeCompare(b.label));
         setAvailableAttributes(attrs);
       })
-      .catch(() => { /* non-fatal */ });
+      .catch(() => {
+        /* non-fatal */
+      });
   }, []);
 
   useEffect(() => {
@@ -166,11 +171,12 @@ const LocationsSummaryTab = ({ isActive = true }) => {
     };
   }, [pickerOpen]);
 
-  const toggleCheck = (key) => setCheckedKeys((prev) => {
-    const next = new Set(prev);
-    next.has(key) ? next.delete(key) : next.add(key);
-    return next;
-  });
+  const toggleCheck = (key) =>
+    setCheckedKeys((prev) => {
+      const next = new Set(prev);
+      next.has(key) ? next.delete(key) : next.add(key);
+      return next;
+    });
 
   const handleAddToTable = () => {
     if (checkedKeys.size === 0) return;
@@ -212,10 +218,18 @@ const LocationsSummaryTab = ({ isActive = true }) => {
     if (!filterText.trim()) return sortedRows;
     const q = filterText.trim().toLowerCase();
     if (filterColumn) {
-      return sortedRows.filter((row) => String(row[filterColumn] ?? '').toLowerCase().includes(q));
+      return sortedRows.filter((row) =>
+        String(row[filterColumn] ?? '')
+          .toLowerCase()
+          .includes(q)
+      );
     }
     return sortedRows.filter((row) =>
-      activeColumns.some((col) => String(row[col.key] ?? '').toLowerCase().includes(q))
+      activeColumns.some((col) =>
+        String(row[col.key] ?? '')
+          .toLowerCase()
+          .includes(q)
+      )
     );
   }, [sortedRows, filterText, filterColumn, activeColumns]);
 
@@ -244,17 +258,18 @@ const LocationsSummaryTab = ({ isActive = true }) => {
       .finally(() => setLoading(false));
   }, []);
 
-  useEffect(() => { fetchRows(); }, [fetchRows]);
+  useEffect(() => {
+    fetchRows();
+  }, [fetchRows]);
 
   const loadConfigurationsForLocation = useCallback((locationId) => {
     setSidePanelLoading(true);
     setSidePanelError(null);
     setSidePanelConfigs([]);
-    apiService.getConfigurationsByLocationId(locationId)
+    apiService
+      .getConfigurationsByLocationId(locationId)
       .then((data) => {
-        const items = Array.isArray(data)
-          ? data
-          : Array.isArray(data.items) ? data.items : [];
+        const items = Array.isArray(data) ? data : Array.isArray(data.items) ? data.items : [];
         setSidePanelConfigs(items);
       })
       .catch((err) => {
@@ -263,56 +278,69 @@ const LocationsSummaryTab = ({ isActive = true }) => {
       .finally(() => setSidePanelLoading(false));
   }, []);
 
-  const handleRowClick = useCallback((row) => {
-    if (selectedId === row.location_id) {
-      setSelectedId(null);
-      setGeojson(null);
-      setBasinGeojson(null);
+  const handleRowClick = useCallback(
+    (row) => {
+      if (selectedId === row.location_id) {
+        setSelectedId(null);
+        setGeojson(null);
+        setBasinGeojson(null);
+        setNoGeometry(false);
+        setSidePanelConfigs([]);
+        setSidePanelLoading(false);
+        setSidePanelError(null);
+        return;
+      }
+
+      setSelectedId(row.location_id);
       setNoGeometry(false);
-      setSidePanelConfigs([]);
-      setSidePanelLoading(false);
-      setSidePanelError(null);
-      return;
-    }
 
-    setSelectedId(row.location_id);
-    setNoGeometry(false);
-
-    const basinId = row.location_id.replace(/^usgs-/, 'usgsbasin-');
-    Promise.all([
-      apiService.getLocationById(row.location_id),
-      apiService.getLocationById(basinId).catch(() => null),
-    ])
-      .then(([locationData, basinData]) => {
-        const feature = locationData?.features?.[0];
-        if (!feature) {
+      const basinId = row.location_id.replace(/^usgs-/, 'usgsbasin-');
+      Promise.all([
+        apiService.getLocationById(row.location_id),
+        apiService.getLocationById(basinId).catch(() => null),
+      ])
+        .then(([locationData, basinData]) => {
+          const feature = locationData?.features?.[0];
+          if (!feature) {
+            setNoGeometry(true);
+            return;
+          }
+          const merged = {
+            type: 'FeatureCollection',
+            features: [
+              {
+                ...feature,
+                properties: {
+                  ...feature.properties,
+                  location_id: row.location_id,
+                  name: row.name,
+                },
+              },
+            ],
+          };
+          setGeojson(merged);
+          const hasBasin = !!basinData?.features?.length;
+          setBasinGeojson(hasBasin ? basinData : null);
+        })
+        .catch(() => {
           setNoGeometry(true);
-          return;
-        }
-        const merged = {
-          type: 'FeatureCollection',
-          features: [{
-            ...feature,
-            properties: {
-              ...feature.properties,
-              location_id: row.location_id,
-              name: row.name,
-            },
-          }],
-        };
-        setGeojson(merged);
-        const hasBasin = !!(basinData?.features?.length);
-        setBasinGeojson(hasBasin ? basinData : null);
-      })
-      .catch(() => {
-        setNoGeometry(true);
-      });
+        });
 
-    loadConfigurationsForLocation(row.location_id);
-  }, [selectedId, loadConfigurationsForLocation]);
+      loadConfigurationsForLocation(row.location_id);
+    },
+    [selectedId, loadConfigurationsForLocation]
+  );
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0, gap: '12px' }}>
+    <div
+      style={{
+        display: 'flex',
+        flexDirection: 'column',
+        height: '100%',
+        minHeight: 0,
+        gap: '12px',
+      }}
+    >
       <div style={{ flex: '1 1 0', minHeight: 0, display: 'flex', gap: '12px' }}>
         <div style={{ flex: '1 1 0', minWidth: 0, minHeight: 0, position: 'relative' }}>
           <DashboardPanel bodyStyle={{ padding: 0, position: 'relative' }}>
@@ -325,7 +353,13 @@ const LocationsSummaryTab = ({ isActive = true }) => {
             {!selectedId && (
               <div
                 className="position-absolute top-50 start-50 translate-middle text-center text-muted"
-                style={{ zIndex: 5, pointerEvents: 'none', background: 'rgba(255,255,255,0.7)', borderRadius: 6, padding: '6px 12px' }}
+                style={{
+                  zIndex: 5,
+                  pointerEvents: 'none',
+                  background: 'rgba(255,255,255,0.7)',
+                  borderRadius: 6,
+                  padding: '6px 12px',
+                }}
               >
                 <small>Click a location row below to view it on the map</small>
               </div>
@@ -333,9 +367,18 @@ const LocationsSummaryTab = ({ isActive = true }) => {
             {selectedId && noGeometry && (
               <div
                 className="position-absolute top-50 start-50 translate-middle text-center text-muted"
-                style={{ zIndex: 5, pointerEvents: 'none', background: 'rgba(255,255,255,0.82)', borderRadius: 6, padding: '6px 12px' }}
+                style={{
+                  zIndex: 5,
+                  pointerEvents: 'none',
+                  background: 'rgba(255,255,255,0.82)',
+                  borderRadius: 6,
+                  padding: '6px 12px',
+                }}
               >
-                <small><i className="bi bi-exclamation-circle me-1" />No geometry found for this location</small>
+                <small>
+                  <i className="bi bi-exclamation-circle me-1" />
+                  No geometry found for this location
+                </small>
               </div>
             )}
           </DashboardPanel>
@@ -343,7 +386,7 @@ const LocationsSummaryTab = ({ isActive = true }) => {
 
         <div style={{ flex: '0 0 50%', minWidth: 0, minHeight: 0 }}>
           <DashboardPanel
-            header={(
+            header={
               <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
                 <strong style={{ fontSize: '0.9rem' }}>Configurations</strong>
                 {selectedLocationRow ? (
@@ -358,7 +401,7 @@ const LocationsSummaryTab = ({ isActive = true }) => {
                   </div>
                 )}
               </div>
-            )}
+            }
             bodyStyle={{ padding: 0 }}
           >
             <div style={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0 }}>
@@ -398,18 +441,32 @@ const LocationsSummaryTab = ({ isActive = true }) => {
                   )}
                   getHeaderProps={(column) => ({
                     onClick: () => handleSidePanelSort(column.key),
-                    style: { whiteSpace: 'nowrap', verticalAlign: 'middle', cursor: 'pointer', userSelect: 'none' },
+                    style: {
+                      whiteSpace: 'nowrap',
+                      verticalAlign: 'middle',
+                      cursor: 'pointer',
+                      userSelect: 'none',
+                    },
                     title: `Sort by ${column.label}`,
                   })}
                   renderCell={(row, column) => {
-                    if (column.key === 'min_reference_time' || column.key === 'max_reference_time' || column.key === 'min_value_time' || column.key === 'max_value_time') {
+                    if (
+                      column.key === 'min_reference_time' ||
+                      column.key === 'max_reference_time' ||
+                      column.key === 'min_value_time' ||
+                      column.key === 'max_value_time'
+                    ) {
                       return fmt(row[column.key]);
                     }
                     return row[column.key] ?? '—';
                   }}
                   getCellProps={(row, column) => {
                     const value = row[column.key] ?? '—';
-                    if (column.key === 'configuration_name' || column.key === 'variable_name' || column.key === 'unit_name') {
+                    if (
+                      column.key === 'configuration_name' ||
+                      column.key === 'variable_name' ||
+                      column.key === 'unit_name'
+                    ) {
                       return { title: String(value) };
                     }
                     return {};
@@ -431,8 +488,17 @@ const LocationsSummaryTab = ({ isActive = true }) => {
 
       <div style={{ flex: '1 1 0', minHeight: 0 }}>
         <DashboardPanel
-          header={(
-            <div ref={pickerRef} style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', position: 'relative' }}>
+          header={
+            <div
+              ref={pickerRef}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 8,
+                flexWrap: 'wrap',
+                position: 'relative',
+              }}
+            >
               <button
                 className="btn btn-sm btn-outline-secondary"
                 style={{ fontSize: '0.8rem' }}
@@ -441,18 +507,24 @@ const LocationsSummaryTab = ({ isActive = true }) => {
                 <i className="bi bi-columns-gap me-1" />
                 Add columns {pickerOpen ? '▲' : '▼'}
               </button>
-              {activeColumns.filter((c) => !DEFAULT_COLUMNS.find((d) => d.key === c.key)).map((c) => (
-                <span key={c.key} className="badge bg-primary d-flex align-items-center" style={{ fontSize: '0.75rem', gap: 4 }}>
-                  {c.label}
-                  <button
-                    type="button"
-                    className="btn-close btn-close-white"
-                    style={{ fontSize: '0.6rem' }}
-                    onClick={() => handleRemoveColumn(c.key)}
-                    aria-label={`Remove ${c.label}`}
-                  />
-                </span>
-              ))}
+              {activeColumns
+                .filter((c) => !DEFAULT_COLUMNS.find((d) => d.key === c.key))
+                .map((c) => (
+                  <span
+                    key={c.key}
+                    className="badge bg-primary d-flex align-items-center"
+                    style={{ fontSize: '0.75rem', gap: 4 }}
+                  >
+                    {c.label}
+                    <button
+                      type="button"
+                      className="btn-close btn-close-white"
+                      style={{ fontSize: '0.6rem' }}
+                      onClick={() => handleRemoveColumn(c.key)}
+                      aria-label={`Remove ${c.label}`}
+                    />
+                  </span>
+                ))}
 
               {pickerOpen && (
                 <div
@@ -473,10 +545,19 @@ const LocationsSummaryTab = ({ isActive = true }) => {
                     ...pickerMenuStyle,
                   }}
                 >
-                  <div style={{ padding: '6px 10px', borderBottom: '1px solid #dee2e6', fontWeight: 600, fontSize: '0.82rem' }}>
+                  <div
+                    style={{
+                      padding: '6px 10px',
+                      borderBottom: '1px solid #dee2e6',
+                      fontWeight: 600,
+                      fontSize: '0.82rem',
+                    }}
+                  >
                     Select columns to add
                   </div>
-                  <div style={{ overflowY: 'auto', flex: '1 1 auto', minHeight: 0, padding: '4px 0' }}>
+                  <div
+                    style={{ overflowY: 'auto', flex: '1 1 auto', minHeight: 0, padding: '4px 0' }}
+                  >
                     {availableAttributes.map((c) => {
                       const alreadyAdded = addedOptionalKeys.has(c.key);
                       return (
@@ -499,14 +580,39 @@ const LocationsSummaryTab = ({ isActive = true }) => {
                             onChange={() => toggleCheck(c.key)}
                           />
                           {c.label}
-                          {alreadyAdded && <span style={{ fontSize: '0.72rem', color: '#aaa' }}>(added)</span>}
+                          {alreadyAdded && (
+                            <span style={{ fontSize: '0.72rem', color: '#aaa' }}>(added)</span>
+                          )}
                         </label>
                       );
                     })}
                   </div>
-                  <div style={{ padding: '6px 10px', borderTop: '1px solid #dee2e6', display: 'flex', justifyContent: 'flex-end', gap: 6, flexWrap: 'wrap' }}>
-                    <button className="btn btn-sm btn-outline-secondary" onClick={() => { setCheckedKeys(new Set()); setPickerOpen(false); }}>Cancel</button>
-                    <button className="btn btn-sm btn-primary" onClick={handleAddToTable} disabled={checkedKeys.size === 0}>Add to table</button>
+                  <div
+                    style={{
+                      padding: '6px 10px',
+                      borderTop: '1px solid #dee2e6',
+                      display: 'flex',
+                      justifyContent: 'flex-end',
+                      gap: 6,
+                      flexWrap: 'wrap',
+                    }}
+                  >
+                    <button
+                      className="btn btn-sm btn-outline-secondary"
+                      onClick={() => {
+                        setCheckedKeys(new Set());
+                        setPickerOpen(false);
+                      }}
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      className="btn btn-sm btn-primary"
+                      onClick={handleAddToTable}
+                      disabled={checkedKeys.size === 0}
+                    >
+                      Add to table
+                    </button>
                   </div>
                 </div>
               )}
@@ -515,12 +621,17 @@ const LocationsSummaryTab = ({ isActive = true }) => {
               <select
                 className="form-select form-select-sm"
                 value={filterColumn}
-                onChange={(e) => { setFilterColumn(e.target.value); setFilterText(''); }}
+                onChange={(e) => {
+                  setFilterColumn(e.target.value);
+                  setFilterText('');
+                }}
                 style={{ width: 160 }}
               >
                 <option value="">— All columns —</option>
                 {activeColumns.map((col) => (
-                  <option key={col.key} value={col.key}>{col.label}</option>
+                  <option key={col.key} value={col.key}>
+                    {col.label}
+                  </option>
                 ))}
               </select>
               <input
@@ -538,7 +649,10 @@ const LocationsSummaryTab = ({ isActive = true }) => {
               {hasActiveFilter && (
                 <button
                   className="btn btn-sm btn-outline-secondary"
-                  onClick={() => { setFilterText(''); setFilterColumn(''); }}
+                  onClick={() => {
+                    setFilterText('');
+                    setFilterColumn('');
+                  }}
                   style={{ fontSize: '0.8rem' }}
                 >
                   Clear
@@ -550,7 +664,7 @@ const LocationsSummaryTab = ({ isActive = true }) => {
                 </span>
               )}
             </div>
-          )}
+          }
           bodyStyle={{ padding: 0 }}
         >
           <div style={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0 }}>
@@ -589,7 +703,12 @@ const LocationsSummaryTab = ({ isActive = true }) => {
                 )}
                 getHeaderProps={(column) => ({
                   onClick: () => handleSort(column.key),
-                  style: { whiteSpace: 'nowrap', verticalAlign: 'middle', cursor: 'pointer', userSelect: 'none' },
+                  style: {
+                    whiteSpace: 'nowrap',
+                    verticalAlign: 'middle',
+                    cursor: 'pointer',
+                    userSelect: 'none',
+                  },
                   title: `Sort by ${column.label}`,
                 })}
                 getRowProps={(row) => ({
@@ -604,9 +723,10 @@ const LocationsSummaryTab = ({ isActive = true }) => {
                   return String(row[column.key] ?? '—');
                 }}
                 getCellProps={(row, column) => {
-                  const value = column.key === 'min_reference_time' || column.key === 'max_reference_time'
-                    ? fmt(row[column.key])
-                    : (row[column.key] ?? '—');
+                  const value =
+                    column.key === 'min_reference_time' || column.key === 'max_reference_time'
+                      ? fmt(row[column.key])
+                      : (row[column.key] ?? '—');
                   return {
                     style: {
                       verticalAlign: 'middle',

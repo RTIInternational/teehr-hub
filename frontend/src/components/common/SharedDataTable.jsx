@@ -72,7 +72,9 @@ const SharedDataTable = ({
                 {...restRowProps}
               >
                 {headers.map((header, headerIndex) => {
-                  const cellProps = getCellProps ? getCellProps(row, header, rowIndex, headerIndex) || {} : {};
+                  const cellProps = getCellProps
+                    ? getCellProps(row, header, rowIndex, headerIndex) || {}
+                    : {};
                   const { className: cellClassName, ...restCellProps } = cellProps;
 
                   return (
@@ -81,9 +83,7 @@ const SharedDataTable = ({
                       className={cellClassName}
                       {...restCellProps}
                     >
-                      {renderCell
-                        ? renderCell(row, header, rowIndex, headerIndex)
-                        : row?.[header]}
+                      {renderCell ? renderCell(row, header, rowIndex, headerIndex) : row?.[header]}
                     </td>
                   );
                 })}

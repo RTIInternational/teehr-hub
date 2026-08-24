@@ -1,5 +1,5 @@
-import { Form } from "react-bootstrap";
-import { NWMD_METRICS } from "./utils";
+import { Form } from 'react-bootstrap';
+import { NWMD_METRICS } from './utils';
 
 export const CdfSidebar = ({ state, plotIds, setCdfPlotMetric }) => {
   return (

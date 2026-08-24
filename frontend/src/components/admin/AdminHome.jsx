@@ -33,7 +33,8 @@ const AdminHome = () => {
     <div className="p-3">
       <h4 className="mb-2">Admin Home</h4>
       <p className="text-muted mb-4">
-        Use this workspace to manage platform administration tasks. Additional tools will be added over time.
+        Use this workspace to manage platform administration tasks. Additional tools will be added
+        over time.
       </p>
 
       <div className="row g-3">
@@ -45,7 +46,12 @@ const AdminHome = () => {
                 <p className="card-text text-muted">{card.description}</p>
                 <div className="mt-auto">
                   {card.isExternal ? (
-                    <a href={card.href} target="_blank" rel="noopener noreferrer" className="btn btn-outline-primary">
+                    <a
+                      href={card.href}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="btn btn-outline-primary"
+                    >
                       {card.buttonLabel}
                     </a>
                   ) : (

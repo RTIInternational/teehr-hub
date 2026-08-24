@@ -158,7 +158,9 @@ const ApiKeysAdmin = () => {
                         <tr key={item.id}>
                           <td>{item.name}</td>
                           <td>{(item.scopes || []).join(', ') || '-'}</td>
-                          <td>{item.created_at ? new Date(item.created_at).toLocaleString() : '-'}</td>
+                          <td>
+                            {item.created_at ? new Date(item.created_at).toLocaleString() : '-'}
+                          </td>
                           <td>{revoked ? 'Revoked' : 'Active'}</td>
                           <td>
                             {!revoked ? (

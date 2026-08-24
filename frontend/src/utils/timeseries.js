@@ -12,8 +12,8 @@ export const groupSecondaryTimeseriesItems = (items = []) => {
       item.unit_name,
       item.member,
     ]
-      .map((value) => String(value ?? ""))
-      .join("|");
+      .map((value) => String(value ?? ''))
+      .join('|');
 
     if (!grouped.has(key)) {
       grouped.set(key, {
@@ -50,8 +50,8 @@ export const groupPrimaryTimeseriesItems = (items = []) => {
       item.unit_name,
       item.member,
     ]
-      .map((value) => String(value ?? ""))
-      .join("|");
+      .map((value) => String(value ?? ''))
+      .join('|');
 
     if (!grouped.has(key)) {
       grouped.set(key, {
