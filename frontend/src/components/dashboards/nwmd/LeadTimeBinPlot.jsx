@@ -1,19 +1,19 @@
-import Plotly from 'plotly.js-dist-min';
-import { useEffect, useMemo, useRef } from 'react';
-import { Card, Spinner } from 'react-bootstrap';
-import { getMetricLabel } from '../../../shared/utils/mapMetrics';
-import { parseDurationToHours } from './leadTimeBins';
+import Plotly from "plotly.js-dist-min";
+import { useEffect, useMemo, useRef } from "react";
+import { Card, Spinner } from "react-bootstrap";
+import { getMetricLabel } from "../../common/dashboard/utils.js";
+import { parseDurationToHours } from "./leadTimeBins";
 
 const getMinimumLeadTimeHours = (leadTimeBin) => {
-  if (typeof leadTimeBin !== 'string') return null;
-  const minDuration = leadTimeBin.split('_')[0];
+  if (typeof leadTimeBin !== "string") return null;
+  const minDuration = leadTimeBin.split("_")[0];
   const hours = parseDurationToHours(minDuration);
   if (hours === null) return null;
   return Math.round(hours);
 };
 
 const parseFiniteMetricValue = (value) => {
-  if (value === null || value === undefined || value === '') return null;
+  if (value === null || value === undefined || value === "") return null;
   const numericValue = Number(value);
   return Number.isFinite(numericValue) ? numericValue : null;
 };
@@ -59,7 +59,12 @@ const LeadTimeBinPlot = ({
   ]);
 
   const chartData = useMemo(() => {
-    if (!metricName || !lowerBoundMetricName || !upperBoundMetricName || !rows.length) {
+    if (
+      !metricName ||
+      !lowerBoundMetricName ||
+      !upperBoundMetricName ||
+      !rows.length
+    ) {
       return { x: [], y: [] };
     }
 
@@ -70,7 +75,7 @@ const LeadTimeBinPlot = ({
       if (!bin || rowsByBin.has(bin)) {
         if (bin && rowsByBin.has(bin)) {
           console.warn(
-            `LeadTimeBinPlot received duplicate rows for lead time bin ${bin}; using the first row only.`
+            `LeadTimeBinPlot received duplicate rows for lead time bin ${bin}; using the first row only.`,
           );
         }
         return;
@@ -121,7 +126,9 @@ const LeadTimeBinPlot = ({
       .sort((a, b) => a.minLeadTimeHours - b.minLeadTimeHours);
 
     const pointsWithCi = points.filter((point) => point.hasConfidenceInterval);
-    const pointsWithoutCi = points.filter((point) => !point.hasConfidenceInterval);
+    const pointsWithoutCi = points.filter(
+      (point) => !point.hasConfidenceInterval,
+    );
 
     return {
       x: points.map((point) => point.minLeadTimeHours),
@@ -131,16 +138,30 @@ const LeadTimeBinPlot = ({
         y: pointsWithCi.map((point) => point.value),
         errorUpper: pointsWithCi.map((point) => point.upperBound - point.value),
         errorLower: pointsWithCi.map((point) => point.value - point.lowerBound),
-        customdata: pointsWithCi.map((point) => [point.bin, point.lowerBound, point.upperBound]),
+        customdata: pointsWithCi.map((point) => [
+          point.bin,
+          point.lowerBound,
+          point.upperBound,
+        ]),
       },
       withoutCi: {
         x: pointsWithoutCi.map((point) => point.minLeadTimeHours),
         y: pointsWithoutCi.map((point) => point.value),
         customdata: pointsWithoutCi.map((point) => [point.bin]),
       },
-      customdata: points.map((point) => [point.bin, point.lowerBound, point.upperBound]),
+      customdata: points.map((point) => [
+        point.bin,
+        point.lowerBound,
+        point.upperBound,
+      ]),
     };
-  }, [leadTimeBins, lowerBoundMetricName, metricName, rows, upperBoundMetricName]);
+  }, [
+    leadTimeBins,
+    lowerBoundMetricName,
+    metricName,
+    rows,
+    upperBoundMetricName,
+  ]);
 
   useEffect(() => {
     if (!plotRef.current) return;
@@ -150,31 +171,31 @@ const LeadTimeBinPlot = ({
       return;
     }
 
-    const metricLabel = getMetricLabel(metricName || 'metric');
+    const metricLabel = getMetricLabel(metricName || "metric");
     const traces = [];
 
     if (chartData.withCi.x.length) {
       traces.push({
         x: chartData.withCi.x,
         y: chartData.withCi.y,
-        type: 'bar',
+        type: "bar",
         marker: {
-          color: '#0d6efd',
-          line: { color: '#0a58ca', width: 1 },
+          color: "#0d6efd",
+          line: { color: "#0a58ca", width: 1 },
         },
         error_y: {
-          type: 'data',
+          type: "data",
           array: chartData.withCi.errorUpper,
           arrayminus: chartData.withCi.errorLower,
-          color: '#000000',
+          color: "#000000",
           thickness: 1,
           width: 6,
         },
         customdata: chartData.withCi.customdata,
         hovertemplate:
-          '<b>Minimum Lead Time (h)</b>: %{x}<br>' +
+          "<b>Minimum Lead Time (h)</b>: %{x}<br>" +
           `<b>${metricLabel}</b>: %{y:.2f}<br>` +
-          '<b>95% CI</b>: %{customdata[1]:.2f} -- %{customdata[2]:.2f}<extra></extra>',
+          "<b>95% CI</b>: %{customdata[1]:.2f} -- %{customdata[2]:.2f}<extra></extra>",
       });
     }
 
@@ -182,14 +203,14 @@ const LeadTimeBinPlot = ({
       traces.push({
         x: chartData.withoutCi.x,
         y: chartData.withoutCi.y,
-        type: 'bar',
+        type: "bar",
         marker: {
-          color: '#0d6efd',
-          line: { color: '#0a58ca', width: 1 },
+          color: "#0d6efd",
+          line: { color: "#0a58ca", width: 1 },
         },
         customdata: chartData.withoutCi.customdata,
         hovertemplate:
-          '<b>Minimum Lead Time (h)</b>: %{x}<br>' +
+          "<b>Minimum Lead Time (h)</b>: %{x}<br>" +
           `<b>${metricLabel}</b>: %{y:.2f}<extra></extra>`,
       });
     }
@@ -197,7 +218,7 @@ const LeadTimeBinPlot = ({
     const layout = {
       margin: { l: 70, r: 20, t: 20, b: 60 },
       xaxis: {
-        title: { text: 'Minimum Lead Time (h)' },
+        title: { text: "Minimum Lead Time (h)" },
         tickangle: -30,
       },
       yaxis: {
@@ -208,12 +229,15 @@ const LeadTimeBinPlot = ({
 
     Plotly.react(plotRef.current, traces, layout, {
       responsive: true,
-      displayModeBar: 'hover',
+      displayModeBar: "hover",
     });
   }, [chartData, metricName]);
 
   return (
-    <Card className="shadow-lg h-100 d-flex flex-column" style={{ borderRadius: '8px' }}>
+    <Card
+      className="shadow-lg h-100 d-flex flex-column"
+      style={{ borderRadius: "8px" }}
+    >
       <Card.Body className="p-2 d-flex flex-column" style={{ minHeight: 0 }}>
         {!primaryLocationId ? (
           <div className="d-flex align-items-center justify-content-center text-muted h-100">
@@ -223,7 +247,9 @@ const LeadTimeBinPlot = ({
           <div className="d-flex align-items-center justify-content-center h-100">
             <div className="text-center">
               <Spinner animation="border" size="sm" />
-              <div className="small text-muted mt-2">Loading lead-time metrics...</div>
+              <div className="small text-muted mt-2">
+                Loading lead-time metrics...
+              </div>
             </div>
           </div>
         ) : !metricName ? (
@@ -235,7 +261,7 @@ const LeadTimeBinPlot = ({
             No lead-time bin data found for current filters.
           </div>
         ) : (
-          <div ref={plotRef} style={{ width: '100%', height: '100%' }} />
+          <div ref={plotRef} style={{ width: "100%", height: "100%" }} />
         )}
       </Card.Body>
     </Card>

@@ -1,6 +1,9 @@
-import { useCallback, useMemo } from 'react';
-import { ActionTypes, useNwmdDashboard } from '../../../context/NwmdDashboardContext';
-import { computeCdfData } from './utils';
+import { useCallback, useMemo } from "react";
+import {
+  ActionTypes,
+  useNwmdDashboard,
+} from "../../../context/NwmdDashboardContext";
+import { computeCdfData } from "./utils";
 
 // Derive visible locations from already-filtered locations and current map viewport bounds.
 const useNwmdVisibleLocations = () => {
@@ -25,7 +28,8 @@ const useNwmdVisibleLocations = () => {
       if (!Number.isFinite(lon) || !Number.isFinite(lat)) return false;
 
       // Handle anti-meridian crossing when west > east.
-      const inLonRange = west <= east ? lon >= west && lon <= east : lon >= west || lon <= east;
+      const inLonRange =
+        west <= east ? lon >= west && lon <= east : lon >= west || lon <= east;
 
       const inLatRange = lat >= south && lat <= north;
       return inLonRange && inLatRange;
@@ -47,7 +51,7 @@ export const useCdfPlots = () => {
         payload: { plotId: plotId, metricName },
       });
     },
-    [dispatch]
+    [dispatch],
   );
 
   return {
