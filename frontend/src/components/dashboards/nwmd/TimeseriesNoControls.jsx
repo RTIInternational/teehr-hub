@@ -1,6 +1,6 @@
-import { useEffect } from "react";
-import { Card, Spinner } from "react-bootstrap";
-import { PlotlyChart } from "../../common";
+import { useEffect } from 'react';
+import { Card, Spinner } from 'react-bootstrap';
+import { PlotlyChart } from '../../common';
 
 const TimeseriesNoControls = ({
   selectedLocation,
@@ -9,8 +9,7 @@ const TimeseriesNoControls = ({
   timeseriesLoading,
   loadTimeseries,
 }) => {
-  const hasData =
-    timeseriesData.primary?.length > 0 || timeseriesData.secondary?.length > 0;
+  const hasData = timeseriesData.primary?.length > 0 || timeseriesData.secondary?.length > 0;
 
   useEffect(() => {
     const id = selectedLocation?.primary_location_id;
@@ -22,7 +21,7 @@ const TimeseriesNoControls = ({
       !secondary?.variables?.length ||
       !secondary?.configurations?.length
     ) {
-      console.warn("Missing required timeseries filters. Skipping auto-load.");
+      console.warn('Missing required timeseries filters. Skipping auto-load.');
       return;
     }
 
@@ -54,37 +53,27 @@ const TimeseriesNoControls = ({
   ]);
 
   return (
-    <Card
-      className="shadow-lg h-100 d-flex flex-column"
-      style={{ borderRadius: "8px" }}
-    >
+    <Card className="shadow-lg h-100 d-flex flex-column" style={{ borderRadius: '8px' }}>
       <Card.Body className="p-0 d-flex flex-column flex-grow-1 overflow-hidden">
         {!selectedLocation ? (
           <div className="d-flex align-items-center justify-content-center flex-grow-1 text-muted">
             <div className="text-center">
-              <div style={{ fontSize: "3rem" }}>📍</div>
+              <div style={{ fontSize: '3rem' }}>📍</div>
               <h5>Select a Location</h5>
-              <p>
-                Click on a location on the map to view its time series data.
-              </p>
+              <p>Click on a location on the map to view its time series data.</p>
             </div>
           </div>
         ) : timeseriesLoading ? (
           <div className="d-flex justify-content-center align-items-center flex-grow-1">
             <div className="text-center">
               <Spinner animation="border" variant="primary" />
-              <div className="mt-2 small text-muted">
-                Loading timeseries data...
-              </div>
+              <div className="mt-2 small text-muted">Loading timeseries data...</div>
             </div>
           </div>
         ) : (
           <>
             {hasData ? (
-              <div
-                className="flex-grow-1 p-2"
-                style={{ overflow: "hidden", minHeight: 0 }}
-              >
+              <div className="flex-grow-1 p-2" style={{ overflow: 'hidden', minHeight: 0 }}>
                 <PlotlyChart
                   primaryData={timeseriesData.primary}
                   secondaryData={timeseriesData.secondary}
@@ -96,11 +85,11 @@ const TimeseriesNoControls = ({
             ) : (
               <div className="d-flex align-items-center justify-content-center flex-grow-1">
                 <div className="text-center text-muted">
-                  <div style={{ fontSize: "2rem" }}>📊</div>
+                  <div style={{ fontSize: '2rem' }}>📊</div>
                   <h6>No Data Available</h6>
                   <p className="small">
-                    Try switching to Filters to adjust the time range or check
-                    if data exists for this location.
+                    Try switching to Filters to adjust the time range or check if data exists for
+                    this location.
                   </p>
                 </div>
               </div>

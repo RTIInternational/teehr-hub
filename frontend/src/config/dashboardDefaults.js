@@ -22,7 +22,7 @@ export const RETROSPECTIVE_DASHBOARD_DEFAULTS = {
   defaultEndDate: '2020-12-31T23:59',
 
   // Default duration for the Observations (primary timeseries) timestep control
-  preferredObservationsDuration: 'PT1H'
+  preferredObservationsDuration: 'PT1H',
 };
 
 export const FORECAST_DASHBOARD_DEFAULTS = {
@@ -37,7 +37,7 @@ export const FORECAST_DASHBOARD_DEFAULTS = {
 
   // Default variable and duration for the Observations (primary timeseries) controls
   preferredObservationsVariable: 'streamflow_none_inst',
-  preferredObservationsDuration: 'PT1H'
+  preferredObservationsDuration: 'PT1H',
 };
 
 export const DATA_DASHBOARD_DEFAULTS = {

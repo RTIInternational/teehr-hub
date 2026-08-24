@@ -12,12 +12,7 @@ const KeycloakAdmin = () => {
           Manage users, groups, clients, and realm settings in the Keycloak admin console.
         </p>
 
-        <a
-          href={keycloakAdminUrl}
-          target="_blank"
-          rel="noreferrer"
-          className="btn btn-primary"
-        >
+        <a href={keycloakAdminUrl} target="_blank" rel="noreferrer" className="btn btn-primary">
           Open Keycloak Admin Console
         </a>
       </div>

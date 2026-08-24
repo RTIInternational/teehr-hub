@@ -135,7 +135,11 @@ const Navbar = () => {
               className="d-inline-block align-text-top navbar-teehr-logo"
             />
           </Link>
-          <Link to="https://ciroh.ua.edu/" className="d-inline-flex align-items-center" aria-label="CIROH Home">
+          <Link
+            to="https://ciroh.ua.edu/"
+            className="d-inline-flex align-items-center"
+            aria-label="CIROH Home"
+          >
             <img
               src="https://raw.githubusercontent.com/RTIInternational/teehr/main/docs/images/readme/CIROHLogo_200x200.png"
               alt="CIROH logo"
@@ -157,22 +161,38 @@ const Navbar = () => {
             </button>
             <ul className={`dropdown-menu${isDashboardsOpen ? ' show' : ''}`}>
               <li>
-                <Link className="dropdown-item" to="/hub" onClick={() => setIsDashboardsOpen(false)}>
+                <Link
+                  className="dropdown-item"
+                  to="/hub"
+                  onClick={() => setIsDashboardsOpen(false)}
+                >
                   Dashboard Hub
                 </Link>
               </li>
               <li>
-                <Link className="dropdown-item ps-4" to="/data" onClick={() => setIsDashboardsOpen(false)}>
+                <Link
+                  className="dropdown-item ps-4"
+                  to="/data"
+                  onClick={() => setIsDashboardsOpen(false)}
+                >
                   Data Availability
                 </Link>
               </li>
               <li>
-                <Link className="dropdown-item ps-4" to="/retrospective" onClick={() => setIsDashboardsOpen(false)}>
+                <Link
+                  className="dropdown-item ps-4"
+                  to="/retrospective"
+                  onClick={() => setIsDashboardsOpen(false)}
+                >
                   Retrospective Simulations
                 </Link>
               </li>
               <li>
-                <Link className="dropdown-item ps-4" to="/forecast" onClick={() => setIsDashboardsOpen(false)}>
+                <Link
+                  className="dropdown-item ps-4"
+                  to="/forecast"
+                  onClick={() => setIsDashboardsOpen(false)}
+                >
                   Forecast Analysis
                 </Link>
               </li>
@@ -191,9 +211,7 @@ const Navbar = () => {
         </div>
 
         {/* Breadcrumb Navigation */}
-        <div className="flex-grow-1 d-flex align-items-center">
-          {getBreadcrumbs()}
-        </div>
+        <div className="flex-grow-1 d-flex align-items-center">{getBreadcrumbs()}</div>
 
         {/* User Profile Section */}
         <div className="d-flex align-items-center gap-2">
@@ -224,7 +242,10 @@ const Navbar = () => {
                 style={profileMenuStyle}
               >
                 <li>
-                  <span className="dropdown-item-text text-wrap" style={{ overflowWrap: 'anywhere' }}>
+                  <span
+                    className="dropdown-item-text text-wrap"
+                    style={{ overflowWrap: 'anywhere' }}
+                  >
                     Signed in as {username || 'user'}
                   </span>
                 </li>
@@ -239,7 +260,9 @@ const Navbar = () => {
                     </Link>
                   </li>
                 )}
-                <li><hr className="dropdown-divider" /></li>
+                <li>
+                  <hr className="dropdown-divider" />
+                </li>
                 <li>
                   <button
                     className="dropdown-item"
@@ -258,10 +281,16 @@ const Navbar = () => {
 
           {ready && !authenticated && (
             <div className="d-flex align-items-center gap-2">
-              <button className="btn btn-outline-light btn-sm" onClick={() => signup(window.location.href)}>
+              <button
+                className="btn btn-outline-light btn-sm"
+                onClick={() => signup(window.location.href)}
+              >
                 Sign Up
               </button>
-              <button className="btn btn-success btn-sm" onClick={() => login({ redirectUri: window.location.href })}>
+              <button
+                className="btn btn-success btn-sm"
+                onClick={() => login({ redirectUri: window.location.href })}
+              >
                 Login
               </button>
             </div>

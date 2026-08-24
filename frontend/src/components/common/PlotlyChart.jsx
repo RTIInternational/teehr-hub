@@ -29,8 +29,8 @@ const PlotlyChart = ({
           const varName = formatVariableName(series.variable_name || filters?.variable);
           const traceName = `Observed (${configName})`;
           primaryTraces.push({
-            x: series.timeseries.map(d => d.value_time),
-            y: series.timeseries.map(d => d.value),
+            x: series.timeseries.map((d) => d.value_time),
+            y: series.timeseries.map((d) => d.value),
             name: traceName,
             type: 'scatter',
             mode: 'lines',
@@ -40,7 +40,7 @@ const PlotlyChart = ({
               '<b>%{fullData.name}</b><br>' +
               'Date: %{x}<br>' +
               `${varName}: %{y}${series.unit_name ? ' ' + formatUnitName(series.unit_name) : ''}<br>` +
-              '<extra></extra>'
+              '<extra></extra>',
           });
         }
       });
@@ -51,18 +51,18 @@ const PlotlyChart = ({
     if (secondaryData?.length > 0) {
       const traceMap = new Map();
       const baseColors = [
-        { r: 220, g: 53, b: 69 },   // #dc3545 red
-        { r: 40, g: 167, b: 69 },   // #28a745 green
-        { r: 255, g: 193, b: 7 },   // #ffc107 yellow
-        { r: 23, g: 162, b: 184 },  // #17a2b8 cyan
-        { r: 111, g: 66, b: 193 },  // #6f42c1 purple
-        { r: 253, g: 126, b: 20 },  // #fd7e14 orange
-        { r: 32, g: 201, b: 151 }   // #20c997 teal
+        { r: 220, g: 53, b: 69 }, // #dc3545 red
+        { r: 40, g: 167, b: 69 }, // #28a745 green
+        { r: 255, g: 193, b: 7 }, // #ffc107 yellow
+        { r: 23, g: 162, b: 184 }, // #17a2b8 cyan
+        { r: 111, g: 66, b: 193 }, // #6f42c1 purple
+        { r: 253, g: 126, b: 20 }, // #fd7e14 orange
+        { r: 32, g: 201, b: 151 }, // #20c997 teal
       ];
 
       // First pass: group series by configuration_name and collect reference_times
       const configGroups = new Map();
-      secondaryData.forEach(series => {
+      secondaryData.forEach((series) => {
         if (series?.timeseries?.length > 0) {
           const configName = series.configuration_name;
           if (!configGroups.has(configName)) {
@@ -100,7 +100,7 @@ const PlotlyChart = ({
 
       const getLegendGroup = (configName) => `forecast:${configName || 'unknown'}`;
 
-      secondaryData.forEach(series => {
+      secondaryData.forEach((series) => {
         if (series?.timeseries?.length > 0) {
           const key = `${series.configuration_name}|${series.variable_name}|${series.reference_time}`;
 
@@ -130,24 +130,27 @@ const PlotlyChart = ({
             const rgbaColor = `rgba(${baseColor.r}, ${baseColor.g}, ${baseColor.b}, ${opacity})`;
 
             const trace = {
-              x: series.timeseries.map(d => d.value_time),
-              y: series.timeseries.map(d => d.value),
+              x: series.timeseries.map((d) => d.value_time),
+              y: series.timeseries.map((d) => d.value),
               name: traceName,
               legendgroup: getLegendGroup(configName),
               type: 'scatter',
               mode: 'lines',
               line: {
                 color: rgbaColor,
-                width: 2
+                width: 2,
               },
               showlegend: false, // Will be set to true for last occurrence only
               hovertemplate:
-                '<b>' + hoverName + '</b><br>' +
+                '<b>' +
+                hoverName +
+                '</b><br>' +
                 'Date: %{x}<br>' +
                 `${formatVariableName(series.variable_name || filters.variable)}: %{y}${series.unit_name ? ' ' + formatUnitName(series.unit_name) : ''}<br>` +
-                (series.reference_time && series.reference_time !== 'null' ?
-                  `Reference: ${series.reference_time}<br>` : '') +
-                '<extra></extra>'
+                (series.reference_time && series.reference_time !== 'null'
+                  ? `Reference: ${series.reference_time}<br>`
+                  : '') +
+                '<extra></extra>',
             };
             traceMap.set(key, trace);
             secondaryTraces.push(trace);
@@ -180,14 +183,14 @@ const PlotlyChart = ({
       xaxis: {
         title: {
           text: 'Date',
-          font: { size: 14 }
-        }
+          font: { size: 14 },
+        },
       },
       yaxis: {
         title: {
           text: yAxisTitle,
-          font: { size: 14 }
-        }
+          font: { size: 14 },
+        },
       },
       margin: { l: 80, r: showLegend ? 200 : 40, t: 20, b: 60 },
       showlegend: showLegend,
@@ -199,13 +202,13 @@ const PlotlyChart = ({
         groupclick: 'togglegroup',
         bgcolor: 'rgba(255, 255, 255, 0.8)',
         bordercolor: '#999',
-        borderwidth: 0
-      }
+        borderwidth: 0,
+      },
     };
 
     Plotly.react(plotRef.current, traces, layout, {
       responsive: true,
-      displayModeBar: 'hover'
+      displayModeBar: 'hover',
     });
 
     const plotElement = plotRef.current;
@@ -222,19 +225,27 @@ const PlotlyChart = ({
 
       if (forecastTraceIndexes.length === 0) return;
 
-      Plotly.restyle(plotElement, {
-        'line.width': forecastTraceIndexes.map(() => 2),
-        opacity: forecastTraceIndexes.map(() => 1)
-      }, forecastTraceIndexes);
+      Plotly.restyle(
+        plotElement,
+        {
+          'line.width': forecastTraceIndexes.map(() => 2),
+          opacity: forecastTraceIndexes.map(() => 1),
+        },
+        forecastTraceIndexes
+      );
     };
 
     const emphasizeForecastTrace = (traceIndex) => {
       selectedForecastTraceRef.current = traceIndex;
 
-      Plotly.restyle(plotElement, {
-        'line.width': forecastTraceIndexes.map((index) => (index === traceIndex ? 4 : 1.5)),
-        opacity: forecastTraceIndexes.map((index) => (index === traceIndex ? 1 : 0.2))
-      }, forecastTraceIndexes);
+      Plotly.restyle(
+        plotElement,
+        {
+          'line.width': forecastTraceIndexes.map((index) => (index === traceIndex ? 4 : 1.5)),
+          opacity: forecastTraceIndexes.map((index) => (index === traceIndex ? 1 : 0.2)),
+        },
+        forecastTraceIndexes
+      );
     };
 
     const handlePlotClick = (event) => {
@@ -263,7 +274,6 @@ const PlotlyChart = ({
       plotElement.removeAllListeners?.('plotly_click');
       plotElement.removeAllListeners?.('plotly_doubleclick');
     };
-
   }, [primaryData, secondaryData, selectedLocation, filters, allowForecastSelect, showLegend]);
 
   return <div ref={plotRef} style={{ width: '100%', height }} />;

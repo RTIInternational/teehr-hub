@@ -12,7 +12,7 @@ const MultiSelectDropdown = ({
   placeholder = 'Select...',
   allSelectedText = 'All selected',
   noneSelectedText = 'None selected',
-  style = {}
+  style = {},
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const containerRef = useRef(null);
@@ -36,7 +36,7 @@ const MultiSelectDropdown = ({
 
   const handleToggle = (value) => {
     const newSelected = selected.includes(value)
-      ? selected.filter(v => v !== value)
+      ? selected.filter((v) => v !== value)
       : [...selected, value];
     onChange(newSelected);
   };
@@ -56,7 +56,11 @@ const MultiSelectDropdown = ({
   };
 
   return (
-    <div ref={containerRef} className="multi-select-dropdown" style={{ position: 'relative', ...style }}>
+    <div
+      ref={containerRef}
+      className="multi-select-dropdown"
+      style={{ position: 'relative', ...style }}
+    >
       {/* Toggle Button */}
       <button
         type="button"
@@ -83,11 +87,14 @@ const MultiSelectDropdown = ({
             borderRadius: '4px',
             boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
             marginTop: '2px',
-            minWidth: '250px'
+            minWidth: '250px',
           }}
         >
           {/* Header with Select All / Clear All */}
-          <div className="px-3 py-2 border-bottom d-flex gap-3" style={{ backgroundColor: '#f8f9fa' }}>
+          <div
+            className="px-3 py-2 border-bottom d-flex gap-3"
+            style={{ backgroundColor: '#f8f9fa' }}
+          >
             <button
               type="button"
               className="btn btn-sm btn-link p-0 text-decoration-none"
@@ -112,8 +119,8 @@ const MultiSelectDropdown = ({
                 className="px-3 py-2 multi-select-option"
                 style={{ cursor: 'pointer' }}
                 onClick={() => handleToggle(option)}
-                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f8f9fa'}
-                onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = '#f8f9fa')}
+                onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
               >
                 <Form.Check
                   type="checkbox"

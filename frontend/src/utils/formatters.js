@@ -12,20 +12,22 @@ export const formatVariableName = (variableName) => {
 
   // Lookup table for variable name overrides
   const variableLookup = {
-    'streamflow_hourly_inst': 'Streamflow (Hourly Instantaneous)',
-    'streamflow_none_inst': 'Streamflow (Instantaneous)',
-    'streamflow_daily_mean': 'Streamflow (Daily Mean)',
-    'precipitation': 'Precipitation',
-    'temperature': 'Temperature',
-    'water_temperature': 'Water Temperature'
+    streamflow_hourly_inst: 'Streamflow (Hourly Instantaneous)',
+    streamflow_none_inst: 'Streamflow (Instantaneous)',
+    streamflow_daily_mean: 'Streamflow (Daily Mean)',
+    precipitation: 'Precipitation',
+    temperature: 'Temperature',
+    water_temperature: 'Water Temperature',
   };
 
   // Return override if exists, otherwise convert snake_case to Title Case
-  return variableLookup[variableName] ||
+  return (
+    variableLookup[variableName] ||
     variableName
       .split('_')
-      .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
-      .join(' ');
+      .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+      .join(' ')
+  );
 };
 
 /**
@@ -40,18 +42,18 @@ export const formatUnitName = (unitName) => {
   const unitLookup = {
     'm3/s': 'm³/s',
     'm^3/s': 'm³/s',
-    'cubic_meters_per_second': 'm³/s',
-    'cms': 'm³/s',
-    'cfs': 'ft³/s',
-    'cubic_feet_per_second': 'ft³/s',
-    'deg_c': '°C',
-    'celsius': '°C',
-    'deg_f': '°F',
-    'fahrenheit': '°F',
-    'millimeters': 'mm',
-    'inches': 'in',
-    'meters': 'm',
-    'feet': 'ft'
+    cubic_meters_per_second: 'm³/s',
+    cms: 'm³/s',
+    cfs: 'ft³/s',
+    cubic_feet_per_second: 'ft³/s',
+    deg_c: '°C',
+    celsius: '°C',
+    deg_f: '°F',
+    fahrenheit: '°F',
+    millimeters: 'mm',
+    inches: 'in',
+    meters: 'm',
+    feet: 'ft',
   };
 
   // Return override if exists, otherwise return raw string
@@ -106,17 +108,17 @@ export const getQuarterDateRange = (quarter) => {
 
   // Map quarters to month ranges
   const quarterStartMonths = {
-    1: 0,  // January
-    2: 3,  // April
-    3: 6,  // July
-    4: 9,  // October
+    1: 0, // January
+    2: 3, // April
+    3: 6, // July
+    4: 9, // October
   };
 
   const quarterEndMonths = {
-    1: 2,   // March (month 2, so Feb 28/29)
-    2: 5,   // June (month 5, so May 31)
-    3: 8,   // September (month 8, so Aug 31)
-    4: 11,  // December (month 11, so Nov 30)
+    1: 2, // March (month 2, so Feb 28/29)
+    2: 5, // June (month 5, so May 31)
+    3: 8, // September (month 8, so Aug 31)
+    4: 11, // December (month 11, so Nov 30)
   };
 
   const startMonth = quarterStartMonths[quarterNum];

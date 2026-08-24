@@ -5,7 +5,7 @@ import reactRefresh from 'eslint-plugin-react-refresh';
 import jsxA11y from 'eslint-plugin-jsx-a11y';
 import importPlugin from 'eslint-plugin-import';
 import globals from 'globals';
-import eslintPluginPrettierRecommended from "eslint-plugin-prettier/recommended";
+import eslintPluginPrettierRecommended from 'eslint-plugin-prettier/recommended';
 
 export default [
   {
@@ -25,7 +25,7 @@ export default [
         sourceType: 'module',
       },
     },
-    settings: { 
+    settings: {
       react: { version: '18.2' },
       'import/resolver': {
         node: {
@@ -38,7 +38,7 @@ export default [
       'react-hooks': reactHooks,
       'react-refresh': reactRefresh,
       'jsx-a11y': jsxA11y,
-      'import': importPlugin,
+      import: importPlugin,
     },
     rules: {
       ...js.configs.recommended.rules,
@@ -46,42 +46,32 @@ export default [
       ...react.configs['jsx-runtime'].rules,
       ...reactHooks.configs.recommended.rules,
       'react/jsx-no-target-blank': 'off',
-      'react-refresh/only-export-components': [
-        'warn',
-        { allowConstantExport: true },
-      ],
-      
+      'react-refresh/only-export-components': ['warn', { allowConstantExport: true }],
+
       // Import rules
       'import/order': [
         'warn',
         {
-          groups: [
-            'builtin',
-            'external',
-            'internal',
-            'parent',
-            'sibling',
-            'index',
-          ],
+          groups: ['builtin', 'external', 'internal', 'parent', 'sibling', 'index'],
           'newlines-between': 'never',
           alphabetize: { order: 'asc', caseInsensitive: true },
         },
       ],
       'import/no-unused-modules': 'warn',
       'import/no-duplicates': 'error',
-      
+
       // General code quality
       'no-unused-vars': ['warn', { argsIgnorePattern: '^_' }],
       'no-console': ['warn', { allow: ['warn', 'error'] }],
       'prefer-const': 'warn',
       'no-var': 'error',
-      
+
       // React specific
       'react/prop-types': 'off', // Using TypeScript would be better
       'react/display-name': 'off',
       'react/no-unescaped-entities': 'warn',
       'react/jsx-key': 'error',
-      
+
       // Accessibility
       'jsx-a11y/alt-text': 'warn',
       'jsx-a11y/aria-role': 'warn',

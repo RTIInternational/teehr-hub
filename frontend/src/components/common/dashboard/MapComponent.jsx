@@ -15,40 +15,47 @@ const MapComponent = ({
   showSearch = true,
   overlayLocations = null,
   overlayVisible = true,
-  hoveredOverlayId = null
+  hoveredOverlayId = null,
 }) => {
   const mapContainer = useRef(null);
   const map = useRef(null);
   const popup = useRef(null);
   const [searchTerm, setSearchTerm] = useState('');
 
-  const selectFeatureOnMap = useCallback((feature, options = {}) => {
-    if (!feature?.geometry?.coordinates || !feature?.properties) return;
+  const selectFeatureOnMap = useCallback(
+    (feature, options = {}) => {
+      if (!feature?.geometry?.coordinates || !feature?.properties) return;
 
-    const { flyTo = true } = options;
-    const coordinates = feature.geometry.coordinates.slice();
-    const properties = feature.properties;
+      const { flyTo = true } = options;
+      const coordinates = feature.geometry.coordinates.slice();
+      const properties = feature.properties;
 
-    selectLocation({
-      primary_location_id: properties.primary_location_id,
-      secondary_location_id: properties.secondary_location_id,
-      name: properties.name,
-      coordinates
-    });
-
-    if (map.current?.getLayer('locations-selected')) {
-      map.current.setFilter('locations-selected', ['==', 'primary_location_id', properties.primary_location_id]);
-    }
-
-    if (flyTo && map.current) {
-      map.current.flyTo({
-        center: coordinates,
-        zoom: Math.max(map.current.getZoom(), 10),
-        duration: 700,
-        essential: true
+      selectLocation({
+        primary_location_id: properties.primary_location_id,
+        secondary_location_id: properties.secondary_location_id,
+        name: properties.name,
+        coordinates,
       });
-    }
-  }, [selectLocation]);
+
+      if (map.current?.getLayer('locations-selected')) {
+        map.current.setFilter('locations-selected', [
+          '==',
+          'primary_location_id',
+          properties.primary_location_id,
+        ]);
+      }
+
+      if (flyTo && map.current) {
+        map.current.flyTo({
+          center: coordinates,
+          zoom: Math.max(map.current.getZoom(), 10),
+          duration: 700,
+          essential: true,
+        });
+      }
+    },
+    [selectLocation]
+  );
 
   const matchedLocations = useMemo(() => {
     const term = searchTerm.trim().toLowerCase();
@@ -57,17 +64,13 @@ const MapComponent = ({
     if (!term) return [];
 
     return features
-      .filter(feature => {
+      .filter((feature) => {
         const props = feature?.properties || {};
         const primaryId = String(props.primary_location_id || '').toLowerCase();
         const secondaryId = String(props.secondary_location_id || '').toLowerCase();
         const name = String(props.name || '').toLowerCase();
 
-        return (
-          primaryId.includes(term) ||
-          secondaryId.includes(term) ||
-          name.includes(term)
-        );
+        return primaryId.includes(term) || secondaryId.includes(term) || name.includes(term);
       })
       .slice(0, 15);
   }, [searchTerm, state.locations]);
@@ -87,17 +90,17 @@ const MapComponent = ({
         style: {
           version: 8,
           sources: {},
-          layers: []
+          layers: [],
         },
         center: [-95.7129, 37.0902],
         zoom: 4,
-        attributionControl: false
+        attributionControl: false,
       });
 
       popup.current = new maplibregl.Popup({
         closeButton: true,
         closeOnClick: false,
-        maxWidth: '300px'
+        maxWidth: '300px',
       });
 
       map.current.on('load', () => {
@@ -105,13 +108,13 @@ const MapComponent = ({
         map.current.addSource('osm', {
           type: 'raster',
           tiles: ['https://a.tile.openstreetmap.org/{z}/{x}/{y}.png'],
-          tileSize: 256
+          tileSize: 256,
         });
 
         map.current.addLayer({
           id: 'osm',
           type: 'raster',
-          source: 'osm'
+          source: 'osm',
         });
 
         dispatch({ type: ActionTypes.SET_MAP_LOADED, payload: true });
@@ -121,7 +124,7 @@ const MapComponent = ({
       map.current.on('click', (e) => {
         // Only deselect if we didn't click on a location feature
         const features = map.current.queryRenderedFeatures(e.point, {
-          layers: ['locations-layer']
+          layers: ['locations-layer'],
         });
 
         if (features.length === 0) {
@@ -140,12 +143,17 @@ const MapComponent = ({
 
       map.current.on('error', (e) => {
         console.error('MapLibre error:', e);
-        dispatch({ type: ActionTypes.SET_ERROR, payload: `Map error: ${e.error?.message || 'Unknown error'}` });
+        dispatch({
+          type: ActionTypes.SET_ERROR,
+          payload: `Map error: ${e.error?.message || 'Unknown error'}`,
+        });
       });
-
     } catch (error) {
       console.error('MapComponent: Error creating map:', error);
-      dispatch({ type: ActionTypes.SET_ERROR, payload: `Map initialization failed: ${error.message}` });
+      dispatch({
+        type: ActionTypes.SET_ERROR,
+        payload: `Map initialization failed: ${error.message}`,
+      });
     }
   }, [dispatch, selectLocation, ActionTypes]);
 
@@ -166,7 +174,7 @@ const MapComponent = ({
     if (state.mapLoaded && state.mapFilters.configuration && state.mapFilters.variable) {
       loadLocations({
         configuration: state.mapFilters.configuration,
-        variable: state.mapFilters.variable
+        variable: state.mapFilters.variable,
       });
     }
   }, [state.mapLoaded, state.mapFilters.configuration, state.mapFilters.variable, loadLocations]);
@@ -220,7 +228,8 @@ const MapComponent = ({
 
       popup.current
         .setLngLat(coordinates)
-        .setHTML(`
+        .setHTML(
+          `
           <div style="padding: 8px; font-size: 0.85rem;">
             <div style="font-weight: 600; margin-bottom: 4px; color: #495057;">${properties.name}</div>
             <div style="margin: 2px 0;"><strong>ID:</strong> ${properties.primary_location_id}</div>
@@ -229,7 +238,8 @@ const MapComponent = ({
             <div style="margin: 2px 0;"><strong>${metricLabel}:</strong> ${metricValue !== null && metricValue !== undefined ? Number(metricValue).toFixed(3) : 'N/A'}</div>
             <div style="margin-top: 4px; font-size: 0.75rem; color: #6c757d;">Click to select</div>
           </div>
-        `)
+        `
+        )
         .addTo(mapInstance);
     };
 
@@ -257,10 +267,13 @@ const MapComponent = ({
 
       state.locations.features.forEach((feature, index) => {
         // Basic structure validation
-        if (!feature.type || feature.type !== 'Feature' ||
-            !feature.geometry ||
-            !feature.geometry.coordinates ||
-            !Array.isArray(feature.geometry.coordinates)) {
+        if (
+          !feature.type ||
+          feature.type !== 'Feature' ||
+          !feature.geometry ||
+          !feature.geometry.coordinates ||
+          !Array.isArray(feature.geometry.coordinates)
+        ) {
           invalidFeatures.push({ index, reason: 'invalid structure', feature });
           return;
         }
@@ -293,20 +306,29 @@ const MapComponent = ({
 
         // Check for NaN or Infinity
         if (!isFinite(lon) || !isFinite(lat)) {
-          invalidFeatures.push({ index, reason: `infinite or NaN coordinates: lon=${lon}, lat=${lat}`, feature });
+          invalidFeatures.push({
+            index,
+            reason: `infinite or NaN coordinates: lon=${lon}, lat=${lat}`,
+            feature,
+          });
           return;
         }
 
         // Validate and clamp ALL numeric properties that might cause varint issues
         if (feature.properties) {
-          Object.keys(feature.properties).forEach(key => {
+          Object.keys(feature.properties).forEach((key) => {
             const value = feature.properties[key];
             if (typeof value === 'number') {
               if (!isFinite(value)) {
                 feature.properties[key] = null;
               } else if (Math.abs(value) > 1e6) {
                 if (key === state.mapFilters.metricName) {
-                  clampedMetrics.push({ index, metric: key, original: value, clamped: Math.sign(value) * 1e6 });
+                  clampedMetrics.push({
+                    index,
+                    metric: key,
+                    original: value,
+                    clamped: Math.sign(value) * 1e6,
+                  });
                 }
                 feature.properties[key] = Math.sign(value) * 1e6;
               }
@@ -324,20 +346,23 @@ const MapComponent = ({
           validFeatures: validFeatures.length,
           invalidFeatures: invalidFeatures.length,
           clampedMetrics: clampedMetrics.length,
-          invalidDetails: invalidFeatures.map(f => ({ index: f.index, reason: f.reason })),
-          clampedDetails: clampedMetrics
+          invalidDetails: invalidFeatures.map((f) => ({ index: f.index, reason: f.reason })),
+          clampedDetails: clampedMetrics,
         });
       }
 
       const geojsonData = {
         type: 'FeatureCollection',
-        features: validFeatures
+        features: validFeatures,
       };
 
       // Unlikely edge case, but handled here.
       if (geojsonData.features.length === 0) {
         console.warn('MapComponent: All location features were filtered out due to invalid format');
-        dispatch({ type: ActionTypes.SET_ERROR, payload: 'Location data format is invalid - no valid features found' });
+        dispatch({
+          type: ActionTypes.SET_ERROR,
+          payload: 'Location data format is invalid - no valid features found',
+        });
         return;
       }
 
@@ -345,71 +370,66 @@ const MapComponent = ({
       try {
         mapInstance.addSource('locations', {
           type: 'geojson',
-          data: geojsonData
+          data: geojsonData,
         });
       } catch (sourceError) {
         console.error('MapComponent: Error adding GeoJSON source:', sourceError);
-        dispatch({ type: ActionTypes.SET_ERROR, payload: `Map source error: ${sourceError.message}` });
+        dispatch({
+          type: ActionTypes.SET_ERROR,
+          payload: `Map source error: ${sourceError.message}`,
+        });
         return;
       }
 
       // Get color expression for metric-based coloring
       const colorExpression = getMetricColorExpression(state.mapFilters.metricName);
 
-    // Add locations layer with error handling
-    try {
-      mapInstance.addLayer({
-        id: 'locations-layer',
-        type: 'circle',
-        source: 'locations',
-        paint: {
-          'circle-radius': [
-            'interpolate',
-            ['linear'],
-            ['zoom'],
-            4, 6,
-            8, 9,
-            12, 12
-          ],
-          'circle-color': colorExpression,
-          'circle-stroke-width': 1,
-          'circle-stroke-color': 'black',
-          'circle-opacity': 0.8
-        }
-      });
-    } catch (layerError) {
-      console.error('MapComponent: Error adding locations layer:', layerError);
-      dispatch({ type: ActionTypes.SET_ERROR, payload: `Map layer error: ${layerError.message}` });
-      return;
-    }
+      // Add locations layer with error handling
+      try {
+        mapInstance.addLayer({
+          id: 'locations-layer',
+          type: 'circle',
+          source: 'locations',
+          paint: {
+            'circle-radius': ['interpolate', ['linear'], ['zoom'], 4, 6, 8, 9, 12, 12],
+            'circle-color': colorExpression,
+            'circle-stroke-width': 1,
+            'circle-stroke-color': 'black',
+            'circle-opacity': 0.8,
+          },
+        });
+      } catch (layerError) {
+        console.error('MapComponent: Error adding locations layer:', layerError);
+        dispatch({
+          type: ActionTypes.SET_ERROR,
+          payload: `Map layer error: ${layerError.message}`,
+        });
+        return;
+      }
 
-    // Add selected location layer with error handling
-    try {
-      mapInstance.addLayer({
+      // Add selected location layer with error handling
+      try {
+        mapInstance.addLayer({
           id: 'locations-selected',
           type: 'circle',
           source: 'locations',
           paint: {
-            'circle-radius': [
-              'interpolate',
-              ['linear'],
-              ['zoom'],
-              4, 8,
-              8, 11,
-              12, 14
-            ],
-              'circle-color': colorExpression,
-              'circle-stroke-width': 2,
+            'circle-radius': ['interpolate', ['linear'], ['zoom'], 4, 8, 8, 11, 12, 14],
+            'circle-color': colorExpression,
+            'circle-stroke-width': 2,
             'circle-stroke-color': 'black',
-            'circle-opacity': 1
+            'circle-opacity': 1,
           },
-          filter: ['==', 'primary_location_id', '']
+          filter: ['==', 'primary_location_id', ''],
         });
-    } catch (selectedLayerError) {
-      console.error('MapComponent: Error adding selected locations layer:', selectedLayerError);
-      dispatch({ type: ActionTypes.SET_ERROR, payload: `Map selected layer error: ${selectedLayerError.message}` });
-      return;
-    }
+      } catch (selectedLayerError) {
+        console.error('MapComponent: Error adding selected locations layer:', selectedLayerError);
+        dispatch({
+          type: ActionTypes.SET_ERROR,
+          payload: `Map selected layer error: ${selectedLayerError.message}`,
+        });
+        return;
+      }
 
       // Add event listeners
       mapInstance.on('click', 'locations-layer', handleLocationClick);
@@ -417,25 +437,35 @@ const MapComponent = ({
       mapInstance.on('mouseleave', 'locations-layer', handleLocationLeave);
 
       // If overlay layers already exist, move them below the new locations layers
-      if (mapInstance.getLayer('overlay-fill')) mapInstance.moveLayer('overlay-fill', 'locations-layer');
-      if (mapInstance.getLayer('overlay-line')) mapInstance.moveLayer('overlay-line', 'locations-layer');
+      if (mapInstance.getLayer('overlay-fill'))
+        mapInstance.moveLayer('overlay-fill', 'locations-layer');
+      if (mapInstance.getLayer('overlay-line'))
+        mapInstance.moveLayer('overlay-line', 'locations-layer');
 
       // Fit map to the extent of the loaded features
       if (validFeatures.length > 0) {
-        const lons = validFeatures.map(f => f.geometry.coordinates[0]);
-        const lats = validFeatures.map(f => f.geometry.coordinates[1]);
+        const lons = validFeatures.map((f) => f.geometry.coordinates[0]);
+        const lats = validFeatures.map((f) => f.geometry.coordinates[1]);
         const minLon = Math.min(...lons);
         const maxLon = Math.max(...lons);
         const minLat = Math.min(...lats);
         const maxLat = Math.max(...lats);
         if (isFinite(minLon) && isFinite(minLat) && isFinite(maxLon) && isFinite(maxLat)) {
-          mapInstance.fitBounds([[minLon, minLat], [maxLon, maxLat]], { padding: 50, duration: 700, maxZoom: 14 });
+          mapInstance.fitBounds(
+            [
+              [minLon, minLat],
+              [maxLon, maxLat],
+            ],
+            { padding: 50, duration: 700, maxZoom: 14 }
+          );
         }
       }
-
     } catch (error) {
       console.error('MapComponent: Error adding locations to map:', error);
-      dispatch({ type: ActionTypes.SET_ERROR, payload: `Failed to add locations to map: ${error.message}` });
+      dispatch({
+        type: ActionTypes.SET_ERROR,
+        payload: `Failed to add locations to map: ${error.message}`,
+      });
       return;
     }
 
@@ -451,8 +481,16 @@ const MapComponent = ({
         // Silent cleanup - don't log in production
       }
     };
-
-  }, [state.locations, state.mapLoaded, state.mapFilters.metricName, selectLocation, dispatch, ActionTypes, getMetricLabel, selectFeatureOnMap]);
+  }, [
+    state.locations,
+    state.mapLoaded,
+    state.mapFilters.metricName,
+    selectLocation,
+    dispatch,
+    ActionTypes,
+    getMetricLabel,
+    selectFeatureOnMap,
+  ]);
 
   // Overlay layer (e.g. huc8 polygons) at 50% opacity
   useEffect(() => {
@@ -476,42 +514,61 @@ const MapComponent = ({
     const geomType = features[0]?.geometry?.type;
     const beforeLayer = mapInstance.getLayer('locations-layer') ? 'locations-layer' : undefined;
     if (geomType === 'Polygon' || geomType === 'MultiPolygon') {
-      mapInstance.addLayer({
-        id: 'overlay-fill',
-        type: 'fill',
-        source: 'overlay-locations',
-        layout: { visibility: 'none' },
-        paint: { 'fill-color': '#4a90d9', 'fill-opacity': 0.3 }
-      }, beforeLayer);
-      mapInstance.addLayer({
-        id: 'overlay-line',
-        type: 'line',
-        source: 'overlay-locations',
-        layout: { visibility: 'none' },
-        paint: { 'line-color': '#2c5f8a', 'line-width': 0.8, 'line-opacity': 0.7 }
-      }, beforeLayer);
-      mapInstance.addLayer({
-        id: 'overlay-highlight',
-        type: 'fill',
-        source: 'overlay-locations',
-        layout: { visibility: 'none' },
-        paint: { 'fill-color': '#ff9800', 'fill-opacity': 0.7 },
-        filter: ['any',
-          ['==', ['get', 'id'], ''],
-          ['==', ['id'], -1]
-        ]
-      }, beforeLayer);
+      mapInstance.addLayer(
+        {
+          id: 'overlay-fill',
+          type: 'fill',
+          source: 'overlay-locations',
+          layout: { visibility: 'none' },
+          paint: { 'fill-color': '#4a90d9', 'fill-opacity': 0.3 },
+        },
+        beforeLayer
+      );
+      mapInstance.addLayer(
+        {
+          id: 'overlay-line',
+          type: 'line',
+          source: 'overlay-locations',
+          layout: { visibility: 'none' },
+          paint: { 'line-color': '#2c5f8a', 'line-width': 0.8, 'line-opacity': 0.7 },
+        },
+        beforeLayer
+      );
+      mapInstance.addLayer(
+        {
+          id: 'overlay-highlight',
+          type: 'fill',
+          source: 'overlay-locations',
+          layout: { visibility: 'none' },
+          paint: { 'fill-color': '#ff9800', 'fill-opacity': 0.7 },
+          filter: ['any', ['==', ['get', 'id'], ''], ['==', ['id'], -1]],
+        },
+        beforeLayer
+      );
     } else {
-      mapInstance.addLayer({
-        id: 'overlay-fill',
-        type: 'circle',
-        source: 'overlay-locations',
-        paint: { 'circle-radius': 5, 'circle-color': '#4a90d9', 'circle-opacity': 0.5, 'circle-stroke-width': 1, 'circle-stroke-color': '#2c5f8a' }
-      }, beforeLayer);
+      mapInstance.addLayer(
+        {
+          id: 'overlay-fill',
+          type: 'circle',
+          source: 'overlay-locations',
+          paint: {
+            'circle-radius': 5,
+            'circle-color': '#4a90d9',
+            'circle-opacity': 0.5,
+            'circle-stroke-width': 1,
+            'circle-stroke-color': '#2c5f8a',
+          },
+        },
+        beforeLayer
+      );
     }
 
     return () => {
-      try { removeOverlay(); } catch { /* silent */ }
+      try {
+        removeOverlay();
+      } catch {
+        /* silent */
+      }
     };
   }, [overlayLocations, state.mapLoaded]);
 
@@ -542,9 +599,7 @@ const MapComponent = ({
             <div className="spinner-border text-primary mb-2" role="status">
               <span className="visually-hidden">Loading map...</span>
             </div>
-            <div className="small text-muted">
-              Initializing MapLibre GL...
-            </div>
+            <div className="small text-muted">Initializing MapLibre GL...</div>
           </div>
         )}
 
@@ -555,16 +610,14 @@ const MapComponent = ({
             style={{
               backgroundColor: 'rgba(255, 255, 255, 0.7)',
               zIndex: 1000,
-              pointerEvents: 'none'
+              pointerEvents: 'none',
             }}
           >
             <div className="text-center">
               <div className="spinner-border text-primary mb-2" role="status">
                 <span className="visually-hidden">Loading locations...</span>
               </div>
-              <div className="small text-muted">
-                Loading location data...
-              </div>
+              <div className="small text-muted">Loading location data...</div>
             </div>
           </div>
         )}
@@ -579,7 +632,12 @@ const MapComponent = ({
             style={{ zIndex: 1200, width: 'min(380px, calc(100% - 200px))' }}
           >
             <div className="input-group shadow-sm" style={{ height: '38px' }}>
-              <span className="input-group-text bg-white border-end-0 rounded-start-3" aria-hidden="true">🔎</span>
+              <span
+                className="input-group-text bg-white border-end-0 rounded-start-3"
+                aria-hidden="true"
+              >
+                🔎
+              </span>
               <input
                 type="text"
                 className="form-control border-start-0"
@@ -599,7 +657,7 @@ const MapComponent = ({
                     height: '38px',
                     backgroundColor: '#ffffff',
                     borderColor: '#ced4da',
-                    color: '#6c757d'
+                    color: '#6c757d',
                   }}
                 >
                   Clear
@@ -608,7 +666,10 @@ const MapComponent = ({
             </div>
 
             {searchTerm.trim() && (
-              <div className="list-group shadow-sm" style={{ maxHeight: '260px', overflowY: 'auto' }}>
+              <div
+                className="list-group shadow-sm"
+                style={{ maxHeight: '260px', overflowY: 'auto' }}
+              >
                 {matchedLocations.length > 0 ? (
                   matchedLocations.map((feature) => {
                     const props = feature.properties || {};
@@ -625,15 +686,21 @@ const MapComponent = ({
                         <div className="d-flex justify-content-between align-items-start gap-2">
                           <div className="text-start">
                             <div className="fw-semibold">{props.name || 'Unnamed location'}</div>
-                            <div className="small text-muted">Primary: {props.primary_location_id || 'N/A'}</div>
-                            <div className="small text-muted">Secondary: {props.secondary_location_id || 'N/A'}</div>
+                            <div className="small text-muted">
+                              Primary: {props.primary_location_id || 'N/A'}
+                            </div>
+                            <div className="small text-muted">
+                              Secondary: {props.secondary_location_id || 'N/A'}
+                            </div>
                           </div>
                         </div>
                       </button>
                     );
                   })
                 ) : (
-                  <div className="list-group-item small text-muted">No matching locations found.</div>
+                  <div className="list-group-item small text-muted">
+                    No matching locations found.
+                  </div>
                 )}
               </div>
             )}
@@ -641,7 +708,9 @@ const MapComponent = ({
         )}
 
         {/* Map Legend */}
-        {state.mapLoaded && <MapLegend metric={state.mapFilters.metricName} getMetricLabel={getMetricLabel} />}
+        {state.mapLoaded && (
+          <MapLegend metric={state.mapFilters.metricName} getMetricLabel={getMetricLabel} />
+        )}
       </div>
     </div>
   );

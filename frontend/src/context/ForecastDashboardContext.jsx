@@ -27,7 +27,7 @@ const initialForecastState = {
   mapFilters: {
     configuration: null,
     variable: null,
-    metricName: 'relative_bias'
+    metricName: 'relative_bias',
   },
 
   // Timeseries filters (forecast-specific defaults)
@@ -36,14 +36,14 @@ const initialForecastState = {
       variables: [FORECAST_DASHBOARD_DEFAULTS.preferredObservationsVariable],
       start_date: getTenDaysAgo(),
       end_date: getToday(),
-      duration: FORECAST_DASHBOARD_DEFAULTS.preferredObservationsDuration
+      duration: FORECAST_DASHBOARD_DEFAULTS.preferredObservationsDuration,
     },
     secondary: {
       configurations: [], // Array for multi-select
       variables: [],
       reference_start_date: getTenDaysAgo(),
-      reference_end_date: getToday()
-    }
+      reference_end_date: getToday(),
+    },
   },
 
   // Selected location
@@ -52,7 +52,7 @@ const initialForecastState = {
   // Timeseries data (structured as expected by components)
   timeseriesData: {
     primary: [],
-    secondary: []
+    secondary: [],
   },
 
   // Location metrics
@@ -68,7 +68,7 @@ const initialForecastState = {
   mapLoaded: false,
 
   // Error state
-  error: null
+  error: null,
 };
 
 // Action types (same as retrospective)
@@ -104,7 +104,7 @@ export const ActionTypes = {
 
   // Error handling
   SET_ERROR: 'SET_ERROR',
-  CLEAR_ERROR: 'CLEAR_ERROR'
+  CLEAR_ERROR: 'CLEAR_ERROR',
 };
 
 // Reducer function (same logic as retrospective)
@@ -114,42 +114,51 @@ const forecastDashboardReducer = (state, action) => {
       return {
         ...state,
         locations: action.payload,
-        locationsLoading: false
+        locationsLoading: false,
       };
 
     case ActionTypes.SET_CONFIGURATIONS: {
       const configurations = Array.isArray(action.payload) ? action.payload : [];
-      const defaultConfig = selectDefault(FORECAST_DASHBOARD_DEFAULTS.preferredConfiguration, configurations);
+      const defaultConfig = selectDefault(
+        FORECAST_DASHBOARD_DEFAULTS.preferredConfiguration,
+        configurations
+      );
       return {
         ...state,
         configurations,
         // Set defaults if first time loading - prefer configured default if available
         mapFilters: {
           ...state.mapFilters,
-          configuration: state.mapFilters.configuration || defaultConfig
+          configuration: state.mapFilters.configuration || defaultConfig,
         },
         timeseriesFilters: {
           ...state.timeseriesFilters,
           secondary: {
             ...state.timeseriesFilters.secondary,
-            configurations: state.timeseriesFilters.secondary?.configurations?.length > 0
-              ? state.timeseriesFilters.secondary.configurations
-              : (defaultConfig ? [defaultConfig] : [])
-          }
-        }
+            configurations:
+              state.timeseriesFilters.secondary?.configurations?.length > 0
+                ? state.timeseriesFilters.secondary.configurations
+                : defaultConfig
+                  ? [defaultConfig]
+                  : [],
+          },
+        },
       };
     }
 
     case ActionTypes.SET_VARIABLES: {
       const variables = Array.isArray(action.payload) ? action.payload : [];
-      const defaultVariable = selectDefault(FORECAST_DASHBOARD_DEFAULTS.preferredVariable, variables);
+      const defaultVariable = selectDefault(
+        FORECAST_DASHBOARD_DEFAULTS.preferredVariable,
+        variables
+      );
       return {
         ...state,
         variables,
         // Set defaults if first time loading - prefer configured default if available
         mapFilters: {
           ...state.mapFilters,
-          variable: state.mapFilters.variable || defaultVariable
+          variable: state.mapFilters.variable || defaultVariable,
         },
         timeseriesFilters: {
           ...state.timeseriesFilters,
@@ -158,11 +167,14 @@ const forecastDashboardReducer = (state, action) => {
           // fcst_metrics variable names (e.g. streamflow_6hr_inst) to duration parsing.
           secondary: {
             ...state.timeseriesFilters.secondary,
-            variables: state.timeseriesFilters.secondary?.variables?.length > 0
-              ? state.timeseriesFilters.secondary.variables
-              : (defaultVariable ? [defaultVariable] : [])
-          }
-        }
+            variables:
+              state.timeseriesFilters.secondary?.variables?.length > 0
+                ? state.timeseriesFilters.secondary.variables
+                : defaultVariable
+                  ? [defaultVariable]
+                  : [],
+          },
+        },
       };
     }
 
@@ -177,11 +189,14 @@ const forecastDashboardReducer = (state, action) => {
           ...state.timeseriesFilters,
           primary: {
             ...state.timeseriesFilters.primary,
-            variables: state.timeseriesFilters.primary?.variables?.length > 0
-              ? state.timeseriesFilters.primary.variables
-              : (primaryVariables.length > 0 ? [primaryVariables[0]] : [])
-          }
-        }
+            variables:
+              state.timeseriesFilters.primary?.variables?.length > 0
+                ? state.timeseriesFilters.primary.variables
+                : primaryVariables.length > 0
+                  ? [primaryVariables[0]]
+                  : [],
+          },
+        },
       };
     }
 
@@ -190,7 +205,7 @@ const forecastDashboardReducer = (state, action) => {
       return {
         ...state,
         tableProperties,
-        tablePropertiesLoading: false
+        tablePropertiesLoading: false,
       };
     }
 
@@ -202,7 +217,7 @@ const forecastDashboardReducer = (state, action) => {
       if (action.payload.configuration !== undefined) {
         mapTimeseriesSync.secondary = {
           ...state.timeseriesFilters.secondary,
-          configurations: action.payload.configuration ? [action.payload.configuration] : []
+          configurations: action.payload.configuration ? [action.payload.configuration] : [],
         };
       }
       if (action.payload.variable !== undefined) {
@@ -210,19 +225,19 @@ const forecastDashboardReducer = (state, action) => {
         // exclusively by the Observations dropdown (state.primaryVariables).
         mapTimeseriesSync.secondary = {
           ...(mapTimeseriesSync.secondary || state.timeseriesFilters.secondary),
-          variables: action.payload.variable ? [action.payload.variable] : []
+          variables: action.payload.variable ? [action.payload.variable] : [],
         };
       }
       return {
         ...state,
         mapFilters: {
           ...state.mapFilters,
-          ...action.payload
+          ...action.payload,
         },
         timeseriesFilters: {
           ...state.timeseriesFilters,
-          ...mapTimeseriesSync
-        }
+          ...mapTimeseriesSync,
+        },
       };
 
     case ActionTypes.UPDATE_TIMESERIES_FILTERS: {
@@ -264,21 +279,21 @@ const forecastDashboardReducer = (state, action) => {
           primary: {
             ...state.timeseriesFilters.primary,
             ...legacyPrimary,
-            ...(primary || {})
+            ...(primary || {}),
           },
           secondary: {
             ...state.timeseriesFilters.secondary,
             ...legacySecondary,
-            ...(secondary || {})
-          }
-        }
+            ...(secondary || {}),
+          },
+        },
       };
     }
 
     case ActionTypes.SELECT_LOCATION:
       return {
         ...state,
-        selectedLocation: action.payload
+        selectedLocation: action.payload,
       };
 
     case ActionTypes.SET_PRIMARY_TIMESERIES:
@@ -286,8 +301,8 @@ const forecastDashboardReducer = (state, action) => {
         ...state,
         timeseriesData: {
           ...state.timeseriesData,
-          primary: action.payload
-        }
+          primary: action.payload,
+        },
       };
 
     case ActionTypes.SET_SECONDARY_TIMESERIES:
@@ -295,9 +310,9 @@ const forecastDashboardReducer = (state, action) => {
         ...state,
         timeseriesData: {
           ...state.timeseriesData,
-          secondary: action.payload
+          secondary: action.payload,
         },
-        timeseriesLoading: false
+        timeseriesLoading: false,
       };
 
     case ActionTypes.CLEAR_TIMESERIES:
@@ -305,8 +320,8 @@ const forecastDashboardReducer = (state, action) => {
         ...state,
         timeseriesData: {
           primary: [],
-          secondary: []
-        }
+          secondary: [],
+        },
       };
 
     case ActionTypes.SET_LOADING: {
@@ -332,40 +347,40 @@ const forecastDashboardReducer = (state, action) => {
       }
       return {
         ...state,
-        ...loadingUpdates
+        ...loadingUpdates,
       };
     }
 
     case ActionTypes.SET_MAP_LOADED:
       return {
         ...state,
-        mapLoaded: action.payload
+        mapLoaded: action.payload,
       };
 
     case ActionTypes.SET_ERROR:
       return {
         ...state,
-        error: action.payload
+        error: action.payload,
       };
 
     case ActionTypes.CLEAR_ERROR:
       return {
         ...state,
-        error: null
+        error: null,
       };
 
     case ActionTypes.SET_LOCATION_METRICS:
       return {
         ...state,
         locationMetrics: action.payload,
-        metricsLoading: false
+        metricsLoading: false,
       };
 
     case ActionTypes.CLEAR_LOCATION_METRICS:
       return {
         ...state,
         locationMetrics: [],
-        metricsLoading: false
+        metricsLoading: false,
       };
 
     default:
