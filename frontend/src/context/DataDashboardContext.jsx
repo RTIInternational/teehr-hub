@@ -18,7 +18,7 @@ const initialDataState = {
   mapFilters: {},
 
   // Error state
-  error: null,
+  error: null
 };
 
 export const ActionTypes = {
@@ -28,7 +28,7 @@ export const ActionTypes = {
   SELECT_LOCATION: 'SELECT_LOCATION',
   SET_MAP_LOADED: 'SET_MAP_LOADED',
   SET_ERROR: 'SET_ERROR',
-  CLEAR_ERROR: 'CLEAR_ERROR',
+  CLEAR_ERROR: 'CLEAR_ERROR'
 };
 
 const dataDashboardReducer = (state, action) => {
@@ -37,32 +37,32 @@ const dataDashboardReducer = (state, action) => {
       return {
         ...state,
         locations: action.payload,
-        locationsLoading: false,
+        locationsLoading: false
       };
 
     case ActionTypes.SET_CONFIGURATIONS:
       return {
         ...state,
         configurations: Array.isArray(action.payload) ? action.payload : [],
-        configsLoading: false,
+        configsLoading: false
       };
 
     case ActionTypes.SET_LOADING:
       return {
         ...state,
-        ...action.payload,
+        ...action.payload
       };
 
     case ActionTypes.SELECT_LOCATION:
       return {
         ...state,
-        selectedLocation: action.payload,
+        selectedLocation: action.payload
       };
 
     case ActionTypes.SET_MAP_LOADED:
       return {
         ...state,
-        mapLoaded: action.payload,
+        mapLoaded: action.payload
       };
 
     case ActionTypes.SET_ERROR:
@@ -70,13 +70,13 @@ const dataDashboardReducer = (state, action) => {
         ...state,
         error: action.payload,
         locationsLoading: false,
-        configsLoading: false,
+        configsLoading: false
       };
 
     case ActionTypes.CLEAR_ERROR:
       return {
         ...state,
-        error: null,
+        error: null
       };
 
     default:

@@ -39,7 +39,7 @@ export const useSortableTable = (rows, defaultKey = null, getSortValue = null) =
       const av = resolver(a, sortKey);
       const bv = resolver(b, sortKey);
       if (av < bv) return sortDir === 'asc' ? -1 : 1;
-      if (av > bv) return sortDir === 'asc' ? 1 : -1;
+      if (av > bv) return sortDir === 'asc' ?  1 : -1;
       return 0;
     });
   }, [rows, sortKey, sortDir, resolver]);

@@ -1,2 +1,2 @@
-export { default as DataDashboard } from './Dashboard';
+export { default as DataDashboard } from './Dashboard.jsx';
 export { useDataDashboardData } from './useDataDashboardData';
