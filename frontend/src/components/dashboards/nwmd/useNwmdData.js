@@ -1,8 +1,8 @@
-import { useCallback } from "react";
-import { useNwmdDataFetching } from "../../../hooks/useNwmdDataFetching";
+import { useCallback } from 'react';
+import { useNwmdDataFetching } from '../../../hooks/useNwmdDataFetching';
 
 // Table names for nwmd dashboard
-const TABLE_NAMES = ["nwmd_metrics_by_location"];
+const TABLE_NAMES = ['nwmd_metrics_by_location'];
 
 /**
  * Dashboard-specific hook for nwmd data
@@ -18,7 +18,6 @@ export const useNwmdData = () => {
     loadTableProperties,
     loadLocations,
     loadTimeseries,
-    loadLocationMetrics,
     loadLeadTimeBinMetrics,
     loadLocationMetadata,
     ...otherHooks
@@ -59,7 +58,7 @@ export const useNwmdData = () => {
     async (filters = {}) => {
       return loadLocations(filters, TABLE_NAMES[0]); // Use location table for map
     },
-    [loadLocations],
+    [loadLocations]
   );
 
   // Load timeseries with nwmd table context
@@ -67,29 +66,21 @@ export const useNwmdData = () => {
     async (filters = {}) => {
       return loadTimeseries({ ...filters, table: TABLE_NAMES[0] }); // Use location table for timeseries
     },
-    [loadTimeseries],
-  );
-
-  // Load location metrics with nwmd table context
-  const loadNwmdLocationMetrics = useCallback(
-    async (primaryLocationId, selectedTable = TABLE_NAMES[0]) => {
-      return loadLocationMetrics(primaryLocationId, selectedTable);
-    },
-    [loadLocationMetrics],
+    [loadTimeseries]
   );
 
   const loadNwmdLocationMetadata = useCallback(
     async (primaryLocationId) => {
       return loadLocationMetadata(primaryLocationId);
     },
-    [loadLocationMetadata],
+    [loadLocationMetadata]
   );
 
   const loadNwmdLeadTimeBinMetrics = useCallback(
     async (filters = {}) => {
       return loadLeadTimeBinMetrics(filters, TABLE_NAMES[0]);
     },
-    [loadLeadTimeBinMetrics],
+    [loadLeadTimeBinMetrics]
   );
 
   // Initialize all nwmd data
@@ -104,7 +95,7 @@ export const useNwmdData = () => {
         loadNwmdTableProperties(),
       ]);
     } catch (error) {
-      console.error("Failed to initialize nwmd data:", error);
+      console.error('Failed to initialize nwmd data:', error);
       throw error;
     }
   }, [
@@ -123,7 +114,6 @@ export const useNwmdData = () => {
     loadTableProperties: loadNwmdTableProperties,
     loadLocations: loadNwmdLocations,
     loadTimeseries: loadNwmdTimeseries,
-    loadLocationMetrics: loadNwmdLocationMetrics,
     loadLeadTimeBinMetrics: loadNwmdLeadTimeBinMetrics,
     loadLocationMetadata: loadNwmdLocationMetadata,
     initializeNwmdData: initializeNwmdData,

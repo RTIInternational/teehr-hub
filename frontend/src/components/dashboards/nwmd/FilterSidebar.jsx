@@ -1,24 +1,22 @@
-import { Form } from "react-bootstrap";
+import { Form } from 'react-bootstrap';
+import { useTableProperties } from '../../../shared/queries/queryables';
 
-const NULL_OPTION = "__NULL__";
+const NULL_OPTION = '__NULL__';
 
-export const FilterSidebar = ({
-  state,
-  mapFilters,
-  updateMapFilters,
-  loadLocations,
-}) => {
+export const FilterSidebar = ({ state, tables, mapFilters, updateMapFilters, loadLocations }) => {
+  const tableProperties = useTableProperties(tables);
+
   const handleMapFilterChange = async (filterType, value) => {
     const newFilters = { ...mapFilters, [filterType]: value };
     updateMapFilters({ [filterType]: value });
 
     // Reload locations when base metrics change
     const reloadFilters = new Set([
-      "configuration",
-      "variable",
-      "threshold",
-      "aggMethod",
-      "leadTimeBin",
+      'configuration',
+      'variable',
+      'threshold',
+      'aggMethod',
+      'leadTimeBin',
     ]);
     if (reloadFilters.has(filterType)) {
       await loadLocations({
@@ -38,10 +36,8 @@ export const FilterSidebar = ({
         <Form.Label className="small fw-bold">Model Configuration</Form.Label>
         <Form.Select
           size="sm"
-          value={mapFilters.configuration || ""}
-          onChange={(e) =>
-            handleMapFilterChange("configuration", e.target.value || null)
-          }
+          value={mapFilters.configuration || ''}
+          onChange={(e) => handleMapFilterChange('configuration', e.target.value || null)}
         >
           <option value="">Select Configuration...</option>
           {Array.isArray(state.configurations) &&
@@ -58,15 +54,11 @@ export const FilterSidebar = ({
         <Form.Label className="small fw-bold">Threshold</Form.Label>
         <Form.Select
           size="sm"
-          value={
-            mapFilters.threshold === null
-              ? NULL_OPTION
-              : (mapFilters.threshold ?? "")
-          }
+          value={mapFilters.threshold === null ? NULL_OPTION : (mapFilters.threshold ?? '')}
           onChange={(e) =>
             handleMapFilterChange(
-              "threshold",
-              e.target.value === NULL_OPTION ? null : e.target.value || null,
+              'threshold',
+              e.target.value === NULL_OPTION ? null : e.target.value || null
             )
           }
         >
@@ -74,7 +66,7 @@ export const FilterSidebar = ({
           {Array.isArray(state.thresholds) &&
             state.thresholds.map((threshold) => {
               const optionValue = threshold === null ? NULL_OPTION : threshold;
-              const optionLabel = threshold === null ? "None" : threshold;
+              const optionLabel = threshold === null ? 'None' : threshold;
               return (
                 <option key={String(optionValue)} value={optionValue}>
                   {optionLabel}
@@ -89,16 +81,16 @@ export const FilterSidebar = ({
         <Form.Label className="small fw-bold">Metric</Form.Label>
         <Form.Select
           size="sm"
-          value={mapFilters.metricName || ""}
+          value={mapFilters.metricName || ''}
           onChange={(e) => {
-            handleMapFilterChange("metricName", e.target.value || null);
+            handleMapFilterChange('metricName', e.target.value || null);
           }}
         >
           <option value="">Select Metric...</option>
           {(() => {
             // Try to find metrics from any available table in the batch response
             // This works for both single-table and multi-table dashboards
-            const allTableProps = state.tableProperties || {};
+            const allTableProps = tableProperties.data || {};
             const allMetrics = [];
 
             // Collect all unique metrics from all tables
@@ -123,15 +115,11 @@ export const FilterSidebar = ({
 
       {/* Aggregation Method Filter */}
       <Form.Group className="mb-3">
-        <Form.Label className="small fw-bold">
-          Streamflow aggregation method
-        </Form.Label>
+        <Form.Label className="small fw-bold">Streamflow aggregation method</Form.Label>
         <Form.Select
           size="sm"
-          value={mapFilters.aggMethod || ""}
-          onChange={(e) =>
-            handleMapFilterChange("aggMethod", e.target.value || null)
-          }
+          value={mapFilters.aggMethod || ''}
+          onChange={(e) => handleMapFilterChange('aggMethod', e.target.value || null)}
         >
           <option value="">Select Aggregation Method...</option>
           {Array.isArray(state.aggMethods) &&
@@ -148,10 +136,8 @@ export const FilterSidebar = ({
         <Form.Label className="small fw-bold">Lead time (hours): </Form.Label>
         <Form.Select
           size="sm"
-          value={mapFilters.leadTimeBin || ""}
-          onChange={(e) =>
-            handleMapFilterChange("leadTimeBin", e.target.value || null)
-          }
+          value={mapFilters.leadTimeBin || ''}
+          onChange={(e) => handleMapFilterChange('leadTimeBin', e.target.value || null)}
         >
           <option value="">Select Lead Time Bin...</option>
           {Array.isArray(state.leadTimeBins) &&

@@ -22,5 +22,51 @@
     "python.analysis.typeCheckingMode": "off",
     "files.associations": {
         "yaml.tpl": "yaml"
-    }
+    },
+
+    // Front end development
+    "oxc.path.oxlint": "frontend/node_modules/.bin/oxlint",
+    "oxc.path.tsgolint": "frontend/node_modules/.bin/tsgolint",
+    "oxc.lint.run": "onType",
+    
+    "oxc.requireConfig": true,
+    "oxc.configPath": "frontend/.oxlintrc.json",
+    "oxc.disableNestedConfig": true,
+    
+    "oxc.typeAware": true,
+    "oxc.tsConfigPath": "frontend/tsconfig.app.json",
+
+    "[javascript]": {
+        "editor.defaultFormatter": "oxc.oxc-vscode",
+        "editor.formatOnSave": true,
+        "editor.formatOnSaveMode": "file",
+        "editor.tabSize": 2,
+    },
+    "[javascriptreact]": {
+        "editor.defaultFormatter": "oxc.oxc-vscode",
+        "editor.formatOnSave": true,
+        "editor.formatOnSaveMode": "file",
+        "editor.tabSize": 2,
+    },
+    "[typescript]": {
+        "editor.defaultFormatter": "oxc.oxc-vscode",
+        "editor.formatOnSave": true,
+        "editor.formatOnSaveMode": "file",
+        "editor.tabSize": 2,
+    },
+    "[typescriptreact]": {
+        "editor.defaultFormatter": "oxc.oxc-vscode",
+        "editor.formatOnSave": true,
+        "editor.formatOnSaveMode": "file",
+        "editor.tabSize": 2,
+    },
+    "[css]": {
+        "editor.defaultFormatter": "oxc.oxc-vscode",
+        "editor.formatOnSave": true,
+        "editor.formatOnSaveMode": "file",
+        "editor.tabSize": 2,
+    },
+    "editor.codeActionsOnSave": {
+        "source.fixAll.oxc": "always",
+    },
 }

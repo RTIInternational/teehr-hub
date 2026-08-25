@@ -1,2 +1,2 @@
-export { default as NwmdDashboard } from './Dashboard.jsx';
+export { default as NwmdDashboard } from './Dashboard';
 export { useNwmdData } from './useNwmdData';

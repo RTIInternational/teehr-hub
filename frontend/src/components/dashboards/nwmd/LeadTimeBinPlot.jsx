@@ -1,14 +1,12 @@
-import Plotly from "plotly.js-dist-min";
-import { useEffect, useMemo, useRef } from "react";
-import { Card, Spinner } from "react-bootstrap";
-import { getMetricLabel } from "../../common/dashboard/utils.js";
+import Plotly from 'plotly.js-dist-min';
+import { useEffect, useMemo, useRef } from 'react';
+import { Card, Spinner } from 'react-bootstrap';
+import { getMetricLabel } from '../../../shared/utils/mapMetrics';
 
 const parseDurationToHours = (duration) => {
-  if (typeof duration !== "string" || !duration.startsWith("P")) return null;
+  if (typeof duration !== 'string' || !duration.startsWith('P')) return null;
 
-  const match = duration.match(
-    /^P(?:(\d+)D)?(?:T(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?)?$/,
-  );
+  const match = duration.match(/^P(?:(\d+)D)?(?:T(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?)?$/);
   if (!match) return null;
 
   const days = Number(match[1] || 0);
@@ -20,8 +18,8 @@ const parseDurationToHours = (duration) => {
 };
 
 const getMinimumLeadTimeHours = (leadTimeBin) => {
-  if (typeof leadTimeBin !== "string") return null;
-  const minDuration = leadTimeBin.split("_")[0];
+  if (typeof leadTimeBin !== 'string') return null;
+  const minDuration = leadTimeBin.split('_')[0];
   const hours = parseDurationToHours(minDuration);
   if (hours === null) return null;
   return Math.round(hours);
@@ -122,20 +120,20 @@ const LeadTimeBinPlot = ({
       return;
     }
 
-    const metricLabel = getMetricLabel(metricName || "metric");
+    const metricLabel = getMetricLabel(metricName || 'metric');
     const traces = [
       {
         x: chartData.x,
         y: chartData.y,
-        type: "bar",
+        type: 'bar',
         marker: {
-          color: "#0d6efd",
-          line: { color: "#0a58ca", width: 1 },
+          color: '#0d6efd',
+          line: { color: '#0a58ca', width: 1 },
         },
         customdata: chartData.bins,
         hovertemplate:
-          "<b>Minimum Lead Time (h)</b>: %{x}<br>" +
-          "<b>Lead Time Bin</b>: %{customdata}<br>" +
+          '<b>Minimum Lead Time (h)</b>: %{x}<br>' +
+          '<b>Lead Time Bin</b>: %{customdata}<br>' +
           `<b>${metricLabel}</b>: %{y:.4f}<extra></extra>`,
       },
     ];
@@ -143,7 +141,7 @@ const LeadTimeBinPlot = ({
     const layout = {
       margin: { l: 70, r: 20, t: 20, b: 60 },
       xaxis: {
-        title: { text: "Minimum Lead Time (h)" },
+        title: { text: 'Minimum Lead Time (h)' },
         tickangle: -30,
       },
       yaxis: {
@@ -154,15 +152,12 @@ const LeadTimeBinPlot = ({
 
     Plotly.react(plotRef.current, traces, layout, {
       responsive: true,
-      displayModeBar: "hover",
+      displayModeBar: 'hover',
     });
   }, [chartData, metricName]);
 
   return (
-    <Card
-      className="shadow-lg h-100 d-flex flex-column"
-      style={{ borderRadius: "8px" }}
-    >
+    <Card className="shadow-lg h-100 d-flex flex-column" style={{ borderRadius: '8px' }}>
       <Card.Body className="p-2 d-flex flex-column" style={{ minHeight: 0 }}>
         {!primaryLocationId ? (
           <div className="d-flex align-items-center justify-content-center text-muted h-100">
@@ -172,9 +167,7 @@ const LeadTimeBinPlot = ({
           <div className="d-flex align-items-center justify-content-center h-100">
             <div className="text-center">
               <Spinner animation="border" size="sm" />
-              <div className="small text-muted mt-2">
-                Loading lead-time metrics...
-              </div>
+              <div className="small text-muted mt-2">Loading lead-time metrics...</div>
             </div>
           </div>
         ) : !metricName ? (
@@ -186,7 +179,7 @@ const LeadTimeBinPlot = ({
             No lead-time bin data found for current filters.
           </div>
         ) : (
-          <div ref={plotRef} style={{ width: "100%", height: "100%" }} />
+          <div ref={plotRef} style={{ width: '100%', height: '100%' }} />
         )}
       </Card.Body>
     </Card>
