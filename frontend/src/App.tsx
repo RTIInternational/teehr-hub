@@ -1,11 +1,19 @@
 import { Container, Alert } from 'react-bootstrap';
 import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
+
 import { Home, DashboardsHome } from '@/components/common';
 import { DataDashboard } from '@/components/dashboards/data_management';
 import { NwmdDashboard } from '@/components/dashboards/nwmd/index';
 import { DataDashboardProvider } from '@/context/DataDashboardContext';
 import { NwmdDashboardProvider } from '@/context/NwmdDashboardContext';
 import { useAuth } from '@/features/auth';
+import {
+  FiroDashboard,
+  LocationSelectionSection,
+  DetailedAnalysisDeterministicPage,
+  DetailedAnalysisEventThresholdsPage,
+  TopEventsSection,
+} from '@/features/firo';
 import { ForecastDashboard, ForecastDashboardProvider } from '@/features/forecast';
 import { RetrospectiveDashboardProvider, RetrospectiveDashboard } from '@/features/retrospective';
 import AdminHome from '@/pages/admin/AdminHome';
@@ -133,6 +141,27 @@ const AppRoutes = () => {
               </RequireAuth>
             }
           />
+          <Route
+            path="/firo"
+            element={
+              <RequireAuth>
+                <FiroDashboard />
+              </RequireAuth>
+            }
+          >
+            <Route index element={<Navigate to="location-selection" replace />} />
+            <Route path="location-selection" element={<LocationSelectionSection />} />
+            <Route path="detailed-analysis" element={<Navigate to="deterministic" replace />} />
+            <Route
+              path="detailed-analysis/deterministic"
+              element={<DetailedAnalysisDeterministicPage />}
+            />
+            <Route
+              path="detailed-analysis/event-thresholds"
+              element={<DetailedAnalysisEventThresholdsPage />}
+            />
+            <Route path="top-events" element={<TopEventsSection />} />
+          </Route>
           <Route
             path="/admin"
             element={

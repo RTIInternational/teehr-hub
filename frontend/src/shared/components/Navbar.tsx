@@ -1,5 +1,6 @@
 import { Dropdown } from 'react-bootstrap';
 import { Link, useLocation } from 'react-router-dom';
+
 import { useAuth } from '@/features/auth';
 
 const JUPYTERHUB_URL =
@@ -18,6 +19,7 @@ const Navbar = () => {
       '/forecast': 'Forecast Analysis',
       '/data': 'Data Availability',
       '/nwmd': 'National Water Model Diagnostics',
+      '/firo': 'Forecast/Hindcast Performance',
       '/admin': 'Admin Page',
       '/admin/api-keys': 'API Keys',
       '/admin/keycloak': 'Keycloak Admin',
