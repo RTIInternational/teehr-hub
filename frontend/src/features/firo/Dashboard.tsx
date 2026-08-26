@@ -25,7 +25,7 @@ export const Dashboard = () => {
       <div className="d-flex flex-row flex-grow-1" style={{ minHeight: 0 }}>
         <Sidebar />
 
-        <main className="flex-grow-1 overflow-auto p-3">
+        <main className="flex-grow-1 overflow-hidden" style={{ minHeight: 0, minWidth: 0 }}>
           <Outlet />
         </main>
       </div>

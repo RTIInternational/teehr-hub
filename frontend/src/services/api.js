@@ -64,10 +64,15 @@ const formatDatetimeInterval = (startDate, endDate) => {
 // API service object - OGC API compliant
 export const apiService = {
   // Get all locations (OGC API - Features)
-  getLocations: (limit = 1000, offset = 0) => {
+  // locationIds: null (all) or string[] to filter by id param
+  /** @param {number} [limit] @param {number} [offset] @param {string[] | null} [locationIds] */
+  getLocations: (limit = 1000, offset = 0, locationIds = null) => {
     const params = new URLSearchParams();
     params.append('limit', limit);
     params.append('offset', offset);
+    if (Array.isArray(locationIds) && locationIds.length > 0) {
+      locationIds.forEach((id) => params.append('id', id));
+    }
     return apiCall(`/collections/locations/items?${params.toString()}`);
   },
 
