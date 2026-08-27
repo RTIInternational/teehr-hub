@@ -26,6 +26,10 @@ export type LeadTimeMetricsRow = {
   false_alarm_ratio: number | null;
   critical_success_index: number | null;
   frequency_bias_index: number | null;
+  mean_crps_ensemble: number | null;
+  mean_crps_ensemble_skill_score: number | null;
+  mean_brier_score: number | null;
+  mean_brier_score_skill_score: number | null;
   [key: string]: unknown;
 };
 
