@@ -19,6 +19,7 @@ type TopEventsHeatmapProps = {
   topEvents: TopEventSummary[];
   metricKey: TopEventsHeatmapMetric;
   metricLabel: string;
+  maxRows?: number;
 };
 
 const toNumber = (value: unknown): number | null => {
@@ -89,7 +90,13 @@ const sequentialColor = (value: number, min: number, max: number) => {
   return interpolateColor('#f7fbff', '#08519c', ratio);
 };
 
-const TopEventsHeatmap = ({ data, topEvents, metricKey, metricLabel }: TopEventsHeatmapProps) => {
+const TopEventsHeatmap = ({
+  data,
+  topEvents,
+  metricKey,
+  metricLabel,
+  maxRows,
+}: TopEventsHeatmapProps) => {
   const matrixData = useMemo(() => {
     if (!topEvents.length) {
       return {
@@ -127,8 +134,9 @@ const TopEventsHeatmap = ({ data, topEvents, metricKey, metricLabel }: TopEvents
     }
 
     const xLabels = eventOrder.map((eventId) => eventLabelById.get(eventId) ?? eventId);
-    const yLabels = sortedBins.map((entry) => entry.label);
-    const z = sortedBins.map(({ bin }) =>
+    const visibleBins = maxRows !== undefined ? sortedBins.slice(0, maxRows) : sortedBins;
+    const yLabels = visibleBins.map((entry) => entry.label);
+    const z = visibleBins.map(({ bin }) =>
       eventOrder.map((eventId) => {
         const key = `${bin}__${eventId}`;
         const values = valuesByCell.get(key);
@@ -139,7 +147,7 @@ const TopEventsHeatmap = ({ data, topEvents, metricKey, metricLabel }: TopEvents
     );
 
     return { xLabels, yLabels, z };
-  }, [data, metricKey, topEvents]);
+  }, [data, maxRows, metricKey, topEvents]);
 
   const hasMetricValues = useMemo(
     () => matrixData.z.some((row) => row.some((value) => value !== null)),

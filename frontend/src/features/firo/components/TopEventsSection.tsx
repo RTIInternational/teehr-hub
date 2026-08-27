@@ -48,6 +48,7 @@ export const TopEventsSection = () => {
   const [threshold, setThreshold] = useState<string>(ALL_THRESHOLDS);
   const [topN, setTopN] = useState<number>(10);
   const [metricKey, setMetricKey] = useState<TopEventsHeatmapMetric>('root_mean_square_error');
+  const [heatmapExpanded, setHeatmapExpanded] = useState(false);
 
   const thresholdValues = useDistinctValues(EVENT_TABLE, 'threshold');
 
@@ -191,7 +192,7 @@ export const TopEventsSection = () => {
         </Card.Body>
       </Card>
 
-      <Card className="firo-metric-card flex-grow-1">
+      <Card className="firo-metric-card">
         <Card.Header className="firo-metric-card-header">
           <div className="firo-heatmap-head-row">
             <div>
@@ -240,14 +241,26 @@ export const TopEventsSection = () => {
           )}
 
           {!isLoading && !isError && topEvents.length > 0 && (
-            <TopEventsHeatmap
-              data={heatmapQuery.data ?? []}
-              topEvents={topEvents}
-              metricKey={metricKey}
-              metricLabel={
-                METRIC_OPTIONS.find((option) => option.key === metricKey)?.label ?? 'Metric'
-              }
-            />
+            <div className="firo-heatmap-expandable">
+              <TopEventsHeatmap
+                data={heatmapQuery.data ?? []}
+                topEvents={topEvents}
+                metricKey={metricKey}
+                metricLabel={
+                  METRIC_OPTIONS.find((option) => option.key === metricKey)?.label ?? 'Metric'
+                }
+                maxRows={heatmapExpanded ? undefined : 4}
+              />
+              <button
+                type="button"
+                className="firo-heatmap-expand-btn"
+                onClick={() => setHeatmapExpanded((prev) => !prev)}
+                aria-expanded={heatmapExpanded}
+                aria-label={heatmapExpanded ? 'Collapse heatmap' : 'Expand heatmap'}
+              >
+                {heatmapExpanded ? '▲ Show Less' : '▼ Show All Rows'}
+              </button>
+            </div>
           )}
         </Card.Body>
       </Card>

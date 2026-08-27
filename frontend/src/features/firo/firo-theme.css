@@ -463,6 +463,32 @@
   border-style: dashed;
 }
 
+.firo-heatmap-expandable {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.firo-heatmap-expand-btn {
+  align-self: center;
+  background: #f4f8ff;
+  border: 1px solid #d1dcf3;
+  border-radius: 10px;
+  color: #355689;
+  font-size: 0.78rem;
+  font-weight: 700;
+  padding: 0.45rem 1.1rem;
+  cursor: pointer;
+  transition:
+    background 0.15s,
+    color 0.15s;
+}
+
+.firo-heatmap-expand-btn:hover {
+  background: #edf4ff;
+  color: #1d3f73;
+}
+
 .firo-heatmap-accordion .accordion-item {
   border: 0;
   background: transparent;
