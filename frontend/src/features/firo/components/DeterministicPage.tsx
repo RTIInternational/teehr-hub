@@ -26,18 +26,18 @@ export const DeterministicPage = () => {
 
   if (!selectedLocation) {
     return (
-      <div className="d-flex align-items-center justify-content-center h-100 text-muted">
+      <div className="firo-empty-state d-flex align-items-center justify-content-center h-100 text-muted m-3">
         <p className="mb-0">No location selected. Return to Location Selection to choose one.</p>
       </div>
     );
   }
 
   return (
-    <div className="d-flex flex-column h-100 overflow-auto p-3">
+    <div className="firo-page">
       {/* Page header */}
-      <div className="mb-3">
-        <h6 className="fw-semibold mb-0">Deterministic</h6>
-        <p className="text-muted small mb-0">{selectedLocation.name}</p>
+      <div className="firo-page-header">
+        <h6 className="firo-page-title fw-semibold">Deterministic</h6>
+        <p className="firo-page-subtitle small">{selectedLocation.name}</p>
       </div>
 
       {/* Filters */}
@@ -63,13 +63,13 @@ export const DeterministicPage = () => {
       )}
 
       {!isLoading && !isError && data?.length === 0 && (
-        <div className="d-flex align-items-center justify-content-center flex-grow-1 text-muted">
+        <div className="firo-empty-state d-flex align-items-center justify-content-center flex-grow-1 text-muted">
           <p className="mb-0 small">No data available for the selected filters.</p>
         </div>
       )}
 
       {!isLoading && !isError && data && data.length > 0 && (
-        <Row className="g-3">
+        <Row className="firo-metric-grid g-3">
           {(
             [
               {
@@ -123,11 +123,13 @@ export const DeterministicPage = () => {
             ] as const
           ).map(({ key, label, yAxisLabel, yRangeMode }) => (
             <Col key={key} xs={12} md={6}>
-              <Card className="border-0 shadow-sm">
-                <Card.Header className="bg-white border-bottom py-2 px-3">
-                  <span className="small fw-semibold">{label} vs. Lead Time</span>
+              <Card className="firo-metric-card">
+                <Card.Header className="firo-metric-card-header">
+                  <span className="firo-metric-card-title small fw-semibold">
+                    {label} vs. Lead Time
+                  </span>
                 </Card.Header>
-                <Card.Body className="p-2">
+                <Card.Body className="firo-metric-card-body">
                   <LeadTimeMetricChart
                     data={data}
                     metricKey={key}

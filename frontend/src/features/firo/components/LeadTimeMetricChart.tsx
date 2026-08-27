@@ -27,16 +27,7 @@ const formatConfigName = (raw: string): string => {
  */
 const secondsToHours = (seconds: number): number => seconds / 3600;
 
-// Palette matching the PlotlyChart.tsx secondary trace colors
-const BASE_COLORS = [
-  '#dc3545', // red
-  '#28a745', // green
-  '#0d6efd', // blue
-  '#ffc107', // yellow
-  '#6f42c1', // purple
-  '#fd7e14', // orange
-  '#20c997', // teal
-];
+const BASE_COLORS = ['#00a6fb', '#2b5ab4', '#ff7f11', '#2dc653', '#5d2e8c', '#1982c4', '#8a5cf6'];
 
 const LeadTimeMetricChart = ({
   data,
@@ -98,10 +89,10 @@ const LeadTimeMetricChart = ({
     const layout: Partial<Plotly.Layout> = {
       margin: { t: 16, r: 16, b: 48, l: 72 },
       xaxis: {
-        title: { text: 'Lead Time (days)', font: { size: 11 } },
-        tickfont: { size: 10 },
+        title: { text: 'Lead Time (days)', font: { size: 11, color: '#395487' } },
+        tickfont: { size: 10, color: '#4f6491' },
         showgrid: true,
-        gridcolor: '#e9ecef',
+        gridcolor: '#ebeff8',
         zeroline: false,
         tickmode: 'linear',
         tick0: 1,
@@ -110,13 +101,13 @@ const LeadTimeMetricChart = ({
         rangemode: 'nonnegative',
       },
       yaxis: {
-        title: { text: yAxisLabel, font: { size: 11 } },
-        tickfont: { size: 10 },
+        title: { text: yAxisLabel, font: { size: 11, color: '#395487' } },
+        tickfont: { size: 10, color: '#4f6491' },
         showgrid: true,
-        gridcolor: '#e9ecef',
+        gridcolor: '#ebeff8',
         rangemode: yRangeMode,
         zeroline: yRangeMode === 'normal',
-        zerolinecolor: '#adb5bd',
+        zerolinecolor: '#b5c0d8',
       },
       legend: {
         orientation: 'h',
@@ -124,12 +115,17 @@ const LeadTimeMetricChart = ({
         y: -0.28,
         xanchor: 'center',
         x: 0.5,
-        font: { size: 10 },
+        font: { size: 10, color: '#334d7f' },
       },
       plot_bgcolor: '#ffffff',
       paper_bgcolor: '#ffffff',
       showlegend: traces.length > 1,
       hovermode: 'x unified',
+      hoverlabel: {
+        bgcolor: '#0f2c66',
+        bordercolor: '#0f2c66',
+        font: { color: '#ffffff' },
+      },
     };
 
     void Plotly.react(plotRef.current, traces, layout, {

@@ -18,10 +18,7 @@ type LocationDetailProps = {
 const LocationDetail = ({ candidate, onConfirm, onClear }: LocationDetailProps) => (
   <div className="d-flex flex-column h-100">
     <div className="px-3 pt-3 pb-2 border-bottom">
-      <span
-        className="text-uppercase text-secondary fw-semibold"
-        style={{ fontSize: '0.7rem', letterSpacing: '0.08em' }}
-      >
+      <span className="text-uppercase fw-semibold firo-location-panel-title">
         Selected Location
       </span>
     </div>
@@ -29,7 +26,7 @@ const LocationDetail = ({ candidate, onConfirm, onClear }: LocationDetailProps) 
     {candidate ? (
       <>
         <div className="flex-grow-1 p-3">
-          <Card className="shadow-sm border-0 bg-white">
+          <Card className="firo-location-detail-card bg-white">
             <Card.Body className="p-3">
               <p className="fw-semibold mb-1" style={{ fontSize: '0.95rem' }}>
                 {candidate.name}
@@ -53,16 +50,21 @@ const LocationDetail = ({ candidate, onConfirm, onClear }: LocationDetailProps) 
         </div>
 
         <div className="p-3 border-top d-flex flex-column gap-2">
-          <Button variant="primary" className="w-100" onClick={onConfirm}>
+          <Button variant="primary" className="w-100 firo-primary-btn" onClick={onConfirm}>
             Continue to Analysis
           </Button>
-          <Button variant="outline-secondary" size="sm" className="w-100" onClick={onClear}>
+          <Button
+            variant="outline-secondary"
+            size="sm"
+            className="w-100 firo-secondary-btn"
+            onClick={onClear}
+          >
             Clear Selection
           </Button>
         </div>
       </>
     ) : (
-      <div className="flex-grow-1 d-flex flex-column align-items-center justify-content-center p-3 text-center text-muted">
+      <div className="firo-empty-state flex-grow-1 d-flex flex-column align-items-center justify-content-center p-3 text-center text-muted">
         <p className="mb-0 small">Click a location on the map to select it.</p>
       </div>
     )}
@@ -91,17 +93,14 @@ export const LocationSelectionSection = () => {
   }, []);
 
   return (
-    <div className="d-flex h-100" style={{ minHeight: 0 }}>
+    <div className="firo-location-layout">
       {/* Map — fills available space */}
-      <div className="flex-grow-1 position-relative" style={{ minWidth: 0 }}>
+      <div className="firo-map-pane flex-grow-1 position-relative">
         <FiroLocationsMap selectedLocation={candidate} onSelectLocation={setCandidate} />
       </div>
 
       {/* Right detail panel */}
-      <div
-        className="d-flex flex-column border-start bg-light"
-        style={{ width: '240px', minWidth: '240px' }}
-      >
+      <div className="firo-location-panel d-flex flex-column">
         <LocationDetail candidate={candidate} onConfirm={handleConfirm} onClear={handleClear} />
       </div>
     </div>

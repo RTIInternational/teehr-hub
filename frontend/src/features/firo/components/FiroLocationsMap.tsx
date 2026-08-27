@@ -238,22 +238,22 @@ const FiroLocationsMap = ({ selectedLocation, onSelectLocation }: FiroLocationsM
 
       <div className="position-absolute top-0 start-0 m-3" style={{ zIndex: 2, width: '320px' }}>
         <Form.Control
+          className="shadow-sm firo-map-search"
           size="sm"
           type="text"
           placeholder="Search by location ID or name"
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
-          className="shadow-sm"
         />
         {!!searchTerm && matchedLocations.length > 0 && (
           <div
-            className="bg-white border rounded shadow-sm mt-1"
+            className="firo-map-search-results bg-white border rounded shadow-sm mt-1"
             style={{ maxHeight: '220px', overflowY: 'auto' }}
           >
             {matchedLocations.map(({ feature, location }) => (
               <button
                 key={`${location.primary_location_id}-${feature.id ?? ''}`}
-                className="btn btn-sm text-start w-100 rounded-0 border-0"
+                className="firo-map-search-item btn btn-sm text-start w-100 rounded-0 border-0"
                 onClick={() => selectFeature(feature)}
               >
                 <div className="fw-semibold">{location.name}</div>

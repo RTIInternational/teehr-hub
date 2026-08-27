@@ -35,13 +35,14 @@ export const SeasonQuantileFilters = ({
   const thresholds = useDistinctValues(TABLE, 'threshold');
 
   return (
-    <Card className="mb-3 border-0 shadow-sm">
+    <Card className="firo-filter-card">
       <Card.Body className="py-2 px-3">
         <Row className="g-3 align-items-end">
           <Col xs="auto">
             <Form.Group controlId="firo-season">
-              <Form.Label className="small fw-semibold mb-1">Season</Form.Label>
+              <Form.Label className="firo-filter-label mb-1">Season</Form.Label>
               <Form.Select
+                className="firo-select"
                 size="sm"
                 value={season}
                 onChange={(e) => setSeason(e.target.value)}
@@ -62,8 +63,9 @@ export const SeasonQuantileFilters = ({
 
           <Col xs="auto">
             <Form.Group controlId="firo-quantile">
-              <Form.Label className="small fw-semibold mb-1">Observed Flow Quantile</Form.Label>
+              <Form.Label className="firo-filter-label mb-1">Observed Flow Quantile</Form.Label>
               <Form.Select
+                className="firo-select"
                 size="sm"
                 value={threshold}
                 onChange={(e) => setThreshold(e.target.value)}
