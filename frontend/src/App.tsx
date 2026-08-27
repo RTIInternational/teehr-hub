@@ -11,6 +11,7 @@ import {
   FiroDashboard,
   LocationSelectionSection,
   DetailedAnalysisDeterministicPage,
+  DetailedAnalysisFullDistributionPage,
   DetailedAnalysisEventThresholdsPage,
   TopEventsSection,
 } from '@/features/firo';
@@ -155,6 +156,10 @@ const AppRoutes = () => {
             <Route
               path="detailed-analysis/deterministic"
               element={<DetailedAnalysisDeterministicPage />}
+            />
+            <Route
+              path="detailed-analysis/full-distribution"
+              element={<DetailedAnalysisFullDistributionPage />}
             />
             <Route
               path="detailed-analysis/event-thresholds"

@@ -7,6 +7,11 @@ import './Sidebar.css';
 const ANALYSIS_PAGES = [
   { key: 'deterministic', label: 'Deterministic', path: '/firo/detailed-analysis/deterministic' },
   {
+    key: 'full-distribution',
+    label: 'Full Distribution',
+    path: '/firo/detailed-analysis/full-distribution',
+  },
+  {
     key: 'event-thresholds',
     label: 'Event Thresholds',
     path: '/firo/detailed-analysis/event-thresholds',
