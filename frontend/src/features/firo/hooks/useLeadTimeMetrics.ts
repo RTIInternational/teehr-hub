@@ -22,6 +22,10 @@ export type LeadTimeMetricsRow = {
   root_mean_square_error: number | null;
   relative_bias: number | null;
   pearson_correlation: number | null;
+  probability_of_detection: number | null;
+  false_alarm_ratio: number | null;
+  critical_success_index: number | null;
+  frequency_bias_index: number | null;
   [key: string]: unknown;
 };
 

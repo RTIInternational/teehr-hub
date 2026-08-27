@@ -147,7 +147,7 @@ export const DeterministicPage = () => {
               },
               {
                 key: 'relative_bias',
-                label: 'Bias',
+                label: 'Relative Bias',
                 yAxisLabel: 'Relative Bias',
                 yRangeMode: 'normal',
               },
@@ -156,6 +156,30 @@ export const DeterministicPage = () => {
                 label: 'Correlation',
                 yAxisLabel: 'Pearson Correlation',
                 yRangeMode: 'normal',
+              },
+              {
+                key: 'probability_of_detection',
+                label: 'POD',
+                yAxisLabel: 'Probability of Detection (POD)',
+                yRangeMode: 'tozero',
+              },
+              {
+                key: 'false_alarm_ratio',
+                label: 'FAR',
+                yAxisLabel: 'False Alarm Ratio (FAR)',
+                yRangeMode: 'tozero',
+              },
+              {
+                key: 'critical_success_index',
+                label: 'CSI',
+                yAxisLabel: 'Critical Success Index (CSI)',
+                yRangeMode: 'tozero',
+              },
+              {
+                key: 'frequency_bias_index',
+                label: 'Frequency Bias',
+                yAxisLabel: 'Frequency Bias Index',
+                yRangeMode: 'tozero',
               },
             ] as const
           ).map(({ key, label, yAxisLabel, yRangeMode }) => (
