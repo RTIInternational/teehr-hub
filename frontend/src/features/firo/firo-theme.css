@@ -11,6 +11,7 @@
   --firo-border-soft: #d8e1f2;
   --firo-shadow-soft: 0 12px 30px rgba(6, 18, 49, 0.1);
   --firo-card-radius: 14px;
+  --firo-heatmap-row-height: 20px;
 
   color: var(--firo-ink-main);
   background: radial-gradient(circle at 15% 12%, #f6f8fe 0%, #e9f0fb 55%, #dde8f8 100%);
@@ -308,6 +309,138 @@
 .firo-top-events-placeholder-title {
   color: #1f3769;
   letter-spacing: 0.02em;
+}
+
+.firo-top-events-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: flex-end;
+}
+
+.firo-heatmap-head-row {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  justify-content: space-between;
+  flex-wrap: wrap;
+}
+
+.firo-heatmap-surface {
+  width: 100%;
+  min-height: 620px;
+}
+
+.firo-heatmap-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 100%;
+}
+
+.firo-heatmap-legend {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  align-self: flex-end;
+}
+
+.firo-heatmap-legend-label {
+  font-size: 0.76rem;
+  font-weight: 600;
+  color: var(--firo-ink-muted);
+}
+
+.firo-heatmap-legend-bar {
+  position: relative;
+  width: 180px;
+  height: 12px;
+  border-radius: 999px;
+  overflow: hidden;
+  border: 1px solid rgba(61, 85, 134, 0.14);
+}
+
+.firo-heatmap-legend-bar.is-diverging {
+  background: linear-gradient(90deg, #1f4e8c 0%, #f8f9fb 50%, #cc3a2b 100%);
+}
+
+.firo-heatmap-legend-bar.is-sequential {
+  background: linear-gradient(90deg, #f7fbff 0%, #08519c 100%);
+}
+
+.firo-heatmap-legend-midpoint {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 50%;
+  width: 1px;
+  background: rgba(21, 33, 61, 0.28);
+  transform: translateX(-50%);
+}
+
+.firo-heatmap-grid {
+  display: grid;
+  gap: 2px;
+  align-items: center;
+}
+
+.firo-heatmap-corner {
+  min-height: var(--firo-heatmap-row-height);
+}
+
+.firo-heatmap-x-label {
+  min-height: var(--firo-heatmap-row-height);
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  text-align: center;
+  font-size: 0.68rem;
+  font-weight: 700;
+  line-height: 1.05;
+  color: #375185;
+}
+
+.firo-heatmap-y-label {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  padding-right: 5px;
+  min-height: var(--firo-heatmap-row-height);
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--firo-ink-muted);
+}
+
+.firo-heatmap-cell {
+  min-height: var(--firo-heatmap-row-height);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  border: 1px solid rgba(89, 118, 175, 0.1);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.42);
+  transition:
+    transform 120ms ease,
+    box-shadow 120ms ease;
+}
+
+.firo-heatmap-cell:hover {
+  transform: translateY(-1px);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.42),
+    0 4px 10px rgba(21, 33, 61, 0.08);
+}
+
+.firo-heatmap-cell.is-missing {
+  background: repeating-linear-gradient(
+    -45deg,
+    rgba(220, 228, 246, 0.8),
+    rgba(220, 228, 246, 0.8) 6px,
+    rgba(244, 247, 255, 0.9) 6px,
+    rgba(244, 247, 255, 0.9) 12px
+  );
+  color: #6b7a9a;
+  border-style: dashed;
 }
 
 @keyframes firo-fade-slide {
