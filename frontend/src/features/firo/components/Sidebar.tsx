@@ -1,6 +1,10 @@
+import Form from 'react-bootstrap/Form';
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 
-import { useFiroDashboardStore } from '../store';
+import { useDistinctValues } from '@/shared/queries/distinctValues';
+
+import { useFiroActions, useFiroDashboardStore } from '../store';
+import { formatConfigurationName } from '../utils/formatConfigurationName';
 
 import './Sidebar.css';
 
@@ -17,6 +21,8 @@ const ANALYSIS_PAGES = [
     path: '/firo/detailed-analysis/event-thresholds',
   },
 ];
+
+const METRICS_TABLE = 'locations_metrics';
 
 // ─── Shared button shape ───────────────────────────────────────────────────────
 // active   → blue fill, white text
@@ -49,13 +55,76 @@ const NavButton = ({ label, active = false, disabled = false, onClick }: NavButt
 
 export const Sidebar = () => {
   const selectedLocation = useFiroDashboardStore((s) => s.selectedLocation);
+  const selectedConfigurationName = useFiroDashboardStore((s) => s.selectedConfigurationName);
+  const selectedVariableName = useFiroDashboardStore((s) => s.selectedVariableName);
+  const { setConfigurationName, setVariableName } = useFiroActions();
   const navigate = useNavigate();
   const { pathname } = useLocation();
+
+  const configurationsQuery = useDistinctValues(METRICS_TABLE, 'configuration_name');
+  const variablesQuery = useDistinctValues(METRICS_TABLE, 'variable_name');
+
+  const configurationOptions = (configurationsQuery.data ?? []).filter(
+    (value) => value !== null && value !== 'null' && value !== 'None'
+  );
+  const variableOptions = (variablesQuery.data ?? []).filter(
+    (value) => value !== null && value !== 'null' && value !== 'None'
+  );
+
+  const configurationValue =
+    configurationOptions.includes(selectedConfigurationName) || configurationOptions.length === 0
+      ? selectedConfigurationName
+      : configurationOptions[0];
+
+  const variableValue =
+    variableOptions.includes(selectedVariableName) || variableOptions.length === 0
+      ? selectedVariableName
+      : variableOptions[0];
 
   const analysisDisabled = selectedLocation === null;
 
   return (
     <div className="firo-sidebar d-flex flex-column">
+      <div className="firo-sidebar-section">
+        <span className="firo-sidebar-label">Configuration</span>
+
+        <div className="mt-2 d-flex flex-column gap-2">
+          <Form.Group controlId="firo-sidebar-model">
+            <Form.Label className="firo-sidebar-field-label mb-1">Model</Form.Label>
+            <Form.Select
+              size="sm"
+              className="firo-sidebar-select"
+              value={configurationValue}
+              onChange={(e) => setConfigurationName(e.target.value)}
+              disabled={configurationsQuery.isLoading || configurationOptions.length === 0}
+            >
+              {configurationOptions.map((value) => (
+                <option key={value} value={value}>
+                  {formatConfigurationName(value)}
+                </option>
+              ))}
+            </Form.Select>
+          </Form.Group>
+
+          <Form.Group controlId="firo-sidebar-variable">
+            <Form.Label className="firo-sidebar-field-label mb-1">Variable</Form.Label>
+            <Form.Select
+              size="sm"
+              className="firo-sidebar-select"
+              value={variableValue}
+              onChange={(e) => setVariableName(e.target.value)}
+              disabled={variablesQuery.isLoading || variableOptions.length === 0}
+            >
+              {variableOptions.map((value) => (
+                <option key={value} value={value}>
+                  {value}
+                </option>
+              ))}
+            </Form.Select>
+          </Form.Group>
+        </div>
+      </div>
+
       {/* Header */}
       <div className="firo-sidebar-section">
         <span className="firo-sidebar-label">Workflow</span>

@@ -16,8 +16,6 @@ import TopEventsHeatmap, {
 
 const EVENT_TABLE = 'event_rankings';
 const ALL_THRESHOLDS = 'all';
-const TOP_EVENTS_CONFIGURATION = 'hefs_streamflow_forecast';
-const TOP_EVENTS_VARIABLE = 'streamflow_hourly_inst';
 
 const METRIC_OPTIONS: Array<{ key: TopEventsHeatmapMetric; label: string }> = [
   { key: 'pearson_correlation', label: 'PCC' },
@@ -44,6 +42,8 @@ const intervalStartDate = (eventId: string): string => {
 
 export const TopEventsSection = () => {
   const selectedLocation = useFiroDashboardStore((s) => s.selectedLocation);
+  const selectedConfigurationName = useFiroDashboardStore((s) => s.selectedConfigurationName);
+  const selectedVariableName = useFiroDashboardStore((s) => s.selectedVariableName);
 
   const [threshold, setThreshold] = useState<string>(ALL_THRESHOLDS);
   const [topN, setTopN] = useState<number>(10);
@@ -76,15 +76,15 @@ export const TopEventsSection = () => {
 
   const rankingsQuery = useEventRankings({
     primaryLocationId: selectedLocation?.primary_location_id ?? null,
-    configurationName: TOP_EVENTS_CONFIGURATION,
-    variableName: TOP_EVENTS_VARIABLE,
+    configurationName: selectedConfigurationName,
+    variableName: selectedVariableName,
     threshold: effectiveThreshold,
   });
 
   const heatmapQuery = useEventHeatmap({
     primaryLocationId: selectedLocation?.primary_location_id ?? null,
-    configurationName: TOP_EVENTS_CONFIGURATION,
-    variableName: TOP_EVENTS_VARIABLE,
+    configurationName: selectedConfigurationName,
+    variableName: selectedVariableName,
     threshold: effectiveThreshold,
   });
 

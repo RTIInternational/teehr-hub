@@ -2,6 +2,7 @@ import Plotly from 'plotly.js-dist-min';
 import { useEffect, useRef } from 'react';
 
 import type { LeadTimeMetricsRow } from '../hooks/useLeadTimeMetrics';
+import { formatConfigurationName } from '../utils/formatConfigurationName';
 
 type LeadTimeMetricChartProps = {
   data: LeadTimeMetricsRow[];
@@ -9,17 +10,6 @@ type LeadTimeMetricChartProps = {
   yAxisLabel: string;
   yRangeMode?: 'tozero' | 'normal' | 'nonnegative';
   height?: React.CSSProperties['height'];
-};
-
-/**
- * Normalize a raw configuration_name to a short display label.
- * Falls back to the raw value for unrecognised strings.
- */
-const formatConfigName = (raw: string): string => {
-  const lower = raw.toLowerCase();
-  if (lower.includes('benchmark')) return 'Benchmark';
-  if (lower.includes('hefs')) return 'HEFS';
-  return raw;
 };
 
 /**
@@ -68,7 +58,7 @@ const LeadTimeMetricChart = ({
       const rows = byConfig.get(configName)!;
       const color = BASE_COLORS[colorIdx % BASE_COLORS.length];
       colorIdx++;
-      const displayName = formatConfigName(configName);
+      const displayName = formatConfigurationName(configName);
 
       traces.push({
         x: rows.map((r) => secondsToHours(r.forecast_lead_time as number) / 24), // days

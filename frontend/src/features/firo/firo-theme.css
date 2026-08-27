@@ -57,6 +57,26 @@
   color: #dbe6ff;
 }
 
+.firo-sidebar-field-label {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: #dbe6ff;
+  letter-spacing: 0.01em;
+  text-shadow: 0 1px 1px rgba(8, 20, 48, 0.22);
+}
+
+.firo-sidebar .form-label {
+  color: #dbe6ff;
+}
+
+.firo-theme .form-select.firo-sidebar-select {
+  border: 1px solid rgba(220, 232, 255, 0.45);
+  background: rgba(255, 255, 255, 0.92);
+  color: #1f3769;
+  border-radius: 8px;
+  font-size: 0.78rem;
+}
+
 .firo-subheading {
   border-left: 2px solid rgba(236, 243, 255, 0.72);
   padding-left: 0.45rem;
@@ -441,6 +461,46 @@
   );
   color: #6b7a9a;
   border-style: dashed;
+}
+
+.firo-heatmap-accordion .accordion-item {
+  border: 0;
+  background: transparent;
+  display: flex;
+  flex-direction: column-reverse;
+}
+
+.firo-heatmap-accordion .accordion-header {
+  margin-top: 10px;
+}
+
+.firo-heatmap-accordion .accordion-button {
+  justify-content: center;
+  background: #f4f8ff;
+  border: 1px solid #d1dcf3;
+  border-radius: 10px;
+  color: #355689;
+  font-size: 0.78rem;
+  font-weight: 700;
+  box-shadow: none;
+  padding: 0.45rem 0.8rem;
+}
+
+.firo-heatmap-accordion .accordion-button::after {
+  margin-left: 0.55rem;
+}
+
+.firo-heatmap-accordion .accordion-button:not(.collapsed) {
+  color: #1d3f73;
+  background: #edf4ff;
+}
+
+.firo-heatmap-accordion .accordion-button:focus {
+  box-shadow: 0 0 0 0.2rem rgba(29, 78, 216, 0.12);
+}
+
+.firo-heatmap-accordion .accordion-body {
+  padding: 0;
 }
 
 @keyframes firo-fade-slide {
