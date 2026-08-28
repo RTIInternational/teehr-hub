@@ -5,10 +5,10 @@ import Col from 'react-bootstrap/Col';
 import Row from 'react-bootstrap/Row';
 import Spinner from 'react-bootstrap/Spinner';
 
+import LeadTimeMetricChart from '../components/LeadTimeMetricChart';
+import { NULL_VALUE, SeasonQuantileFilters } from '../components/SeasonQuantileFilters';
 import { useLeadTimeMetrics } from '../hooks/useLeadTimeMetrics';
 import { useFiroDashboardStore } from '../store';
-import LeadTimeMetricChart from './LeadTimeMetricChart';
-import { NULL_VALUE, SeasonQuantileFilters } from './SeasonQuantileFilters';
 
 export const EventThresholdsPage = () => {
   const selectedLocation = useFiroDashboardStore((s) => s.selectedLocation);

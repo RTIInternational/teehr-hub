@@ -5,12 +5,14 @@ import Col from 'react-bootstrap/Col';
 import Row from 'react-bootstrap/Row';
 import Spinner from 'react-bootstrap/Spinner';
 
+import LeadTimeMetricChart from '../components/LeadTimeMetricChart';
+import { NULL_VALUE, SeasonQuantileFilters } from '../components/SeasonQuantileFilters';
 import { useLeadTimeMetrics } from '../hooks/useLeadTimeMetrics';
 import { useFiroDashboardStore } from '../store';
-import LeadTimeMetricChart from './LeadTimeMetricChart';
-import { NULL_VALUE, SeasonQuantileFilters } from './SeasonQuantileFilters';
 
-export const FullDistributionPage = () => {
+// ─── Page ─────────────────────────────────────────────────────────────────────
+
+export const DeterministicPage = () => {
   const selectedLocation = useFiroDashboardStore((s) => s.selectedLocation);
 
   const [season, setSeason] = useState<string>(NULL_VALUE);
@@ -34,7 +36,7 @@ export const FullDistributionPage = () => {
     <div className="firo-page">
       {/* Page header */}
       <div className="firo-page-header">
-        <h6 className="firo-page-title fw-semibold">Full Distribution</h6>
+        <h6 className="firo-page-title fw-semibold">Deterministic</h6>
         <p className="firo-page-subtitle small">{selectedLocation.name}</p>
       </div>
 
@@ -46,7 +48,7 @@ export const FullDistributionPage = () => {
         setThreshold={setThreshold}
       />
 
-      {/* 2-chart grid */}
+      {/* 2×2 chart grid */}
       {isLoading && (
         <div className="d-flex align-items-center justify-content-center flex-grow-1 text-muted">
           <Spinner animation="border" size="sm" className="me-2" />
@@ -71,16 +73,52 @@ export const FullDistributionPage = () => {
           {(
             [
               {
-                key: 'mean_crps_ensemble',
-                label: 'CRPS',
-                yAxisLabel: 'Continuous Ranked Probability Score (CRPS)',
+                key: 'mean_absolute_error',
+                label: 'MAE',
+                yAxisLabel: 'Mean Absolute Error (MAE)',
                 yRangeMode: 'tozero',
               },
               {
-                key: 'mean_crps_ensemble_skill_score',
-                label: 'CRPSS',
-                yAxisLabel: 'CRPS Skill Score (CRPSS)',
+                key: 'root_mean_square_error',
+                label: 'RMSE',
+                yAxisLabel: 'Root Mean Square Error (RMSE)',
+                yRangeMode: 'tozero',
+              },
+              {
+                key: 'relative_bias',
+                label: 'Relative Bias',
+                yAxisLabel: 'Relative Bias',
                 yRangeMode: 'normal',
+              },
+              {
+                key: 'pearson_correlation',
+                label: 'Correlation',
+                yAxisLabel: 'Pearson Correlation',
+                yRangeMode: 'normal',
+              },
+              {
+                key: 'probability_of_detection',
+                label: 'POD',
+                yAxisLabel: 'Probability of Detection (POD)',
+                yRangeMode: 'tozero',
+              },
+              {
+                key: 'false_alarm_ratio',
+                label: 'FAR',
+                yAxisLabel: 'False Alarm Ratio (FAR)',
+                yRangeMode: 'tozero',
+              },
+              {
+                key: 'critical_success_index',
+                label: 'CSI',
+                yAxisLabel: 'Critical Success Index (CSI)',
+                yRangeMode: 'tozero',
+              },
+              {
+                key: 'frequency_bias_index',
+                label: 'Frequency Bias',
+                yAxisLabel: 'Frequency Bias Index',
+                yRangeMode: 'tozero',
               },
             ] as const
           ).map(({ key, label, yAxisLabel, yRangeMode }) => (

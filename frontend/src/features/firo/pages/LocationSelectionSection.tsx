@@ -4,8 +4,8 @@ import Card from 'react-bootstrap/Card';
 
 import type { MapLocation } from '@/shared/types/locations';
 
+import FiroLocationsMap from '../components/FiroLocationsMap';
 import { useLocationSelection } from '../hooks/useLocationSelection';
-import FiroLocationsMap from './FiroLocationsMap';
 
 // ─── Location detail panel ────────────────────────────────────────────────────
 
