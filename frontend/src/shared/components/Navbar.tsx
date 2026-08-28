@@ -19,11 +19,16 @@ const Navbar = () => {
       '/forecast': 'Forecast Analysis',
       '/data': 'Data Availability',
       '/nwmd': 'National Water Model Diagnostics',
-      '/firo': 'Forecast/Hindcast Performance',
+      '/firo': 'FIRO Diagnostics',
       '/admin': 'Admin Page',
       '/admin/api-keys': 'API Keys',
       '/admin/keycloak': 'Keycloak Admin',
     };
+
+    const isFiroRoute = location.pathname.split('/').filter(Boolean)[0] === 'firo';
+    const pageLabel = isFiroRoute
+      ? 'FIRO Diagnostics'
+      : (pathMap[location.pathname] ?? 'Dashboard');
 
     if (isHome) return null;
 
@@ -44,7 +49,7 @@ const Navbar = () => {
           </li>
           {!isHubMainPage && (
             <li className="breadcrumb-item active text-white" aria-current="page">
-              {pathMap[location.pathname] || 'Dashboard'}
+              {pageLabel}
             </li>
           )}
         </ol>
