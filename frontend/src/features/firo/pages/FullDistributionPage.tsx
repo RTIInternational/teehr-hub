@@ -34,7 +34,7 @@ export const FullDistributionPage = () => {
     <div className="firo-page">
       {/* Page header */}
       <div className="firo-page-header">
-        <h6 className="firo-page-title fw-semibold">Full Distribution</h6>
+        <h6 className="firo-page-title fw-semibold">Full Distribution Metrics</h6>
         <p className="firo-page-subtitle small">{selectedLocation.name}</p>
       </div>
 

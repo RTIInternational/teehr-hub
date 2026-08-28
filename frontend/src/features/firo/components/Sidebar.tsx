@@ -9,15 +9,19 @@ import { formatConfigurationName } from '../utils/formatConfigurationName';
 import './Sidebar.css';
 
 const ANALYSIS_PAGES = [
-  { key: 'deterministic', label: 'Deterministic', path: '/firo/detailed-analysis/deterministic' },
+  {
+    key: 'deterministic',
+    label: 'Deterministic Analysis',
+    path: '/firo/detailed-analysis/deterministic',
+  },
   {
     key: 'full-distribution',
-    label: 'Full Distribution',
+    label: 'Full Distribution Metrics',
     path: '/firo/detailed-analysis/full-distribution',
   },
   {
     key: 'event-thresholds',
-    label: 'Event Thresholds',
+    label: 'Event Threshold Metrics',
     path: '/firo/detailed-analysis/event-thresholds',
   },
 ];
@@ -173,7 +177,7 @@ export const Sidebar = () => {
 
           {/* 2 — Top Events */}
           <NavButton
-            label="Top Events Performance"
+            label="Top Events Performance Analysis"
             active={pathname.startsWith('/firo/top-events')}
             disabled={analysisDisabled}
             onClick={() => navigate('/firo/top-events')}

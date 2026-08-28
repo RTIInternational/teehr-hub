@@ -6,13 +6,13 @@ import Spinner from 'react-bootstrap/Spinner';
 
 import { useDistinctValues } from '@/shared/queries/distinctValues';
 
-import TopEventsHeatmap, {
-  type TopEventSummary,
-  type TopEventsHeatmapMetric,
-} from '../components/TopEventsHeatmap';
 import { useEventHeatmap } from '../hooks/useEventHeatmap';
 import { useEventRankings } from '../hooks/useEventRankings';
 import { useFiroDashboardStore } from '../store';
+import TopEventsHeatmap, {
+  type TopEventSummary,
+  type TopEventsHeatmapMetric,
+} from './TopEventsHeatmap';
 
 const EVENT_TABLE = 'event_rankings';
 const ALL_THRESHOLDS = 'all';

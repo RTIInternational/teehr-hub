@@ -34,7 +34,7 @@ export const EventThresholdsPage = () => {
     <div className="firo-page">
       {/* Page header */}
       <div className="firo-page-header">
-        <h6 className="firo-page-title fw-semibold">Event Thresholds</h6>
+        <h6 className="firo-page-title fw-semibold">Event Threshold Metrics</h6>
         <p className="firo-page-subtitle small">{selectedLocation.name}</p>
       </div>
 

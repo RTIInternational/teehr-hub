@@ -36,7 +36,7 @@ export const DeterministicPage = () => {
     <div className="firo-page">
       {/* Page header */}
       <div className="firo-page-header">
-        <h6 className="firo-page-title fw-semibold">Deterministic</h6>
+        <h6 className="firo-page-title fw-semibold">Deterministic Analysis</h6>
         <p className="firo-page-subtitle small">{selectedLocation.name}</p>
       </div>
 

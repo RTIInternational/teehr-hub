@@ -30,8 +30,8 @@
 }
 
 .firo-sidebar {
-  width: 260px;
-  min-width: 260px;
+  width: 300px;
+  min-width: 300px;
   height: 100%;
   overflow-y: auto;
   padding: 14px 12px;
@@ -543,8 +543,8 @@
 
 @media (max-width: 1200px) {
   .firo-sidebar {
-    width: 232px;
-    min-width: 232px;
+    width: 270px;
+    min-width: 270px;
   }
 
   .firo-location-panel {
