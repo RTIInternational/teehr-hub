@@ -17,10 +17,10 @@ import TopEventsHeatmap, {
 const EVENT_TABLE = 'event_rankings';
 const ALL_THRESHOLDS = 'all';
 
-const METRIC_OPTIONS: Array<{ key: TopEventsHeatmapMetric; label: string }> = [
-  { key: 'pearson_correlation', label: 'PCC' },
-  { key: 'root_mean_square_error', label: 'RMSE' },
-  { key: 'relative_bias', label: 'Bias' },
+const METRIC_OPTIONS: Array<{ key: TopEventsHeatmapMetric; label: string; fullLabel: string }> = [
+  { key: 'pearson_correlation', label: 'PCC', fullLabel: 'Pearson Correlation Coefficient' },
+  { key: 'root_mean_square_error', label: 'RMSE', fullLabel: 'Root Mean Square Error' },
+  { key: 'relative_bias', label: 'Bias', fullLabel: 'Relative Bias' },
 ];
 
 const toNumber = (value: unknown): number | null => {
@@ -200,7 +200,8 @@ export const TopEventsSection = () => {
                 Event vs Lead Time Heatmap
               </span>
               <p className="firo-page-subtitle small mb-0">
-                X: Event Date | Y: Lead Time | Color: Metric Value
+                X: Event Date | Y: Lead Time | Color:{' '}
+                {METRIC_OPTIONS.find((o) => o.key === metricKey)?.fullLabel ?? 'Metric Value'}
               </p>
             </div>
 
