@@ -6,6 +6,7 @@ import maplibregl, {
   type MapLayerMouseEvent,
 } from 'maplibre-gl';
 import React, { useEffect, useRef, useCallback, useMemo, useState, type Dispatch } from 'react';
+
 import 'maplibre-gl/dist/maplibre-gl.css';
 import MapLegend from '@/shared/components/MapLegend';
 import { useLocations } from '@/shared/queries/locations';

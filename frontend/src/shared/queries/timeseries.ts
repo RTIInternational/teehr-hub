@@ -1,6 +1,8 @@
 import { useQuery } from '@tanstack/react-query';
+
 import { apiService } from '@/services/api';
 import { ISO_TO_DURATION_NAME, isTimestepVariable } from '@/shared/utils/durationUtils';
+
 import type { TimeseriesResponse, Timeseries, TimeseriesRequestFilters } from '../types/timeseries';
 
 const fetchPrimaryTimeseries = async (filters: TimeseriesRequestFilters) => {

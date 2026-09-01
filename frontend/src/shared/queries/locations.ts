@@ -1,5 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
+
 import { apiService } from '@/services/api';
+
 import type { LocationsResponse } from '../types/locations';
 import type { MetricsFilters } from '../types/metrics';
 

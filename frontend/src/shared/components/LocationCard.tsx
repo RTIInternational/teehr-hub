@@ -1,4 +1,5 @@
 import { Card, CloseButton } from 'react-bootstrap';
+
 import type { MapLocation } from '@/shared/types/locations';
 
 type LocationCardProps = {

@@ -1,5 +1,6 @@
 import { Container, Alert } from 'react-bootstrap';
 import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
+
 import { Home, DashboardsHome } from '@/components/common';
 import { DataDashboard } from '@/components/dashboards/data_management';
 import { NwmdDashboard } from '@/components/dashboards/nwmd/index';

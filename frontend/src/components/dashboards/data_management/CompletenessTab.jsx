@@ -15,10 +15,11 @@
  */
 import { useState, useCallback, useEffect } from 'react';
 import { Form } from 'react-bootstrap';
-import SimpleMapPanel from './SimpleMapPanel';
-import CompletenessHeatmap from './CompletenessHeatmap';
+
 import { apiService } from '../../../services/api';
 import { DashboardPanel } from '../../common/dashboard';
+import CompletenessHeatmap from './CompletenessHeatmap';
+import SimpleMapPanel from './SimpleMapPanel';
 
 const CONFIG_OPTIONS = ['usgs_observations'];
 const VARIABLE_OPTIONS = ['streamflow_hourly_inst'];

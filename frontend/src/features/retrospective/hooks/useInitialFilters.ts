@@ -1,7 +1,9 @@
 import { useEffect } from 'react';
+
 import { RETROSPECTIVE_DASHBOARD_DEFAULTS, selectDefault } from '@/config/dashboardDefaults';
 import { useConfigurations } from '@/shared/queries/configurations';
 import { useVariables } from '@/shared/queries/variables';
+
 import { ActionTypes, useDashboard } from '../DashboardContext';
 
 /**

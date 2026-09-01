@@ -6,6 +6,7 @@
  */
 
 import type { FeatureCollection } from 'geojson';
+
 import type { CqlFilters } from '../types/ogc';
 import type { QueryablesResponse, TableProperties } from '../types/queryables';
 

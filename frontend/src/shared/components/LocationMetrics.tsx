@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Card, Form, ButtonGroup, Button } from 'react-bootstrap';
+
 import MetricsTable from '@/shared/components/MetricsTable';
 import { useLocationMetrics } from '@/shared/queries/metrics';
 import { useTableProperties } from '@/shared/queries/queryables';

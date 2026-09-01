@@ -1,5 +1,6 @@
 import Plotly from 'plotly.js-dist-min';
 import { useEffect, useRef, useState } from 'react';
+
 import { apiService } from '../../../services/api';
 
 const CompletenessHeatmap = ({ configurationName, variableName, onHover = null }) => {

@@ -1,5 +1,6 @@
 import maplibregl from 'maplibre-gl';
 import { useEffect, useRef, useCallback, useMemo, useState } from 'react';
+
 import 'maplibre-gl/dist/maplibre-gl.css';
 import MapLegend from '../../../shared/components/MapLegend';
 import { getMetricColorExpression, getMetricLabel } from '../../../shared/utils/mapMetrics';
