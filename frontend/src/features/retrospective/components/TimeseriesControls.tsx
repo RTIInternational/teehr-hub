@@ -161,7 +161,10 @@ const TimeseriesControls = ({
                 type="datetime-local"
                 size="sm"
                 value={timeseriesFilters.primary.start_date || ''}
-                onChange={(e) => handlePrimaryFilterChange('start_date', e.target.value || null)}
+                onChange={(e) => {
+                  handlePrimaryFilterChange('start_date', e.target.value || null);
+                  handleSecondaryFilterChange('start_date', e.target.value || null);
+                }}
               />
             </Form.Group>
           </Col>
@@ -174,7 +177,10 @@ const TimeseriesControls = ({
                 type="datetime-local"
                 size="sm"
                 value={timeseriesFilters.primary.end_date || ''}
-                onChange={(e) => handlePrimaryFilterChange('end_date', e.target.value || null)}
+                onChange={(e) => {
+                  handlePrimaryFilterChange('end_date', e.target.value || null);
+                  handleSecondaryFilterChange('end_date', e.target.value || null);
+                }}
               />
             </Form.Group>
           </Col>

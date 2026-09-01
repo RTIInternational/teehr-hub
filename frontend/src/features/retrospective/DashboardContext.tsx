@@ -67,6 +67,8 @@ const initialState: DashboardState = {
     secondary: {
       configurations: [], // Array for multi-select
       variables: [],
+      start_date: DEFAULT_START_DATE,
+      end_date: DEFAULT_END_DATE,
     },
   },
 
