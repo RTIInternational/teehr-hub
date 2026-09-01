@@ -6,6 +6,7 @@ import { Button, ButtonGroup } from 'react-bootstrap';
 import MultiSelectDropdown from '@/shared/components/MultiSelectDropdown';
 import SharedDataTable from '@/shared/components/SharedDataTable';
 import type { TableProperties } from '@/shared/types/queryables';
+import { formatUnknownValueForDisplay } from '@/shared/utils/formatters';
 
 import './MetricsTable.css';
 
@@ -16,9 +17,9 @@ type MetricsTableProps = {
   metrics?: { [name: string]: unknown }[];
   loading: boolean;
   error?: string | null;
-  title: string;
-  emptyMessage: string;
-  showTitle: boolean;
+  title?: string;
+  emptyMessage?: string;
+  showTitle?: boolean;
   tableProperties: TableProperties | null;
   viewMode: 'filters' | 'plot' | 'table';
   onViewModeChange: ((value: 'filters' | 'plot' | 'table') => void) | null;
@@ -26,14 +27,14 @@ type MetricsTableProps = {
 
 const MetricsTable = ({
   metrics = [],
-  loading = false,
+  loading,
   error = null,
   title = 'Metrics',
   emptyMessage = 'No metrics available for this location.',
   showTitle = true,
-  tableProperties = null, // Contains group_by and metrics info for pivoting
-  viewMode = 'table', // Allow external control
-  onViewModeChange = null, // Callback for view mode changes
+  tableProperties, // Contains group_by and metrics info for pivoting
+  viewMode, // Allow external control
+  onViewModeChange, // Callback for view mode changes
 }: MetricsTableProps) => {
   const [internalViewMode, setInternalViewMode] = useState('table');
   const currentViewMode = onViewModeChange ? viewMode : internalViewMode;
@@ -48,7 +49,19 @@ const MetricsTable = ({
     direction: 'asc',
   });
   const [filters, setFilters] = useState<Record<number, string[]>>({});
-  const [selectedMetrics, setSelectedMetrics] = useState<string[]>([]);
+  const [userSelectedMetrics, setUserSelectedMetrics] = useState<string[] | null>(null);
+
+  const availableMetrics = tableProperties?.metrics;
+  const selectedMetrics = useMemo(() => {
+    const currentMetrics = availableMetrics ?? [];
+
+    if (userSelectedMetrics === null) {
+      return currentMetrics;
+    }
+
+    const availableMetricSet = new Set(currentMetrics);
+    return userSelectedMetrics.filter((metric) => availableMetricSet.has(metric));
+  }, [userSelectedMetrics, availableMetrics]);
 
   // Function to parse duration for sorting
   const parseDurationForSort = useCallback((durationStr: string) => {
@@ -71,7 +84,7 @@ const MetricsTable = ({
 
     // Don't format forecast_lead_time_bin - show raw values
     if (header.toLowerCase().includes('forecast_lead_time_bin')) {
-      return String(value);
+      return formatUnknownValueForDisplay(value, { nullishText: 'N/A' });
     }
 
     // Format numbers
@@ -79,7 +92,7 @@ const MetricsTable = ({
       return value.toFixed(4);
     }
 
-    return String(value);
+    return formatUnknownValueForDisplay(value, { nullishText: 'N/A' });
   }, []);
 
   // Sorting function
@@ -96,19 +109,12 @@ const MetricsTable = ({
     setFilters({});
   };
 
-  // Initialize selectedMetrics with all metrics when tableProperties changes
-  useEffect(() => {
-    if (tableProperties && tableProperties?.metrics?.length > 0) {
-      setSelectedMetrics(tableProperties.metrics.slice());
-    }
-  }, [tableProperties]);
-
   // Memoized lead time bin field detection
   const leadTimeBinField = useMemo(() => {
     if (!tableProperties?.group_by) return null;
 
     return (
-      tableProperties.group_by.find((field) => {
+      tableProperties?.group_by.find((field) => {
         const lowerField = field.toLowerCase();
         return (
           lowerField.includes('forecast_lead_time_bin') ||
@@ -247,7 +253,7 @@ const MetricsTable = ({
     if (!rawRows || rawRows.length === 0 || !tableProperties?.group_by) return {};
 
     const uniqueValues: { [index: number]: string[] } = {};
-    const groupByLength = tableProperties.group_by.length;
+    const groupByLength = tableProperties?.group_by.length;
 
     try {
       for (let columnIndex = 0; columnIndex < groupByLength; columnIndex++) {
@@ -469,10 +475,12 @@ const MetricsTable = ({
         autosize: true,
       };
 
-      Plotly.react(plotRef.current, plotData, layout, {
+      void Plotly.react(plotRef.current, plotData, layout, {
         displayModeBar: true,
         modeBarButtonsToRemove: ['pan2d', 'lasso2d', 'select2d'],
         responsive: true,
+      }).catch((error) => {
+        console.error('MetricsTable: Failed to render plot', error);
       });
     } else if (currentViewMode === 'table' && plotRef.current) {
       // Clear the plot when switching to table mode
@@ -580,28 +588,34 @@ const MetricsTable = ({
             {/* Metrics filter section - moved to top */}
             {tableProperties?.metrics?.length > 0 && (
               <div className="col-12 mb-2">
-                <label className="form-label fw-bold mb-1">Select Metrics</label>
+                <div id="metrics-filter-label" className="form-label fw-bold mb-1">
+                  Select Metrics
+                </div>
                 <MultiSelectDropdown
                   options={tableProperties.metrics}
                   selected={selectedMetrics}
-                  onChange={setSelectedMetrics}
+                  onChange={setUserSelectedMetrics}
                   allSelectedText="All metrics"
                   noneSelectedText="No metrics"
+                  labelledBy="metrics-filter-label"
                 />
               </div>
             )}
 
             {/* Group by column filters */}
             <div className="col-12 mb-1">
-              <label className="form-label fw-bold mb-1 text-muted small">Filter by Column</label>
+              <div className="form-label fw-bold mb-1 text-muted small">Filter by Column</div>
             </div>
             {headers.slice(0, tableProperties.group_by.length).map((header, index) => {
               const uniqueValues = uniqueValuesByColumn[index] || [];
               const selectedValues = filters[index] || [];
+              const filterLabelId = `group-by-filter-${index}-label`;
 
               return (
                 <div key={index} className="col-lg-4 col-md-6 mb-2">
-                  <label className="form-label fw-bold small mb-1">{header}</label>
+                  <div id={filterLabelId} className="form-label fw-bold small mb-1">
+                    {header}
+                  </div>
                   <MultiSelectDropdown
                     options={uniqueValues}
                     selected={selectedValues}
@@ -610,6 +624,7 @@ const MetricsTable = ({
                     }
                     allSelectedText="All"
                     noneSelectedText="All"
+                    labelledBy={filterLabelId}
                   />
                 </div>
               );
@@ -662,10 +677,7 @@ const MetricsTable = ({
             >
               <span className="text-muted">
                 Active filters:{' '}
-                {
-                  Object.entries(filters).filter(([_, f]) => (Array.isArray(f) ? f.length > 0 : f))
-                    .length
-                }
+                {Object.values(filters).filter((f) => (Array.isArray(f) ? f.length > 0 : f)).length}
               </span>
               <button
                 className="btn btn-sm btn-outline-secondary ms-2"
@@ -691,8 +703,11 @@ const MetricsTable = ({
               };
             }}
             renderHeaderCell={(header, index) => (
+              // should be button, but need to work out styling conflicts
+              // oxlint-disable-next-line jsx-a11y/no-static-element-interactions
               <div
                 className="sortable-header"
+                onKeyDown={() => handleSort(index, header)}
                 onClick={() => handleSort(index, header)}
                 style={{
                   cursor: 'pointer',

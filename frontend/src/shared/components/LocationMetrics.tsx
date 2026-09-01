@@ -11,7 +11,7 @@ type LocationMetricsProps = {
   tables: string[];
 };
 
-const LocationMetrics = ({ selectedLocation, tables = [] }: LocationMetricsProps) => {
+const LocationMetrics = ({ selectedLocation, tables }: LocationMetricsProps) => {
   const { data: tableProperties = {} } = useTableProperties(tables);
 
   // State for selected table and view mode

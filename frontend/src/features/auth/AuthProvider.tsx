@@ -60,7 +60,7 @@ export const AuthProvider = ({ children }: React.PropsWithChildren) => {
       }
     };
 
-    boot();
+    void boot();
 
     return () => {
       mounted = false;

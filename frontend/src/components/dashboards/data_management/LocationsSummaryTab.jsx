@@ -251,7 +251,7 @@ const LocationsSummaryTab = ({ isActive = true }) => {
         const joined = locItems.map((loc) => ({
           location_id: loc.id,
           name: loc.name,
-          ...(attrMap[loc.id] || {}),
+          ...attrMap[loc.id],
         }));
         setRows(joined);
       })

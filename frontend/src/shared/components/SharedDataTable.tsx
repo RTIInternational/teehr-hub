@@ -1,5 +1,7 @@
 import type React from 'react';
 
+import { formatUnknownValueForDisplay } from '@/shared/utils/formatters';
+
 const defaultWrapperStyle: React.CSSProperties = {
   overflowY: 'auto',
   flex: 1,
@@ -145,7 +147,9 @@ const SharedDataTable = <TRow, THeader>({
                     >
                       {renderCell
                         ? renderCell(row, header, rowIndex, headerIndex)
-                        : String(resolveDefaultCellValue(row, header, headerIndex) ?? '')}
+                        : formatUnknownValueForDisplay(
+                            resolveDefaultCellValue(row, header, headerIndex)
+                          )}
                     </td>
                   );
                 })}
