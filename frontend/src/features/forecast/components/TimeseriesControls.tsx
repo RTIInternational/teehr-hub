@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Form, Row, Col, Button, Tabs, Tab } from 'react-bootstrap';
+
 import MultiSelectDropdown from '@/shared/components/MultiSelectDropdown';
 import { useConfigurations } from '@/shared/queries/configurations';
 import { useVariables } from '@/shared/queries/variables';

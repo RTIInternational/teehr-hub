@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Card, Spinner, ButtonGroup, Button } from 'react-bootstrap';
+
 import PlotlyChart from '@/shared/components/PlotlyChart';
 import { usePrimaryTimeseries, useSecondaryTimeseries } from '@/shared/queries/timeseries';
 import type { TimeseriesRequestFilters, TimeseriesState } from '@/shared/types/timeseries';

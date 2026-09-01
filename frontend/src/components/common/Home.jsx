@@ -1,8 +1,9 @@
 import { Container, Row, Col, Card, Accordion } from 'react-bootstrap';
-import teehrCloudVennDiagram from '../../assets/teehr-cloud-venn-diagram.png';
-import teehrIcebergDiagram from '../../assets/data-model-iceberg.png';
+
 import teehrCloudServicesDiagram from '../../assets/cloud-services-image.png';
 import teehrDashboardsDiagram from '../../assets/dashboard-snippet-image.png';
+import teehrIcebergDiagram from '../../assets/data-model-iceberg.png';
+import teehrCloudVennDiagram from '../../assets/teehr-cloud-venn-diagram.png';
 
 const Home = () => {
   return (

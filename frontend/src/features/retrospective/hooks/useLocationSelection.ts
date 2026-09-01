@@ -1,4 +1,5 @@
 import { useCallback } from 'react';
+
 import { useDashboard, ActionTypes } from '@/features/retrospective/DashboardContext';
 import type { MapLocation } from '@/shared/types/locations';
 

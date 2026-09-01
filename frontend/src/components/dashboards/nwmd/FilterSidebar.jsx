@@ -1,7 +1,8 @@
 import { Form } from 'react-bootstrap';
+
+import { useTableProperties } from '../../../shared/queries/queryables';
 import LeadTimeRangeFilter from './LeadTimeRangeFilter';
 import { NWMD_METRICS } from './utils';
-import { useTableProperties } from '../../../shared/queries/queryables';
 
 const NULL_OPTION = '__NULL__';
 const ALT_HYPOTHESIS_OPTIONS = [

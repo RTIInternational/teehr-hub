@@ -1,4 +1,5 @@
 import type { Feature, Point } from 'geojson';
+
 import type { OgcLink } from './ogc';
 
 export type MetricsFeature = Feature<Point, MetricsProperties>;

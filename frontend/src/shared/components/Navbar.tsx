@@ -1,5 +1,6 @@
 import { Dropdown } from 'react-bootstrap';
 import { Link, useLocation } from 'react-router-dom';
+
 import { useAuth } from '@/features/auth';
 
 const JUPYTERHUB_URL =

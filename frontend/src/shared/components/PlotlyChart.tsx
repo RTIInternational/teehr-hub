@@ -1,5 +1,6 @@
 import Plotly from 'plotly.js-dist-min';
 import { useEffect, useRef } from 'react';
+
 import type { MapLocation } from '@/shared/types/locations';
 import type { TimeseriesFilters, TimeseriesResponse } from '@/shared/types/timeseries';
 import { formatVariableName, formatUnitName, getYAxisTitle } from '@/shared/utils/formatters';

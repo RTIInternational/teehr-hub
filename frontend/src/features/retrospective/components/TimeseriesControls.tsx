@@ -1,4 +1,5 @@
 import { Form, Row, Col, Button } from 'react-bootstrap';
+
 import MultiSelectDropdown from '@/shared/components/MultiSelectDropdown';
 import { useConfigurations } from '@/shared/queries/configurations';
 import { useVariables } from '@/shared/queries/variables';

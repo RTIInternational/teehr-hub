@@ -1,4 +1,5 @@
 import { useEffect } from 'react';
+
 import { FORECAST_DASHBOARD_DEFAULTS, selectDefault } from '@/config/dashboardDefaults';
 import { ActionTypes, useDashboard } from '@/features/forecast/DashboardContext';
 import { useConfigurations } from '@/shared/queries/configurations';

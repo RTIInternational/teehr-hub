@@ -1,6 +1,7 @@
 import { Form } from 'react-bootstrap';
-import { NWMD_METRICS } from './utils';
+
 import { useTableProperties } from '../../../shared/queries/queryables';
+import { NWMD_METRICS } from './utils';
 
 export const CdfSidebar = ({ state, tables, plotIds, setCdfPlotMetric }) => {
   const tableProperties = useTableProperties(tables);

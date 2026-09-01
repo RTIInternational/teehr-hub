@@ -12,11 +12,12 @@
  */
 import { useEffect, useState, useCallback, useMemo } from 'react';
 import { Spinner, Alert } from 'react-bootstrap';
-import SimpleMapPanel from './SimpleMapPanel';
-import { apiService } from '../../../services/api';
+
 import { useSortableTable } from '../../../hooks/useSortableTable';
-import { DashboardPanel } from '../../common/dashboard';
+import { apiService } from '../../../services/api';
 import SharedDataTable from '../../../shared/components/SharedDataTable';
+import { DashboardPanel } from '../../common/dashboard';
+import SimpleMapPanel from './SimpleMapPanel';
 
 // ── Helpers ────────────────────────────────────────────────────────────────
 const fmt = (val) => {

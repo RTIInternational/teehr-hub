@@ -1,4 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
+
 import { apiService } from '@/services/api';
 import { extractTableProperties } from '@/shared/utils/ogcTransformers';
 
