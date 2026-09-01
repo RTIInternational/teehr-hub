@@ -1,9 +1,9 @@
 // API configuration - OGC-compliant endpoints
-import { ensureFreshToken, getKeycloak } from '../auth/keycloak';
+import { ensureFreshToken, getKeycloak } from '../features/auth';
 import {
   groupPrimaryTimeseriesItems,
   groupSecondaryTimeseriesItems,
-} from '../utils/timeseries';
+} from '../shared/utils/timeseries';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8000';
 const API_KEY = import.meta.env.VITE_API_KEY || '';
@@ -32,7 +32,7 @@ const apiCall = async (endpoint, options = {}) => {
 
     const response = await fetch(url, {
       headers: {
-        'Accept': 'application/json',
+        Accept: 'application/json',
         ...authHeaders,
         ...extraHeaders,
       },
@@ -127,7 +127,7 @@ export const apiService = {
   // Get table properties for multiple tables in batch
   getTablePropertiesBatch: async (tables = ['sim_metrics_by_location']) => {
     const results = await Promise.all(
-      tables.map(table => apiCall(`/collections/${table}/queryables`))
+      tables.map((table) => apiCall(`/collections/${table}/queryables`))
     );
     // Return as object keyed by table name
     return tables.reduce((acc, table, idx) => {
@@ -141,21 +141,21 @@ export const apiService = {
     const params = new URLSearchParams();
     const table = filters.table || 'sim_metrics_by_location';
 
-    const reservedKeys = ['table']
+    const reservedKeys = ['table'];
 
     const aliasMap = {
-      aggMethod: "window_agg",
+      aggMethod: 'window_agg',
       configuration: 'configuration_name',
       leadTimeBin: 'forecast_lead_time_bin',
       primary_location_id: 'location_id',
       variable: 'variable_name',
-    }
+    };
 
     for (const key in filters) {
       if (reservedKeys.includes(key)) continue;
       const paramKey = aliasMap[key] || key;
-      const filterValue = filters[key] === null ? "null" : filters[key];
-      params.append(paramKey, filterValue)
+      const filterValue = filters[key] === null ? 'null' : filters[key];
+      params.append(paramKey, filterValue);
     }
 
     const queryString = params.toString();
@@ -263,7 +263,7 @@ export const apiService = {
       const nextHref = response?.links?.find((link) => link.rel === 'next')?.href;
       nextEndpoint = nextHref ? normalizeEndpoint(nextHref) : null;
     }
-    const groupedSecondaryItems = groupSecondaryTimeseriesItems(allItems)
+    const groupedSecondaryItems = groupSecondaryTimeseriesItems(allItems);
     return groupedSecondaryItems;
   },
 
@@ -345,7 +345,7 @@ export const apiService = {
     const params = new URLSearchParams();
     params.append('id', id);
     params.append('limit', 1);
-    params.append('include_attributes', includeAttributes)
+    params.append('include_attributes', includeAttributes);
     return apiCall(`/collections/locations/items?${params.toString()}`);
   },
 
@@ -361,7 +361,9 @@ export const apiService = {
     const params = new URLSearchParams();
     if (filters.configuration_name) params.append('configuration_name', filters.configuration_name);
     if (filters.variable_name) params.append('variable_name', filters.variable_name);
-    return apiCall(`/collections/configurations_by_location/locations-geojson?${params.toString()}`);
+    return apiCall(
+      `/collections/configurations_by_location/locations-geojson?${params.toString()}`
+    );
   },
 };
 

@@ -27,28 +27,24 @@ const parseFiniteNumber = (value) => {
 
 const evaluateAltHypothesis = (lower, upper, operator) => {
   switch (operator) {
-    case "=0":
+    case '=0':
       return lower <= 0 && upper >= 0;
-    case "!=0":
+    case '!=0':
       return upper < 0 || lower > 0;
-    case ">0":
+    case '>0':
       return lower > 0;
-    case "<0":
+    case '<0':
       return upper < 0;
-    case ">1":
+    case '>1':
       return lower > 1;
-    case "<1":
+    case '<1':
       return upper < 1;
     default:
       return true;
   }
 };
 
-export const applyAltHypothesisFilter = (
-  locations,
-  metricName,
-  altHypothesis95,
-) => {
+export const applyAltHypothesisFilter = (locations, metricName, altHypothesis95) => {
   if (!altHypothesis95 || !metricName) return locations;
 
   const features = Array.isArray(locations?.features) ? locations.features : [];
@@ -63,7 +59,7 @@ export const applyAltHypothesisFilter = (
 
   if (!hasBootstrapBounds) {
     console.warn(
-      `Skipping alt-hypothesis filter: bootstrap CI fields not found for metric '${metricName}'.`,
+      `Skipping alt-hypothesis filter: bootstrap CI fields not found for metric '${metricName}'.`
     );
     return locations;
   }
@@ -85,13 +81,13 @@ export const applyAltHypothesisFilter = (
 };
 
 export const NWMD_METRICS = new Set([
-  "relative_mean",
-  "relative_median",
-  "relative_minimum",
-  "relative_maximum",
-  "relative_standard_deviation",
-  "relative_bias",
-  "nash_sutcliffe_efficiency",
-  "kling_gupta_efficiency",
-  "pearson_correlation",
+  'relative_mean',
+  'relative_median',
+  'relative_minimum',
+  'relative_maximum',
+  'relative_standard_deviation',
+  'relative_bias',
+  'nash_sutcliffe_efficiency',
+  'kling_gupta_efficiency',
+  'pearson_correlation',
 ]);

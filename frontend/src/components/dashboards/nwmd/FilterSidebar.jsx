@@ -1,39 +1,36 @@
-import { Form } from "react-bootstrap";
-import LeadTimeRangeFilter from "./LeadTimeRangeFilter";
-import { NWMD_METRICS } from "./utils";
+import { Form } from 'react-bootstrap';
+import LeadTimeRangeFilter from './LeadTimeRangeFilter';
+import { NWMD_METRICS } from './utils';
+import { useTableProperties } from '../../../shared/queries/queryables';
 
-const NULL_OPTION = "__NULL__";
+const NULL_OPTION = '__NULL__';
 const ALT_HYPOTHESIS_OPTIONS = [
-  { value: "=0", label: "Metric = 0" },
-  { value: "!=0", label: "Metric != 0" },
-  { value: ">1", label: "Metric > 1" },
-  { value: "<1", label: "Metric < 1" },
-  { value: ">0", label: "Metric > 0" },
-  { value: "<0", label: "Metric < 0" },
+  { value: '=0', label: 'Metric = 0' },
+  { value: '!=0', label: 'Metric != 0' },
+  { value: '>1', label: 'Metric > 1' },
+  { value: '<1', label: 'Metric < 1' },
+  { value: '>0', label: 'Metric > 0' },
+  { value: '<0', label: 'Metric < 0' },
 ];
 
-export const FilterSidebar = ({
-  state,
-  mapFilters,
-  updateMapFilters,
-  loadLocations,
-}) => {
+export const FilterSidebar = ({ state, tables, mapFilters, updateMapFilters, loadLocations }) => {
+  const tableProperties = useTableProperties(tables);
+
   const handleMapFilterChange = async (filterType, value) => {
     // Reset alt hypothesis when the metric changes — the operator is metric-specific
-    const extraUpdates =
-      filterType === "metricName" ? { altHypothesis95: null } : {};
+    const extraUpdates = filterType === 'metricName' ? { altHypothesis95: null } : {};
     const newFilters = { ...mapFilters, [filterType]: value, ...extraUpdates };
     updateMapFilters({ [filterType]: value, ...extraUpdates });
 
     // Reload locations when base filters change
     const reloadFilters = new Set([
-      "quarter",
-      "configuration",
-      "variable",
-      "threshold",
-      "aggMethod",
-      "leadTimeBin",
-      "altHypothesis95",
+      'quarter',
+      'configuration',
+      'variable',
+      'threshold',
+      'aggMethod',
+      'leadTimeBin',
+      'altHypothesis95',
     ]);
     if (reloadFilters.has(filterType)) {
       await loadLocations({
@@ -56,10 +53,8 @@ export const FilterSidebar = ({
         <Form.Label className="small fw-bold">Quarter</Form.Label>
         <Form.Select
           size="sm"
-          value={mapFilters.quarter || ""}
-          onChange={(e) =>
-            handleMapFilterChange("quarter", e.target.value || null)
-          }
+          value={mapFilters.quarter || ''}
+          onChange={(e) => handleMapFilterChange('quarter', e.target.value || null)}
         >
           {Array.isArray(state.quarters) &&
             state.quarters.map((quarter) => (
@@ -75,10 +70,8 @@ export const FilterSidebar = ({
         <Form.Label className="small fw-bold">Model Configuration</Form.Label>
         <Form.Select
           size="sm"
-          value={mapFilters.configuration || ""}
-          onChange={(e) =>
-            handleMapFilterChange("configuration", e.target.value || null)
-          }
+          value={mapFilters.configuration || ''}
+          onChange={(e) => handleMapFilterChange('configuration', e.target.value || null)}
         >
           {Array.isArray(state.configurations) &&
             state.configurations.map((config) => (
@@ -94,15 +87,11 @@ export const FilterSidebar = ({
         <Form.Label className="small fw-bold">Threshold</Form.Label>
         <Form.Select
           size="sm"
-          value={
-            mapFilters.threshold === null
-              ? NULL_OPTION
-              : (mapFilters.threshold ?? "")
-          }
+          value={mapFilters.threshold === null ? NULL_OPTION : (mapFilters.threshold ?? '')}
           onChange={(e) =>
             handleMapFilterChange(
-              "threshold",
-              e.target.value === NULL_OPTION ? null : e.target.value || null,
+              'threshold',
+              e.target.value === NULL_OPTION ? null : e.target.value || null
             )
           }
         >
@@ -114,9 +103,8 @@ export const FilterSidebar = ({
                 return a.localeCompare(b);
               })
               .map((threshold) => {
-                const optionValue =
-                  threshold === null ? NULL_OPTION : threshold;
-                const optionLabel = threshold === null ? "None" : threshold;
+                const optionValue = threshold === null ? NULL_OPTION : threshold;
+                const optionLabel = threshold === null ? 'None' : threshold;
                 return (
                   <option key={String(optionValue)} value={optionValue}>
                     {optionLabel}
@@ -131,15 +119,15 @@ export const FilterSidebar = ({
         <Form.Label className="small fw-bold">Metric</Form.Label>
         <Form.Select
           size="sm"
-          value={mapFilters.metricName || ""}
+          value={mapFilters.metricName || ''}
           onChange={(e) => {
-            handleMapFilterChange("metricName", e.target.value || null);
+            handleMapFilterChange('metricName', e.target.value || null);
           }}
         >
           {(() => {
             // Try to find metrics from any available table in the batch response
             // This works for both single-table and multi-table dashboards
-            const allTableProps = state.tableProperties || {};
+            const allTableProps = tableProperties.data || {};
             const allMetrics = [];
 
             // Collect all unique metrics from all tables
@@ -166,15 +154,11 @@ export const FilterSidebar = ({
 
       {/* Aggregation Method Filter */}
       <Form.Group className="mb-3">
-        <Form.Label className="small fw-bold">
-          Streamflow aggregation method
-        </Form.Label>
+        <Form.Label className="small fw-bold">Streamflow aggregation method</Form.Label>
         <Form.Select
           size="sm"
-          value={mapFilters.aggMethod || ""}
-          onChange={(e) =>
-            handleMapFilterChange("aggMethod", e.target.value || null)
-          }
+          value={mapFilters.aggMethod || ''}
+          onChange={(e) => handleMapFilterChange('aggMethod', e.target.value || null)}
         >
           {Array.isArray(state.aggMethods) &&
             state.aggMethods.map((aggMethod) => (
@@ -190,21 +174,17 @@ export const FilterSidebar = ({
         <LeadTimeRangeFilter
           leadTimeBins={state.leadTimeBins}
           selectedLeadTimeBin={mapFilters.leadTimeBin}
-          onCommit={(nextBin) => handleMapFilterChange("leadTimeBin", nextBin)}
+          onCommit={(nextBin) => handleMapFilterChange('leadTimeBin', nextBin)}
         />
       </Form.Group>
 
       {/* Alt Hypothesis Filter */}
       <Form.Group className="mb-3">
-        <Form.Label className="small fw-bold">
-          Alt. Hypothesis (95% confidence)
-        </Form.Label>
+        <Form.Label className="small fw-bold">Alt. Hypothesis (95% confidence)</Form.Label>
         <Form.Select
           size="sm"
-          value={mapFilters.altHypothesis95 || ""}
-          onChange={(e) =>
-            handleMapFilterChange("altHypothesis95", e.target.value || null)
-          }
+          value={mapFilters.altHypothesis95 || ''}
+          onChange={(e) => handleMapFilterChange('altHypothesis95', e.target.value || null)}
         >
           <option value="">None</option>
           {ALT_HYPOTHESIS_OPTIONS.map((option) => (

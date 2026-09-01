@@ -1,11 +1,8 @@
-import { useCallback } from "react";
-import { applyAltHypothesisFilter } from "../components/dashboards/nwmd/utils";
-import {
-  useNwmdDashboard,
-  ActionTypes,
-} from "../context/NwmdDashboardContext.jsx";
-import { apiService } from "../services/api";
-import { extractTableProperties } from "../utils/ogcTransformers";
+import { useCallback } from 'react';
+import { applyAltHypothesisFilter } from '../components/dashboards/nwmd/utils';
+import { useNwmdDashboard, ActionTypes } from '../context/NwmdDashboardContext';
+import { apiService } from '../services/api';
+import { extractTableProperties } from '../shared/utils/ogcTransformers';
 
 // Custom hooks for nwmd dashboard data fetching
 export const useNwmdDataFetching = () => {
@@ -18,7 +15,7 @@ export const useNwmdDataFetching = () => {
           type: ActionTypes.SET_LOADING,
           payload: { quarters: true },
         });
-        const quarters = await apiService.getDistinctValues(table, "quarter");
+        const quarters = await apiService.getDistinctValues(table, 'quarter');
         dispatch({ type: ActionTypes.SET_QUARTERS, payload: quarters });
       } catch (error) {
         dispatch({
@@ -31,7 +28,7 @@ export const useNwmdDataFetching = () => {
         });
       }
     },
-    [dispatch],
+    [dispatch]
   );
 
   // Load configurations (distinct values from database)
@@ -59,7 +56,7 @@ export const useNwmdDataFetching = () => {
         });
       }
     },
-    [dispatch],
+    [dispatch]
   );
 
   // Load variables (distinct values from database)
@@ -84,7 +81,7 @@ export const useNwmdDataFetching = () => {
         });
       }
     },
-    [dispatch],
+    [dispatch]
   );
 
   const loadThresholds = useCallback(
@@ -95,10 +92,7 @@ export const useNwmdDataFetching = () => {
           payload: { thresholds: true },
         });
         // Use the new distinct values endpoint
-        const thresholds = await apiService.getDistinctValues(
-          table,
-          "threshold",
-        );
+        const thresholds = await apiService.getDistinctValues(table, 'threshold');
         dispatch({ type: ActionTypes.SET_THRESHOLDS, payload: thresholds });
       } catch (error) {
         dispatch({
@@ -111,7 +105,7 @@ export const useNwmdDataFetching = () => {
         });
       }
     },
-    [dispatch],
+    [dispatch]
   );
 
   const loadAggMethods = useCallback(
@@ -122,10 +116,7 @@ export const useNwmdDataFetching = () => {
           payload: { aggMethods: true },
         });
         // Use the new distinct values endpoint
-        const aggMethods = await apiService.getDistinctValues(
-          table,
-          "window_agg",
-        );
+        const aggMethods = await apiService.getDistinctValues(table, 'window_agg');
         dispatch({ type: ActionTypes.SET_AGG_METHODS, payload: aggMethods });
       } catch (error) {
         dispatch({
@@ -138,7 +129,7 @@ export const useNwmdDataFetching = () => {
         });
       }
     },
-    [dispatch],
+    [dispatch]
   );
 
   const loadLeadTimeBins = useCallback(
@@ -149,10 +140,7 @@ export const useNwmdDataFetching = () => {
           payload: { leadTimeBins: true },
         });
         // Use the new distinct values endpoint
-        const leadTimeBins = await apiService.getDistinctValues(
-          table,
-          "forecast_lead_time_bin",
-        );
+        const leadTimeBins = await apiService.getDistinctValues(table, 'forecast_lead_time_bin');
         dispatch({
           type: ActionTypes.SET_LEAD_TIME_BINS,
           payload: leadTimeBins,
@@ -168,7 +156,7 @@ export const useNwmdDataFetching = () => {
         });
       }
     },
-    [dispatch],
+    [dispatch]
   );
 
   // Load table properties (batch) from queryables
@@ -185,7 +173,7 @@ export const useNwmdDataFetching = () => {
           tableArray.map(async (table) => {
             const queryables = await apiService.getQueryables(table);
             return { table, properties: extractTableProperties(queryables) };
-          }),
+          })
         );
 
         const tableProperties = results.reduce((acc, { table, properties }) => {
@@ -208,7 +196,7 @@ export const useNwmdDataFetching = () => {
         });
       }
     },
-    [dispatch],
+    [dispatch]
   );
 
   // Load locations with filtering
@@ -226,7 +214,7 @@ export const useNwmdDataFetching = () => {
         const filteredLocations = applyAltHypothesisFilter(
           locations,
           metricName || state.mapFilters.metricName,
-          altHypothesis95,
+          altHypothesis95
         );
 
         dispatch({
@@ -234,7 +222,7 @@ export const useNwmdDataFetching = () => {
           payload: filteredLocations,
         });
       } catch (error) {
-        console.error("useNwmdDataFetching: Error loading locations:", error);
+        console.error('useNwmdDataFetching: Error loading locations:', error);
         dispatch({
           type: ActionTypes.SET_LOADING,
           payload: { locations: false },
@@ -245,7 +233,7 @@ export const useNwmdDataFetching = () => {
         });
       }
     },
-    [dispatch, state.mapFilters.metricName],
+    [dispatch, state.mapFilters.metricName]
   );
 
   // Load timeseries data
@@ -273,11 +261,7 @@ export const useNwmdDataFetching = () => {
           reference_end_date,
         } = filters;
 
-        const legacyVariables = Array.isArray(variables)
-          ? variables
-          : variable
-            ? [variable]
-            : [];
+        const legacyVariables = Array.isArray(variables) ? variables : variable ? [variable] : [];
 
         const primaryFilters = {
           variables: primary.variables ?? legacyVariables,
@@ -288,10 +272,8 @@ export const useNwmdDataFetching = () => {
         const secondaryFilters = {
           configurations: secondary.configurations ?? configurations,
           variables: secondary.variables ?? legacyVariables,
-          reference_start_date:
-            secondary.reference_start_date ?? reference_start_date,
-          reference_end_date:
-            secondary.reference_end_date ?? reference_end_date,
+          reference_start_date: secondary.reference_start_date ?? reference_start_date,
+          reference_end_date: secondary.reference_end_date ?? reference_end_date,
         };
 
         if (
@@ -301,34 +283,28 @@ export const useNwmdDataFetching = () => {
           !secondaryFilters.variables?.length
         ) {
           throw new Error(
-            "Missing required parameters: primary_location_id, primary.variables, secondary.variables, and secondary.configurations are required",
+            'Missing required parameters: primary_location_id, primary.variables, secondary.variables, and secondary.configurations are required'
           );
         }
 
         // Load primary data (USGS observations)
-        const primaryData = await apiService.getPrimaryTimeseries(
-          primary_location_id,
-          {
-            variable: primaryFilters.variables,
-            start_date: primaryFilters.start_date,
-            end_date: primaryFilters.end_date,
-          },
-        );
+        const primaryData = await apiService.getPrimaryTimeseries(primary_location_id, {
+          variable: primaryFilters.variables,
+          start_date: primaryFilters.start_date,
+          end_date: primaryFilters.end_date,
+        });
         dispatch({
           type: ActionTypes.SET_PRIMARY_TIMESERIES,
           payload: primaryData,
         });
 
         // Load secondary data with multi-value configuration and variable filters
-        const secondaryData = await apiService.getSecondaryTimeseries(
-          primary_location_id,
-          {
-            variable: secondaryFilters.variables,
-            reference_start_date: secondaryFilters.reference_start_date,
-            reference_end_date: secondaryFilters.reference_end_date,
-            configuration: secondaryFilters.configurations,
-          },
-        );
+        const secondaryData = await apiService.getSecondaryTimeseries(primary_location_id, {
+          variable: secondaryFilters.variables,
+          reference_start_date: secondaryFilters.reference_start_date,
+          reference_end_date: secondaryFilters.reference_end_date,
+          configuration: secondaryFilters.configurations,
+        });
         dispatch({
           type: ActionTypes.SET_SECONDARY_TIMESERIES,
           payload: secondaryData,
@@ -344,57 +320,7 @@ export const useNwmdDataFetching = () => {
         });
       }
     },
-    [dispatch],
-  );
-
-  // Load location-specific metrics
-  const loadLocationMetrics = useCallback(
-    async (primaryLocationId, table) => {
-      try {
-        console.log(
-          "Loading metrics for location:",
-          primaryLocationId,
-          "table:",
-          table,
-        );
-        dispatch({
-          type: ActionTypes.SET_LOADING,
-          payload: { metricsLoading: true },
-        });
-
-        const metricsData = await apiService.getMetrics({
-          primary_location_id: primaryLocationId,
-          table: table,
-        });
-
-        console.log("Location metrics GeoJSON loaded:", metricsData);
-
-        // Extract raw properties from GeoJSON features for pivoting
-        let locationData = [];
-        if (metricsData?.features && metricsData.features.length > 0) {
-          // Convert each feature to a row of data
-          locationData = metricsData.features.map((feature) => {
-            return feature.properties || {};
-          });
-        }
-
-        console.log("Raw location data for pivoting:", locationData);
-        dispatch({
-          type: ActionTypes.SET_LOCATION_METRICS,
-          payload: locationData,
-        });
-        return locationData;
-      } catch (error) {
-        console.error("Error loading location metrics:", error);
-        dispatch({
-          type: ActionTypes.SET_ERROR,
-          payload: `Failed to load location metrics: ${error.message}`,
-        });
-        dispatch({ type: ActionTypes.CLEAR_LOCATION_METRICS });
-        throw error;
-      }
-    },
-    [dispatch],
+    [dispatch]
   );
 
   const loadLeadTimeBinMetrics = useCallback(
@@ -416,9 +342,7 @@ export const useNwmdDataFetching = () => {
           aggMethod: filters.aggMethod,
         });
 
-        const rows = (metricsData?.features || []).map(
-          (feature) => feature?.properties || {},
-        );
+        const rows = (metricsData?.features || []).map((feature) => feature?.properties || {});
 
         dispatch({
           type: ActionTypes.SET_LEAD_TIME_BIN_METRICS,
@@ -438,7 +362,7 @@ export const useNwmdDataFetching = () => {
         throw error;
       }
     },
-    [dispatch],
+    [dispatch]
   );
 
   // Load location-specific metadata
@@ -449,17 +373,14 @@ export const useNwmdDataFetching = () => {
           type: ActionTypes.SET_LOADING,
           payload: { metadata: true },
         });
-        const metadata = await apiService.getLocationById(
-          primaryLocationId,
-          true,
-        );
+        const metadata = await apiService.getLocationById(primaryLocationId, true);
         dispatch({
           type: ActionTypes.SET_LOCATION_METADATA,
           payload: metadata,
         });
         return metadata;
       } catch (error) {
-        console.error("Error loading location metadata:", error);
+        console.error('Error loading location metadata:', error);
         dispatch({
           type: ActionTypes.SET_ERROR,
           payload: `Failed to load location metadata: ${error.message}`,
@@ -468,7 +389,7 @@ export const useNwmdDataFetching = () => {
         throw error;
       }
     },
-    [dispatch],
+    [dispatch]
   );
 
   // Initialize all data
@@ -481,7 +402,7 @@ export const useNwmdDataFetching = () => {
         loadTableProperties(),
       ]);
     } catch (error) {
-      console.error("Failed to initialize data:", error);
+      console.error('Failed to initialize data:', error);
     }
   }, [loadQuarters, loadConfigurations, loadVariables, loadTableProperties]);
 
@@ -495,7 +416,6 @@ export const useNwmdDataFetching = () => {
     loadTableProperties,
     loadLocations,
     loadTimeseries,
-    loadLocationMetrics,
     loadLeadTimeBinMetrics,
     loadLocationMetadata,
     initializeData,
@@ -510,7 +430,7 @@ export const useNwmdFilters = () => {
     (filters) => {
       dispatch({ type: ActionTypes.UPDATE_MAP_FILTERS, payload: filters });
     },
-    [dispatch],
+    [dispatch]
   );
 
   const updateTimeseriesFilters = useCallback(
@@ -520,7 +440,7 @@ export const useNwmdFilters = () => {
         payload: filters,
       });
     },
-    [dispatch],
+    [dispatch]
   );
 
   return {
@@ -545,7 +465,7 @@ export const useNwmdLocationSelection = () => {
       // Clear lead-time-bin metrics when location changes
       dispatch({ type: ActionTypes.CLEAR_LEAD_TIME_BIN_METRICS });
     },
-    [dispatch],
+    [dispatch]
   );
 
   return {

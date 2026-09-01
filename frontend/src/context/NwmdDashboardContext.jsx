@@ -1,10 +1,7 @@
 /* eslint-disable react-refresh/only-export-components */
-import { createContext, useContext, useReducer } from "react";
-import {
-  NWMD_DASHBOARD_DEFAULTS,
-  selectDefault,
-} from "../config/dashboardDefaults";
-import { getQuarterDateRange } from "../utils/formatters.js";
+import { createContext, useContext, useReducer } from 'react';
+import { NWMD_DASHBOARD_DEFAULTS, selectDefault } from '../config/dashboardDefaults';
+import { getQuarterDateRange } from '../shared/utils/formatters';
 
 // Dynamic date helpers - returns dates for 10 days ago through today
 const getTenDaysAgo = () => {
@@ -58,7 +55,7 @@ const initialNwmdState = {
     aggMethod: undefined,
     leadTimeBin: undefined,
     altHypothesis95: undefined,
-    metricName: "relative_bias",
+    metricName: 'relative_bias',
   },
 
   // Timeseries filters (nwmd-specific defaults)
@@ -86,9 +83,6 @@ const initialNwmdState = {
     secondary: [],
   },
 
-  // Location metrics
-  locationMetrics: [],
-
   // Lead-time bin metrics for selected location plot
   leadTimeBinMetrics: [],
 
@@ -96,26 +90,25 @@ const initialNwmdState = {
   metadata: undefined,
 
   // CDF plots
-  cdfPlotOrder: ["Metric 1", "Metric 2", "Metric 3", "Metric 4"],
+  cdfPlotOrder: ['Metric 1', 'Metric 2', 'Metric 3', 'Metric 4'],
   cdfPlots: {
-    "Metric 1": {
-      metricName: "kling_gupta_efficiency",
+    'Metric 1': {
+      metricName: 'kling_gupta_efficiency',
     },
-    "Metric 2": {
-      metricName: "nash_sutcliffe_efficiency",
+    'Metric 2': {
+      metricName: 'nash_sutcliffe_efficiency',
     },
-    "Metric 3": {
-      metricName: "relative_mean",
+    'Metric 3': {
+      metricName: 'relative_mean',
     },
-    "Metric 4": {
-      metricName: "relative_standard_deviation",
+    'Metric 4': {
+      metricName: 'relative_standard_deviation',
     },
   },
 
   // Loading states
   locationsLoading: false,
   timeseriesLoading: false,
-  metricsLoading: false,
   metadataLoading: false,
   tablePropertiesLoading: false,
   quartersLoading: false,
@@ -136,52 +129,52 @@ const initialNwmdState = {
 // Action types (same as retrospective)
 export const ActionTypes = {
   // Data loading
-  SET_LOCATIONS: "SET_LOCATIONS",
-  SET_QUARTERS: "SET_QUARTERS",
-  SET_CONFIGURATIONS: "SET_CONFIGURATIONS",
-  SET_VARIABLES: "SET_VARIABLES",
-  SET_THRESHOLDS: "SET_THRESHOLDS",
-  SET_AGG_METHODS: "SET_AGG_METHODS",
-  SET_LEAD_TIME_BINS: "SET_LEAD_TIME_BINS",
-  SET_TABLE_PROPERTIES: "SET_TABLE_PROPERTIES",
+  SET_LOCATIONS: 'SET_LOCATIONS',
+  SET_QUARTERS: 'SET_QUARTERS',
+  SET_CONFIGURATIONS: 'SET_CONFIGURATIONS',
+  SET_VARIABLES: 'SET_VARIABLES',
+  SET_THRESHOLDS: 'SET_THRESHOLDS',
+  SET_AGG_METHODS: 'SET_AGG_METHODS',
+  SET_LEAD_TIME_BINS: 'SET_LEAD_TIME_BINS',
+  SET_TABLE_PROPERTIES: 'SET_TABLE_PROPERTIES',
 
   // Filter updates
-  UPDATE_MAP_FILTERS: "UPDATE_MAP_FILTERS",
-  UPDATE_TIMESERIES_FILTERS: "UPDATE_TIMESERIES_FILTERS",
+  UPDATE_MAP_FILTERS: 'UPDATE_MAP_FILTERS',
+  UPDATE_TIMESERIES_FILTERS: 'UPDATE_TIMESERIES_FILTERS',
 
   // Location selection
-  SELECT_LOCATION: "SELECT_LOCATION",
+  SELECT_LOCATION: 'SELECT_LOCATION',
 
   // Timeseries data
-  SET_PRIMARY_TIMESERIES: "SET_PRIMARY_TIMESERIES",
-  SET_SECONDARY_TIMESERIES: "SET_SECONDARY_TIMESERIES",
-  CLEAR_TIMESERIES: "CLEAR_TIMESERIES",
+  SET_PRIMARY_TIMESERIES: 'SET_PRIMARY_TIMESERIES',
+  SET_SECONDARY_TIMESERIES: 'SET_SECONDARY_TIMESERIES',
+  CLEAR_TIMESERIES: 'CLEAR_TIMESERIES',
 
   // Location metrics
-  SET_LOCATION_METRICS: "SET_LOCATION_METRICS",
-  CLEAR_LOCATION_METRICS: "CLEAR_LOCATION_METRICS",
+  SET_LOCATION_METRICS: 'SET_LOCATION_METRICS',
+  CLEAR_LOCATION_METRICS: 'CLEAR_LOCATION_METRICS',
 
   // Lead-time bin metrics
-  SET_LEAD_TIME_BIN_METRICS: "SET_LEAD_TIME_BIN_METRICS",
-  CLEAR_LEAD_TIME_BIN_METRICS: "CLEAR_LEAD_TIME_BIN_METRICS",
+  SET_LEAD_TIME_BIN_METRICS: 'SET_LEAD_TIME_BIN_METRICS',
+  CLEAR_LEAD_TIME_BIN_METRICS: 'CLEAR_LEAD_TIME_BIN_METRICS',
 
   // Location metadata
-  SET_LOCATION_METADATA: "SET_LOCATION_METADATA",
-  CLEAR_LOCATION_METADATA: "CLEAR_LOCATION_METADATA",
+  SET_LOCATION_METADATA: 'SET_LOCATION_METADATA',
+  CLEAR_LOCATION_METADATA: 'CLEAR_LOCATION_METADATA',
 
   // CDF plots
-  SET_CDF_PLOT_METRIC: "SET_CDF_PLOT_METRIC",
+  SET_CDF_PLOT_METRIC: 'SET_CDF_PLOT_METRIC',
 
   // Loading states
-  SET_LOADING: "SET_LOADING",
+  SET_LOADING: 'SET_LOADING',
 
   // Map state
-  SET_MAP_LOADED: "SET_MAP_LOADED",
-  SET_MAP_VIEWPORT_BOUNDS: "SET_MAP_VIEWPORT_BOUNDS",
+  SET_MAP_LOADED: 'SET_MAP_LOADED',
+  SET_MAP_VIEWPORT_BOUNDS: 'SET_MAP_VIEWPORT_BOUNDS',
 
   // Error handling
-  SET_ERROR: "SET_ERROR",
-  CLEAR_ERROR: "CLEAR_ERROR",
+  SET_ERROR: 'SET_ERROR',
+  CLEAR_ERROR: 'CLEAR_ERROR',
 };
 
 // Reducer function (same logic as retrospective)
@@ -196,10 +189,7 @@ const nwmdDashboardReducer = (state, action) => {
 
     case ActionTypes.SET_QUARTERS: {
       const quarters = Array.isArray(action.payload) ? action.payload : [];
-      const defaultQuarter = selectDefault(
-        NWMD_DASHBOARD_DEFAULTS.preferredQuarter,
-        quarters,
-      );
+      const defaultQuarter = selectDefault(NWMD_DASHBOARD_DEFAULTS.preferredQuarter, quarters);
       const quarterToUse = state.mapFilters.quarter || defaultQuarter;
       const timeseriesSync = quarterToUse
         ? syncTimeseriesFiltersForQuarter(state.timeseriesFilters, quarterToUse)
@@ -221,12 +211,10 @@ const nwmdDashboardReducer = (state, action) => {
     }
 
     case ActionTypes.SET_CONFIGURATIONS: {
-      const configurations = Array.isArray(action.payload)
-        ? action.payload
-        : [];
+      const configurations = Array.isArray(action.payload) ? action.payload : [];
       const defaultConfig = selectDefault(
         NWMD_DASHBOARD_DEFAULTS.preferredConfiguration,
-        configurations,
+        configurations
       );
       return {
         ...state,
@@ -254,10 +242,7 @@ const nwmdDashboardReducer = (state, action) => {
 
     case ActionTypes.SET_VARIABLES: {
       const variables = Array.isArray(action.payload) ? action.payload : [];
-      const defaultVariable = selectDefault(
-        NWMD_DASHBOARD_DEFAULTS.preferredVariable,
-        variables,
-      );
+      const defaultVariable = selectDefault(NWMD_DASHBOARD_DEFAULTS.preferredVariable, variables);
       return {
         ...state,
         variables,
@@ -295,7 +280,7 @@ const nwmdDashboardReducer = (state, action) => {
       const thresholds = Array.isArray(action.payload) ? action.payload : [];
       const defaultThreshold = selectDefault(
         NWMD_DASHBOARD_DEFAULTS.preferredThreshold,
-        thresholds,
+        thresholds
       );
       return {
         ...state,
@@ -328,7 +313,7 @@ const nwmdDashboardReducer = (state, action) => {
       const aggMethods = Array.isArray(action.payload) ? action.payload : [];
       const defaultAggMethod = selectDefault(
         NWMD_DASHBOARD_DEFAULTS.preferredAggMethod,
-        aggMethods,
+        aggMethods
       );
       return {
         ...state,
@@ -358,7 +343,7 @@ const nwmdDashboardReducer = (state, action) => {
       const leadTimeBins = Array.isArray(action.payload) ? action.payload : [];
       const defaultLeadTimeBin = selectDefault(
         NWMD_DASHBOARD_DEFAULTS.preferredLeadTimeBin,
-        leadTimeBins,
+        leadTimeBins
       );
       return {
         ...state,
@@ -401,9 +386,7 @@ const nwmdDashboardReducer = (state, action) => {
       if (action.payload.configuration !== undefined) {
         mapTimeseriesSync.secondary = {
           ...state.timeseriesFilters.secondary,
-          configurations: action.payload.configuration
-            ? [action.payload.configuration]
-            : [],
+          configurations: action.payload.configuration ? [action.payload.configuration] : [],
         };
       }
       if (action.payload.variable !== undefined) {
@@ -419,7 +402,7 @@ const nwmdDashboardReducer = (state, action) => {
       if (action.payload.quarter !== undefined) {
         const quarterTimeseriesSync = syncTimeseriesFiltersForQuarter(
           state.timeseriesFilters,
-          action.payload.quarter,
+          action.payload.quarter
         );
         mapTimeseriesSync.primary = {
           ...(mapTimeseriesSync.primary || state.timeseriesFilters.primary),
@@ -542,43 +525,38 @@ const nwmdDashboardReducer = (state, action) => {
     case ActionTypes.SET_LOADING: {
       // Map shorthand keys to actual state property names
       const loadingUpdates = {};
-      if ("locations" in action.payload) {
+      if ('locations' in action.payload) {
         loadingUpdates.locationsLoading = action.payload.locations;
       }
-      if ("timeseries" in action.payload) {
+      if ('timeseries' in action.payload) {
         loadingUpdates.timeseriesLoading = action.payload.timeseries;
       }
-      if ("metricsLoading" in action.payload) {
-        loadingUpdates.metricsLoading = action.payload.metricsLoading;
-      }
-      if ("metadata" in action.payload) {
+      if ('metadata' in action.payload) {
         loadingUpdates.metadataLoading = action.payload.metadata;
       }
-      if ("tablePropertiesLoading" in action.payload) {
-        loadingUpdates.tablePropertiesLoading =
-          action.payload.tablePropertiesLoading;
+      if ('tablePropertiesLoading' in action.payload) {
+        loadingUpdates.tablePropertiesLoading = action.payload.tablePropertiesLoading;
       }
-      if ("quarters" in action.payload) {
+      if ('quarters' in action.payload) {
         loadingUpdates.quartersLoading = action.payload.quarters;
       }
-      if ("configurations" in action.payload) {
+      if ('configurations' in action.payload) {
         loadingUpdates.configurationsLoading = action.payload.configurations;
       }
-      if ("variables" in action.payload) {
+      if ('variables' in action.payload) {
         loadingUpdates.variablesLoading = action.payload.variables;
       }
-      if ("thresholds" in action.payload) {
+      if ('thresholds' in action.payload) {
         loadingUpdates.thresholdsLoading = action.payload.thresholds;
       }
-      if ("aggMethods" in action.payload) {
+      if ('aggMethods' in action.payload) {
         loadingUpdates.aggMethodsLoading = action.payload.aggMethods;
       }
-      if ("leadTimeBins" in action.payload) {
+      if ('leadTimeBins' in action.payload) {
         loadingUpdates.leadTimeBinsLoading = action.payload.leadTimeBins;
       }
-      if ("leadTimeBinMetrics" in action.payload) {
-        loadingUpdates.leadTimeBinMetricsLoading =
-          action.payload.leadTimeBinMetrics;
+      if ('leadTimeBinMetrics' in action.payload) {
+        loadingUpdates.leadTimeBinMetricsLoading = action.payload.leadTimeBinMetrics;
       }
       return {
         ...state,
@@ -608,20 +586,6 @@ const nwmdDashboardReducer = (state, action) => {
       return {
         ...state,
         error: null,
-      };
-
-    case ActionTypes.SET_LOCATION_METRICS:
-      return {
-        ...state,
-        locationMetrics: action.payload,
-        metricsLoading: false,
-      };
-
-    case ActionTypes.CLEAR_LOCATION_METRICS:
-      return {
-        ...state,
-        locationMetrics: [],
-        metricsLoading: false,
       };
 
     case ActionTypes.SET_LEAD_TIME_BIN_METRICS:
@@ -675,9 +639,7 @@ export const NwmdDashboardProvider = ({ children }) => {
 export const useNwmdDashboard = () => {
   const context = useContext(NwmdDashboardContext);
   if (!context) {
-    throw new Error(
-      "useNwmdDashboard must be used within a NwmdDashboardProvider",
-    );
+    throw new Error('useNwmdDashboard must be used within a NwmdDashboardProvider');
   }
   return context;
 };
