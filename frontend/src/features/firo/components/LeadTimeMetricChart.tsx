@@ -2,6 +2,7 @@ import Plotly from 'plotly.js-dist-min';
 import { useEffect, useRef } from 'react';
 
 import type { LeadTimeMetricsRow } from '../hooks/useLeadTimeMetrics';
+import type { LeadTimeGranularity } from './LeadTimeGranularityToggle';
 import { formatConfigurationName } from '../utils/formatConfigurationName';
 
 type LeadTimeMetricChartProps = {
@@ -10,6 +11,7 @@ type LeadTimeMetricChartProps = {
   yAxisLabel: string;
   yRangeMode?: 'tozero' | 'normal' | 'nonnegative';
   height?: React.CSSProperties['height'];
+  granularity?: LeadTimeGranularity;
 };
 
 /**
@@ -25,6 +27,7 @@ const LeadTimeMetricChart = ({
   yAxisLabel,
   yRangeMode = 'tozero',
   height = '450px',
+  granularity = 'daily',
 }: LeadTimeMetricChartProps) => {
   const plotRef = useRef<HTMLDivElement>(null);
 
@@ -60,8 +63,11 @@ const LeadTimeMetricChart = ({
       colorIdx++;
       const displayName = formatConfigurationName(configName);
 
+      const toXValue = (r: LeadTimeMetricsRow) =>
+        secondsToHours(r.forecast_lead_time as number) / 24;
+
       traces.push({
-        x: rows.map((r) => secondsToHours(r.forecast_lead_time as number) / 24), // days
+        x: rows.map(toXValue),
         y: rows.map((r) => r[metricKey] as number),
         type: 'scatter',
         mode: 'lines+markers',
@@ -127,7 +133,7 @@ const LeadTimeMetricChart = ({
     return () => {
       Plotly.purge(plotNode);
     };
-  }, [data, metricKey, yAxisLabel, yRangeMode]);
+  }, [data, metricKey, yAxisLabel, yRangeMode, granularity]);
 
   return <div ref={plotRef} style={{ width: '100%', height }} />;
 };

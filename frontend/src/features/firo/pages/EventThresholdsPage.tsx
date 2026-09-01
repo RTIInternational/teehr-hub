@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import Alert from 'react-bootstrap/Alert';
 import Card from 'react-bootstrap/Card';
 import Col from 'react-bootstrap/Col';
@@ -6,8 +6,13 @@ import Row from 'react-bootstrap/Row';
 import Spinner from 'react-bootstrap/Spinner';
 
 import LeadTimeMetricChart from '../components/LeadTimeMetricChart';
+import {
+  LeadTimeGranularityToggle,
+  type LeadTimeGranularity,
+} from '../components/LeadTimeGranularityToggle';
 import { NULL_VALUE, SeasonQuantileFilters } from '../components/SeasonQuantileFilters';
 import { useLeadTimeMetrics } from '../hooks/useLeadTimeMetrics';
+import { aggregateLeadTimeMetricsByDay } from '../utils/aggregateLeadTimeMetricsByDay';
 import { useFiroDashboardStore } from '../store';
 
 export const EventThresholdsPage = () => {
@@ -15,12 +20,21 @@ export const EventThresholdsPage = () => {
 
   const [season, setSeason] = useState<string>(NULL_VALUE);
   const [threshold, setThreshold] = useState<string>(NULL_VALUE);
+  const [granularity, setGranularity] = useState<LeadTimeGranularity>('daily');
 
-  const { data, isLoading, isError, error } = useLeadTimeMetrics({
+  const { data: rawData, isLoading, isError, error } = useLeadTimeMetrics({
     primaryLocationId: selectedLocation?.primary_location_id ?? null,
     season: season || null,
     threshold: threshold || null,
   });
+
+  const data = useMemo(
+    () =>
+      rawData && granularity === 'daily'
+        ? aggregateLeadTimeMetricsByDay(rawData)
+        : rawData,
+    [rawData, granularity],
+  );
 
   if (!selectedLocation) {
     return (
@@ -44,7 +58,9 @@ export const EventThresholdsPage = () => {
         setSeason={setSeason}
         threshold={threshold}
         setThreshold={setThreshold}
-      />
+      >
+        <LeadTimeGranularityToggle value={granularity} onChange={setGranularity} />
+      </SeasonQuantileFilters>
 
       {/* 2-chart grid */}
       {isLoading && (
@@ -97,6 +113,7 @@ export const EventThresholdsPage = () => {
                     metricKey={key}
                     yAxisLabel={yAxisLabel}
                     yRangeMode={yRangeMode}
+                    granularity={granularity}
                   />
                 </Card.Body>
               </Card>

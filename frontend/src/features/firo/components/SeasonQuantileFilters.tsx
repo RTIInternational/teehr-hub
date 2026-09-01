@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import Card from 'react-bootstrap/Card';
 import Col from 'react-bootstrap/Col';
 import Form from 'react-bootstrap/Form';
@@ -23,6 +24,7 @@ type SeasonQuantileFiltersProps = {
   setSeason: (value: string) => void;
   threshold: string;
   setThreshold: (value: string) => void;
+  children?: ReactNode;
 };
 
 export const SeasonQuantileFilters = ({
@@ -30,6 +32,7 @@ export const SeasonQuantileFilters = ({
   setSeason,
   threshold,
   setThreshold,
+  children,
 }: SeasonQuantileFiltersProps) => {
   const seasons = useDistinctValues(TABLE, 'season');
   const thresholds = useDistinctValues(TABLE, 'threshold');
@@ -83,6 +86,12 @@ export const SeasonQuantileFilters = ({
               </Form.Select>
             </Form.Group>
           </Col>
+
+          {children && (
+            <Col xs="auto" className="ms-auto d-flex align-items-end pb-1">
+              {children}
+            </Col>
+          )}
         </Row>
       </Card.Body>
     </Card>
