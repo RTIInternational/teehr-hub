@@ -1,7 +1,7 @@
-import Plotly from "plotly.js-dist-min";
-import { useEffect, useRef } from "react";
-import { getMetricDisplay, getMetricLabel } from "../../common/dashboard/utils";
-import { useCdfPlot } from "./useCdfPlots";
+import Plotly from 'plotly.js-dist-min';
+import { useEffect, useRef } from 'react';
+import { getMetricDisplay, getMetricLabel } from '../../../shared/utils/mapMetrics';
+import { useCdfPlot } from './useCdfPlots';
 
 export const CdfPlot = ({ plotId }) => {
   const { cdfData, metricName } = useCdfPlot(plotId);
@@ -16,8 +16,8 @@ export const CdfPlot = ({ plotId }) => {
     const trace = {
       x: cdfData.map((datum) => datum[0]),
       y: cdfData.map((datum) => datum[1]),
-      mode: "markers",
-      type: "scatter",
+      mode: 'markers',
+      type: 'scatter',
     };
 
     const plotData = [trace];
@@ -30,11 +30,11 @@ export const CdfPlot = ({ plotId }) => {
         },
         ...(display?.stops
           ? { range: [display.stops.at(0), display.stops.at(-1)] }
-          : { rangemode: "tozero" }),
+          : { rangemode: 'tozero' }),
       },
       yaxis: {
         title: {
-          text: "Empirical CDF",
+          text: 'Empirical CDF',
           font: { size: 14 },
         },
         range: [0, 1.05],
@@ -45,7 +45,7 @@ export const CdfPlot = ({ plotId }) => {
 
     Plotly.react(plotRef.current, plotData, layout, {
       responsive: true,
-      displayModeBar: "hover",
+      displayModeBar: 'hover',
     });
   }, [cdfData, metricName]);
 
