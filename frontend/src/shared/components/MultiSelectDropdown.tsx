@@ -7,6 +7,8 @@ type MultiSelectDropdownProps = {
   onChange: (options: string[]) => void;
   allSelectedText?: string;
   noneSelectedText?: string;
+  labelledBy?: string;
+  ariaLabel?: string;
   style?: React.CSSProperties;
 };
 
@@ -20,6 +22,8 @@ const MultiSelectDropdown = ({
   onChange,
   allSelectedText = 'All selected',
   noneSelectedText = 'None selected',
+  labelledBy,
+  ariaLabel,
   style = {},
 }: MultiSelectDropdownProps) => {
   const [isOpen, setIsOpen] = useState(false);
@@ -78,6 +82,8 @@ const MultiSelectDropdown = ({
         type="button"
         className="btn btn-outline-secondary w-100 d-flex justify-content-between align-items-center"
         onClick={() => setIsOpen(!isOpen)}
+        aria-labelledby={labelledBy}
+        aria-label={ariaLabel}
         style={{ fontSize: '14px' }}
       >
         <span className="text-truncate">{getDisplayText()}</span>
@@ -125,26 +131,27 @@ const MultiSelectDropdown = ({
 
           {/* Options List */}
           <div style={{ maxHeight: '250px', overflowY: 'auto' }}>
-            {options.map((option) => (
-              <div
-                key={option}
-                className="px-3 py-2 multi-select-option"
-                style={{ cursor: 'pointer' }}
-                onClick={() => handleToggle(option)}
-                onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = '#f8f9fa')}
-                onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
-              >
-                <Form.Check
-                  type="checkbox"
-                  id={`multi-select-${option}`}
-                  label={option}
-                  checked={selected.includes(option)}
-                  onChange={() => {}} // Handled by parent div onClick
-                  className="mb-0"
-                  style={{ pointerEvents: 'none' }}
-                />
-              </div>
-            ))}
+            {options.map((option) => {
+              const inputId = `multi-select-${option}`;
+              const checked = selected.includes(option);
+
+              return (
+                <label
+                  key={option}
+                  htmlFor={inputId}
+                  className="px-3 py-2 d-flex align-items-center"
+                >
+                  <Form.Check
+                    id={inputId}
+                    type="checkbox"
+                    checked={checked}
+                    onChange={() => handleToggle(option)}
+                    label={option}
+                    className="mb-0"
+                  />
+                </label>
+              );
+            })}
             {options.length === 0 && (
               <div className="px-3 py-2 text-muted">No options available</div>
             )}

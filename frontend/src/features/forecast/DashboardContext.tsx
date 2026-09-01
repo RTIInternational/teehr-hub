@@ -181,11 +181,11 @@ const reducer = (state: DashboardState, action: DashboardAction) => {
           ...state.timeseriesFilters,
           primary: {
             ...state.timeseriesFilters.primary,
-            ...(action.payload.primary || {}),
+            ...action.payload.primary,
           },
           secondary: {
             ...state.timeseriesFilters.secondary,
-            ...(action.payload.secondary || {}),
+            ...action.payload.secondary,
           },
         },
       };

@@ -407,11 +407,11 @@ const nwmdDashboardReducer = (state, action) => {
         );
         mapTimeseriesSync.primary = {
           ...(mapTimeseriesSync.primary || state.timeseriesFilters.primary),
-          ...(quarterTimeseriesSync.primary || {}),
+          ...quarterTimeseriesSync.primary,
         };
         mapTimeseriesSync.secondary = {
           ...(mapTimeseriesSync.secondary || state.timeseriesFilters.secondary),
-          ...(quarterTimeseriesSync.secondary || {}),
+          ...quarterTimeseriesSync.secondary,
         };
       }
       return {
@@ -466,12 +466,12 @@ const nwmdDashboardReducer = (state, action) => {
           primary: {
             ...state.timeseriesFilters.primary,
             ...legacyPrimary,
-            ...(primary || {}),
+            ...primary,
           },
           secondary: {
             ...state.timeseriesFilters.secondary,
             ...legacySecondary,
-            ...(secondary || {}),
+            ...secondary,
           },
         },
       };

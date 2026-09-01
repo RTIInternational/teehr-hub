@@ -144,3 +144,47 @@ export const getQuarterDateRange = (quarter: string) => {
 
   return { start_date, end_date };
 };
+
+type UnknownValueFormatOptions = {
+  nullishText?: string;
+  unserializableText?: string;
+};
+
+/**
+ * Safely format unknown values for UI display without relying on implicit object stringification.
+ */
+export const formatUnknownValueForDisplay = (
+  value: unknown,
+  options: UnknownValueFormatOptions = {}
+) => {
+  const { nullishText = '', unserializableText = '[unserializable value]' } = options;
+
+  if (value === null || value === undefined) return nullishText;
+
+  if (typeof value === 'string') return value;
+  if (typeof value === 'number' || typeof value === 'boolean' || typeof value === 'bigint') {
+    return String(value);
+  }
+
+  if (value instanceof Date) {
+    return Number.isNaN(value.getTime()) ? nullishText : value.toISOString();
+  }
+
+  if (typeof value === 'object') {
+    try {
+      return JSON.stringify(value);
+    } catch {
+      return unserializableText;
+    }
+  }
+
+  if (typeof value === 'symbol') {
+    return value.description ? `Symbol(${value.description})` : 'Symbol';
+  }
+
+  if (typeof value === 'function') {
+    return '[function]';
+  }
+
+  return unserializableText;
+};

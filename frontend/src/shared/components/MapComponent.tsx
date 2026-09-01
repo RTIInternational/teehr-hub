@@ -652,9 +652,9 @@ const MapComponent = <TActionTypes extends ActionTypesShape>({
       <div ref={mapContainer} className="h-100 w-100">
         {!state.mapLoaded && (
           <div className="position-absolute top-50 start-50 translate-middle text-center">
-            <div className="spinner-border text-primary mb-2" role="status">
+            <output className="spinner-border text-primary mb-2">
               <span className="visually-hidden">Loading map...</span>
-            </div>
+            </output>
             <div className="small text-muted">Initializing MapLibre GL...</div>
           </div>
         )}
@@ -670,9 +670,9 @@ const MapComponent = <TActionTypes extends ActionTypesShape>({
             }}
           >
             <div className="text-center">
-              <div className="spinner-border text-primary mb-2" role="status">
+              <output className="spinner-border text-primary mb-2">
                 <span className="visually-hidden">Loading locations...</span>
-              </div>
+              </output>
               <div className="small text-muted">Loading location data...</div>
             </div>
           </div>
@@ -734,6 +734,7 @@ const MapComponent = <TActionTypes extends ActionTypesShape>({
                         key={`${props.primary_location_id}-${props.secondary_location_id || ''}`}
                         type="button"
                         className="list-group-item list-group-item-action"
+                        aria-label={props.name || 'Unnamed location'}
                         onClick={() => {
                           selectFeatureOnMap(feature, { flyTo: true });
                           setSearchTerm('');

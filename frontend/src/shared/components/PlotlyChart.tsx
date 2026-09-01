@@ -223,46 +223,39 @@ const PlotlyChart = ({
       },
     };
 
-    Plotly.react(plotRef.current, traces, layout, {
-      responsive: true,
-      displayModeBar: 'hover',
-    });
-
     const plotElement = plotRef.current;
-    plotElement.removeAllListeners?.('plotly_click');
-    plotElement.removeAllListeners?.('plotly_doubleclick');
-
-    if (!allowForecastSelect) {
-      selectedForecastTraceRef.current = null;
-      return undefined;
-    }
+    let isActive = true;
 
     const resetForecastStyles = () => {
       selectedForecastTraceRef.current = null;
 
       if (forecastTraceIndexes.length === 0) return;
 
-      Plotly.restyle(
+      void Plotly.restyle(
         plotElement,
         {
           'line.width': forecastTraceIndexes.map(() => 2),
           opacity: forecastTraceIndexes.map(() => 1),
         } as Plotly.Data,
         forecastTraceIndexes
-      );
+      ).catch((error) => {
+        console.error('PlotlyChart: Failed to reset forecast styles', error);
+      });
     };
 
     const emphasizeForecastTrace = (traceIndex: number) => {
       selectedForecastTraceRef.current = traceIndex;
 
-      Plotly.restyle(
+      void Plotly.restyle(
         plotElement,
         {
           'line.width': forecastTraceIndexes.map((index) => (index === traceIndex ? 4 : 1.5)),
           opacity: forecastTraceIndexes.map((index) => (index === traceIndex ? 1 : 0.2)),
         } as Plotly.Data,
         forecastTraceIndexes
-      );
+      ).catch((error) => {
+        console.error('PlotlyChart: Failed to emphasize forecast trace', error);
+      });
     };
 
     const handlePlotClick = (event: Plotly.PlotMouseEvent) => {
@@ -284,10 +277,35 @@ const PlotlyChart = ({
       return false;
     };
 
-    plotElement.on?.('plotly_click', handlePlotClick);
-    plotElement.on?.('plotly_doubleclick', handlePlotDoubleClick);
+    const renderPlot = async () => {
+      try {
+        await Plotly.react(plotElement, traces, layout, {
+          responsive: true,
+          displayModeBar: 'hover',
+        });
+      } catch (error) {
+        console.error('PlotlyChart: Failed to render plot', error);
+        return;
+      }
+
+      if (!isActive) return;
+
+      plotElement.removeAllListeners?.('plotly_click');
+      plotElement.removeAllListeners?.('plotly_doubleclick');
+
+      if (!allowForecastSelect) {
+        selectedForecastTraceRef.current = null;
+        return;
+      }
+
+      plotElement.on?.('plotly_click', handlePlotClick);
+      plotElement.on?.('plotly_doubleclick', handlePlotDoubleClick);
+    };
+
+    void renderPlot();
 
     return () => {
+      isActive = false;
       plotElement.removeAllListeners?.('plotly_click');
       plotElement.removeAllListeners?.('plotly_doubleclick');
     };
