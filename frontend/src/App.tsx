@@ -3,11 +3,10 @@ import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'r
 
 import { Home, DashboardsHome } from '@/components/common';
 import { DataDashboard } from '@/components/dashboards/data_management';
-import { NwmdDashboard } from '@/components/dashboards/nwmd/index';
 import { DataDashboardProvider } from '@/context/DataDashboardContext';
-import { NwmdDashboardProvider } from '@/context/NwmdDashboardContext';
 import { useAuth } from '@/features/auth';
 import { ForecastDashboard, ForecastDashboardProvider } from '@/features/forecast';
+import { NwmdDashboard, NwmdDashboardProvider } from '@/features/nwmd';
 import { RetrospectiveDashboardProvider, RetrospectiveDashboard } from '@/features/retrospective';
 import AdminHome from '@/pages/admin/AdminHome';
 import AdminLayout from '@/pages/admin/AdminLayout';
