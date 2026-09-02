@@ -13,10 +13,13 @@ import { NwmdMapComponent } from './NwmdMapComponent';
 import { SiteInfo } from './SiteInfo';
 import TimeseriesNoControls from './TimeseriesNoControls';
 import { useCdfPlots } from './useCdfPlots';
+import { useInitialFilters } from './useInitialFilters';
 import { useNwmdData } from './useNwmdData';
 
 const Dashboard = () => {
   const tables = ['nwmd_metrics_by_location'];
+
+  useInitialFilters(tables[0]);
 
   const { state, dispatch } = useNwmdDashboard();
   const {
@@ -108,7 +111,6 @@ const Dashboard = () => {
             <Tabs defaultActiveKey="filter" id="cdf-tabs">
               <Tab eventKey="filter" title="Filters" className="overflow-y-auto">
                 <FilterSidebar
-                  state={state}
                   tables={tables}
                   mapFilters={mapFilters}
                   updateMapFilters={updateMapFilters}
@@ -241,9 +243,9 @@ const Dashboard = () => {
                   }}
                 >
                   <LeadTimeBinPlot
+                    table={tables[0]}
                     selectedLocation={state.selectedLocation}
                     mapFilters={mapFilters}
-                    leadTimeBins={state.leadTimeBins}
                     rows={state.leadTimeBinMetrics}
                     loading={state.leadTimeBinMetricsLoading}
                     loadLeadTimeBinMetrics={loadLeadTimeBinMetrics}

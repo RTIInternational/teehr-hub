@@ -1,7 +1,7 @@
 /* eslint-disable react-refresh/only-export-components */
 import { createContext, useContext, useReducer } from 'react';
 
-import { NWMD_DASHBOARD_DEFAULTS, selectDefault } from '../config/dashboardDefaults';
+import { NWMD_DASHBOARD_DEFAULTS } from '../config/dashboardDefaults';
 import { getQuarterDateRange } from '../shared/utils/formatters';
 
 // Dynamic date helpers - returns dates for 10 days ago through today
@@ -38,12 +38,6 @@ const syncTimeseriesFiltersForQuarter = (timeseriesFilters, quarter) => {
 const initialNwmdState = {
   // Data
   locations: { features: [] },
-  quarters: [],
-  configurations: [],
-  variables: [],
-  thresholds: [],
-  aggMethods: [],
-  leadTimeBins: [],
   tableProperties: {}, // Will contain { "table_name": { metrics: [], group_by: [], description: "" } }
   mapViewportBounds: undefined,
 
@@ -112,12 +106,6 @@ const initialNwmdState = {
   timeseriesLoading: false,
   metadataLoading: false,
   tablePropertiesLoading: false,
-  quartersLoading: false,
-  configurationsLoading: false,
-  variablesLoading: false,
-  thresholdsLoading: false,
-  aggMethodsLoading: false,
-  leadTimeBinsLoading: false,
   leadTimeBinMetricsLoading: false,
 
   // Map state
@@ -129,14 +117,10 @@ const initialNwmdState = {
 
 // Action types (same as retrospective)
 export const ActionTypes = {
+  INITIALIZE_FILTERS: 'INITIALIZE_FILTERS',
+
   // Data loading
   SET_LOCATIONS: 'SET_LOCATIONS',
-  SET_QUARTERS: 'SET_QUARTERS',
-  SET_CONFIGURATIONS: 'SET_CONFIGURATIONS',
-  SET_VARIABLES: 'SET_VARIABLES',
-  SET_THRESHOLDS: 'SET_THRESHOLDS',
-  SET_AGG_METHODS: 'SET_AGG_METHODS',
-  SET_LEAD_TIME_BINS: 'SET_LEAD_TIME_BINS',
   SET_TABLE_PROPERTIES: 'SET_TABLE_PROPERTIES',
 
   // Filter updates
@@ -181,194 +165,57 @@ export const ActionTypes = {
 // Reducer function (same logic as retrospective)
 const nwmdDashboardReducer = (state, action) => {
   switch (action.type) {
-    case ActionTypes.SET_LOCATIONS:
-      return {
-        ...state,
-        locations: action.payload,
-        locationsLoading: false,
-      };
+    case ActionTypes.INITIALIZE_FILTERS: {
+      const { quarter, configuration, variable, threshold, aggMethod, leadTimeBin } =
+        action.payload;
 
-    case ActionTypes.SET_QUARTERS: {
-      const quarters = Array.isArray(action.payload) ? action.payload : [];
-      const defaultQuarter = selectDefault(NWMD_DASHBOARD_DEFAULTS.preferredQuarter, quarters);
-      const quarterToUse = state.mapFilters.quarter || defaultQuarter;
+      const quarterToUse = state.mapFilters.quarter ?? quarter;
       const timeseriesSync = quarterToUse
         ? syncTimeseriesFiltersForQuarter(state.timeseriesFilters, quarterToUse)
         : {};
 
       return {
         ...state,
-        quarters,
-        quartersLoading: false,
+
         mapFilters: {
           ...state.mapFilters,
           quarter: quarterToUse,
+          configuration: state.mapFilters.configuration ?? configuration,
+          variable: state.mapFilters.variable ?? variable,
+          threshold:
+            state.mapFilters.threshold !== undefined ? state.mapFilters.threshold : threshold,
+          aggMethod: state.mapFilters.aggMethod ?? aggMethod,
+          leadTimeBin: state.mapFilters.leadTimeBin ?? leadTimeBin,
         },
+
         timeseriesFilters: {
           ...state.timeseriesFilters,
           ...timeseriesSync,
-        },
-      };
-    }
-
-    case ActionTypes.SET_CONFIGURATIONS: {
-      const configurations = Array.isArray(action.payload) ? action.payload : [];
-      const defaultConfig = selectDefault(
-        NWMD_DASHBOARD_DEFAULTS.preferredConfiguration,
-        configurations
-      );
-      return {
-        ...state,
-        configurations,
-        configurationsLoading: false,
-        // Set defaults if first time loading - prefer configured default if available
-        mapFilters: {
-          ...state.mapFilters,
-          configuration: state.mapFilters.configuration || defaultConfig,
-        },
-        timeseriesFilters: {
-          ...state.timeseriesFilters,
           secondary: {
             ...state.timeseriesFilters.secondary,
             configurations:
-              state.timeseriesFilters.secondary?.configurations?.length > 0
+              state.timeseriesFilters.secondary.configurations.length > 0
                 ? state.timeseriesFilters.secondary.configurations
-                : defaultConfig
-                  ? [defaultConfig]
+                : configuration
+                  ? [configuration]
                   : [],
-          },
-        },
-      };
-    }
-
-    case ActionTypes.SET_VARIABLES: {
-      const variables = Array.isArray(action.payload) ? action.payload : [];
-      const defaultVariable = selectDefault(NWMD_DASHBOARD_DEFAULTS.preferredVariable, variables);
-      return {
-        ...state,
-        variables,
-        variablesLoading: false,
-        // Set defaults if first time loading - prefer configured default if available
-        mapFilters: {
-          ...state.mapFilters,
-          variable: state.mapFilters.variable || defaultVariable,
-        },
-        timeseriesFilters: {
-          ...state.timeseriesFilters,
-          primary: {
-            ...state.timeseriesFilters.primary,
-            variables:
-              state.timeseriesFilters.primary?.variables?.length > 0
-                ? state.timeseriesFilters.primary.variables
-                : defaultVariable
-                  ? [defaultVariable]
-                  : [],
-          },
-          secondary: {
-            ...state.timeseriesFilters.secondary,
             variables:
               state.timeseriesFilters.secondary?.variables?.length > 0
                 ? state.timeseriesFilters.secondary.variables
-                : defaultVariable
-                  ? [defaultVariable]
+                : variable
+                  ? [variable]
                   : [],
           },
         },
       };
     }
 
-    case ActionTypes.SET_THRESHOLDS: {
-      const thresholds = Array.isArray(action.payload) ? action.payload : [];
-      const defaultThreshold = selectDefault(
-        NWMD_DASHBOARD_DEFAULTS.preferredThreshold,
-        thresholds
-      );
+    case ActionTypes.SET_LOCATIONS:
       return {
         ...state,
-        thresholds,
-        thresholdsLoading: false,
-        // Set defaults if first time loading - prefer configured default if available
-        mapFilters: {
-          ...state.mapFilters,
-          threshold:
-            state.mapFilters.threshold !== undefined
-              ? state.mapFilters.threshold
-              : defaultThreshold,
-        },
-        timeseriesFilters: {
-          ...state.timeseriesFilters,
-          secondary: {
-            ...state.timeseriesFilters.secondary,
-            thresholds:
-              state.timeseriesFilters.secondary?.thresholds?.length > 0
-                ? state.timeseriesFilters.secondary.thresholds
-                : defaultThreshold !== undefined
-                  ? [defaultThreshold]
-                  : [],
-          },
-        },
+        locations: action.payload,
+        locationsLoading: false,
       };
-    }
-
-    case ActionTypes.SET_AGG_METHODS: {
-      const aggMethods = Array.isArray(action.payload) ? action.payload : [];
-      const defaultAggMethod = selectDefault(
-        NWMD_DASHBOARD_DEFAULTS.preferredAggMethod,
-        aggMethods
-      );
-      return {
-        ...state,
-        aggMethods,
-        aggMethodsLoading: false,
-        // Set defaults if first time loading - prefer configured default if available
-        mapFilters: {
-          ...state.mapFilters,
-          aggMethod: state.mapFilters.aggMethod || defaultAggMethod,
-        },
-        timeseriesFilters: {
-          ...state.timeseriesFilters,
-          secondary: {
-            ...state.timeseriesFilters.secondary,
-            aggMethods:
-              state.timeseriesFilters.secondary?.aggMethods?.length > 0
-                ? state.timeseriesFilters.secondary.aggMethods
-                : defaultAggMethod
-                  ? [defaultAggMethod]
-                  : [],
-          },
-        },
-      };
-    }
-
-    case ActionTypes.SET_LEAD_TIME_BINS: {
-      const leadTimeBins = Array.isArray(action.payload) ? action.payload : [];
-      const defaultLeadTimeBin = selectDefault(
-        NWMD_DASHBOARD_DEFAULTS.preferredLeadTimeBin,
-        leadTimeBins
-      );
-      return {
-        ...state,
-        leadTimeBins,
-        leadTimeBinsLoading: false,
-        // Set defaults if first time loading - prefer configured default if available
-        mapFilters: {
-          ...state.mapFilters,
-          leadTimeBin: state.mapFilters.leadTimeBin || defaultLeadTimeBin,
-        },
-        timeseriesFilters: {
-          ...state.timeseriesFilters,
-          secondary: {
-            ...state.timeseriesFilters.secondary,
-            leadTimeBins:
-              state.timeseriesFilters.secondary?.leadTimeBins?.length > 0
-                ? state.timeseriesFilters.secondary.leadTimeBins
-                : defaultLeadTimeBin
-                  ? [defaultLeadTimeBin]
-                  : [],
-          },
-        },
-      };
-    }
 
     case ActionTypes.SET_TABLE_PROPERTIES: {
       const tableProperties = action.payload || {};
@@ -537,24 +384,6 @@ const nwmdDashboardReducer = (state, action) => {
       }
       if ('tablePropertiesLoading' in action.payload) {
         loadingUpdates.tablePropertiesLoading = action.payload.tablePropertiesLoading;
-      }
-      if ('quarters' in action.payload) {
-        loadingUpdates.quartersLoading = action.payload.quarters;
-      }
-      if ('configurations' in action.payload) {
-        loadingUpdates.configurationsLoading = action.payload.configurations;
-      }
-      if ('variables' in action.payload) {
-        loadingUpdates.variablesLoading = action.payload.variables;
-      }
-      if ('thresholds' in action.payload) {
-        loadingUpdates.thresholdsLoading = action.payload.thresholds;
-      }
-      if ('aggMethods' in action.payload) {
-        loadingUpdates.aggMethodsLoading = action.payload.aggMethods;
-      }
-      if ('leadTimeBins' in action.payload) {
-        loadingUpdates.leadTimeBinsLoading = action.payload.leadTimeBins;
       }
       if ('leadTimeBinMetrics' in action.payload) {
         loadingUpdates.leadTimeBinMetricsLoading = action.payload.leadTimeBinMetrics;

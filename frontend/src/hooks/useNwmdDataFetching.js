@@ -9,157 +9,6 @@ import { extractTableProperties } from '../shared/utils/ogcTransformers';
 export const useNwmdDataFetching = () => {
   const { state, dispatch } = useNwmdDashboard();
 
-  const loadQuarters = useCallback(
-    async (table) => {
-      try {
-        dispatch({
-          type: ActionTypes.SET_LOADING,
-          payload: { quarters: true },
-        });
-        const quarters = await apiService.getDistinctValues(table, 'quarter');
-        dispatch({ type: ActionTypes.SET_QUARTERS, payload: quarters });
-      } catch (error) {
-        dispatch({
-          type: ActionTypes.SET_ERROR,
-          payload: `Failed to load quarters: ${error.message}`,
-        });
-        dispatch({
-          type: ActionTypes.SET_LOADING,
-          payload: { quarters: false },
-        });
-      }
-    },
-    [dispatch]
-  );
-
-  // Load configurations (distinct values from database)
-  const loadConfigurations = useCallback(
-    async (table) => {
-      try {
-        dispatch({
-          type: ActionTypes.SET_LOADING,
-          payload: { configurations: true },
-        });
-        // Use the new distinct values endpoint
-        const configurations = await apiService.getConfigurations(table);
-        dispatch({
-          type: ActionTypes.SET_CONFIGURATIONS,
-          payload: configurations,
-        });
-      } catch (error) {
-        dispatch({
-          type: ActionTypes.SET_ERROR,
-          payload: `Failed to load configurations: ${error.message}`,
-        });
-        dispatch({
-          type: ActionTypes.SET_LOADING,
-          payload: { configurations: false },
-        });
-      }
-    },
-    [dispatch]
-  );
-
-  // Load variables (distinct values from database)
-  const loadVariables = useCallback(
-    async (table) => {
-      try {
-        dispatch({
-          type: ActionTypes.SET_LOADING,
-          payload: { variables: true },
-        });
-        // Use the new distinct values endpoint
-        const variables = await apiService.getVariables(table);
-        dispatch({ type: ActionTypes.SET_VARIABLES, payload: variables });
-      } catch (error) {
-        dispatch({
-          type: ActionTypes.SET_ERROR,
-          payload: `Failed to load variables: ${error.message}`,
-        });
-        dispatch({
-          type: ActionTypes.SET_LOADING,
-          payload: { variables: false },
-        });
-      }
-    },
-    [dispatch]
-  );
-
-  const loadThresholds = useCallback(
-    async (table) => {
-      try {
-        dispatch({
-          type: ActionTypes.SET_LOADING,
-          payload: { thresholds: true },
-        });
-        // Use the new distinct values endpoint
-        const thresholds = await apiService.getDistinctValues(table, 'threshold');
-        dispatch({ type: ActionTypes.SET_THRESHOLDS, payload: thresholds });
-      } catch (error) {
-        dispatch({
-          type: ActionTypes.SET_ERROR,
-          payload: `Failed to load thresholds: ${error.message}`,
-        });
-        dispatch({
-          type: ActionTypes.SET_LOADING,
-          payload: { thresholds: false },
-        });
-      }
-    },
-    [dispatch]
-  );
-
-  const loadAggMethods = useCallback(
-    async (table) => {
-      try {
-        dispatch({
-          type: ActionTypes.SET_LOADING,
-          payload: { aggMethods: true },
-        });
-        // Use the new distinct values endpoint
-        const aggMethods = await apiService.getDistinctValues(table, 'window_agg');
-        dispatch({ type: ActionTypes.SET_AGG_METHODS, payload: aggMethods });
-      } catch (error) {
-        dispatch({
-          type: ActionTypes.SET_ERROR,
-          payload: `Failed to load aggregation methods: ${error.message}`,
-        });
-        dispatch({
-          type: ActionTypes.SET_LOADING,
-          payload: { aggMethods: false },
-        });
-      }
-    },
-    [dispatch]
-  );
-
-  const loadLeadTimeBins = useCallback(
-    async (table) => {
-      try {
-        dispatch({
-          type: ActionTypes.SET_LOADING,
-          payload: { leadTimeBins: true },
-        });
-        // Use the new distinct values endpoint
-        const leadTimeBins = await apiService.getDistinctValues(table, 'forecast_lead_time_bin');
-        dispatch({
-          type: ActionTypes.SET_LEAD_TIME_BINS,
-          payload: leadTimeBins,
-        });
-      } catch (error) {
-        dispatch({
-          type: ActionTypes.SET_ERROR,
-          payload: `Failed to load forecast lead time bins: ${error.message}`,
-        });
-        dispatch({
-          type: ActionTypes.SET_LOADING,
-          payload: { leadTimeBins: false },
-        });
-      }
-    },
-    [dispatch]
-  );
-
   // Load table properties (batch) from queryables
   const loadTableProperties = useCallback(
     async (tables) => {
@@ -396,24 +245,13 @@ export const useNwmdDataFetching = () => {
   // Initialize all data
   const initializeData = useCallback(async () => {
     try {
-      await Promise.all([
-        loadQuarters(),
-        loadConfigurations(),
-        loadVariables(),
-        loadTableProperties(),
-      ]);
+      await loadTableProperties();
     } catch (error) {
       console.error('Failed to initialize data:', error);
     }
-  }, [loadQuarters, loadConfigurations, loadVariables, loadTableProperties]);
+  }, [loadTableProperties]);
 
   return {
-    loadQuarters,
-    loadConfigurations,
-    loadVariables,
-    loadThresholds,
-    loadAggMethods,
-    loadLeadTimeBins,
     loadTableProperties,
     loadLocations,
     loadTimeseries,

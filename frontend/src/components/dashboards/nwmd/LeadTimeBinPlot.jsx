@@ -2,6 +2,8 @@ import Plotly from 'plotly.js-dist-min';
 import { useEffect, useMemo, useRef } from 'react';
 import { Card, Spinner } from 'react-bootstrap';
 
+import { useDistinctValues } from '@/shared/queries/distinctValues';
+
 import { getMetricLabel } from '../../../shared/utils/mapMetrics';
 import { parseDurationToHours } from './leadTimeBins';
 
@@ -20,14 +22,16 @@ const parseFiniteMetricValue = (value) => {
 };
 
 const LeadTimeBinPlot = ({
+  table,
   selectedLocation,
   mapFilters,
-  leadTimeBins = [],
   rows = [],
   loading = false,
   loadLeadTimeBinMetrics,
 }) => {
   const plotRef = useRef(null);
+
+  const leadTimeBins = useDistinctValues(table, 'forecast_lead_time_bin');
 
   const primaryLocationId = selectedLocation?.primary_location_id;
   const metricName = mapFilters?.metricName;
@@ -95,8 +99,8 @@ const LeadTimeBinPlot = ({
       });
     });
 
-    const availableBins = Array.isArray(leadTimeBins)
-      ? leadTimeBins.filter((bin) => rowsByBin.has(bin))
+    const availableBins = Array.isArray(leadTimeBins.data)
+      ? leadTimeBins.data.filter((bin) => rowsByBin.has(bin))
       : [];
     const fallbackBins = Array.from(rowsByBin.keys()).sort();
     const orderedBins = availableBins.length ? availableBins : fallbackBins;
@@ -141,7 +145,7 @@ const LeadTimeBinPlot = ({
       },
       customdata: points.map((point) => [point.bin, point.lowerBound, point.upperBound]),
     };
-  }, [leadTimeBins, lowerBoundMetricName, metricName, rows, upperBoundMetricName]);
+  }, [leadTimeBins.data, lowerBoundMetricName, metricName, rows, upperBoundMetricName]);
 
   useEffect(() => {
     if (!plotRef.current) return;

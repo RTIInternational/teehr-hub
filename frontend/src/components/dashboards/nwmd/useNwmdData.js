@@ -11,12 +11,6 @@ const TABLE_NAMES = ['nwmd_metrics_by_location'];
  */
 export const useNwmdData = () => {
   const {
-    loadQuarters,
-    loadConfigurations,
-    loadVariables,
-    loadThresholds,
-    loadAggMethods,
-    loadLeadTimeBins,
     loadTableProperties,
     loadLocations,
     loadTimeseries,
@@ -24,35 +18,6 @@ export const useNwmdData = () => {
     loadLocationMetadata,
     ...otherHooks
   } = useNwmdDataFetching();
-
-  const loadNwmdQuarters = useCallback(async () => {
-    return loadQuarters(TABLE_NAMES[0]);
-  }, [loadQuarters]);
-
-  // Load configurations for nwmd metrics
-  const loadNwmdConfigurations = useCallback(async () => {
-    return loadConfigurations(TABLE_NAMES[0]); // Use location table for configurations
-  }, [loadConfigurations]);
-
-  // Load variables for nwmd metrics
-  const loadNwmdVariables = useCallback(async () => {
-    return loadVariables(TABLE_NAMES[0]); // Use location table for variables
-  }, [loadVariables]);
-
-  // Load thresholds for nwmd metrics
-  const loadNwmdThresholds = useCallback(async () => {
-    return loadThresholds(TABLE_NAMES[0]); // Use location table for variables
-  }, [loadThresholds]);
-
-  // Load thresholds for nwmd metrics
-  const loadNwmdAggMethods = useCallback(async () => {
-    return loadAggMethods(TABLE_NAMES[0]); // Use location table for variables
-  }, [loadAggMethods]);
-
-  // Load thresholds for nwmd metrics
-  const loadNwmdLeadTimeBins = useCallback(async () => {
-    return loadLeadTimeBins(TABLE_NAMES[0]); // Use location table for variables
-  }, [loadLeadTimeBins]);
 
   // Load table properties for nwmd metrics
   const loadNwmdTableProperties = useCallback(async () => {
@@ -92,33 +57,15 @@ export const useNwmdData = () => {
   // Initialize all nwmd data
   const initializeNwmdData = useCallback(async () => {
     try {
-      await Promise.all([
-        loadNwmdQuarters(),
-        loadNwmdConfigurations(),
-        loadNwmdVariables(),
-        loadNwmdThresholds(),
-        loadNwmdAggMethods(),
-        loadNwmdLeadTimeBins(),
-        loadNwmdTableProperties(),
-      ]);
+      await loadNwmdTableProperties();
     } catch (error) {
       console.error('Failed to initialize nwmd data:', error);
       throw error;
     }
-  }, [
-    loadNwmdQuarters,
-    loadNwmdConfigurations,
-    loadNwmdVariables,
-    loadNwmdThresholds,
-    loadNwmdAggMethods,
-    loadNwmdLeadTimeBins,
-    loadNwmdTableProperties,
-  ]);
+  }, [loadNwmdTableProperties]);
 
   return {
     ...otherHooks,
-    loadConfigurations: loadNwmdConfigurations,
-    loadVariables: loadNwmdVariables,
     loadTableProperties: loadNwmdTableProperties,
     loadLocations: loadNwmdLocations,
     loadTimeseries: loadNwmdTimeseries,
