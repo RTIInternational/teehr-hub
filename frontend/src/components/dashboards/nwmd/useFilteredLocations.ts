@@ -19,9 +19,9 @@ export const useFilteredLocations = (filters?: NwmdMapFilters) => {
 
   const filteredData = useMemo<LocationsResponse | undefined>(() => {
     const rawData = locationsQuery.data;
-    if (!rawData) return rawData;
+    if (!rawData || !metricName || !altHypothesis95) return rawData;
 
-    return applyAltHypothesisFilter(rawData, metricName ?? undefined, altHypothesis95 ?? undefined);
+    return applyAltHypothesisFilter(rawData, metricName, altHypothesis95);
   }, [locationsQuery.data, metricName, altHypothesis95]);
 
   return {

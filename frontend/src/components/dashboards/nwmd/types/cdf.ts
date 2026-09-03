@@ -1,5 +1,7 @@
+import type { MapMetric } from '@/shared/types/maps';
+
 type CdfPlot = {
-  metricName: string;
+  metricName: MapMetric;
 };
 
 export type CdfPlots = {

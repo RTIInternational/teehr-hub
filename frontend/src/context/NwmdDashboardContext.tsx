@@ -4,6 +4,7 @@ import React, { createContext, useContext, useReducer, type Dispatch } from 'rea
 import type { CdfPlots } from '@/components/dashboards/nwmd/types/cdf';
 import type { NwmdMapFilters, ViewportBounds } from '@/components/dashboards/nwmd/types/maps';
 import type { MapLocation } from '@/shared/types/locations';
+import type { MapMetric } from '@/shared/types/maps';
 import type { TimeseriesFilters } from '@/shared/types/timeseries';
 
 import { NWMD_DASHBOARD_DEFAULTS } from '../config/dashboardDefaults';
@@ -69,7 +70,7 @@ type DashboardAction =
     }
   | {
       type: typeof ActionTypes.SET_CDF_PLOT_METRIC;
-      payload: { plotId: string; metricName: string };
+      payload: { plotId: string; metricName: MapMetric };
     }
   | {
       type: typeof ActionTypes.SET_MAP_LOADED;

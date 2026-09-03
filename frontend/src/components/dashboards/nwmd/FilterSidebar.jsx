@@ -5,7 +5,7 @@ import { useDistinctValues } from '@/shared/queries/distinctValues';
 
 import { useTableProperties } from '../../../shared/queries/queryables';
 import LeadTimeRangeFilter from './LeadTimeRangeFilter';
-import { NWMD_METRICS } from './utils';
+import { isNwmdMetric } from './utils';
 
 const NULL_OPTION = '__NULL__';
 const ALT_HYPOTHESIS_OPTIONS = [
@@ -108,7 +108,11 @@ export const FilterSidebar = ({ tables, mapFilters, updateMapFilters }) => {
           size="sm"
           value={mapFilters.metricName || ''}
           onChange={(e) => {
-            handleMapFilterChange('metricName', e.target.value || null);
+            const selectedMetric = e.target.value;
+            handleMapFilterChange(
+              'metricName',
+              selectedMetric && isNwmdMetric(selectedMetric) ? selectedMetric : null
+            );
           }}
         >
           {(() => {
@@ -128,13 +132,11 @@ export const FilterSidebar = ({ tables, mapFilters, updateMapFilters }) => {
               }
             });
 
-            return allMetrics
-              .filter((metric) => NWMD_METRICS.has(metric))
-              .map((metricName) => (
-                <option key={metricName} value={metricName}>
-                  {metricName}
-                </option>
-              ));
+            return allMetrics.filter(isNwmdMetric).map((metricName) => (
+              <option key={metricName} value={metricName}>
+                {metricName}
+              </option>
+            ));
           })()}
         </Form.Select>
       </Form.Group>

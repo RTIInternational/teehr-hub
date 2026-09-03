@@ -4,7 +4,6 @@ import Tab from 'react-bootstrap/Tab';
 import Tabs from 'react-bootstrap/Tabs';
 
 import { useDashboard, ActionTypes } from '../../../context/NwmdDashboardContext';
-import { useInitialFilters } from '../../../features/nwmd/hooks/useInitialFilters';
 import { useNwmdLocationSelection, useNwmdFilters } from '../../../hooks/useNwmdDataFetching';
 import { CdfPlot } from './CdfPlot';
 import { CdfSidebar } from './CdfSidebar';
@@ -13,7 +12,7 @@ import LeadTimeBinPlot from './LeadTimeBinPlot';
 import NwmdMapComponent from './NwmdMapComponent';
 import { SiteInfo } from './SiteInfo';
 import TimeseriesNoControls from './TimeseriesNoControls';
-import { useCdfPlots } from './useCdfPlots';
+import { useInitialFilters } from './useInitialFilters';
 
 const Dashboard = () => {
   const tables = ['nwmd_metrics_by_location'];
@@ -23,7 +22,6 @@ const Dashboard = () => {
   const { state, dispatch } = useDashboard();
   const { selectLocation, selectedLocation } = useNwmdLocationSelection();
   const { mapFilters, updateMapFilters, timeseriesFilters } = useNwmdFilters();
-  const { plotIds, setCdfPlotMetric } = useCdfPlots();
   const hasSelectedLocation = Boolean(state.selectedLocation?.primary_location_id);
 
   const handleViewportBoundsChange = useCallback(
@@ -96,12 +94,7 @@ const Dashboard = () => {
                 />
               </Tab>
               <Tab eventKey="cdf" title="CDF Config">
-                <CdfSidebar
-                  state={state}
-                  tables={tables}
-                  plotIds={plotIds}
-                  setCdfPlotMetric={setCdfPlotMetric}
-                />
+                <CdfSidebar tables={tables} />
               </Tab>
             </Tabs>
           </div>
@@ -150,10 +143,10 @@ const Dashboard = () => {
                 gap: '5px',
               }}
             >
-              <CdfPlot plotId="Metric 1" />
-              <CdfPlot plotId="Metric 2" />
-              <CdfPlot plotId="Metric 3" />
-              <CdfPlot plotId="Metric 4" />
+              <CdfPlot table={tables[0]} plotId="Metric 1" />
+              <CdfPlot table={tables[0]} plotId="Metric 2" />
+              <CdfPlot table={tables[0]} plotId="Metric 3" />
+              <CdfPlot table={tables[0]} plotId="Metric 4" />
             </div>
             {/* )} */}
           </div>

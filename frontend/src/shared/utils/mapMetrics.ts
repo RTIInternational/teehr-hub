@@ -1,5 +1,6 @@
 import type { ExpressionSpecification } from 'maplibre-gl';
 
+import type { MapMetric } from '@/shared/types/maps';
 import type { LngLatTuple } from '@/shared/types/maps';
 
 export const getMetricDisplay = (metric: keyof typeof metricDisplay) => {
@@ -153,6 +154,10 @@ export const metricDisplay = {
     stops: [0, 1, 5, 20],
     stopLabels: ['Low', 'Medium', 'High', 'Very High'],
   },
+};
+
+export const isMapMetric = (value: string): value is MapMetric => {
+  return Object.prototype.hasOwnProperty.call(metricDisplay, value);
 };
 
 export function isLngLatTuple(value: readonly number[] | null | undefined): value is LngLatTuple {

@@ -1,14 +1,14 @@
 import { useCallback, useMemo } from 'react';
 
-import { ActionTypes, useNwmdDashboard } from '../../../context/NwmdDashboardContext';
+import type { MapMetric } from '@/shared/types/maps';
+
+import { ActionTypes, useDashboard } from '../../../context/NwmdDashboardContext';
 import { useFilteredLocations } from './useFilteredLocations';
 import { computeCdfData } from './utils';
 
-const NWMD_TABLE = 'nwmd_metrics_by_location';
-
-const useNwmdVisibleLocations = () => {
-  const { state } = useNwmdDashboard();
-  const locations = useFilteredLocations({ table: NWMD_TABLE, ...state.mapFilters });
+const useNwmdVisibleLocations = (table: string) => {
+  const { state } = useDashboard();
+  const locations = useFilteredLocations({ table, ...state.mapFilters });
 
   const visibleLocations = useMemo(() => {
     const features = locations.data?.features || [];
@@ -42,10 +42,10 @@ const useNwmdVisibleLocations = () => {
 };
 
 export const useCdfPlots = () => {
-  const { state, dispatch } = useNwmdDashboard();
+  const { state, dispatch } = useDashboard();
 
   const setCdfPlotMetric = useCallback(
-    (plotId, metricName) => {
+    (plotId: string, metricName: MapMetric) => {
       dispatch({
         type: ActionTypes.SET_CDF_PLOT_METRIC,
         payload: { plotId: plotId, metricName },
@@ -60,9 +60,9 @@ export const useCdfPlots = () => {
   };
 };
 
-export const useCdfPlot = (plotId) => {
-  const { state } = useNwmdDashboard();
-  const { visibleLocations } = useNwmdVisibleLocations();
+export const useCdfPlot = (table: string, plotId: string) => {
+  const { state } = useDashboard();
+  const { visibleLocations } = useNwmdVisibleLocations(table);
 
   const cdfData = useMemo(() => {
     const metricName = state.cdfPlots?.[plotId]?.metricName || null;

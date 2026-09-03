@@ -4,8 +4,13 @@ import { useEffect, useRef } from 'react';
 import { getMetricDisplay, getMetricLabel } from '../../../shared/utils/mapMetrics';
 import { useCdfPlot } from './useCdfPlots';
 
-export const CdfPlot = ({ plotId }) => {
-  const { cdfData, metricName } = useCdfPlot(plotId);
+type CdfPlotProps = {
+  table: string;
+  plotId: string;
+};
+
+export const CdfPlot = ({ table, plotId }: CdfPlotProps) => {
+  const { cdfData, metricName } = useCdfPlot(table, plotId);
   const plotRef = useRef(null);
 
   useEffect(() => {
@@ -14,7 +19,7 @@ export const CdfPlot = ({ plotId }) => {
     const metricLabel = getMetricLabel(metricName);
     const display = getMetricDisplay(metricName);
 
-    const trace = {
+    const trace: Plotly.Data = {
       x: cdfData.map((datum) => datum[0]),
       y: cdfData.map((datum) => datum[1]),
       mode: 'markers',
@@ -23,7 +28,7 @@ export const CdfPlot = ({ plotId }) => {
 
     const plotData = [trace];
 
-    const layout = {
+    const layout: Partial<Plotly.Layout> = {
       xaxis: {
         title: {
           text: metricLabel,
