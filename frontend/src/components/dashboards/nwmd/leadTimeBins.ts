@@ -1,4 +1,4 @@
-export const parseDurationToHours = (duration) => {
+export const parseDurationToHours = (duration: string) => {
   if (typeof duration !== 'string' || !duration.startsWith('P')) return null;
 
   const match = duration.match(/^P(?:(\d+)D)?(?:T(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?)?$/);
@@ -12,9 +12,7 @@ export const parseDurationToHours = (duration) => {
   return days * 24 + hours + minutes / 60 + seconds / 3600;
 };
 
-export const getLeadTimeBinBounds = (leadTimeBin) => {
-  if (typeof leadTimeBin !== 'string') return null;
-
+export const getLeadTimeBinBounds = (leadTimeBin: string) => {
   const [minDuration, maxDuration] = leadTimeBin.split('_');
   const minHours = parseDurationToHours(minDuration);
   const maxHours = parseDurationToHours(maxDuration);
@@ -27,14 +25,14 @@ export const getLeadTimeBinBounds = (leadTimeBin) => {
   };
 };
 
-export const formatLeadTimeBinLabel = (leadTimeBin) => {
+export const formatLeadTimeBinLabel = (leadTimeBin: string) => {
   const bounds = getLeadTimeBinBounds(leadTimeBin);
   if (!bounds) return leadTimeBin || '';
 
   return `${bounds.minHours} to <${bounds.maxHours}`;
 };
 
-export const sortLeadTimeBins = (bins = []) =>
+export const sortLeadTimeBins = (bins: string[] = []) =>
   [...bins].sort((leftBin, rightBin) => {
     const leftBounds = getLeadTimeBinBounds(leftBin);
     const rightBounds = getLeadTimeBinBounds(rightBin);
