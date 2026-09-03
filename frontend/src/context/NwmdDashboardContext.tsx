@@ -1,5 +1,10 @@
 /* eslint-disable react-refresh/only-export-components */
-import { createContext, useContext, useReducer } from 'react';
+import React, { createContext, useContext, useReducer, type Dispatch } from 'react';
+
+import type { CdfPlots } from '@/components/dashboards/nwmd/types/cdf';
+import type { NwmdMapFilters, ViewportBounds } from '@/components/dashboards/nwmd/types/maps';
+import type { MapLocation } from '@/shared/types/locations';
+import type { TimeseriesFilters } from '@/shared/types/timeseries';
 
 import { NWMD_DASHBOARD_DEFAULTS } from '../config/dashboardDefaults';
 import { getQuarterDateRange } from '../shared/utils/formatters';
@@ -16,7 +21,7 @@ const getToday = () => {
   return date.toISOString().slice(0, 16); // Format: YYYY-MM-DDTHH:MM
 };
 
-const syncTimeseriesFiltersForQuarter = (timeseriesFilters, quarter) => {
+const syncTimeseriesFiltersForQuarter = (timeseriesFilters: TimeseriesFilters, quarter: string) => {
   const quarterRange = getQuarterDateRange(quarter);
   if (!quarterRange) return {};
 
@@ -34,8 +39,56 @@ const syncTimeseriesFiltersForQuarter = (timeseriesFilters, quarter) => {
   };
 };
 
+export type DashboardState = {
+  mapViewportBounds?: ViewportBounds;
+  mapFilters: NwmdMapFilters;
+  timeseriesFilters: TimeseriesFilters;
+  selectedLocation: MapLocation | null;
+  cdfPlotOrder: string[];
+  cdfPlots: CdfPlots;
+  mapLoaded: boolean;
+  error: string | null;
+};
+
+type DashboardAction =
+  | {
+      type: typeof ActionTypes.INITIALIZE_FILTERS;
+      payload: NwmdMapFilters;
+    }
+  | {
+      type: typeof ActionTypes.UPDATE_MAP_FILTERS;
+      payload: Partial<NwmdMapFilters>;
+    }
+  | {
+      type: typeof ActionTypes.UPDATE_TIMESERIES_FILTERS;
+      payload: Partial<TimeseriesFilters>;
+    }
+  | {
+      type: typeof ActionTypes.SELECT_LOCATION;
+      payload: MapLocation | null;
+    }
+  | {
+      type: typeof ActionTypes.SET_CDF_PLOT_METRIC;
+      payload: { plotId: string; metricName: string };
+    }
+  | {
+      type: typeof ActionTypes.SET_MAP_LOADED;
+      payload: boolean;
+    }
+  | {
+      type: typeof ActionTypes.SET_MAP_VIEWPORT_BOUNDS;
+      payload: ViewportBounds;
+    }
+  | {
+      type: typeof ActionTypes.SET_ERROR;
+      payload: string;
+    }
+  | {
+      type: typeof ActionTypes.CLEAR_ERROR;
+    };
+
 // Initial state for nwmd dashboard
-const initialNwmdState = {
+const initialState: DashboardState = {
   // Data
   mapViewportBounds: undefined,
 
@@ -115,10 +168,10 @@ export const ActionTypes = {
   // Error handling
   SET_ERROR: 'SET_ERROR',
   CLEAR_ERROR: 'CLEAR_ERROR',
-};
+} as const;
 
 // Reducer function (same logic as retrospective)
-const nwmdDashboardReducer = (state, action) => {
+const reducer = (state: DashboardState, action: DashboardAction) => {
   switch (action.type) {
     case ActionTypes.INITIALIZE_FILTERS: {
       const { quarter, configuration, variable, threshold, aggMethod, leadTimeBin } =
@@ -170,7 +223,7 @@ const nwmdDashboardReducer = (state, action) => {
       // Keep timeseries defaults in sync with map display filters.
       // This mirrors retrospective behavior where map filter changes reset
       // the default timeseries selections.
-      const mapTimeseriesSync = {};
+      const mapTimeseriesSync: Partial<TimeseriesFilters> = {};
       if (action.payload.configuration !== undefined) {
         mapTimeseriesSync.secondary = {
           ...state.timeseriesFilters.secondary,
@@ -187,7 +240,7 @@ const nwmdDashboardReducer = (state, action) => {
           variables: action.payload.variable ? [action.payload.variable] : [],
         };
       }
-      if (action.payload.quarter !== undefined) {
+      if (action.payload.quarter) {
         const quarterTimeseriesSync = syncTimeseriesFiltersForQuarter(
           state.timeseriesFilters,
           action.payload.quarter
@@ -215,50 +268,17 @@ const nwmdDashboardReducer = (state, action) => {
     }
 
     case ActionTypes.UPDATE_TIMESERIES_FILTERS: {
-      // Support both nested ({ primary, secondary }) and legacy flat payloads.
-      const { primary, secondary, ...legacy } = action.payload || {};
-      const legacyPrimary = {};
-      const legacySecondary = {};
-
-      if (legacy.variable !== undefined) {
-        legacyPrimary.variables = legacy.variable ? [legacy.variable] : [];
-        legacySecondary.variables = legacy.variable ? [legacy.variable] : [];
-      }
-      if (legacy.variables !== undefined) {
-        legacyPrimary.variables = legacy.variables;
-        legacySecondary.variables = legacy.variables;
-      }
-      if (legacy.start_date !== undefined) {
-        legacyPrimary.start_date = legacy.start_date;
-        legacySecondary.start_date = legacy.start_date;
-      }
-      if (legacy.end_date !== undefined) {
-        legacyPrimary.end_date = legacy.end_date;
-        legacySecondary.end_date = legacy.end_date;
-      }
-      if (legacy.configurations !== undefined) {
-        legacySecondary.configurations = legacy.configurations;
-      }
-      if (legacy.reference_start_date !== undefined) {
-        legacySecondary.reference_start_date = legacy.reference_start_date;
-      }
-      if (legacy.reference_end_date !== undefined) {
-        legacySecondary.reference_end_date = legacy.reference_end_date;
-      }
-
       return {
         ...state,
         timeseriesFilters: {
           ...state.timeseriesFilters,
           primary: {
             ...state.timeseriesFilters.primary,
-            ...legacyPrimary,
-            ...primary,
+            ...action.payload.primary,
           },
           secondary: {
             ...state.timeseriesFilters.secondary,
-            ...legacySecondary,
-            ...secondary,
+            ...action.payload.secondary,
           },
         },
       };
@@ -312,26 +332,29 @@ const nwmdDashboardReducer = (state, action) => {
 };
 
 // Create context
-const NwmdDashboardContext = createContext();
+type DashboardContextValue = {
+  state: DashboardState;
+  dispatch: Dispatch<DashboardAction>;
+};
+
+const DashboardContext = createContext<DashboardContextValue | null>(null);
 
 // Provider component
-export const NwmdDashboardProvider = ({ children }) => {
-  const [state, dispatch] = useReducer(nwmdDashboardReducer, initialNwmdState);
+export const DashboardProvider = ({ children }: React.PropsWithChildren) => {
+  const [state, dispatch] = useReducer(reducer, initialState);
 
   return (
-    <NwmdDashboardContext.Provider value={{ state, dispatch }}>
-      {children}
-    </NwmdDashboardContext.Provider>
+    <DashboardContext.Provider value={{ state, dispatch }}>{children}</DashboardContext.Provider>
   );
 };
 
 // Hook to use the context
-export const useNwmdDashboard = () => {
-  const context = useContext(NwmdDashboardContext);
+export const useDashboard = () => {
+  const context = useContext(DashboardContext);
   if (!context) {
     throw new Error('useNwmdDashboard must be used within a NwmdDashboardProvider');
   }
   return context;
 };
 
-export default NwmdDashboardContext;
+export default DashboardContext;

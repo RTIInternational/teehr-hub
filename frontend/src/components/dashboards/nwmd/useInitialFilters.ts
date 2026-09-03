@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
 
 import { NWMD_DASHBOARD_DEFAULTS, selectDefault } from '@/config/dashboardDefaults';
-import { ActionTypes, useNwmdDashboard } from '@/context/NwmdDashboardContext';
+import { ActionTypes, useDashboard } from '@/context/NwmdDashboardContext';
 import { useConfigurations } from '@/shared/queries/configurations';
 import { useDistinctValues } from '@/shared/queries/distinctValues';
 import { useVariables } from '@/shared/queries/variables';
@@ -12,7 +12,7 @@ import { useVariables } from '@/shared/queries/variables';
  * @returns UseQueryResult objects for distinct values
  */
 export const useInitialFilters = (table: string) => {
-  const { dispatch } = useNwmdDashboard();
+  const { dispatch } = useDashboard();
 
   const quarters = useDistinctValues(table, 'quarter');
   const configurations = useConfigurations(table);

@@ -3,7 +3,8 @@ import { Card } from 'react-bootstrap';
 import Tab from 'react-bootstrap/Tab';
 import Tabs from 'react-bootstrap/Tabs';
 
-import { useNwmdDashboard, ActionTypes } from '../../../context/NwmdDashboardContext';
+import { useDashboard, ActionTypes } from '../../../context/NwmdDashboardContext';
+import { useInitialFilters } from '../../../features/nwmd/hooks/useInitialFilters';
 import { useNwmdLocationSelection, useNwmdFilters } from '../../../hooks/useNwmdDataFetching';
 import { CdfPlot } from './CdfPlot';
 import { CdfSidebar } from './CdfSidebar';
@@ -13,14 +14,13 @@ import NwmdMapComponent from './NwmdMapComponent';
 import { SiteInfo } from './SiteInfo';
 import TimeseriesNoControls from './TimeseriesNoControls';
 import { useCdfPlots } from './useCdfPlots';
-import { useInitialFilters } from './useInitialFilters';
 
 const Dashboard = () => {
   const tables = ['nwmd_metrics_by_location'];
 
   useInitialFilters(tables[0]);
 
-  const { state, dispatch } = useNwmdDashboard();
+  const { state, dispatch } = useDashboard();
   const { selectLocation, selectedLocation } = useNwmdLocationSelection();
   const { mapFilters, updateMapFilters, timeseriesFilters } = useNwmdFilters();
   const { plotIds, setCdfPlotMetric } = useCdfPlots();

@@ -4,23 +4,13 @@ import { useLocations } from '@/shared/queries/locations';
 import type { LocationsResponse } from '@/shared/types/locations';
 import type { MetricsFilters } from '@/shared/types/metrics';
 
+import type { NwmdMapFilters } from './types/maps';
 import { applyAltHypothesisFilter } from './utils';
-
-type AltHypothesisOperator = '=0' | '!=0' | '>0' | '<0' | '>1' | '<1';
-
-export type NwmdFilters = Partial<MetricsFilters> & {
-  quarter?: string | null;
-  threshold?: string | null;
-  aggMethod?: string | null;
-  leadTimeBin?: string | null;
-  metricName?: string | null;
-  altHypothesis95?: AltHypothesisOperator | null;
-};
 
 const hasApiFilters = (filters?: Record<string, unknown>) =>
   !!filters && Object.keys(filters).length > 0;
 
-export const useFilteredLocations = (filters?: NwmdFilters) => {
+export const useFilteredLocations = (filters?: NwmdMapFilters) => {
   const { altHypothesis95, metricName, ...apiFilters } = filters || {};
 
   const locationsQuery = useLocations(

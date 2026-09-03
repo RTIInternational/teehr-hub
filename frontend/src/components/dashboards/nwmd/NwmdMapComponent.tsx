@@ -13,17 +13,11 @@ import type { MapLocation } from '@/shared/types/locations';
 import type { InvalidFeature, MapMetric, MapMetricClamped } from '@/shared/types/maps';
 import { getMetricColorExpression, getMetricLabel, isLngLatTuple } from '@/shared/utils/mapMetrics';
 
-import { useFilteredLocations, type NwmdFilters } from './useFilteredLocations';
-
-type ViewportBounds = {
-  west: number;
-  south: number;
-  east: number;
-  north: number;
-};
+import type { NwmdMapFilters, ViewportBounds } from './types/maps';
+import { useFilteredLocations } from './useFilteredLocations';
 
 type NwmdMapState = {
-  mapFilters: Omit<NwmdFilters, 'metricName'> & { metricName?: MapMetric | null };
+  mapFilters: Omit<NwmdMapFilters, 'metricName'> & { metricName?: MapMetric | null };
   mapLoaded: boolean;
 };
 

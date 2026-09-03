@@ -1,6 +1,6 @@
 export {
   ActionTypes,
-  NwmdDashboardProvider,
-  useNwmdDashboard,
+  DashboardProvider as NwmdDashboardProvider,
+  useDashboard as useNwmdDashboard,
   default,
 } from '@/context/NwmdDashboardContext';

@@ -1,10 +1,10 @@
 import { useCallback } from 'react';
 
-import { useNwmdDashboard, ActionTypes } from '../context/NwmdDashboardContext';
+import { useDashboard, ActionTypes } from '../context/NwmdDashboardContext';
 
 // Custom hook for filter management
 export const useNwmdFilters = () => {
-  const { state, dispatch } = useNwmdDashboard();
+  const { state, dispatch } = useDashboard();
 
   const updateMapFilters = useCallback(
     (filters) => {
@@ -33,7 +33,7 @@ export const useNwmdFilters = () => {
 
 // Custom hook for location selection
 export const useNwmdLocationSelection = () => {
-  const { state, dispatch } = useNwmdDashboard();
+  const { state, dispatch } = useDashboard();
 
   const selectLocation = useCallback(
     (location) => {
