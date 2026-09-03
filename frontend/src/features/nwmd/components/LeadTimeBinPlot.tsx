@@ -220,7 +220,10 @@ const LeadTimeBinPlot = ({ table, selectedLocation, mapFilters }: LeadTimeBinPlo
             Select a location to view lead-time metrics.
           </div>
         ) : leadTimeBins.isLoading || leadTimeBinMetrics.isLoading ? (
-          <div className="d-flex align-items-center justify-content-center h-100">
+          <div
+            key="leadTimePlotLoading"
+            className="d-flex align-items-center justify-content-center h-100"
+          >
             <div className="text-center">
               <Spinner animation="border" size="sm" />
               <div className="small text-muted mt-2">Loading lead-time metrics...</div>
@@ -235,7 +238,7 @@ const LeadTimeBinPlot = ({ table, selectedLocation, mapFilters }: LeadTimeBinPlo
             No lead-time bin data found for current filters.
           </div>
         ) : (
-          <div ref={plotRef} style={{ width: '100%', height: '100%' }} />
+          <div key="leadTimePlot" ref={plotRef} style={{ width: '100%', height: '100%' }} />
         )}
       </Card.Body>
     </Card>
