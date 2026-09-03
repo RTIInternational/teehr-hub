@@ -1,15 +1,28 @@
 import { Card, Spinner } from 'react-bootstrap';
 
 import { usePrimaryTimeseries, useSecondaryTimeseries } from '@/shared/queries/timeseries';
+import type { MapLocation } from '@/shared/types/locations';
+import type { TimeseriesFilters } from '@/shared/types/timeseries';
 
 import PlotlyChart from '../../../shared/components/PlotlyChart';
 
-const TimeseriesNoControls = ({ selectedLocation, timeseriesFilters }) => {
+type TimeseriesNoControlsProps = {
+  selectedLocation: MapLocation | null;
+  timeseriesFilters: TimeseriesFilters;
+};
+
+const TimeseriesNoControls = ({
+  selectedLocation,
+  timeseriesFilters,
+}: TimeseriesNoControlsProps) => {
   const primary_location_id = selectedLocation?.primary_location_id;
   const primary = usePrimaryTimeseries({ primary_location_id, ...timeseriesFilters });
   const secondary = useSecondaryTimeseries({ primary_location_id, ...timeseriesFilters });
 
-  const hasData = primary.data?.length > 0 || secondary.data?.length > 0;
+  const primaryData = primary.data ?? [];
+  const secondaryData = secondary.data ?? [];
+
+  const hasData = primaryData.length > 0 || secondaryData.length > 0;
 
   return (
     <Card className="shadow-lg h-100 d-flex flex-column" style={{ borderRadius: '8px' }}>
@@ -34,8 +47,9 @@ const TimeseriesNoControls = ({ selectedLocation, timeseriesFilters }) => {
             {hasData ? (
               <div className="flex-grow-1 p-2" style={{ overflow: 'hidden', minHeight: 0 }}>
                 <PlotlyChart
-                  primaryData={primary.data}
-                  secondaryData={secondary.data}
+                  selectedLocation={selectedLocation}
+                  primaryData={primaryData}
+                  secondaryData={secondaryData}
                   height="100%"
                   allowForecastSelect={true}
                   showLegend={false}
