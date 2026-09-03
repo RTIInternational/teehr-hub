@@ -2,9 +2,9 @@ import { useCallback, useMemo } from 'react';
 
 import type { MapMetric } from '@/shared/types/maps';
 
-import { ActionTypes, useDashboard } from '../../../context/NwmdDashboardContext';
+import { ActionTypes, useDashboard } from '../DashboardContext';
+import { computeCdfData } from '../utils/utils';
 import { useFilteredLocations } from './useFilteredLocations';
-import { computeCdfData } from './utils';
 
 const useNwmdVisibleLocations = (table: string) => {
   const { state } = useDashboard();

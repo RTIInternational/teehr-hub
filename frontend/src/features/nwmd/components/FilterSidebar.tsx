@@ -4,9 +4,9 @@ import { useConfigurations } from '@/shared/queries/configurations';
 import { useDistinctValues } from '@/shared/queries/distinctValues';
 
 import { useTableProperties } from '../../../shared/queries/queryables';
+import { useFilters } from '../hooks/useFilters';
+import { isNwmdMetric } from '../utils/utils';
 import LeadTimeRangeFilter from './LeadTimeRangeFilter';
-import { useFilters } from './useFilters';
-import { isNwmdMetric } from './utils';
 
 const NULL_OPTION = '__NULL__';
 const ALT_HYPOTHESIS_OPTIONS = [

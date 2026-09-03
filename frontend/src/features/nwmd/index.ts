@@ -1,2 +1,2 @@
 export { Dashboard as NwmdDashboard } from './Dashboard';
-export { NwmdDashboardProvider } from './DashboardContext';
+export { DashboardProvider as NwmdDashboardProvider } from './DashboardContext';

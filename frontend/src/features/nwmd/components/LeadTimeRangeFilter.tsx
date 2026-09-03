@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { Form } from 'react-bootstrap';
 
-import { formatLeadTimeBinLabel, sortLeadTimeBins } from './leadTimeBins';
+import { formatLeadTimeBinLabel, sortLeadTimeBins } from '../utils/leadTimeBins';
 
 type LeadTimeRangeSliderProps = {
   leadTimeBins: string[];

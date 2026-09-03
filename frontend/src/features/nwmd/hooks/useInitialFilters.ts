@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
 
 import { NWMD_DASHBOARD_DEFAULTS, selectDefault } from '@/config/dashboardDefaults';
-import { ActionTypes, useDashboard } from '@/context/NwmdDashboardContext';
+import { ActionTypes, useDashboard } from '@/features/nwmd/DashboardContext';
 import { useConfigurations } from '@/shared/queries/configurations';
 import { useDistinctValues } from '@/shared/queries/distinctValues';
 import { useVariables } from '@/shared/queries/variables';

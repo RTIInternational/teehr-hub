@@ -13,8 +13,8 @@ import type { MapLocation } from '@/shared/types/locations';
 import type { InvalidFeature, MapMetric, MapMetricClamped } from '@/shared/types/maps';
 import { getMetricColorExpression, getMetricLabel, isLngLatTuple } from '@/shared/utils/mapMetrics';
 
-import type { NwmdMapFilters, ViewportBounds } from './types/maps';
-import { useFilteredLocations } from './useFilteredLocations';
+import { useFilteredLocations } from '../hooks/useFilteredLocations';
+import type { NwmdMapFilters, ViewportBounds } from '../types/maps';
 
 type NwmdMapState = {
   mapFilters: Omit<NwmdMapFilters, 'metricName'> & { metricName?: MapMetric | null };

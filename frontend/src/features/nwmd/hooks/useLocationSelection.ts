@@ -1,6 +1,6 @@
 import { useCallback } from 'react';
 
-import { ActionTypes, useDashboard } from '@/context/NwmdDashboardContext';
+import { ActionTypes, useDashboard } from '@/features/nwmd/DashboardContext';
 import type { MapLocation } from '@/shared/types/locations';
 
 // Custom hook for location selection

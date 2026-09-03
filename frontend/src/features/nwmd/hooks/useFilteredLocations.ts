@@ -4,8 +4,8 @@ import { useLocations } from '@/shared/queries/locations';
 import type { LocationsResponse } from '@/shared/types/locations';
 import type { MetricsFilters } from '@/shared/types/metrics';
 
-import type { NwmdMapFilters } from './types/maps';
-import { applyAltHypothesisFilter } from './utils';
+import type { NwmdMapFilters } from '../types/maps';
+import { applyAltHypothesisFilter } from '../utils/utils';
 
 const hasApiFilters = (filters?: Record<string, unknown>) =>
   !!filters && Object.keys(filters).length > 0;

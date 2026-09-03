@@ -2,7 +2,7 @@ import Plotly from 'plotly.js-dist-min';
 import { useEffect, useRef } from 'react';
 
 import { getMetricDisplay, getMetricLabel } from '../../../shared/utils/mapMetrics';
-import { useCdfPlot } from './useCdfPlots';
+import { useCdfPlot } from '../hooks/useCdfPlots';
 
 type CdfPlotProps = {
   table: string;

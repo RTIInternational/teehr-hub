@@ -1,10 +1,10 @@
 import { Form } from 'react-bootstrap';
 
-import { useDashboard } from '@/context/NwmdDashboardContext';
+import { useDashboard } from '@/features/nwmd/DashboardContext';
 
 import { useTableProperties } from '../../../shared/queries/queryables';
-import { useCdfPlots } from './useCdfPlots';
-import { isNwmdMetric } from './utils';
+import { useCdfPlots } from '../hooks/useCdfPlots';
+import { isNwmdMetric } from '../utils/utils';
 
 type CdfSidebarProps = {
   tables: string[];

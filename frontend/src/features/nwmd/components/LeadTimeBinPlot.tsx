@@ -6,10 +6,10 @@ import { useDistinctValues } from '@/shared/queries/distinctValues';
 import type { MapLocation } from '@/shared/types/locations';
 
 import { getMetricLabel } from '../../../shared/utils/mapMetrics';
-import { parseDurationToHours } from './leadTimeBins';
-import type { NwmdMapFilters } from './types/maps';
-import { useLeadTimeBinMetrics } from './useLeadTimeBinMetrics';
-import { isNotNull, isNwmdMetric } from './utils';
+import { useLeadTimeBinMetrics } from '../queries/useLeadTimeBinMetrics';
+import type { NwmdMapFilters } from '../types/maps';
+import { parseDurationToHours } from '../utils/leadTimeBins';
+import { isNotNull, isNwmdMetric } from '../utils/utils';
 
 const getMinimumLeadTimeHours = (leadTimeBin: string) => {
   if (typeof leadTimeBin !== 'string') return null;

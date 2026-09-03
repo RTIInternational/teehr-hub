@@ -4,7 +4,7 @@ import type { LocationsResponse } from '@/shared/types/locations';
 import type { MapMetric } from '@/shared/types/maps';
 import { isMapMetric } from '@/shared/utils/mapMetrics';
 
-import type { AltHypothesisOperator } from './types/maps';
+import type { AltHypothesisOperator } from '../types/maps';
 
 /**
  * Compute CDF points for given locations by metric
