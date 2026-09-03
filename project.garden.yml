@@ -23,7 +23,7 @@ environments:
     variables:
       hostname: teehr.local.app.garden
       certificateIssuerName: letsencrypt-prod
-      devTeehrVersion: e6e2194c3844c8e249ce7d24b00cf2fbef11a0ac
+      devTeehrVersion: 7bbf12397a07661e46a893cfe3be72dfb156b263
       stableTeehrVersion: place-holder # Needed for sync to work for some reason.
       previousTeehrVersion: place-holder
       polaris:
@@ -63,7 +63,7 @@ environments:
     variables:
       hostname: teehr.rtiamanzi.org
       certificateIssuerName: letsencrypt-prod
-      devTeehrVersion: e6e2194c3844c8e249ce7d24b00cf2fbef11a0ac
+      devTeehrVersion: 7bbf12397a07661e46a893cfe3be72dfb156b263
       stableTeehrVersion: v0.6.6
       previousTeehrVersion: v0.5.3
       irsa:
