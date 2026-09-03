@@ -17,7 +17,7 @@ const ALT_HYPOTHESIS_OPTIONS = [
   { value: '<0', label: 'Metric < 0' },
 ];
 
-export const FilterSidebar = ({ tables, mapFilters, updateMapFilters, loadLocations }) => {
+export const FilterSidebar = ({ tables, mapFilters, updateMapFilters }) => {
   const tableProperties = useTableProperties(tables);
 
   // Queryable values
@@ -30,31 +30,7 @@ export const FilterSidebar = ({ tables, mapFilters, updateMapFilters, loadLocati
   const handleMapFilterChange = async (filterType, value) => {
     // Reset alt hypothesis when the metric changes — the operator is metric-specific
     const extraUpdates = filterType === 'metricName' ? { altHypothesis95: null } : {};
-    const newFilters = { ...mapFilters, [filterType]: value, ...extraUpdates };
     updateMapFilters({ [filterType]: value, ...extraUpdates });
-
-    // Reload locations when base filters change
-    const reloadFilters = new Set([
-      'quarter',
-      'configuration',
-      'variable',
-      'threshold',
-      'aggMethod',
-      'leadTimeBin',
-      'altHypothesis95',
-    ]);
-    if (reloadFilters.has(filterType)) {
-      await loadLocations({
-        quarter: newFilters.quarter,
-        configuration: newFilters.configuration,
-        variable: newFilters.variable,
-        threshold: newFilters.threshold,
-        aggMethod: newFilters.aggMethod,
-        leadTimeBin: newFilters.leadTimeBin,
-        altHypothesis95: newFilters.altHypothesis95,
-        metricName: newFilters.metricName,
-      });
-    }
   };
 
   return (

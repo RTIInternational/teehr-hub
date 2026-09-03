@@ -1,14 +1,17 @@
 import { useCallback, useMemo } from 'react';
 
 import { ActionTypes, useNwmdDashboard } from '../../../context/NwmdDashboardContext';
+import { useFilteredLocations } from './useFilteredLocations';
 import { computeCdfData } from './utils';
 
-// Derive visible locations from already-filtered locations and current map viewport bounds.
+const NWMD_TABLE = 'nwmd_metrics_by_location';
+
 const useNwmdVisibleLocations = () => {
   const { state } = useNwmdDashboard();
+  const locations = useFilteredLocations({ table: NWMD_TABLE, ...state.mapFilters });
 
   const visibleLocations = useMemo(() => {
-    const features = state.locations?.features || [];
+    const features = locations.data?.features || [];
     const bounds = state.mapViewportBounds;
 
     if (!bounds) return features;
@@ -31,7 +34,7 @@ const useNwmdVisibleLocations = () => {
       const inLatRange = lat >= south && lat <= north;
       return inLonRange && inLatRange;
     });
-  }, [state.locations, state.mapViewportBounds]);
+  }, [locations.data, state.mapViewportBounds]);
 
   return {
     visibleLocations,

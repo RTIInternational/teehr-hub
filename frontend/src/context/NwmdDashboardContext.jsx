@@ -37,7 +37,6 @@ const syncTimeseriesFiltersForQuarter = (timeseriesFilters, quarter) => {
 // Initial state for nwmd dashboard
 const initialNwmdState = {
   // Data
-  locations: { features: [] },
   mapViewportBounds: undefined,
 
   // Map filters (original structure)
@@ -101,7 +100,6 @@ const initialNwmdState = {
   },
 
   // Loading states
-  locationsLoading: false,
   timeseriesLoading: false,
   metadataLoading: false,
   leadTimeBinMetricsLoading: false,
@@ -118,7 +116,6 @@ export const ActionTypes = {
   INITIALIZE_FILTERS: 'INITIALIZE_FILTERS',
 
   // Data loading
-  SET_LOCATIONS: 'SET_LOCATIONS',
   SET_TABLE_PROPERTIES: 'SET_TABLE_PROPERTIES',
 
   // Filter updates
@@ -207,14 +204,6 @@ const nwmdDashboardReducer = (state, action) => {
         },
       };
     }
-
-    case ActionTypes.SET_LOCATIONS:
-      return {
-        ...state,
-        locations: action.payload,
-        locationsLoading: false,
-      };
-
     case ActionTypes.UPDATE_MAP_FILTERS: {
       // Keep timeseries defaults in sync with map display filters.
       // This mirrors retrospective behavior where map filter changes reset
@@ -362,9 +351,6 @@ const nwmdDashboardReducer = (state, action) => {
     case ActionTypes.SET_LOADING: {
       // Map shorthand keys to actual state property names
       const loadingUpdates = {};
-      if ('locations' in action.payload) {
-        loadingUpdates.locationsLoading = action.payload.locations;
-      }
       if ('timeseries' in action.payload) {
         loadingUpdates.timeseriesLoading = action.payload.timeseries;
       }

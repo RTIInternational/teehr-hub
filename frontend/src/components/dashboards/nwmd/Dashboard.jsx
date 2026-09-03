@@ -9,7 +9,7 @@ import { CdfPlot } from './CdfPlot';
 import { CdfSidebar } from './CdfSidebar';
 import { FilterSidebar } from './FilterSidebar';
 import LeadTimeBinPlot from './LeadTimeBinPlot';
-import { NwmdMapComponent } from './NwmdMapComponent';
+import NwmdMapComponent from './NwmdMapComponent';
 import { SiteInfo } from './SiteInfo';
 import TimeseriesNoControls from './TimeseriesNoControls';
 import { useCdfPlots } from './useCdfPlots';
@@ -22,8 +22,7 @@ const Dashboard = () => {
   useInitialFilters(tables[0]);
 
   const { state, dispatch } = useNwmdDashboard();
-  const { loadLocationMetadata, loadLocations, loadTimeseries, loadLeadTimeBinMetrics } =
-    useNwmdData();
+  const { loadLocationMetadata, loadTimeseries, loadLeadTimeBinMetrics } = useNwmdData();
   const { selectLocation, selectedLocation } = useNwmdLocationSelection();
   const { mapFilters, updateMapFilters, timeseriesFilters } = useNwmdFilters();
   const { plotIds, setCdfPlotMetric } = useCdfPlots();
@@ -96,7 +95,6 @@ const Dashboard = () => {
                   tables={tables}
                   mapFilters={mapFilters}
                   updateMapFilters={updateMapFilters}
-                  loadLocations={loadLocations}
                 />
               </Tab>
               <Tab eventKey="cdf" title="CDF Config">
@@ -126,9 +124,9 @@ const Dashboard = () => {
             <NwmdMapComponent
               state={state}
               dispatch={dispatch}
+              table={tables[0]}
               ActionTypes={ActionTypes}
               selectLocation={selectLocation}
-              loadLocations={loadLocations}
               onViewportBoundsChange={handleViewportBoundsChange}
             />
           </div>

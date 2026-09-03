@@ -1,49 +1,11 @@
 import { useCallback } from 'react';
 
-import { applyAltHypothesisFilter } from '../components/dashboards/nwmd/utils';
 import { useNwmdDashboard, ActionTypes } from '../context/NwmdDashboardContext';
 import { apiService } from '../services/api';
 
 // Custom hooks for nwmd dashboard data fetching
 export const useNwmdDataFetching = () => {
-  const { state, dispatch } = useNwmdDashboard();
-
-  // Load locations with filtering
-  const loadLocations = useCallback(
-    async (filters = {}, table = null) => {
-      try {
-        dispatch({
-          type: ActionTypes.SET_LOADING,
-          payload: { locations: true },
-        });
-
-        const { altHypothesis95, metricName, ...apiFilters } = filters || {};
-
-        const locations = await apiService.getMetrics({ ...apiFilters, table });
-        const filteredLocations = applyAltHypothesisFilter(
-          locations,
-          metricName || state.mapFilters.metricName,
-          altHypothesis95
-        );
-
-        dispatch({
-          type: ActionTypes.SET_LOCATIONS,
-          payload: filteredLocations,
-        });
-      } catch (error) {
-        console.error('useNwmdDataFetching: Error loading locations:', error);
-        dispatch({
-          type: ActionTypes.SET_LOADING,
-          payload: { locations: false },
-        });
-        dispatch({
-          type: ActionTypes.SET_ERROR,
-          payload: `Failed to load locations: ${error.message}`,
-        });
-      }
-    },
-    [dispatch, state.mapFilters.metricName]
-  );
+  const { dispatch } = useNwmdDashboard();
 
   // Load timeseries data
   const loadTimeseries = useCallback(
@@ -202,7 +164,6 @@ export const useNwmdDataFetching = () => {
   );
 
   return {
-    loadLocations,
     loadTimeseries,
     loadLeadTimeBinMetrics,
     loadLocationMetadata,
