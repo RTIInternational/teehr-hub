@@ -10,7 +10,7 @@ const TABLE_NAMES = ['nwmd_metrics_by_location'];
  * Handles the nwmd_metrics_by_location table specifically
  */
 export const useNwmdData = () => {
-  const { loadLeadTimeBinMetrics, loadLocationMetadata, ...otherHooks } = useNwmdDataFetching();
+  const { loadLocationMetadata, ...otherHooks } = useNwmdDataFetching();
 
   const loadNwmdLocationMetadata = useCallback(
     async (primaryLocationId) => {
@@ -19,16 +19,8 @@ export const useNwmdData = () => {
     [loadLocationMetadata]
   );
 
-  const loadNwmdLeadTimeBinMetrics = useCallback(
-    async (filters = {}) => {
-      return loadLeadTimeBinMetrics(filters, TABLE_NAMES[0]);
-    },
-    [loadLeadTimeBinMetrics]
-  );
-
   return {
     ...otherHooks,
-    loadLeadTimeBinMetrics: loadNwmdLeadTimeBinMetrics,
     loadLocationMetadata: loadNwmdLocationMetadata,
     tableName: TABLE_NAMES[0], // Default to location table
     tableNames: TABLE_NAMES,

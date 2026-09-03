@@ -70,9 +70,6 @@ const initialNwmdState = {
   // Selected location
   selectedLocation: null,
 
-  // Lead-time bin metrics for selected location plot
-  leadTimeBinMetrics: [],
-
   // Location metadata
   metadata: undefined,
 
@@ -95,7 +92,6 @@ const initialNwmdState = {
 
   // Loading states
   metadataLoading: false,
-  leadTimeBinMetricsLoading: false,
 
   // Map state
   mapLoaded: false,
@@ -310,9 +306,6 @@ const nwmdDashboardReducer = (state, action) => {
       if ('metadata' in action.payload) {
         loadingUpdates.metadataLoading = action.payload.metadata;
       }
-      if ('leadTimeBinMetrics' in action.payload) {
-        loadingUpdates.leadTimeBinMetricsLoading = action.payload.leadTimeBinMetrics;
-      }
       return {
         ...state,
         ...loadingUpdates,
@@ -341,20 +334,6 @@ const nwmdDashboardReducer = (state, action) => {
       return {
         ...state,
         error: null,
-      };
-
-    case ActionTypes.SET_LEAD_TIME_BIN_METRICS:
-      return {
-        ...state,
-        leadTimeBinMetrics: action.payload,
-        leadTimeBinMetricsLoading: false,
-      };
-
-    case ActionTypes.CLEAR_LEAD_TIME_BIN_METRICS:
-      return {
-        ...state,
-        leadTimeBinMetrics: [],
-        leadTimeBinMetricsLoading: false,
       };
 
     case ActionTypes.SET_LOCATION_METADATA:

@@ -22,7 +22,7 @@ const Dashboard = () => {
   useInitialFilters(tables[0]);
 
   const { state, dispatch } = useNwmdDashboard();
-  const { loadLocationMetadata, loadLeadTimeBinMetrics } = useNwmdData();
+  const { loadLocationMetadata } = useNwmdData();
   const { selectLocation, selectedLocation } = useNwmdLocationSelection();
   const { mapFilters, updateMapFilters, timeseriesFilters } = useNwmdFilters();
   const { plotIds, setCdfPlotMetric } = useCdfPlots();
@@ -223,9 +223,6 @@ const Dashboard = () => {
                     table={tables[0]}
                     selectedLocation={state.selectedLocation}
                     mapFilters={mapFilters}
-                    rows={state.leadTimeBinMetrics}
-                    loading={state.leadTimeBinMetricsLoading}
-                    loadLeadTimeBinMetrics={loadLeadTimeBinMetrics}
                   />
                 </div>
               </>

@@ -6,6 +6,7 @@ import { useDistinctValues } from '@/shared/queries/distinctValues';
 
 import { getMetricLabel } from '../../../shared/utils/mapMetrics';
 import { parseDurationToHours } from './leadTimeBins';
+import { useLeadTimeBinMetrics } from './useLeadTimeBinMetrics';
 
 const getMinimumLeadTimeHours = (leadTimeBin) => {
   if (typeof leadTimeBin !== 'string') return null;
@@ -21,50 +22,29 @@ const parseFiniteMetricValue = (value) => {
   return Number.isFinite(numericValue) ? numericValue : null;
 };
 
-const LeadTimeBinPlot = ({
-  table,
-  selectedLocation,
-  mapFilters,
-  rows = [],
-  loading = false,
-  loadLeadTimeBinMetrics,
-}) => {
+const LeadTimeBinPlot = ({ table, selectedLocation, mapFilters }) => {
+  const primaryLocationId = selectedLocation?.primary_location_id;
+
   const plotRef = useRef(null);
 
   const leadTimeBins = useDistinctValues(table, 'forecast_lead_time_bin');
+  const leadTimeBinMetrics = useLeadTimeBinMetrics({
+    table,
+    primary_location_id: primaryLocationId,
+    configuration: mapFilters.configuration,
+    variable: mapFilters.variable,
+    quarter: mapFilters.quarter,
+    threshold: mapFilters.threshold,
+    aggMethod: mapFilters.aggMethod,
+  });
+  const rows = leadTimeBinMetrics.data;
 
-  const primaryLocationId = selectedLocation?.primary_location_id;
   const metricName = mapFilters?.metricName;
   const lowerBoundMetricName = metricName ? `${metricName}_boot_0_025` : null;
   const upperBoundMetricName = metricName ? `${metricName}_boot_0_975` : null;
 
-  useEffect(() => {
-    if (!primaryLocationId) {
-      return;
-    }
-
-    void loadLeadTimeBinMetrics({
-      primary_location_id: primaryLocationId,
-      quarter: mapFilters?.quarter,
-      configuration: mapFilters?.configuration,
-      variable: mapFilters?.variable,
-      threshold: mapFilters?.threshold,
-      aggMethod: mapFilters?.aggMethod,
-    }).catch(() => {
-      // Error state is handled in dashboard context.
-    });
-  }, [
-    primaryLocationId,
-    mapFilters?.quarter,
-    mapFilters?.configuration,
-    mapFilters?.variable,
-    mapFilters?.threshold,
-    mapFilters?.aggMethod,
-    loadLeadTimeBinMetrics,
-  ]);
-
   const chartData = useMemo(() => {
-    if (!metricName || !lowerBoundMetricName || !upperBoundMetricName || !rows.length) {
+    if (!metricName || !lowerBoundMetricName || !upperBoundMetricName || !rows?.length) {
       return { x: [], y: [] };
     }
 
@@ -145,7 +125,7 @@ const LeadTimeBinPlot = ({
       },
       customdata: points.map((point) => [point.bin, point.lowerBound, point.upperBound]),
     };
-  }, [leadTimeBins.data, lowerBoundMetricName, metricName, rows, upperBoundMetricName]);
+  }, [leadTimeBins.data, rows, lowerBoundMetricName, metricName, upperBoundMetricName]);
 
   useEffect(() => {
     if (!plotRef.current) return;
@@ -224,7 +204,7 @@ const LeadTimeBinPlot = ({
           <div className="d-flex align-items-center justify-content-center text-muted h-100">
             Select a location to view lead-time metrics.
           </div>
-        ) : loading ? (
+        ) : leadTimeBins.isLoading || leadTimeBinMetrics.isLoading ? (
           <div className="d-flex align-items-center justify-content-center h-100">
             <div className="text-center">
               <Spinner animation="border" size="sm" />
