@@ -37,11 +37,19 @@ def initialize_evaluation(
         os.getenv("POLARIS_DEFAULT_REALM", "teehr")
     )
 
-    # Ensure Spark executors use the prefect-job service account
-    # which has read-write S3 access (the default 'spark' SA is read-only).
+    # Ensure Spark executors run as the prefect-job service account. Iceberg
+    # warehouse access comes from Polaris-vended credentials rather than the
+    # SA's own IAM role, but the SA is still what grants direct (non-catalog)
+    # S3 access and keeps executor identity consistent with the driver.
+    #
+    # client.region must be set explicitly: without it the Iceberg S3 client
+    # cannot resolve a region for SigV4 signing of the vended credentials.
     default_configs = {
         "spark.kubernetes.authenticate.executor.serviceAccountName": "prefect-job",
-        "spark.kubernetes.executor.podNamePrefix": "prefect-job"
+        "spark.kubernetes.executor.podNamePrefix": "prefect-job",
+        "spark.sql.catalog.iceberg.client.region": os.getenv(
+            "AWS_REGION", "us-east-2"
+        )
     }
     if update_configs:
         default_configs.update(update_configs)

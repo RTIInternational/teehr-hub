@@ -26,13 +26,6 @@ environments:
       devTeehrVersion: 44a1dabc135ae5f3f1254055e40fee0e1e456ef3
       stableTeehrVersion: place-holder # Needed for sync to work for some reason.
       previousTeehrVersion: place-holder
-      # iceberg:
-      #   inCluster: "true"
-      #   catalogS3PathStyleAccess: "true"
-      #   catalogS3Endpoint: "http://minio:9000"
-      #   catalogType: rest
-      #   catalogUri: http://iceberg-rest:8181
-      #   catalogWarehouse: s3://warehouse/
       polaris:
         inCluster: "true"
         catalogS3PathStyleAccess: "true"
@@ -54,6 +47,14 @@ environments:
         user: teehr
         catalog: iceberg
         schema: teehr
+      # Gridded data (xpublish-api). Icechunk stores are plain zarr on S3, not
+      # Iceberg tables, so they are not vended by Polaris. Locally they live in
+      # the MinIO `warehouse` bucket.
+      icechunk:
+        bucket: "warehouse"
+        prefix: "icechunk-ingests"
+        # Comma-separated icechunk repo names; empty until gridded data exists.
+        repos: ""
       allowedOrigins: "https://dashboards.${var.hostname},https://api.${var.hostname}"
   - name: remote
     defaultNamespace: ${project.name}
@@ -70,8 +71,14 @@ environments:
         jupyterRoleArn: arn:aws:iam::935462133478:role/teehr-hub-iceberg-s3-warehouse-readonly-irsa
         # Polaris's own identity, used to assume the warehouse data-access
         # role and vend scoped, short-lived S3 credentials to Trino, Spark,
-        # Prefect, and Jupyter. No other service holds a warehouse role.
+        # Prefect, and Jupyter.
         polarisRoleArn: arn:aws:iam::935462133478:role/teehr-hub-polaris-irsa
+        # Prefect's role covers only non-catalog S3 work (icechunk); its
+        # Iceberg access still comes from Polaris via POLARIS_USE_STS.
+        prefectJobRoleArn: arn:aws:iam::935462133478:role/teehr-hub-prefect-job-irsa
+        # xpublish-api reads icechunk zarr stores, which Polaris cannot vend
+        # credentials for, so it holds a direct read-only role.
+        xpublishRoleArn: arn:aws:iam::935462133478:role/teehr-hub-xpublish-api-irsa
       polaris:
         inCluster: "true"
         catalogS3PathStyleAccess: "false"
@@ -80,7 +87,7 @@ environments:
         catalogType: rest
         catalogUri: http://polaris:8181/api/catalog
         catalogWarehouse: s3://dev-teehr-iceberg-warehouse/
-        catalogRoleArn: arn:aws:iam::935462133478:role/teehr-hub-iceberg-s3-warehouse-irsa
+        catalogRoleArn: arn:aws:iam::935462133478:role/teehr-hub-iceberg-s3-warehouse-access
         skipCredentialSubscopingIndirection: "false"
         storageStsUnavailable: "false"
         defaultRealm: teehr
@@ -94,6 +101,14 @@ environments:
         user: teehr
         catalog: iceberg
         schema: teehr
+      # Gridded data (xpublish-api). Separate bucket from the Iceberg
+      # warehouse; accessed directly rather than through Polaris.
+      icechunk:
+        bucket: "dev-teehr-icechunk-warehouse"
+        prefix: "icechunk-ingests"
+        # Comma-separated icechunk repo names. Each must already exist in the
+        # bucket — xpublish-api holds read-only access and cannot create one.
+        repos: ""
       allowedOrigins: "https://dashboards.${var.hostname},https://api.${var.hostname}"
 providers:
   # The name of the provider plugin to use.
