@@ -148,6 +148,7 @@ const nwmdDashboardReducer = (state, action) => {
           ...timeseriesSync,
           secondary: {
             ...state.timeseriesFilters.secondary,
+            ...timeseriesSync.secondary,
             configurations:
               state.timeseriesFilters.secondary.configurations.length > 0
                 ? state.timeseriesFilters.secondary.configurations
@@ -164,6 +165,7 @@ const nwmdDashboardReducer = (state, action) => {
         },
       };
     }
+
     case ActionTypes.UPDATE_MAP_FILTERS: {
       // Keep timeseries defaults in sync with map display filters.
       // This mirrors retrospective behavior where map filter changes reset
