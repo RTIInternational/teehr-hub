@@ -1,10 +1,9 @@
 import { Card, Spinner } from 'react-bootstrap';
 
+import PlotlyChart from '@/shared/components/PlotlyChart';
 import { usePrimaryTimeseries, useSecondaryTimeseries } from '@/shared/queries/timeseries';
 import type { MapLocation } from '@/shared/types/locations';
 import type { TimeseriesFilters } from '@/shared/types/timeseries';
-
-import PlotlyChart from '../../../shared/components/PlotlyChart';
 
 type TimeseriesNoControlsProps = {
   selectedLocation: MapLocation | null;

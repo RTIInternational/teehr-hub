@@ -2,8 +2,8 @@ import { Form } from 'react-bootstrap';
 
 import { useConfigurations } from '@/shared/queries/configurations';
 import { useDistinctValues } from '@/shared/queries/distinctValues';
+import { useTableProperties } from '@/shared/queries/queryables';
 
-import { useTableProperties } from '../../../shared/queries/queryables';
 import { useFilters } from '../hooks/useFilters';
 import { isNwmdMetric } from '../utils/utils';
 import LeadTimeRangeFilter from './LeadTimeRangeFilter';

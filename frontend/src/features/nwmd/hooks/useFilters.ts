@@ -3,7 +3,7 @@ import { useCallback } from 'react';
 import type { TimeseriesFilters } from '@/shared/types/timeseries';
 
 import { useDashboard, ActionTypes } from '../DashboardContext';
-import type { NwmdMapFilters } from './types/maps';
+import type { NwmdMapFilters } from '../types/maps';
 
 // Custom hook for filter management
 

@@ -1,14 +1,14 @@
 /* eslint-disable react-refresh/only-export-components */
 import React, { createContext, useContext, useReducer, type Dispatch } from 'react';
 
-import type { CdfPlots } from '@/features/nwmd/types/cdf';
-import type { NwmdMapFilters, ViewportBounds } from '@/features/nwmd/types/maps';
+import { NWMD_DASHBOARD_DEFAULTS } from '@/config/dashboardDefaults';
 import type { MapLocation } from '@/shared/types/locations';
 import type { MapMetric } from '@/shared/types/maps';
 import type { TimeseriesFilters } from '@/shared/types/timeseries';
+import { getQuarterDateRange } from '@/shared/utils/formatters';
 
-import { NWMD_DASHBOARD_DEFAULTS } from '../../config/dashboardDefaults';
-import { getQuarterDateRange } from '../../shared/utils/formatters';
+import type { CdfPlots } from './types/cdf';
+import type { NwmdMapFilters, ViewportBounds } from './types/maps';
 
 // Dynamic date helpers - returns dates for 10 days ago through today
 const getTenDaysAgo = () => {

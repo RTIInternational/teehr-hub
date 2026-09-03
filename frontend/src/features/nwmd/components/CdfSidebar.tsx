@@ -1,8 +1,8 @@
 import { Form } from 'react-bootstrap';
 
-import { useDashboard } from '@/features/nwmd/DashboardContext';
+import { useTableProperties } from '@/shared/queries/queryables';
 
-import { useTableProperties } from '../../../shared/queries/queryables';
+import { useDashboard } from '../DashboardContext';
 import { useCdfPlots } from '../hooks/useCdfPlots';
 import { isNwmdMetric } from '../utils/utils';
 

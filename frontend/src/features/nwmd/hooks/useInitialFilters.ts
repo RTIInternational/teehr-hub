@@ -1,10 +1,11 @@
 import { useEffect } from 'react';
 
 import { NWMD_DASHBOARD_DEFAULTS, selectDefault } from '@/config/dashboardDefaults';
-import { ActionTypes, useDashboard } from '@/features/nwmd/DashboardContext';
 import { useConfigurations } from '@/shared/queries/configurations';
 import { useDistinctValues } from '@/shared/queries/distinctValues';
 import { useVariables } from '@/shared/queries/variables';
+
+import { ActionTypes, useDashboard } from '../DashboardContext';
 
 /**
  * Load filters from data warehouse API and apply defaults

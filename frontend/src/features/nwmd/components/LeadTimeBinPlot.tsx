@@ -4,8 +4,8 @@ import { Card, Spinner } from 'react-bootstrap';
 
 import { useDistinctValues } from '@/shared/queries/distinctValues';
 import type { MapLocation } from '@/shared/types/locations';
+import { getMetricLabel } from '@/shared/utils/mapMetrics';
 
-import { getMetricLabel } from '../../../shared/utils/mapMetrics';
 import { useLeadTimeBinMetrics } from '../queries/useLeadTimeBinMetrics';
 import type { NwmdMapFilters } from '../types/maps';
 import { parseDurationToHours } from '../utils/leadTimeBins';
