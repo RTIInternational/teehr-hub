@@ -66,6 +66,8 @@ const NwmdMapComponent = <TActionTypes extends ActionTypesShape>({
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<Map>(null);
   const popup = useRef<Popup>(null);
+  const hasAutoFitOnce = useRef(false);
+  const visibleLocationBounds = useRef<[[number, number], [number, number]] | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
 
   const locations = useFilteredLocations({ table, ...state.mapFilters });
@@ -135,6 +137,16 @@ const NwmdMapComponent = <TActionTypes extends ActionTypesShape>({
       north: bounds.getNorth(),
     });
   }, [onViewportBoundsChange, state.mapLoaded]);
+
+  const zoomToVisibleLocations = useCallback(() => {
+    if (!map.current || !visibleLocationBounds.current) return;
+
+    map.current.fitBounds(visibleLocationBounds.current, {
+      padding: 50,
+      duration: 700,
+      maxZoom: 14,
+    });
+  }, []);
 
   // Initialize map function
   const initializeMap = useCallback(() => {
@@ -248,6 +260,8 @@ const NwmdMapComponent = <TActionTypes extends ActionTypesShape>({
 
     // Clear existing layers when there's no data
     if (locations.data.features.length === 0) {
+      visibleLocationBounds.current = null;
+
       // Remove existing layers and sources to clear old data from the map
       if (mapInstance.getLayer('locations-layer')) {
         mapInstance.removeLayer('locations-layer');
@@ -522,13 +536,15 @@ const NwmdMapComponent = <TActionTypes extends ActionTypesShape>({
         const minLat = Math.min(...lats);
         const maxLat = Math.max(...lats);
         if (isFinite(minLon) && isFinite(minLat) && isFinite(maxLon) && isFinite(maxLat)) {
-          mapInstance.fitBounds(
-            [
-              [minLon, minLat],
-              [maxLon, maxLat],
-            ],
-            { padding: 50, duration: 700, maxZoom: 14 }
-          );
+          visibleLocationBounds.current = [
+            [minLon, minLat],
+            [maxLon, maxLat],
+          ];
+
+          if (!hasAutoFitOnce.current) {
+            zoomToVisibleLocations();
+            hasAutoFitOnce.current = true;
+          }
         }
       }
     } catch (error) {
@@ -561,6 +577,7 @@ const NwmdMapComponent = <TActionTypes extends ActionTypesShape>({
     dispatch,
     ActionTypes,
     selectFeatureOnMap,
+    zoomToVisibleLocations,
   ]);
 
   // Emit viewport bounds whenever map extent changes.
@@ -800,6 +817,21 @@ const NwmdMapComponent = <TActionTypes extends ActionTypesShape>({
 
         {/* Map Legend */}
         {state.mapLoaded && <MapLegend metric={state.mapFilters.metricName ?? undefined} />}
+
+        {/* Zoom control for current visible locations */}
+        {state.mapLoaded && (
+          <div className="position-absolute bottom-0 end-0 p-3" style={{ zIndex: 1200 }}>
+            <button
+              type="button"
+              className="btn btn-sm btn-light shadow-sm"
+              onClick={zoomToVisibleLocations}
+              aria-label="Zoom to visible locations"
+              title="Zoom to visible locations"
+            >
+              Fit Locations
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );
