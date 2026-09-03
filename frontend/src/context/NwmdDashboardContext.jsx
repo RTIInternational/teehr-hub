@@ -38,7 +38,6 @@ const syncTimeseriesFiltersForQuarter = (timeseriesFilters, quarter) => {
 const initialNwmdState = {
   // Data
   locations: { features: [] },
-  tableProperties: {}, // Will contain { "table_name": { metrics: [], group_by: [], description: "" } }
   mapViewportBounds: undefined,
 
   // Map filters (original structure)
@@ -105,7 +104,6 @@ const initialNwmdState = {
   locationsLoading: false,
   timeseriesLoading: false,
   metadataLoading: false,
-  tablePropertiesLoading: false,
   leadTimeBinMetricsLoading: false,
 
   // Map state
@@ -216,15 +214,6 @@ const nwmdDashboardReducer = (state, action) => {
         locations: action.payload,
         locationsLoading: false,
       };
-
-    case ActionTypes.SET_TABLE_PROPERTIES: {
-      const tableProperties = action.payload || {};
-      return {
-        ...state,
-        tableProperties,
-        tablePropertiesLoading: false,
-      };
-    }
 
     case ActionTypes.UPDATE_MAP_FILTERS: {
       // Keep timeseries defaults in sync with map display filters.
@@ -381,9 +370,6 @@ const nwmdDashboardReducer = (state, action) => {
       }
       if ('metadata' in action.payload) {
         loadingUpdates.metadataLoading = action.payload.metadata;
-      }
-      if ('tablePropertiesLoading' in action.payload) {
-        loadingUpdates.tablePropertiesLoading = action.payload.tablePropertiesLoading;
       }
       if ('leadTimeBinMetrics' in action.payload) {
         loadingUpdates.leadTimeBinMetricsLoading = action.payload.leadTimeBinMetrics;

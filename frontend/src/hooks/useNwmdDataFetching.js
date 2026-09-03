@@ -3,51 +3,10 @@ import { useCallback } from 'react';
 import { applyAltHypothesisFilter } from '../components/dashboards/nwmd/utils';
 import { useNwmdDashboard, ActionTypes } from '../context/NwmdDashboardContext';
 import { apiService } from '../services/api';
-import { extractTableProperties } from '../shared/utils/ogcTransformers';
 
 // Custom hooks for nwmd dashboard data fetching
 export const useNwmdDataFetching = () => {
   const { state, dispatch } = useNwmdDashboard();
-
-  // Load table properties (batch) from queryables
-  const loadTableProperties = useCallback(
-    async (tables) => {
-      try {
-        dispatch({
-          type: ActionTypes.SET_LOADING,
-          payload: { tablePropertiesLoading: true },
-        });
-        const tableArray = Array.isArray(tables) ? tables : [tables];
-
-        const results = await Promise.all(
-          tableArray.map(async (table) => {
-            const queryables = await apiService.getQueryables(table);
-            return { table, properties: extractTableProperties(queryables) };
-          })
-        );
-
-        const tableProperties = results.reduce((acc, { table, properties }) => {
-          acc[table] = properties;
-          return acc;
-        }, {});
-
-        dispatch({
-          type: ActionTypes.SET_TABLE_PROPERTIES,
-          payload: tableProperties,
-        });
-      } catch (error) {
-        dispatch({
-          type: ActionTypes.SET_ERROR,
-          payload: `Failed to load table properties: ${error.message}`,
-        });
-        dispatch({
-          type: ActionTypes.SET_LOADING,
-          payload: { tablePropertiesLoading: false },
-        });
-      }
-    },
-    [dispatch]
-  );
 
   // Load locations with filtering
   const loadLocations = useCallback(
@@ -242,22 +201,11 @@ export const useNwmdDataFetching = () => {
     [dispatch]
   );
 
-  // Initialize all data
-  const initializeData = useCallback(async () => {
-    try {
-      await loadTableProperties();
-    } catch (error) {
-      console.error('Failed to initialize data:', error);
-    }
-  }, [loadTableProperties]);
-
   return {
-    loadTableProperties,
     loadLocations,
     loadTimeseries,
     loadLeadTimeBinMetrics,
     loadLocationMetadata,
-    initializeData,
   };
 };
 

@@ -1,4 +1,4 @@
-import { useCallback, useEffect } from 'react';
+import { useCallback } from 'react';
 import { Card } from 'react-bootstrap';
 import Tab from 'react-bootstrap/Tab';
 import Tabs from 'react-bootstrap/Tabs';
@@ -22,13 +22,8 @@ const Dashboard = () => {
   useInitialFilters(tables[0]);
 
   const { state, dispatch } = useNwmdDashboard();
-  const {
-    initializeNwmdData,
-    loadLocationMetadata,
-    loadLocations,
-    loadTimeseries,
-    loadLeadTimeBinMetrics,
-  } = useNwmdData();
+  const { loadLocationMetadata, loadLocations, loadTimeseries, loadLeadTimeBinMetrics } =
+    useNwmdData();
   const { selectLocation, selectedLocation } = useNwmdLocationSelection();
   const { mapFilters, updateMapFilters, timeseriesFilters } = useNwmdFilters();
   const { plotIds, setCdfPlotMetric } = useCdfPlots();
@@ -43,19 +38,6 @@ const Dashboard = () => {
     },
     [dispatch]
   );
-
-  // Load initial data when component mounts
-  useEffect(() => {
-    const initializeData = async () => {
-      try {
-        await initializeNwmdData();
-      } catch (error) {
-        console.error('Nwmd Dashboard: Error during initialization:', error);
-      }
-    };
-
-    initializeData();
-  }, [initializeNwmdData]);
 
   return (
     <div className="d-flex flex-column" style={{ height: 'calc(100dvh - 56px)', minHeight: 0 }}>

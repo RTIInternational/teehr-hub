@@ -11,18 +11,12 @@ const TABLE_NAMES = ['nwmd_metrics_by_location'];
  */
 export const useNwmdData = () => {
   const {
-    loadTableProperties,
     loadLocations,
     loadTimeseries,
     loadLeadTimeBinMetrics,
     loadLocationMetadata,
     ...otherHooks
   } = useNwmdDataFetching();
-
-  // Load table properties for nwmd metrics
-  const loadNwmdTableProperties = useCallback(async () => {
-    return loadTableProperties(TABLE_NAMES);
-  }, [loadTableProperties]);
 
   // Load locations with nwmd table context
   const loadNwmdLocations = useCallback(
@@ -54,24 +48,12 @@ export const useNwmdData = () => {
     [loadLeadTimeBinMetrics]
   );
 
-  // Initialize all nwmd data
-  const initializeNwmdData = useCallback(async () => {
-    try {
-      await loadNwmdTableProperties();
-    } catch (error) {
-      console.error('Failed to initialize nwmd data:', error);
-      throw error;
-    }
-  }, [loadNwmdTableProperties]);
-
   return {
     ...otherHooks,
-    loadTableProperties: loadNwmdTableProperties,
     loadLocations: loadNwmdLocations,
     loadTimeseries: loadNwmdTimeseries,
     loadLeadTimeBinMetrics: loadNwmdLeadTimeBinMetrics,
     loadLocationMetadata: loadNwmdLocationMetadata,
-    initializeNwmdData: initializeNwmdData,
     tableName: TABLE_NAMES[0], // Default to location table
     tableNames: TABLE_NAMES,
   };
