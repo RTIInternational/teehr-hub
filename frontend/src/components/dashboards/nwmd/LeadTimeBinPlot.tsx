@@ -3,12 +3,15 @@ import { useEffect, useMemo, useRef } from 'react';
 import { Card, Spinner } from 'react-bootstrap';
 
 import { useDistinctValues } from '@/shared/queries/distinctValues';
+import type { MapLocation } from '@/shared/types/locations';
 
 import { getMetricLabel } from '../../../shared/utils/mapMetrics';
 import { parseDurationToHours } from './leadTimeBins';
+import type { NwmdMapFilters } from './types/maps';
 import { useLeadTimeBinMetrics } from './useLeadTimeBinMetrics';
+import { isNotNull, isNwmdMetric } from './utils';
 
-const getMinimumLeadTimeHours = (leadTimeBin) => {
+const getMinimumLeadTimeHours = (leadTimeBin: string) => {
   if (typeof leadTimeBin !== 'string') return null;
   const minDuration = leadTimeBin.split('_')[0];
   const hours = parseDurationToHours(minDuration);
@@ -16,13 +19,19 @@ const getMinimumLeadTimeHours = (leadTimeBin) => {
   return Math.round(hours);
 };
 
-const parseFiniteMetricValue = (value) => {
+const parseFiniteMetricValue = (value: string) => {
   if (value === null || value === undefined || value === '') return null;
   const numericValue = Number(value);
   return Number.isFinite(numericValue) ? numericValue : null;
 };
 
-const LeadTimeBinPlot = ({ table, selectedLocation, mapFilters }) => {
+type LeadTimeBinPlotProps = {
+  table: string;
+  selectedLocation: MapLocation | null;
+  mapFilters: NwmdMapFilters;
+};
+
+const LeadTimeBinPlot = ({ table, selectedLocation, mapFilters }: LeadTimeBinPlotProps) => {
   const primaryLocationId = selectedLocation?.primary_location_id;
 
   const plotRef = useRef(null);
@@ -82,7 +91,7 @@ const LeadTimeBinPlot = ({ table, selectedLocation, mapFilters }) => {
     const availableBins = Array.isArray(leadTimeBins.data)
       ? leadTimeBins.data.filter((bin) => rowsByBin.has(bin))
       : [];
-    const fallbackBins = Array.from(rowsByBin.keys()).sort();
+    const fallbackBins = Array.from(rowsByBin.keys()).sort((a, b) => a.localeCompare(b));
     const orderedBins = availableBins.length ? availableBins : fallbackBins;
 
     const points = orderedBins
@@ -103,6 +112,7 @@ const LeadTimeBinPlot = ({ table, selectedLocation, mapFilters }) => {
         };
       })
       .filter(Boolean)
+      .filter(isNotNull)
       .sort((a, b) => a.minLeadTimeHours - b.minLeadTimeHours);
 
     const pointsWithCi = points.filter((point) => point.hasConfidenceInterval);
@@ -135,10 +145,13 @@ const LeadTimeBinPlot = ({ table, selectedLocation, mapFilters }) => {
       return;
     }
 
-    const metricLabel = getMetricLabel(metricName || 'metric');
-    const traces = [];
+    const metricLabel =
+      !!metricName && isNwmdMetric(metricName)
+        ? getMetricLabel(metricName)
+        : metricName || 'metric';
+    const traces: Plotly.Data[] = [];
 
-    if (chartData.withCi.x.length) {
+    if (chartData.withCi?.x.length) {
       traces.push({
         x: chartData.withCi.x,
         y: chartData.withCi.y,
@@ -163,7 +176,7 @@ const LeadTimeBinPlot = ({ table, selectedLocation, mapFilters }) => {
       });
     }
 
-    if (chartData.withoutCi.x.length) {
+    if (chartData.withoutCi?.x.length) {
       traces.push({
         x: chartData.withoutCi.x,
         y: chartData.withoutCi.y,
@@ -179,7 +192,7 @@ const LeadTimeBinPlot = ({ table, selectedLocation, mapFilters }) => {
       });
     }
 
-    const layout = {
+    const layout: Partial<Plotly.Layout> = {
       margin: { l: 70, r: 20, t: 20, b: 60 },
       xaxis: {
         title: { text: 'Minimum Lead Time (h)' },
@@ -191,9 +204,11 @@ const LeadTimeBinPlot = ({ table, selectedLocation, mapFilters }) => {
       showlegend: false,
     };
 
-    Plotly.react(plotRef.current, traces, layout, {
+    void Plotly.react(plotRef.current, traces, layout, {
       responsive: true,
       displayModeBar: 'hover',
+    }).catch((error) => {
+      console.error('Failed to render LeadTimeBinPlot', error);
     });
   }, [chartData, metricName]);
 

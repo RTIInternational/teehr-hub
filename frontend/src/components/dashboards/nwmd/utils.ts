@@ -31,6 +31,8 @@ export const computeCdfData = (
   return cdfPoints;
 };
 
+export const isNotNull = <T>(value: T | null): value is T => value !== null;
+
 const parseFiniteNumber = (value: number) => {
   const num = Number(value);
   return Number.isFinite(num) ? num : null;
