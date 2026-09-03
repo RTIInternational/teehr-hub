@@ -22,7 +22,7 @@ const Dashboard = () => {
 
   const { state, dispatch } = useDashboard();
   const { selectLocation, selectedLocation } = useNwmdLocationSelection();
-  const { mapFilters, updateMapFilters, timeseriesFilters } = useNwmdFilters();
+  const { mapFilters, timeseriesFilters } = useNwmdFilters();
   const hasSelectedLocation = Boolean(state.selectedLocation?.primary_location_id);
 
   const handleViewportBoundsChange = useCallback(
@@ -88,11 +88,7 @@ const Dashboard = () => {
           >
             <Tabs defaultActiveKey="filter" id="cdf-tabs">
               <Tab eventKey="filter" title="Filters" className="overflow-y-auto">
-                <FilterSidebar
-                  tables={tables}
-                  mapFilters={mapFilters}
-                  updateMapFilters={updateMapFilters}
-                />
+                <FilterSidebar tables={tables} />
               </Tab>
               <Tab eventKey="cdf" title="CDF Config">
                 <CdfSidebar tables={tables} />

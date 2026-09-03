@@ -1,5 +1,6 @@
 import { Form } from 'react-bootstrap';
 
+import { useNwmdFilters } from '@/hooks/useNwmdDataFetching';
 import { useConfigurations } from '@/shared/queries/configurations';
 import { useDistinctValues } from '@/shared/queries/distinctValues';
 
@@ -17,7 +18,12 @@ const ALT_HYPOTHESIS_OPTIONS = [
   { value: '<0', label: 'Metric < 0' },
 ];
 
-export const FilterSidebar = ({ tables, mapFilters, updateMapFilters }) => {
+type FilterSidebarProps = {
+  tables: string[];
+};
+
+export const FilterSidebar = ({ tables }: FilterSidebarProps) => {
+  const { mapFilters, updateMapFilters } = useNwmdFilters();
   const tableProperties = useTableProperties(tables);
 
   // Queryable values
@@ -27,7 +33,7 @@ export const FilterSidebar = ({ tables, mapFilters, updateMapFilters }) => {
   const aggMethods = useDistinctValues(tables[0], 'window_agg');
   const leadTimeBins = useDistinctValues(tables[0], 'forecast_lead_time_bin');
 
-  const handleMapFilterChange = async (filterType, value) => {
+  const handleMapFilterChange = async (filterType: string, value: string | null) => {
     // Reset alt hypothesis when the metric changes — the operator is metric-specific
     const extraUpdates = filterType === 'metricName' ? { altHypothesis95: null } : {};
     updateMapFilters({ [filterType]: value, ...extraUpdates });
@@ -109,7 +115,7 @@ export const FilterSidebar = ({ tables, mapFilters, updateMapFilters }) => {
           value={mapFilters.metricName || ''}
           onChange={(e) => {
             const selectedMetric = e.target.value;
-            handleMapFilterChange(
+            void handleMapFilterChange(
               'metricName',
               selectedMetric && isNwmdMetric(selectedMetric) ? selectedMetric : null
             );
@@ -119,7 +125,7 @@ export const FilterSidebar = ({ tables, mapFilters, updateMapFilters }) => {
             // Try to find metrics from any available table in the batch response
             // This works for both single-table and multi-table dashboards
             const allTableProps = tableProperties.data || {};
-            const allMetrics = [];
+            const allMetrics: string[] = [];
 
             // Collect all unique metrics from all tables
             Object.values(allTableProps).forEach((tableProps) => {
@@ -163,7 +169,7 @@ export const FilterSidebar = ({ tables, mapFilters, updateMapFilters }) => {
         <LeadTimeRangeFilter
           leadTimeBins={leadTimeBins.data}
           selectedLeadTimeBin={mapFilters.leadTimeBin}
-          onCommit={(nextBin) => handleMapFilterChange('leadTimeBin', nextBin)}
+          onCommit={(nextBin: string) => handleMapFilterChange('leadTimeBin', nextBin)}
         />
       </Form.Group>
 
