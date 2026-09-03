@@ -7,93 +7,6 @@ import { apiService } from '../services/api';
 export const useNwmdDataFetching = () => {
   const { dispatch } = useNwmdDashboard();
 
-  // Load timeseries data
-  const loadTimeseries = useCallback(
-    async (filters = {}) => {
-      try {
-        // Clear existing timeseries data first
-        dispatch({ type: ActionTypes.CLEAR_TIMESERIES });
-        dispatch({
-          type: ActionTypes.SET_LOADING,
-          payload: { timeseries: true },
-        });
-
-        const {
-          primary_location_id,
-          primary = {},
-          secondary = {},
-          // Backward-compatible flat filter support
-          configurations,
-          variables,
-          variable,
-          start_date,
-          end_date,
-          reference_start_date,
-          reference_end_date,
-        } = filters;
-
-        const legacyVariables = Array.isArray(variables) ? variables : variable ? [variable] : [];
-
-        const primaryFilters = {
-          variables: primary.variables ?? legacyVariables,
-          start_date: primary.start_date ?? start_date,
-          end_date: primary.end_date ?? end_date,
-        };
-
-        const secondaryFilters = {
-          configurations: secondary.configurations ?? configurations,
-          variables: secondary.variables ?? legacyVariables,
-          reference_start_date: secondary.reference_start_date ?? reference_start_date,
-          reference_end_date: secondary.reference_end_date ?? reference_end_date,
-        };
-
-        if (
-          !primary_location_id ||
-          !secondaryFilters.configurations?.length ||
-          !primaryFilters.variables?.length ||
-          !secondaryFilters.variables?.length
-        ) {
-          throw new Error(
-            'Missing required parameters: primary_location_id, primary.variables, secondary.variables, and secondary.configurations are required'
-          );
-        }
-
-        // Load primary data (USGS observations)
-        const primaryData = await apiService.getPrimaryTimeseries(primary_location_id, {
-          variable: primaryFilters.variables,
-          start_date: primaryFilters.start_date,
-          end_date: primaryFilters.end_date,
-        });
-        dispatch({
-          type: ActionTypes.SET_PRIMARY_TIMESERIES,
-          payload: primaryData,
-        });
-
-        // Load secondary data with multi-value configuration and variable filters
-        const secondaryData = await apiService.getSecondaryTimeseries(primary_location_id, {
-          variable: secondaryFilters.variables,
-          reference_start_date: secondaryFilters.reference_start_date,
-          reference_end_date: secondaryFilters.reference_end_date,
-          configuration: secondaryFilters.configurations,
-        });
-        dispatch({
-          type: ActionTypes.SET_SECONDARY_TIMESERIES,
-          payload: secondaryData,
-        });
-      } catch (error) {
-        dispatch({
-          type: ActionTypes.SET_LOADING,
-          payload: { timeseries: false },
-        });
-        dispatch({
-          type: ActionTypes.SET_ERROR,
-          payload: `Failed to load timeseries: ${error.message}`,
-        });
-      }
-    },
-    [dispatch]
-  );
-
   const loadLeadTimeBinMetrics = useCallback(
     async (filters = {}, table) => {
       try {
@@ -164,7 +77,6 @@ export const useNwmdDataFetching = () => {
   );
 
   return {
-    loadTimeseries,
     loadLeadTimeBinMetrics,
     loadLocationMetadata,
   };

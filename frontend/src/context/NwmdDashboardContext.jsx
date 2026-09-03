@@ -70,12 +70,6 @@ const initialNwmdState = {
   // Selected location
   selectedLocation: null,
 
-  // Timeseries data (structured as expected by components)
-  timeseriesData: {
-    primary: [],
-    secondary: [],
-  },
-
   // Lead-time bin metrics for selected location plot
   leadTimeBinMetrics: [],
 
@@ -100,7 +94,6 @@ const initialNwmdState = {
   },
 
   // Loading states
-  timeseriesLoading: false,
   metadataLoading: false,
   leadTimeBinMetricsLoading: false,
 
@@ -124,15 +117,6 @@ export const ActionTypes = {
 
   // Location selection
   SELECT_LOCATION: 'SELECT_LOCATION',
-
-  // Timeseries data
-  SET_PRIMARY_TIMESERIES: 'SET_PRIMARY_TIMESERIES',
-  SET_SECONDARY_TIMESERIES: 'SET_SECONDARY_TIMESERIES',
-  CLEAR_TIMESERIES: 'CLEAR_TIMESERIES',
-
-  // Location metrics
-  SET_LOCATION_METRICS: 'SET_LOCATION_METRICS',
-  CLEAR_LOCATION_METRICS: 'CLEAR_LOCATION_METRICS',
 
   // Lead-time bin metrics
   SET_LEAD_TIME_BIN_METRICS: 'SET_LEAD_TIME_BIN_METRICS',
@@ -308,34 +292,6 @@ const nwmdDashboardReducer = (state, action) => {
         selectedLocation: action.payload,
       };
 
-    case ActionTypes.SET_PRIMARY_TIMESERIES:
-      return {
-        ...state,
-        timeseriesData: {
-          ...state.timeseriesData,
-          primary: action.payload,
-        },
-      };
-
-    case ActionTypes.SET_SECONDARY_TIMESERIES:
-      return {
-        ...state,
-        timeseriesData: {
-          ...state.timeseriesData,
-          secondary: action.payload,
-        },
-        timeseriesLoading: false,
-      };
-
-    case ActionTypes.CLEAR_TIMESERIES:
-      return {
-        ...state,
-        timeseriesData: {
-          primary: [],
-          secondary: [],
-        },
-      };
-
     case ActionTypes.SET_CDF_PLOT_METRIC:
       return {
         ...state,
@@ -351,9 +307,6 @@ const nwmdDashboardReducer = (state, action) => {
     case ActionTypes.SET_LOADING: {
       // Map shorthand keys to actual state property names
       const loadingUpdates = {};
-      if ('timeseries' in action.payload) {
-        loadingUpdates.timeseriesLoading = action.payload.timeseries;
-      }
       if ('metadata' in action.payload) {
         loadingUpdates.metadataLoading = action.payload.metadata;
       }

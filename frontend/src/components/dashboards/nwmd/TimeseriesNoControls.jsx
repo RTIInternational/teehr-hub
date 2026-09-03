@@ -1,57 +1,15 @@
-import { useEffect } from 'react';
 import { Card, Spinner } from 'react-bootstrap';
+
+import { usePrimaryTimeseries, useSecondaryTimeseries } from '@/shared/queries/timeseries';
 
 import PlotlyChart from '../../../shared/components/PlotlyChart';
 
-const TimeseriesNoControls = ({
-  selectedLocation,
-  timeseriesFilters,
-  timeseriesData,
-  timeseriesLoading,
-  loadTimeseries,
-}) => {
-  const hasData = timeseriesData.primary?.length > 0 || timeseriesData.secondary?.length > 0;
+const TimeseriesNoControls = ({ selectedLocation, timeseriesFilters }) => {
+  const primary_location_id = selectedLocation?.primary_location_id;
+  const primary = usePrimaryTimeseries({ primary_location_id, ...timeseriesFilters });
+  const secondary = useSecondaryTimeseries({ primary_location_id, ...timeseriesFilters });
 
-  useEffect(() => {
-    const id = selectedLocation?.primary_location_id;
-    if (!id) return;
-
-    const { primary, secondary } = timeseriesFilters;
-    if (
-      !primary?.variables?.length ||
-      !secondary?.variables?.length ||
-      !secondary?.configurations?.length
-    ) {
-      console.warn('Missing required timeseries filters. Skipping auto-load.');
-      return;
-    }
-
-    loadTimeseries({
-      primary_location_id: id,
-      primary: {
-        variables: timeseriesFilters.primary?.variables,
-        start_date: timeseriesFilters.primary?.start_date,
-        end_date: timeseriesFilters.primary?.end_date,
-      },
-      secondary: {
-        configurations: timeseriesFilters.secondary?.configurations,
-        variables: timeseriesFilters.secondary?.variables,
-        reference_start_date: timeseriesFilters.secondary?.reference_start_date,
-        reference_end_date: timeseriesFilters.secondary?.reference_end_date,
-      },
-    });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [
-    selectedLocation?.primary_location_id,
-    timeseriesFilters.primary?.variables,
-    timeseriesFilters.primary?.start_date,
-    timeseriesFilters.primary?.end_date,
-    timeseriesFilters.secondary?.configurations,
-    timeseriesFilters.secondary?.variables,
-    timeseriesFilters.secondary?.reference_start_date,
-    timeseriesFilters.secondary?.reference_end_date,
-    loadTimeseries,
-  ]);
+  const hasData = primary.data?.length > 0 || secondary.data?.length > 0;
 
   return (
     <Card className="shadow-lg h-100 d-flex flex-column" style={{ borderRadius: '8px' }}>
@@ -64,7 +22,7 @@ const TimeseriesNoControls = ({
               <p>Click on a location on the map to view its time series data.</p>
             </div>
           </div>
-        ) : timeseriesLoading ? (
+        ) : primary.isLoading || secondary.isLoading ? (
           <div className="d-flex justify-content-center align-items-center flex-grow-1">
             <div className="text-center">
               <Spinner animation="border" variant="primary" />
@@ -76,8 +34,8 @@ const TimeseriesNoControls = ({
             {hasData ? (
               <div className="flex-grow-1 p-2" style={{ overflow: 'hidden', minHeight: 0 }}>
                 <PlotlyChart
-                  primaryData={timeseriesData.primary}
-                  secondaryData={timeseriesData.secondary}
+                  primaryData={primary.data}
+                  secondaryData={secondary.data}
                   height="100%"
                   allowForecastSelect={true}
                   showLegend={false}

@@ -22,7 +22,7 @@ const Dashboard = () => {
   useInitialFilters(tables[0]);
 
   const { state, dispatch } = useNwmdDashboard();
-  const { loadLocationMetadata, loadTimeseries, loadLeadTimeBinMetrics } = useNwmdData();
+  const { loadLocationMetadata, loadLeadTimeBinMetrics } = useNwmdData();
   const { selectLocation, selectedLocation } = useNwmdLocationSelection();
   const { mapFilters, updateMapFilters, timeseriesFilters } = useNwmdFilters();
   const { plotIds, setCdfPlotMetric } = useCdfPlots();
@@ -209,9 +209,6 @@ const Dashboard = () => {
                   <TimeseriesNoControls
                     selectedLocation={selectedLocation}
                     timeseriesFilters={timeseriesFilters}
-                    timeseriesData={state.timeseriesData}
-                    timeseriesLoading={state.timeseriesLoading}
-                    loadTimeseries={loadTimeseries}
                   />
                 </div>
                 <div
