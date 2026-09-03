@@ -720,10 +720,7 @@ const NwmdMapComponent = <TActionTypes extends ActionTypesShape>({
 
         {/* Location search */}
         {state.mapLoaded && showSearch && (
-          <div
-            className="position-absolute top-0 start-0 m-3"
-            style={{ zIndex: 1200, width: 'min(380px, calc(100% - 200px))' }}
-          >
+          <div className="position-absolute top-0 start-0 end-0 px-3 pt-3" style={{ zIndex: 1200 }}>
             <div className="input-group shadow-sm" style={{ height: '38px' }}>
               <span
                 className="input-group-text bg-white border-end-0 rounded-start-3"
