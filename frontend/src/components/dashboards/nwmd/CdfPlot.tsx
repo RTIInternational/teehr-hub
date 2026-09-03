@@ -49,9 +49,11 @@ export const CdfPlot = ({ table, plotId }: CdfPlotProps) => {
       showlegend: false,
     };
 
-    Plotly.react(plotRef.current, plotData, layout, {
+    void Plotly.react(plotRef.current, plotData, layout, {
       responsive: true,
       displayModeBar: 'hover',
+    }).catch((error) => {
+      console.error('Failed to render CdfPlot', error);
     });
   }, [cdfData, metricName]);
 
