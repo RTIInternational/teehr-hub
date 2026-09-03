@@ -12,6 +12,7 @@ import LeadTimeBinPlot from './LeadTimeBinPlot';
 import NwmdMapComponent from './NwmdMapComponent';
 import { SiteInfo } from './SiteInfo';
 import TimeseriesNoControls from './TimeseriesNoControls';
+import type { ViewportBounds } from './types/maps';
 import { useInitialFilters } from './useInitialFilters';
 
 const Dashboard = () => {
@@ -25,7 +26,7 @@ const Dashboard = () => {
   const hasSelectedLocation = Boolean(state.selectedLocation?.primary_location_id);
 
   const handleViewportBoundsChange = useCallback(
-    (bounds) => {
+    (bounds: ViewportBounds) => {
       dispatch({
         type: ActionTypes.SET_MAP_VIEWPORT_BOUNDS,
         payload: bounds,
