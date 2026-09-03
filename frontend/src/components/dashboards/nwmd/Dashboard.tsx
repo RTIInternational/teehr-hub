@@ -4,7 +4,6 @@ import Tab from 'react-bootstrap/Tab';
 import Tabs from 'react-bootstrap/Tabs';
 
 import { useDashboard, ActionTypes } from '../../../context/NwmdDashboardContext';
-import { useNwmdLocationSelection, useNwmdFilters } from '../../../hooks/useNwmdDataFetching';
 import { CdfPlot } from './CdfPlot';
 import { CdfSidebar } from './CdfSidebar';
 import { FilterSidebar } from './FilterSidebar';
@@ -13,7 +12,9 @@ import NwmdMapComponent from './NwmdMapComponent';
 import { SiteInfo } from './SiteInfo';
 import TimeseriesNoControls from './TimeseriesNoControls';
 import type { ViewportBounds } from './types/maps';
+import { useFilters } from './useFilters';
 import { useInitialFilters } from './useInitialFilters';
+import { useLocationSelection } from './useLocationSelection';
 
 const Dashboard = () => {
   const tables = ['nwmd_metrics_by_location'];
@@ -21,8 +22,8 @@ const Dashboard = () => {
   useInitialFilters(tables[0]);
 
   const { state, dispatch } = useDashboard();
-  const { selectLocation, selectedLocation } = useNwmdLocationSelection();
-  const { mapFilters, timeseriesFilters } = useNwmdFilters();
+  const { selectLocation, selectedLocation } = useLocationSelection();
+  const { mapFilters, timeseriesFilters } = useFilters();
   const hasSelectedLocation = Boolean(state.selectedLocation?.primary_location_id);
 
   const handleViewportBoundsChange = useCallback(

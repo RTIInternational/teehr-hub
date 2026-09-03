@@ -1,11 +1,11 @@
 import { Form } from 'react-bootstrap';
 
-import { useNwmdFilters } from '@/hooks/useNwmdDataFetching';
 import { useConfigurations } from '@/shared/queries/configurations';
 import { useDistinctValues } from '@/shared/queries/distinctValues';
 
 import { useTableProperties } from '../../../shared/queries/queryables';
 import LeadTimeRangeFilter from './LeadTimeRangeFilter';
+import { useFilters } from './useFilters';
 import { isNwmdMetric } from './utils';
 
 const NULL_OPTION = '__NULL__';
@@ -23,7 +23,7 @@ type FilterSidebarProps = {
 };
 
 export const FilterSidebar = ({ tables }: FilterSidebarProps) => {
-  const { mapFilters, updateMapFilters } = useNwmdFilters();
+  const { mapFilters, updateMapFilters } = useFilters();
   const tableProperties = useTableProperties(tables);
 
   // Queryable values
