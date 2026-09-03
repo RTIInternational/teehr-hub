@@ -42,22 +42,33 @@ spec:
               name: minio-secrets
               key: secretkey
         - name: REMOTE_CATALOG_S3_ENDPOINT
-          value: ${var.iceberg.catalogS3Endpoint}
+          value: ${var.polaris.catalogS3Endpoint}
         - name: REMOTE_CATALOG_S3_PATH_STYLE_ACCESS
-          value: "${var.iceberg.catalogS3PathStyleAccess}"
+          value: "${var.polaris.catalogS3PathStyleAccess}"
         ${endif}
 
         # Use env vars to configure Iceberg catalog for env.
         - name: AWS_REGION
           value: ${var.aws.region}
         - name: REMOTE_CATALOG_REST_URI
-          value: ${var.iceberg.catalogUri}
+          value: ${var.polaris.catalogUri}
         - name: REMOTE_CATALOG_TYPE
-          value: ${var.iceberg.catalogType}
-        - name: REMOTE_WAREHOUSE_S3_PATH
-          value: ${var.iceberg.catalogWarehouse}
+          value: ${var.polaris.catalogType}
+        - name: REMOTE_WAREHOUSE_IDENTIFIER
+          value: ${var.polaris.defaultRealm}
+        - name: POLARIS_OAUTH2_SERVER_URI
+          value: ${var.polaris.oauthServerUri}
+        - name: POLARIS_CLIENT_ID
+          value: prefect-polaris
+        - name: POLARIS_CLIENT_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: prefect-polaris-secrets
+              key: client-secret
+        - name: POLARIS_DEFAULT_REALM
+          value: ${var.polaris.defaultRealm}
         - name: IN_CLUSTER
-          value: "${var.iceberg.inCluster}"
+          value: "${var.polaris.inCluster}"
         resources:
           requests:
             cpu: 500m

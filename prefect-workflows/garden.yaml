@@ -51,6 +51,7 @@ name: prefect-job-sa
 description: Create Prefect job service account
 environments:
   - remote
+  - local
 spec:
   manifestTemplates:
   - ./manifests/prefect-job-sa.yaml.tpl
