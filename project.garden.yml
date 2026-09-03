@@ -53,8 +53,10 @@ environments:
       icechunk:
         bucket: "warehouse"
         prefix: "icechunk-ingests"
-        # Comma-separated icechunk repo names; empty until gridded data exists.
-        repos: ""
+        # Comma-separated icechunk repo names. Must be non-empty — xpublish-api
+        # exits at startup otherwise. Locally the service holds MinIO root
+        # credentials, so it self-initializes a missing repo on first start.
+        repos: "nwm30-forcing-analysis-assim"
       allowedOrigins: "https://dashboards.${var.hostname},https://api.${var.hostname}"
   - name: remote
     defaultNamespace: ${project.name}
@@ -106,9 +108,10 @@ environments:
       icechunk:
         bucket: "dev-teehr-icechunk-warehouse"
         prefix: "icechunk-ingests"
-        # Comma-separated icechunk repo names. Each must already exist in the
-        # bucket — xpublish-api holds read-only access and cannot create one.
-        repos: ""
+        # Comma-separated icechunk repo names. Must be non-empty — xpublish-api
+        # exits at startup otherwise. Each repo must already exist in the
+        # bucket: xpublish-api holds read-only access, so it cannot create one.
+        repos: "nwm30-forcing-analysis-assim"
       allowedOrigins: "https://dashboards.${var.hostname},https://api.${var.hostname}"
 providers:
   # The name of the provider plugin to use.
