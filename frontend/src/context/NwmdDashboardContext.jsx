@@ -70,9 +70,6 @@ const initialNwmdState = {
   // Selected location
   selectedLocation: null,
 
-  // Location metadata
-  metadata: undefined,
-
   // CDF plots
   cdfPlotOrder: ['Metric 1', 'Metric 2', 'Metric 3', 'Metric 4'],
   cdfPlots: {
@@ -90,9 +87,6 @@ const initialNwmdState = {
     },
   },
 
-  // Loading states
-  metadataLoading: false,
-
   // Map state
   mapLoaded: false,
 
@@ -104,9 +98,6 @@ const initialNwmdState = {
 export const ActionTypes = {
   INITIALIZE_FILTERS: 'INITIALIZE_FILTERS',
 
-  // Data loading
-  SET_TABLE_PROPERTIES: 'SET_TABLE_PROPERTIES',
-
   // Filter updates
   UPDATE_MAP_FILTERS: 'UPDATE_MAP_FILTERS',
   UPDATE_TIMESERIES_FILTERS: 'UPDATE_TIMESERIES_FILTERS',
@@ -114,19 +105,8 @@ export const ActionTypes = {
   // Location selection
   SELECT_LOCATION: 'SELECT_LOCATION',
 
-  // Lead-time bin metrics
-  SET_LEAD_TIME_BIN_METRICS: 'SET_LEAD_TIME_BIN_METRICS',
-  CLEAR_LEAD_TIME_BIN_METRICS: 'CLEAR_LEAD_TIME_BIN_METRICS',
-
-  // Location metadata
-  SET_LOCATION_METADATA: 'SET_LOCATION_METADATA',
-  CLEAR_LOCATION_METADATA: 'CLEAR_LOCATION_METADATA',
-
   // CDF plots
   SET_CDF_PLOT_METRIC: 'SET_CDF_PLOT_METRIC',
-
-  // Loading states
-  SET_LOADING: 'SET_LOADING',
 
   // Map state
   SET_MAP_LOADED: 'SET_MAP_LOADED',
@@ -300,18 +280,6 @@ const nwmdDashboardReducer = (state, action) => {
         },
       };
 
-    case ActionTypes.SET_LOADING: {
-      // Map shorthand keys to actual state property names
-      const loadingUpdates = {};
-      if ('metadata' in action.payload) {
-        loadingUpdates.metadataLoading = action.payload.metadata;
-      }
-      return {
-        ...state,
-        ...loadingUpdates,
-      };
-    }
-
     case ActionTypes.SET_MAP_LOADED:
       return {
         ...state,
@@ -334,20 +302,6 @@ const nwmdDashboardReducer = (state, action) => {
       return {
         ...state,
         error: null,
-      };
-
-    case ActionTypes.SET_LOCATION_METADATA:
-      return {
-        ...state,
-        metadata: action.payload,
-        metadataLoading: false,
-      };
-
-    case ActionTypes.CLEAR_LOCATION_METADATA:
-      return {
-        ...state,
-        metadata: null,
-        metadataLoading: false,
       };
 
     default:

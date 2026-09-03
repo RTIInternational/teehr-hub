@@ -1,43 +1,6 @@
 import { useCallback } from 'react';
 
 import { useNwmdDashboard, ActionTypes } from '../context/NwmdDashboardContext';
-import { apiService } from '../services/api';
-
-// Custom hooks for nwmd dashboard data fetching
-export const useNwmdDataFetching = () => {
-  const { dispatch } = useNwmdDashboard();
-
-  // Load location-specific metadata
-  const loadLocationMetadata = useCallback(
-    async (primaryLocationId) => {
-      try {
-        dispatch({
-          type: ActionTypes.SET_LOADING,
-          payload: { metadata: true },
-        });
-        const metadata = await apiService.getLocationById(primaryLocationId, true);
-        dispatch({
-          type: ActionTypes.SET_LOCATION_METADATA,
-          payload: metadata,
-        });
-        return metadata;
-      } catch (error) {
-        console.error('Error loading location metadata:', error);
-        dispatch({
-          type: ActionTypes.SET_ERROR,
-          payload: `Failed to load location metadata: ${error.message}`,
-        });
-        dispatch({ type: ActionTypes.CLEAR_LOCATION_METADATA });
-        throw error;
-      }
-    },
-    [dispatch]
-  );
-
-  return {
-    loadLocationMetadata,
-  };
-};
 
 // Custom hook for filter management
 export const useNwmdFilters = () => {

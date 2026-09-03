@@ -1,5 +1,6 @@
-import { useEffect } from 'react';
 import { Card, Spinner, Row, Col, Badge, ListGroup } from 'react-bootstrap';
+
+import { useLocationMetadata } from '@/shared/queries/locations';
 
 const getUsTimezoneRegion = (timezone) => {
   if (!timezone) return null;
@@ -20,13 +21,8 @@ const getUsgsSiteUrl = (siteCode) => {
   return `https://waterdata.usgs.gov/monitoring-location/${siteCode}`;
 };
 
-export const SiteInfo = ({ selectedLocation, metadataLoading, metadata, loadLocationMetadata }) => {
-  useEffect(() => {
-    const id = selectedLocation?.primary_location_id;
-    if (!id) return;
-
-    loadLocationMetadata(id);
-  }, [loadLocationMetadata, selectedLocation?.primary_location_id]);
+export const SiteInfo = ({ selectedLocation }) => {
+  const metadata = useLocationMetadata(selectedLocation?.primary_location_id);
 
   return (
     <Card className="shadow-lg h-100 d-flex flex-column" style={{ borderRadius: '8px' }}>
@@ -39,20 +35,20 @@ export const SiteInfo = ({ selectedLocation, metadataLoading, metadata, loadLoca
               <p>Click on a location on the map to view its metadata.</p>
             </div>
           </div>
-        ) : metadataLoading ? (
+        ) : metadata.isLoading ? (
           <div className="d-flex justify-content-center align-items-center flex-grow-1">
             <div className="text-center">
               <Spinner animation="border" variant="primary" />
               <div className="mt-2 small text-muted">Loading location metadata...</div>
             </div>
           </div>
-        ) : metadata ? (
+        ) : metadata.data ? (
           <div
             className="flex-grow-1 d-flex flex-column"
             style={{ overflow: 'auto', minHeight: 0 }}
           >
-            <SiteHeader locationMetadata={metadata} selectedLocation={selectedLocation} />
-            <SiteDetailsSection locationMetadata={metadata} />
+            <SiteHeader locationMetadata={metadata.data} selectedLocation={selectedLocation} />
+            <SiteDetailsSection locationMetadata={metadata.data} />
           </div>
         ) : (
           <div className="d-flex align-items-center justify-content-center flex-grow-1">

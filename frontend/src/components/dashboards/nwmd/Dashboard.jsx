@@ -14,7 +14,6 @@ import { SiteInfo } from './SiteInfo';
 import TimeseriesNoControls from './TimeseriesNoControls';
 import { useCdfPlots } from './useCdfPlots';
 import { useInitialFilters } from './useInitialFilters';
-import { useNwmdData } from './useNwmdData';
 
 const Dashboard = () => {
   const tables = ['nwmd_metrics_by_location'];
@@ -22,7 +21,6 @@ const Dashboard = () => {
   useInitialFilters(tables[0]);
 
   const { state, dispatch } = useNwmdDashboard();
-  const { loadLocationMetadata } = useNwmdData();
   const { selectLocation, selectedLocation } = useNwmdLocationSelection();
   const { mapFilters, updateMapFilters, timeseriesFilters } = useNwmdFilters();
   const { plotIds, setCdfPlotMetric } = useCdfPlots();
@@ -188,12 +186,7 @@ const Dashboard = () => {
             ) : (
               <>
                 <div style={{ minHeight: 0 }}>
-                  <SiteInfo
-                    selectedLocation={state.selectedLocation}
-                    metadataLoading={state.metadataLoading}
-                    metadata={state.metadata}
-                    loadLocationMetadata={loadLocationMetadata}
-                  />
+                  <SiteInfo selectedLocation={state.selectedLocation} />
                 </div>
                 <div
                   className="timeseries-panel"
