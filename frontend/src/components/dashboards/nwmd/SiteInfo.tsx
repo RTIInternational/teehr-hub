@@ -1,8 +1,9 @@
 import { Card, Spinner, Row, Col, Badge, ListGroup } from 'react-bootstrap';
 
 import { useLocationMetadata } from '@/shared/queries/locations';
+import type { LocationMetadataResponse, MapLocation } from '@/shared/types/locations';
 
-const getUsTimezoneRegion = (timezone) => {
+const getUsTimezoneRegion = (timezone: string) => {
   if (!timezone) return null;
 
   if (timezone.includes('New_York')) return 'Eastern';
@@ -15,13 +16,17 @@ const getUsTimezoneRegion = (timezone) => {
   return null;
 };
 
-const getUsgsSiteUrl = (siteCode) => {
-  if (!siteCode) return null;
+const getUsgsSiteUrl = (siteCode: string) => {
+  if (!siteCode) return undefined;
 
   return `https://waterdata.usgs.gov/monitoring-location/${siteCode}`;
 };
 
-export const SiteInfo = ({ selectedLocation }) => {
+type SiteInfoProps = {
+  selectedLocation: MapLocation | null;
+};
+
+export const SiteInfo = ({ selectedLocation }: SiteInfoProps) => {
   const metadata = useLocationMetadata(selectedLocation?.primary_location_id);
 
   return (
@@ -64,7 +69,12 @@ export const SiteInfo = ({ selectedLocation }) => {
   );
 };
 
-const SiteHeader = ({ locationMetadata, selectedLocation }) => {
+type SiteHeaderProps = {
+  locationMetadata: LocationMetadataResponse;
+  selectedLocation: MapLocation | null;
+};
+
+const SiteHeader = ({ locationMetadata, selectedLocation }: SiteHeaderProps) => {
   const data = locationMetadata?.features?.[0];
   if (!data) return null;
 
@@ -72,7 +82,9 @@ const SiteHeader = ({ locationMetadata, selectedLocation }) => {
     selectedLocation?.primary_location_id || data.id || data.properties?.id || '';
   const primaryIdValue = String(primaryIdRaw).replace(/^usgs-/i, '');
   const secondaryIdValue = selectedLocation?.secondary_location_id;
-  const usgsUrl = getUsgsSiteUrl(data.id?.toUpperCase() || primaryIdRaw);
+  const usgsUrl = getUsgsSiteUrl(
+    typeof data.id === 'string' ? data.id?.toUpperCase() : primaryIdRaw
+  );
   const timezoneRegion = getUsTimezoneRegion(
     data.properties?.timezone || data.properties?.iana_timezone
   );
@@ -81,7 +93,7 @@ const SiteHeader = ({ locationMetadata, selectedLocation }) => {
     <div className="border-bottom p-2" style={{ backgroundColor: '#f8f9fa' }}>
       <div className="d-flex justify-content-between align-items-start gap-2">
         <div>
-          <h6 className="mb-1 fw-bold text-truncate">{data.properties.name}</h6>
+          <h6 className="mb-1 fw-bold text-truncate">{data.properties?.name}</h6>
           <div className="d-flex align-items-center gap-1">
             <Badge
               as="a"
@@ -91,7 +103,7 @@ const SiteHeader = ({ locationMetadata, selectedLocation }) => {
               bg="info"
               className="fs-8 text-decoration-none"
               style={{ cursor: 'pointer' }}
-              aria-label={`Open USGS site details for ${data.properties.name}`}
+              aria-label={`Open USGS site details for ${data.properties?.name}`}
               title="Open USGS site details in a new tab"
             >
               USGS-{primaryIdValue}
@@ -113,7 +125,11 @@ const SiteHeader = ({ locationMetadata, selectedLocation }) => {
   );
 };
 
-const SiteDetailsSection = ({ locationMetadata }) => {
+type SiteDetailsSectionProps = {
+  locationMetadata: LocationMetadataResponse;
+};
+
+const SiteDetailsSection = ({ locationMetadata }: SiteDetailsSectionProps) => {
   const data = locationMetadata?.features?.[0];
   if (!data) return null;
 
