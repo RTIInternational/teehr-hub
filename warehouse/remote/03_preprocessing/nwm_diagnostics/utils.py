@@ -242,38 +242,38 @@ def create_ondemand_pod_template():
         f.write("""apiVersion: v1
 kind: Pod
 spec:
-terminationGracePeriodSeconds: 60
-securityContext:
+  terminationGracePeriodSeconds: 60
+  securityContext:
     runAsUser: 1000
     runAsGroup: 1000
     fsGroup: 1000
-containers:
-- name: spark-kubernetes-executor
+  containers:
+  - name: spark-kubernetes-executor
     securityContext:
-    runAsUser: 1000
-    runAsGroup: 1000
-    allowPrivilegeEscalation: false
+      runAsUser: 1000
+      runAsGroup: 1000
+      allowPrivilegeEscalation: false
     lifecycle:
-    preStop:
+      preStop:
         exec:
-        command: ["/bin/sh", "-c", "sleep 30"]
+          command: ["/bin/sh", "-c", "sleep 30"]
     volumeMounts:
     - name: data-nfs
-    mountPath: /data
-volumes:
-- name: data-nfs
+      mountPath: /data
+  volumes:
+  - name: data-nfs
     persistentVolumeClaim:
-    claimName: data-nfs
-tolerations:
-- effect: "NoSchedule"
+      claimName: data-nfs
+  tolerations:
+  - effect: "NoSchedule"
     key: "hub.jupyter.org/dedicated"
     operator: "Equal"
     value: "user"
-- effect: "NoSchedule"
+  - effect: "NoSchedule"
     key: "hub.jupyter.org_dedicated"
     operator: "Equal"
     value: "user"
-nodeSelector:
+  nodeSelector:
     teehr-hub/nodegroup-name: nb-r5-4xlarge
     """)
 
