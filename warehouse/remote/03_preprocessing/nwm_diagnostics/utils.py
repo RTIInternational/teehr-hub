@@ -6,7 +6,7 @@ from datetime import datetime, timezone
 
 import teehr
 import pandas as pd
-from teehr.evaluation.spark_session_utils import create_spark_session
+# from teehr.evaluation.spark_session_utils import create_spark_session
 
 from teehr import DeterministicMetrics as dm
 from teehr import Signatures as s
@@ -281,7 +281,7 @@ def create_ondemand_pod_template():
     return ONDEMAND_POD_TEMPLATE_PATH
 
 
-def generate_nwmd_metrics(config):
+def generate_nwmd_metrics(spark, config):
     """Generate the teehr.nwmd_metrics_by_location table for the given config.
 
     config format:
@@ -293,6 +293,7 @@ def generate_nwmd_metrics(config):
         },
 
     Args:
+        spark (SparkSession): The Spark session to use for processing.
         config (dict): Configuration dictionary containing necessary parameters.
     """
     # Placeholder for the actual implementation of generating metrics.
@@ -304,23 +305,23 @@ def generate_nwmd_metrics(config):
     start_reference_time = config.get("start_reference_time")
     end_reference_time = config.get("end_reference_time")
 
-    pod_template_path = create_ondemand_pod_template()
+    # pod_template_path = create_ondemand_pod_template()
 
-    spark = create_spark_session(
-        start_spark_cluster=True,
-        executor_instances=64,
-        executor_memory="16g",
-        executor_cores=2,
-        aws_profile="default",
-        pod_template_path=pod_template_path,
-        update_configs={
-            "spark.sql.shuffle.partitions": 1024,
-            "spark.sql.adaptive.coalescePartitions.enabled": "false",
-            "spark.kubernetes.executor.annotation.cluster-autoscaler.kubernetes.io/safe-to-evict": "false",
-            "spark.executorEnv.TEEHR_BOOTSTRAP_ENGINE": "vectorized",
-            "spark.executor.memoryOverhead": "4g",
-        }
-    )
+    # spark = create_spark_session(
+    #     start_spark_cluster=True,
+    #     executor_instances=64,
+    #     executor_memory="16g",
+    #     executor_cores=2,
+    #     aws_profile="default",
+    #     pod_template_path=pod_template_path,
+    #     update_configs={
+    #         "spark.sql.shuffle.partitions": 1024,
+    #         "spark.sql.adaptive.coalescePartitions.enabled": "false",
+    #         "spark.kubernetes.executor.annotation.cluster-autoscaler.kubernetes.io/safe-to-evict": "false",
+    #         "spark.executorEnv.TEEHR_BOOTSTRAP_ENGINE": "vectorized",
+    #         "spark.executor.memoryOverhead": "4g",
+    #     }
+    # )
 
     start = time.perf_counter()
 
@@ -331,10 +332,10 @@ def generate_nwmd_metrics(config):
     uniquenes_fields = [c for c in joined_cols if c not in non_unique_fields]
     print(f"Unique fields for grouping: {uniquenes_fields}")
 
-    # ids = ev.locations.filter("id like 'usgs-%'").to_sdf().select("id")
-    # sample = ids.sample(False, 0.5, seed=456).limit(3000).collect()
-    # location_ids = [r.id for r in ids.collect()]
-    # print(len(location_ids))
+    ids = ev.locations.filter("id like 'usgs-%'").to_sdf().select("id")
+    sample = ids.sample(False, 0.5, seed=456).limit(10).collect()
+    location_ids = [r.id for r in ids.collect()]
+    print(len(location_ids))
 
     # spark.sql("""
     # USE iceberg.teehr
@@ -361,11 +362,11 @@ def generate_nwmd_metrics(config):
             operator="<",
             value=end_reference_time,
         ),
-        # TableFilter(
-        #     column="primary_location_id",
-        #     operator="in",
-        #     value=location_ids
-        # )
+        TableFilter(
+            column="primary_location_id",
+            operator="in",
+            value=location_ids
+        )
     ]   
 
     # Define the above percentile event detection calculated fields for 85th, 95th, and 99th percentiles.
