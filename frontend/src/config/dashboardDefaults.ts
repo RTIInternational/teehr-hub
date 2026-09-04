@@ -64,16 +64,21 @@ export const NWMD_DASHBOARD_DEFAULTS = {
  * @param {Array} available - Array of available options
  * @returns {string|null} The selected default
  */
-export const selectDefault = (preferred: string | null, available: string[]) => {
+export const selectDefault = <T>(preferred: T | null, available: T[]): T | null => {
   if (!Array.isArray(available) || available.length === 0) {
     return null;
   }
 
+  // Explicit null preference means "use None" when it's an available option.
+  if (preferred === null && available.includes(null as T)) {
+    return null;
+  }
+
   // If preferred value exists in available options, use it
-  if (!!preferred && preferred !== undefined && available.includes(preferred)) {
+  if (preferred !== null && preferred !== undefined && available.includes(preferred)) {
     return preferred;
   }
 
   // Otherwise fall back to first available option
-  return available[0];
+  return available[0] ?? null;
 };

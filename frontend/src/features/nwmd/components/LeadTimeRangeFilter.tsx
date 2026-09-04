@@ -1,9 +1,19 @@
 import { useMemo, useState } from 'react';
 import { Form } from 'react-bootstrap';
 
-import { formatLeadTimeBinLabel, sortLeadTimeBins } from './leadTimeBins';
+import { formatLeadTimeBinLabel, sortLeadTimeBins } from '../utils/leadTimeBins';
 
-const LeadTimeRangeSlider = ({ leadTimeBins, selectedLeadTimeBin, onCommit }) => {
+type LeadTimeRangeSliderProps = {
+  leadTimeBins: string[];
+  selectedLeadTimeBin?: string | null;
+  onCommit: (nextBin: string) => Promise<void>;
+};
+
+const LeadTimeRangeSlider = ({
+  leadTimeBins,
+  selectedLeadTimeBin,
+  onCommit,
+}: LeadTimeRangeSliderProps) => {
   const initialIndex = Math.max(
     leadTimeBins.findIndex((bin) => bin === selectedLeadTimeBin),
     0
@@ -41,7 +51,17 @@ const LeadTimeRangeSlider = ({ leadTimeBins, selectedLeadTimeBin, onCommit }) =>
   );
 };
 
-const LeadTimeRangeFilter = ({ leadTimeBins, selectedLeadTimeBin, onCommit }) => {
+type LeadTimeRangeFilterProps = {
+  leadTimeBins?: string[];
+  selectedLeadTimeBin?: string | null;
+  onCommit: (nextBin: string) => Promise<void>;
+};
+
+const LeadTimeRangeFilter = ({
+  leadTimeBins,
+  selectedLeadTimeBin,
+  onCommit,
+}: LeadTimeRangeFilterProps) => {
   const orderedLeadTimeBins = useMemo(
     () => sortLeadTimeBins(Array.isArray(leadTimeBins) ? leadTimeBins : []),
     [leadTimeBins]

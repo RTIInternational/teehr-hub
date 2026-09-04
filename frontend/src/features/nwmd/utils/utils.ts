@@ -1,10 +1,21 @@
+import type { Feature, GeoJsonProperties, Point } from 'geojson';
+
+import type { LocationsResponse } from '@/shared/types/locations';
+import type { MapMetric } from '@/shared/types/maps';
+import { isMapMetric } from '@/shared/utils/mapMetrics';
+
+import type { AltHypothesisOperator } from '../types/maps';
+
 /**
  * Compute CDF points for given locations by metric
  * @param {Object} locations - OGC locations returned from metrics endpoint
  * @param {string} metric - property/column name to use for CDF computation
  * @returns {array} an array of [x, y] points
  */
-export const computeCdfData = (locations, metric) => {
+export const computeCdfData = (
+  locations: Feature<Point, GeoJsonProperties>[],
+  metric: MapMetric
+) => {
   if (!Array.isArray(locations) || !metric) return [];
 
   const values = locations
@@ -20,12 +31,14 @@ export const computeCdfData = (locations, metric) => {
   return cdfPoints;
 };
 
-const parseFiniteNumber = (value) => {
+export const isNotNull = <T>(value: T | null): value is T => value !== null;
+
+const parseFiniteNumber = (value: number) => {
   const num = Number(value);
   return Number.isFinite(num) ? num : null;
 };
 
-const evaluateAltHypothesis = (lower, upper, operator) => {
+const evaluateAltHypothesis = (lower: number, upper: number, operator: AltHypothesisOperator) => {
   switch (operator) {
     case '=0':
       return lower <= 0 && upper >= 0;
@@ -44,7 +57,11 @@ const evaluateAltHypothesis = (lower, upper, operator) => {
   }
 };
 
-export const applyAltHypothesisFilter = (locations, metricName, altHypothesis95) => {
+export const applyAltHypothesisFilter = (
+  locations: LocationsResponse,
+  metricName: MapMetric,
+  altHypothesis95: AltHypothesisOperator
+) => {
   if (!altHypothesis95 || !metricName) return locations;
 
   const features = Array.isArray(locations?.features) ? locations.features : [];
@@ -80,7 +97,7 @@ export const applyAltHypothesisFilter = (locations, metricName, altHypothesis95)
   };
 };
 
-export const NWMD_METRICS = new Set([
+export const NWMD_METRICS = new Set<MapMetric>([
   'relative_mean',
   'relative_median',
   'relative_minimum',
@@ -91,3 +108,7 @@ export const NWMD_METRICS = new Set([
   'kling_gupta_efficiency',
   'pearson_correlation',
 ]);
+
+export const isNwmdMetric = (metric: string): metric is MapMetric => {
+  return isMapMetric(metric) && NWMD_METRICS.has(metric);
+};
