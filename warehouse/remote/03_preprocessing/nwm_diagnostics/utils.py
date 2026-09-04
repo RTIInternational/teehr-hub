@@ -335,7 +335,7 @@ def generate_nwmd_metrics(spark, config):
     ids = ev.locations.filter("id like 'usgs-%'").to_sdf().select("id")
     sample = ids.sample(False, 0.5, seed=456).limit(10).collect()
     location_ids = [r.id for r in ids.collect()]
-    print(len(location_ids))
+    print("Number of location_ids:", len(location_ids))
 
     # spark.sql("""
     # USE iceberg.teehr
