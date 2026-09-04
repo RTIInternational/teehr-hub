@@ -240,41 +240,41 @@ def create_ondemand_pod_template():
 
     with open(ONDEMAND_POD_TEMPLATE_PATH, "w") as f:
         f.write("""apiVersion: v1
-    kind: Pod
-    spec:
-    terminationGracePeriodSeconds: 60
+kind: Pod
+spec:
+terminationGracePeriodSeconds: 60
+securityContext:
+    runAsUser: 1000
+    runAsGroup: 1000
+    fsGroup: 1000
+containers:
+- name: spark-kubernetes-executor
     securityContext:
-        runAsUser: 1000
-        runAsGroup: 1000
-        fsGroup: 1000
-    containers:
-    - name: spark-kubernetes-executor
-        securityContext:
-        runAsUser: 1000
-        runAsGroup: 1000
-        allowPrivilegeEscalation: false
-        lifecycle:
-        preStop:
-            exec:
-            command: ["/bin/sh", "-c", "sleep 30"]
-        volumeMounts:
-        - name: data-nfs
-        mountPath: /data
-    volumes:
+    runAsUser: 1000
+    runAsGroup: 1000
+    allowPrivilegeEscalation: false
+    lifecycle:
+    preStop:
+        exec:
+        command: ["/bin/sh", "-c", "sleep 30"]
+    volumeMounts:
     - name: data-nfs
-        persistentVolumeClaim:
-        claimName: data-nfs
-    tolerations:
-    - effect: "NoSchedule"
-        key: "hub.jupyter.org/dedicated"
-        operator: "Equal"
-        value: "user"
-    - effect: "NoSchedule"
-        key: "hub.jupyter.org_dedicated"
-        operator: "Equal"
-        value: "user"
-    nodeSelector:
-        teehr-hub/nodegroup-name: nb-r5-4xlarge
+    mountPath: /data
+volumes:
+- name: data-nfs
+    persistentVolumeClaim:
+    claimName: data-nfs
+tolerations:
+- effect: "NoSchedule"
+    key: "hub.jupyter.org/dedicated"
+    operator: "Equal"
+    value: "user"
+- effect: "NoSchedule"
+    key: "hub.jupyter.org_dedicated"
+    operator: "Equal"
+    value: "user"
+nodeSelector:
+    teehr-hub/nodegroup-name: nb-r5-4xlarge
     """)
 
     print(f"Wrote alternate pod template to {ONDEMAND_POD_TEMPLATE_PATH}")
