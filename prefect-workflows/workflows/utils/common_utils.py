@@ -47,6 +47,8 @@ def initialize_evaluation(
     default_configs = {
         "spark.kubernetes.authenticate.executor.serviceAccountName": "prefect-job",
         "spark.kubernetes.executor.podNamePrefix": "prefect-job",
+        "spark.sql.catalog.iceberg.token-exchange-enabled": "false",
+        "spark.sql.catalog.iceberg.token-refresh-enabled": "true",
         "spark.sql.catalog.iceberg.client.region": os.getenv(
             "AWS_REGION", "us-east-2"
         )
