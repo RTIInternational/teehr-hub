@@ -586,6 +586,19 @@ def generate_nwmd_metrics(spark, config):
         metrics=metrics
     )
 
+    def unpack_quantile_bootstrap_columns(table, metrics):
+        sdf = table.to_sdf()
+        for m in metrics:
+            if not getattr(m, "bootstrap", None):
+                continue
+            for q in m.bootstrap.quantiles:
+                key = f"{m.output_field_name}_{q}"
+                sdf = sdf.withColumn(key.replace(".", "_"), F.col(m.output_field_name).getItem(key))
+            sdf = sdf.drop(m.output_field_name)
+        return table._with_sdf(sdf)
+
+    results = unpack_quantile_bootstrap_columns(results, metrics)
+
     results = results.order_by(group_by).add_geometry()
 
     # print(results.explain(mode="simple"))
@@ -659,4 +672,4 @@ def generate_nwmd_metrics(spark, config):
     # without needing to read it off the Spark UI by hand.
     # stage_failures = get_stage_attempt_failures(spark)
 
-    spark.stop()
+    # spark.stop()
