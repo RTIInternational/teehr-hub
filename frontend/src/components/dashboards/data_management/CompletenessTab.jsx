@@ -17,7 +17,7 @@ import { useState, useCallback, useEffect } from 'react';
 import { Form } from 'react-bootstrap';
 
 import { apiService } from '../../../services/api';
-import { DashboardPanel } from '../../common/dashboard';
+import DashboardPanel from '../../../shared/components/DashboardPanel';
 import CompletenessHeatmap from './CompletenessHeatmap';
 import SimpleMapPanel from './SimpleMapPanel';
 

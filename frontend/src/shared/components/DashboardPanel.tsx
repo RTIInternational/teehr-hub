@@ -1,12 +1,21 @@
-const DashboardPanel = ({
-  header = null,
+type DashboardPanelProps = {
+  header?: React.ReactNode | null;
+  className?: string;
+  style?: React.CSSProperties;
+  headerStyle?: React.CSSProperties;
+  bodyClassName?: string;
+  bodyStyle?: React.CSSProperties;
+};
+
+export const DashboardPanel = ({
   children,
+  header = null,
   className = '',
   style = {},
   headerStyle = {},
   bodyClassName = '',
   bodyStyle = {},
-}) => {
+}: React.PropsWithChildren<DashboardPanelProps>) => {
   return (
     <div
       className={className}
