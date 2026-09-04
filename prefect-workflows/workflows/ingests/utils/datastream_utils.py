@@ -6,7 +6,7 @@ from pathlib import Path
 import pyarrow as pa
 import pyarrow.compute as pc
 import pyarrow.parquet as pq
-import s3fs
+from pyarrow.fs import S3FileSystem
 from prefect import task, get_run_logger
 from prefect.cache_policies import NO_CACHE
 import botocore
@@ -15,7 +15,9 @@ from botocore.exceptions import ClientError
 from teehr.fetching.utils import write_timeseries_parquet_file
 import teehr
 
-S3_FS = s3fs.S3FileSystem(anon=True)
+# Region is required: without it HeadBucket answers 301 and pyarrow
+# reports only "AWS Error UNKNOWN (HTTP status 301)".
+S3_FS = S3FileSystem(anonymous=True, region="us-east-1")
 
 
 @task(cache_policy=NO_CACHE)
@@ -172,8 +174,10 @@ def fetch_troute_output_to_cache(
     try:
         # Load as a pyarrow table.
         filters = [("feature_id", "in", warehouse_ngen_ids)]
+        # pyarrow.fs wants "bucket/key"; the scheme stays on s3_filepath
+        # so the log line above is still copy-pasteable.
         table = pq.read_table(
-            s3_filepath,
+            s3_filepath.removeprefix("s3://"),
             filesystem=S3_FS,
             filters=filters
         )
