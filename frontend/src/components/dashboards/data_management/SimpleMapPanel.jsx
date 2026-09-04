@@ -24,6 +24,7 @@
  */
 import maplibregl from 'maplibre-gl';
 import { useEffect, useRef, useState } from 'react';
+
 import 'maplibre-gl/dist/maplibre-gl.css';
 
 const SimpleMapPanel = ({
@@ -124,8 +125,10 @@ const SimpleMapPanel = ({
         typeof coords[1] === 'number' &&
         isFinite(coords[0]) &&
         isFinite(coords[1]) &&
-        coords[0] >= -180 && coords[0] <= 180 &&
-        coords[1] >= -90  && coords[1] <= 90
+        coords[0] >= -180 &&
+        coords[0] <= 180 &&
+        coords[1] >= -90 &&
+        coords[1] <= 90
       );
     });
 
@@ -194,10 +197,7 @@ const SimpleMapPanel = ({
         type: 'circle',
         source: 'locations',
         paint: {
-          'circle-radius': [
-            'interpolate', ['linear'], ['zoom'],
-            4, 6, 8, 9, 12, 12,
-          ],
+          'circle-radius': ['interpolate', ['linear'], ['zoom'], 4, 6, 8, 9, 12, 12],
           'circle-color': '#0d6efd',
           'circle-stroke-width': 1,
           'circle-stroke-color': '#000',
@@ -236,7 +236,9 @@ const SimpleMapPanel = ({
           m.removeLayer('locations-layer');
         }
         if (m.getSource && m.getSource('locations')) m.removeSource('locations');
-      } catch { /* silent */ }
+      } catch {
+        /* silent */
+      }
     };
   }, [mapLoaded, locations, getPopupHTML, onPointClick]);
 
@@ -266,25 +268,35 @@ const SimpleMapPanel = ({
     const before = m.getLayer('locations-layer') ? 'locations-layer' : undefined;
 
     m.addSource('basin', { type: 'geojson', data: basinLocations });
-    m.addLayer({
-      id: 'basin-fill',
-      type: 'fill',
-      source: 'basin',
-      paint: { 'fill-color': '#4a90d9', 'fill-opacity': 0.4 },
-    }, before);
-    m.addLayer({
-      id: 'basin-line',
-      type: 'line',
-      source: 'basin',
-      paint: { 'line-color': '#2c5f8a', 'line-width': 1.5, 'line-opacity': 0.9 },
-    }, before);
+    m.addLayer(
+      {
+        id: 'basin-fill',
+        type: 'fill',
+        source: 'basin',
+        paint: { 'fill-color': '#4a90d9', 'fill-opacity': 0.4 },
+      },
+      before
+    );
+    m.addLayer(
+      {
+        id: 'basin-line',
+        type: 'line',
+        source: 'basin',
+        paint: { 'line-color': '#2c5f8a', 'line-width': 1.5, 'line-opacity': 0.9 },
+      },
+      before
+    );
 
     // Fit map to basin extent
     const allCoords = [];
     const collectCoords = (geom) => {
       if (!geom) return;
-      if (geom.type === 'Polygon') geom.coordinates.forEach((ring) => ring.forEach((c) => allCoords.push(c)));
-      else if (geom.type === 'MultiPolygon') geom.coordinates.forEach((poly) => poly.forEach((ring) => ring.forEach((c) => allCoords.push(c))));
+      if (geom.type === 'Polygon')
+        geom.coordinates.forEach((ring) => ring.forEach((c) => allCoords.push(c)));
+      else if (geom.type === 'MultiPolygon')
+        geom.coordinates.forEach((poly) =>
+          poly.forEach((ring) => ring.forEach((c) => allCoords.push(c)))
+        );
     };
     features.forEach((f) => collectCoords(f.geometry));
 
@@ -292,13 +304,20 @@ const SimpleMapPanel = ({
       const lons = allCoords.map((c) => c[0]);
       const lats = allCoords.map((c) => c[1]);
       m.fitBounds(
-        [[Math.min(...lons), Math.min(...lats)], [Math.max(...lons), Math.max(...lats)]],
+        [
+          [Math.min(...lons), Math.min(...lats)],
+          [Math.max(...lons), Math.max(...lats)],
+        ],
         { padding: 40, duration: 700, maxZoom: 14 }
       );
     }
 
     return () => {
-      try { removeLayers(); } catch { /* silent */ }
+      try {
+        removeLayers();
+      } catch {
+        /* silent */
+      }
     };
   }, [mapLoaded, basinLocations]);
 
@@ -326,32 +345,45 @@ const SimpleMapPanel = ({
 
     if (geomType === 'Polygon' || geomType === 'MultiPolygon') {
       const initVis = overlayVisible ? 'visible' : 'none';
-      m.addLayer({
-        id: 'overlay-fill',
-        type: 'fill',
-        source: 'overlay',
-        layout: { visibility: initVis },
-        paint: { 'fill-color': '#4a90d9', 'fill-opacity': 0.3 },
-      }, before);
-      m.addLayer({
-        id: 'overlay-line',
-        type: 'line',
-        source: 'overlay',
-        layout: { visibility: initVis },
-        paint: { 'line-color': '#2c5f8a', 'line-width': 0.8, 'line-opacity': 0.7 },
-      }, before);
-      m.addLayer({
-        id: 'overlay-highlight',
-        type: 'fill',
-        source: 'overlay',
-        layout: { visibility: initVis },
-        paint: { 'fill-color': '#ff9800', 'fill-opacity': 0.7 },
-        filter: ['==', ['get', 'id'], ''],
-      }, before);
+      m.addLayer(
+        {
+          id: 'overlay-fill',
+          type: 'fill',
+          source: 'overlay',
+          layout: { visibility: initVis },
+          paint: { 'fill-color': '#4a90d9', 'fill-opacity': 0.3 },
+        },
+        before
+      );
+      m.addLayer(
+        {
+          id: 'overlay-line',
+          type: 'line',
+          source: 'overlay',
+          layout: { visibility: initVis },
+          paint: { 'line-color': '#2c5f8a', 'line-width': 0.8, 'line-opacity': 0.7 },
+        },
+        before
+      );
+      m.addLayer(
+        {
+          id: 'overlay-highlight',
+          type: 'fill',
+          source: 'overlay',
+          layout: { visibility: initVis },
+          paint: { 'fill-color': '#ff9800', 'fill-opacity': 0.7 },
+          filter: ['==', ['get', 'id'], ''],
+        },
+        before
+      );
     }
 
     return () => {
-      try { removeOverlay(); } catch { /* silent */ }
+      try {
+        removeOverlay();
+      } catch {
+        /* silent */
+      }
     };
   }, [mapLoaded, overlayLocations, overlayVisible]);
 

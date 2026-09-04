@@ -1,4 +1,5 @@
 import { useCallback } from 'react';
+
 import { useDataDashboardFetching } from '../../../hooks/useDataDashboardFetching';
 
 export const useDataDashboardData = () => {
@@ -7,10 +8,7 @@ export const useDataDashboardData = () => {
   // Initialize all data dashboard data
   const initializeDataDashboard = useCallback(async () => {
     console.log('useDataDashboardData: Starting initialization...');
-    const results = await Promise.allSettled([
-      loadLocations(),
-      loadConfigurationsTable()
-    ]);
+    const results = await Promise.allSettled([loadLocations(), loadConfigurationsTable()]);
     results.forEach((result, i) => {
       if (result.status === 'rejected') {
         console.error(`useDataDashboardData: Init task ${i} failed:`, result.reason);
@@ -23,6 +21,6 @@ export const useDataDashboardData = () => {
     loadLocations,
     loadConfigurations: loadConfigurationsTable,
     selectLocation,
-    initializeDataDashboard
+    initializeDataDashboard,
   };
 };

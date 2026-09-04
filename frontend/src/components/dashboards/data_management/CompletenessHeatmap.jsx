@@ -1,5 +1,6 @@
 import Plotly from 'plotly.js-dist-min';
 import { useEffect, useRef, useState } from 'react';
+
 import { apiService } from '../../../services/api';
 
 const CompletenessHeatmap = ({ configurationName, variableName, onHover = null }) => {
@@ -50,7 +51,14 @@ const CompletenessHeatmap = ({ configurationName, variableName, onHover = null }
         const periods = [...periodSet].sort();
         const spatialAggregates = [...spatialAggregateSet].sort();
 
-        console.debug('[Heatmap] rows:', rows.length, '| unique spatial aggregates:', spatialAggregates.length, '| unique periods:', periods.length);
+        console.debug(
+          '[Heatmap] rows:',
+          rows.length,
+          '| unique spatial aggregates:',
+          spatialAggregates.length,
+          '| unique periods:',
+          periods.length
+        );
         if (rows.length > 0) console.debug('[Heatmap] sample row:', rows[0]);
 
         // Build lookup using normalised keys
@@ -87,12 +95,12 @@ const CompletenessHeatmap = ({ configurationName, variableName, onHover = null }
               zmin: 0,
               zmax: 100,
               colorscale: [
-                  [0.0,  '#fd0de9'],
-                  [0.2,  '#ca0ef3'],
-                  [0.4,  '#970ef9'],
-                  [0.6,  '#640efc'],
-                  [0.8,  '#380ffd'],
-                  [1.0,  '#0d6efd'],
+                [0.0, '#fd0de9'],
+                [0.2, '#ca0ef3'],
+                [0.4, '#970ef9'],
+                [0.6, '#640efc'],
+                [0.8, '#380ffd'],
+                [1.0, '#0d6efd'],
               ],
               colorbar: { title: 'Completeness (%)' },
               opacity: 0.85,
@@ -136,7 +144,9 @@ const CompletenessHeatmap = ({ configurationName, variableName, onHover = null }
     const handleHover = (data) => {
       if (onHover && data.points?.[0]) onHover(String(data.points[0].y));
     };
-    const handleUnhover = () => { if (onHover) onHover(null); };
+    const handleUnhover = () => {
+      if (onHover) onHover(null);
+    };
     el.on('plotly_hover', handleHover);
     el.on('plotly_unhover', handleUnhover);
     return () => {
@@ -147,7 +157,10 @@ const CompletenessHeatmap = ({ configurationName, variableName, onHover = null }
 
   if (!configurationName || !variableName) {
     return (
-      <div className="d-flex align-items-center justify-content-center h-100 text-muted" style={{ minHeight: '120px' }}>
+      <div
+        className="d-flex align-items-center justify-content-center h-100 text-muted"
+        style={{ minHeight: '120px' }}
+      >
         <span>Select a configuration and variable above to view completeness.</span>
       </div>
     );

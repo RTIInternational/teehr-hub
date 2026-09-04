@@ -30,11 +30,26 @@ def initialize_evaluation(
     logger = get_run_logger()
     logger.info("Initializing Teehr Evaluation")
 
-    # Ensure Spark executors use the prefect-job service account
-    # which has read-write S3 access (the default 'spark' SA is read-only).
+    remote_catalog_uri = os.getenv("REMOTE_CATALOG_REST_URI", "")
+    remote_catalog_type = os.getenv("REMOTE_CATALOG_TYPE", "rest")
+    remote_warehouse_dir = os.getenv(
+        "REMOTE_WAREHOUSE_IDENTIFIER",
+        os.getenv("POLARIS_DEFAULT_REALM", "teehr")
+    )
+
+    # Ensure Spark executors run as the prefect-job service account. Iceberg
+    # warehouse access comes from Polaris-vended credentials rather than the
+    # SA's own IAM role, but the SA is still what grants direct (non-catalog)
+    # S3 access and keeps executor identity consistent with the driver.
+    #
+    # client.region must be set explicitly: without it the Iceberg S3 client
+    # cannot resolve a region for SigV4 signing of the vended credentials.
     default_configs = {
         "spark.kubernetes.authenticate.executor.serviceAccountName": "prefect-job",
-        "spark.kubernetes.executor.podNamePrefix": "prefect-job"
+        "spark.kubernetes.executor.podNamePrefix": "prefect-job",
+        "spark.sql.catalog.iceberg.client.region": os.getenv(
+            "AWS_REGION", "us-east-2"
+        )
     }
     if update_configs:
         default_configs.update(update_configs)
@@ -44,6 +59,9 @@ def initialize_evaluation(
         executor_instances=executor_instances,
         executor_cores=executor_cores,
         executor_memory=executor_memory,
+        remote_catalog_uri=remote_catalog_uri,
+        remote_catalog_type=remote_catalog_type,
+        remote_warehouse_dir=remote_warehouse_dir,
         update_configs=default_configs,
         enable_gcs=enable_gcs,
         gcs_project_id=gcs_project_id

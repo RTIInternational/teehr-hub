@@ -1,5 +1,6 @@
 import { useCallback } from 'react';
-import { useDataDashboard, ActionTypes } from '../context/DataDashboardContext.jsx';
+
+import { useDataDashboard, ActionTypes } from '../context/DataDashboardContext';
 import { apiService } from '../services/api';
 
 export const useDataDashboardFetching = () => {
@@ -15,14 +16,17 @@ export const useDataDashboardFetching = () => {
         ...allLocations,
         features: (allLocations.features || []).filter(
           (f) => f.id?.startsWith('usgs-') || f.properties?.location_id?.startsWith('usgs-')
-        )
+        ),
       };
       dispatch({ type: ActionTypes.SET_LOCATIONS, payload: filtered });
       return filtered;
     } catch (error) {
       console.error('useDataDashboardFetching: Error loading locations:', error);
       dispatch({ type: ActionTypes.SET_LOADING, payload: { locationsLoading: false } });
-      dispatch({ type: ActionTypes.SET_ERROR, payload: `Failed to load locations: ${error.message}` });
+      dispatch({
+        type: ActionTypes.SET_ERROR,
+        payload: `Failed to load locations: ${error.message}`,
+      });
       throw error;
     }
   }, [dispatch]);
@@ -43,19 +47,25 @@ export const useDataDashboardFetching = () => {
     } catch (error) {
       console.error('useDataDashboardFetching: Error loading configurations:', error);
       dispatch({ type: ActionTypes.SET_LOADING, payload: { configsLoading: false } });
-      dispatch({ type: ActionTypes.SET_ERROR, payload: `Failed to load configurations: ${error.message}` });
+      dispatch({
+        type: ActionTypes.SET_ERROR,
+        payload: `Failed to load configurations: ${error.message}`,
+      });
       throw error;
     }
   }, [dispatch]);
 
   // Select a location
-  const selectLocation = useCallback((location) => {
-    dispatch({ type: ActionTypes.SELECT_LOCATION, payload: location });
-  }, [dispatch]);
+  const selectLocation = useCallback(
+    (location) => {
+      dispatch({ type: ActionTypes.SELECT_LOCATION, payload: location });
+    },
+    [dispatch]
+  );
 
   return {
     loadLocations,
     loadConfigurationsTable,
-    selectLocation
+    selectLocation,
   };
 };

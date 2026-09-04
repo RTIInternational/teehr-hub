@@ -1,0 +1,39 @@
+import path from 'node:path';
+
+import react from '@vitejs/plugin-react';
+import { defineConfig } from 'vite';
+
+// https://vitejs.dev/config/
+export default defineConfig({
+  plugins: [react()],
+  server: {
+    host: '0.0.0.0', // Allow external connections in Docker
+    port: 8080,
+    strictPort: true,
+    allowedHosts: [
+      ...(process.env.VITE_ALLOWED_HOSTS ? process.env.VITE_ALLOWED_HOSTS.split(',') : []),
+      'localhost',
+      '127.0.0.1',
+    ],
+    watch: {
+      usePolling: true, // Better for Docker file watching
+    },
+    proxy: {
+      '/api': {
+        target: process.env.VITE_API_BASE_URL || 'https://api.teehr.local.app.garden',
+        changeOrigin: true,
+        secure: false, // Allow self-signed certificates
+      },
+    },
+  },
+  build: {
+    outDir: 'build',
+    sourcemap: false, // Disable source maps in production to avoid dev tools errors
+  },
+  publicDir: 'public',
+  resolve: {
+    alias: {
+      '@': path.resolve(__dirname, './src'),
+    },
+  },
+});

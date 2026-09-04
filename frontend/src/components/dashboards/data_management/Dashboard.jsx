@@ -10,15 +10,16 @@
  * so that map state is preserved across tab switches.
  */
 import { useState } from 'react';
-import { useDataDashboard, ActionTypes } from '../../../context/DataDashboardContext.jsx';
+
+import { useDataDashboard, ActionTypes } from '../../../context/DataDashboardContext';
+import CompletenessTab from './CompletenessTab';
 import ConfigurationsSummaryTab from './ConfigurationsSummaryTab';
 import LocationsSummaryTab from './LocationsSummaryTab';
-import CompletenessTab from './CompletenessTab';
 
 const TABS = [
   { id: 'configurations', label: 'Configurations Summary' },
-  { id: 'locations',      label: 'Locations Summary' },
-  { id: 'completeness',   label: 'Configuration Completeness' },
+  { id: 'locations', label: 'Locations Summary' },
+  { id: 'completeness', label: 'Configuration Completeness' },
 ];
 
 const Dashboard = () => {
@@ -72,7 +73,6 @@ const Dashboard = () => {
 
       {/* Tab content — all tabs kept mounted once visited, hidden via display:none */}
       <div style={{ flex: '1 1 0', minHeight: 0, position: 'relative' }}>
-
         {visitedTabs.has('configurations') && (
           <div
             style={{
