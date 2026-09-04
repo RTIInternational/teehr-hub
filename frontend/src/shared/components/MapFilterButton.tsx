@@ -5,11 +5,12 @@ import { useConfigurations } from '@/shared/queries/configurations';
 import { useTableProperties } from '@/shared/queries/queryables';
 import { useVariables } from '@/shared/queries/variables';
 import type { MapFilters } from '@/shared/types/maps';
+import { isMapMetric } from '@/shared/utils/mapMetrics';
 
 type MapFilterButtonProps = {
   tables: string[];
   mapFilters: MapFilters;
-  updateMapFilters: (filter: { [filter: string]: unknown }) => void;
+  updateMapFilters: (filter: Partial<MapFilters>) => void;
 };
 
 const MapFilterButton = ({ tables, mapFilters, updateMapFilters }: MapFilterButtonProps) => {
@@ -19,8 +20,11 @@ const MapFilterButton = ({ tables, mapFilters, updateMapFilters }: MapFilterButt
   const variables = useVariables(tables[0]);
   const tableProperties = useTableProperties(tables);
 
-  const handleMapFilterChange = async (filterType: string, value: unknown) => {
-    updateMapFilters({ [filterType]: value });
+  const handleMapFilterChange = <K extends keyof MapFilters>(
+    filterType: K,
+    value: MapFilters[K]
+  ) => {
+    updateMapFilters({ [filterType]: value } as Partial<MapFilters>);
   };
 
   return (
@@ -74,7 +78,13 @@ const MapFilterButton = ({ tables, mapFilters, updateMapFilters }: MapFilterButt
               <Form.Select
                 size="sm"
                 value={mapFilters.metricName || ''}
-                onChange={(e) => handleMapFilterChange('metricName', e.target.value || null)}
+                onChange={(e) => {
+                  const selectedMetric = e.target.value;
+                  handleMapFilterChange(
+                    'metricName',
+                    selectedMetric && isMapMetric(selectedMetric) ? selectedMetric : undefined
+                  );
+                }}
               >
                 <option value="">Select Metric...</option>
                 {(() => {
@@ -94,7 +104,7 @@ const MapFilterButton = ({ tables, mapFilters, updateMapFilters }: MapFilterButt
                     }
                   });
 
-                  return allMetrics.map((metricName) => (
+                  return allMetrics.filter(isMapMetric).map((metricName) => (
                     <option key={metricName} value={metricName}>
                       {metricName}
                     </option>

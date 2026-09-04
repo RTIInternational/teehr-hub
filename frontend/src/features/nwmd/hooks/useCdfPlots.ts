@@ -1,14 +1,17 @@
 import { useCallback, useMemo } from 'react';
 
-import { ActionTypes, useNwmdDashboard } from '../../../context/NwmdDashboardContext';
-import { computeCdfData } from './utils';
+import type { MapMetric } from '@/shared/types/maps';
 
-// Derive visible locations from already-filtered locations and current map viewport bounds.
-const useNwmdVisibleLocations = () => {
-  const { state } = useNwmdDashboard();
+import { ActionTypes, useDashboard } from '../DashboardContext';
+import { computeCdfData } from '../utils/utils';
+import { useFilteredLocations } from './useFilteredLocations';
+
+const useNwmdVisibleLocations = (table: string) => {
+  const { state } = useDashboard();
+  const locations = useFilteredLocations({ table, ...state.mapFilters });
 
   const visibleLocations = useMemo(() => {
-    const features = state.locations?.features || [];
+    const features = locations.data?.features || [];
     const bounds = state.mapViewportBounds;
 
     if (!bounds) return features;
@@ -31,7 +34,7 @@ const useNwmdVisibleLocations = () => {
       const inLatRange = lat >= south && lat <= north;
       return inLonRange && inLatRange;
     });
-  }, [state.locations, state.mapViewportBounds]);
+  }, [locations.data, state.mapViewportBounds]);
 
   return {
     visibleLocations,
@@ -39,10 +42,10 @@ const useNwmdVisibleLocations = () => {
 };
 
 export const useCdfPlots = () => {
-  const { state, dispatch } = useNwmdDashboard();
+  const { state, dispatch } = useDashboard();
 
   const setCdfPlotMetric = useCallback(
-    (plotId, metricName) => {
+    (plotId: string, metricName: MapMetric) => {
       dispatch({
         type: ActionTypes.SET_CDF_PLOT_METRIC,
         payload: { plotId: plotId, metricName },
@@ -57,9 +60,9 @@ export const useCdfPlots = () => {
   };
 };
 
-export const useCdfPlot = (plotId) => {
-  const { state } = useNwmdDashboard();
-  const { visibleLocations } = useNwmdVisibleLocations();
+export const useCdfPlot = (table: string, plotId: string) => {
+  const { state } = useDashboard();
+  const { visibleLocations } = useNwmdVisibleLocations(table);
 
   const cdfData = useMemo(() => {
     const metricName = state.cdfPlots?.[plotId]?.metricName || null;

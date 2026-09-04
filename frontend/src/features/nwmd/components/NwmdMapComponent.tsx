@@ -1,33 +1,84 @@
-import maplibregl from 'maplibre-gl';
-import { useEffect, useRef, useCallback, useMemo, useState } from 'react';
+import type { Feature, FeatureCollection, Point } from 'geojson';
+import maplibregl, {
+  Map,
+  Popup,
+  type FilterSpecification,
+  type MapLayerMouseEvent,
+} from 'maplibre-gl';
+import React, { useEffect, useRef, useCallback, useMemo, useState, type Dispatch } from 'react';
 
 import 'maplibre-gl/dist/maplibre-gl.css';
-import MapLegend from '../../../shared/components/MapLegend';
-import { getMetricColorExpression, getMetricLabel } from '../../../shared/utils/mapMetrics';
+import MapLegend from '@/shared/components/MapLegend';
+import type { MapLocation } from '@/shared/types/locations';
+import type { InvalidFeature, MapMetric, MapMetricClamped } from '@/shared/types/maps';
+import { getMetricColorExpression, getMetricLabel, isLngLatTuple } from '@/shared/utils/mapMetrics';
 
-export const NwmdMapComponent = ({
+import { useFilteredLocations } from '../hooks/useFilteredLocations';
+import type { NwmdMapFilters, ViewportBounds } from '../types/maps';
+
+type NwmdMapState = {
+  mapFilters: Omit<NwmdMapFilters, 'metricName'> & { metricName?: MapMetric | null };
+  mapLoaded: boolean;
+};
+
+type MapComponentProps<TActionTypes extends ActionTypesShape> = {
+  state: NwmdMapState;
+  dispatch: Dispatch<MapComponentAction<TActionTypes>>;
+  table: string;
+  ActionTypes: TActionTypes;
+  selectLocation: (location: MapLocation | null) => void;
+  onViewportBoundsChange?: ((bounds: ViewportBounds) => void) | null;
+  mapFilterControls?: React.ReactNode;
+  showSearch?: boolean;
+  overlayLocations?: FeatureCollection;
+  overlayVisible?: boolean;
+  hoveredOverlayId?: string;
+};
+
+type ActionTypesShape = {
+  SET_MAP_LOADED: string;
+  SET_ERROR: string;
+};
+
+type MapComponentAction<TActionTypes extends ActionTypesShape> =
+  | {
+      type: TActionTypes['SET_MAP_LOADED'];
+      payload: boolean;
+    }
+  | {
+      type: TActionTypes['SET_ERROR'];
+      payload: string;
+    };
+
+const NwmdMapComponent = <TActionTypes extends ActionTypesShape>({
   state,
   dispatch,
+  table,
   ActionTypes,
   selectLocation,
-  loadLocations,
-  showSearch = true,
-  overlayLocations = null,
-  overlayVisible = true,
-  hoveredOverlayId = null,
   onViewportBoundsChange = null,
-}) => {
-  const mapContainer = useRef(null);
-  const map = useRef(null);
-  const popup = useRef(null);
+  mapFilterControls,
+  showSearch = true,
+  overlayLocations,
+  overlayVisible = true,
+  hoveredOverlayId,
+}: MapComponentProps<TActionTypes>) => {
+  const mapContainer = useRef<HTMLDivElement>(null);
+  const map = useRef<Map>(null);
+  const popup = useRef<Popup>(null);
+  const hasAutoFitOnce = useRef(false);
+  const visibleLocationBounds = useRef<[[number, number], [number, number]] | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
 
+  const locations = useFilteredLocations({ table, ...state.mapFilters });
+
   const selectFeatureOnMap = useCallback(
-    (feature, options = {}) => {
+    (feature: Feature<Point>, options: { flyTo?: boolean } = {}) => {
       if (!feature?.geometry?.coordinates || !feature?.properties) return;
+      if (!isLngLatTuple(feature.geometry.coordinates)) return;
 
       const { flyTo = true } = options;
-      const coordinates = feature.geometry.coordinates.slice();
+      const coordinates = feature.geometry.coordinates;
       const properties = feature.properties;
 
       selectLocation({
@@ -59,12 +110,12 @@ export const NwmdMapComponent = ({
 
   const matchedLocations = useMemo(() => {
     const term = searchTerm.trim().toLowerCase();
-    const features = state.locations?.features || [];
+    const features = locations.data?.features || [];
 
     if (!term) return [];
 
     return features
-      .filter((feature) => {
+      .filter((feature: Feature) => {
         const props = feature?.properties || {};
         const primaryId = String(props.primary_location_id || '').toLowerCase();
         const secondaryId = String(props.secondary_location_id || '').toLowerCase();
@@ -73,7 +124,7 @@ export const NwmdMapComponent = ({
         return primaryId.includes(term) || secondaryId.includes(term) || name.includes(term);
       })
       .slice(0, 15);
-  }, [searchTerm, state.locations]);
+  }, [searchTerm, locations.data]);
 
   const emitViewportBounds = useCallback(() => {
     if (!onViewportBoundsChange || !map.current || !state.mapLoaded) return;
@@ -86,6 +137,16 @@ export const NwmdMapComponent = ({
       north: bounds.getNorth(),
     });
   }, [onViewportBoundsChange, state.mapLoaded]);
+
+  const zoomToVisibleLocations = useCallback(() => {
+    if (!map.current || !visibleLocationBounds.current) return;
+
+    map.current.fitBounds(visibleLocationBounds.current, {
+      padding: 50,
+      duration: 700,
+      maxZoom: 14,
+    });
+  }, []);
 
   // Initialize map function
   const initializeMap = useCallback(() => {
@@ -116,6 +177,8 @@ export const NwmdMapComponent = ({
       });
 
       map.current.on('load', () => {
+        if (!map.current) return;
+
         // Add OpenStreetMap background
         map.current.addSource('osm', {
           type: 'raster',
@@ -134,6 +197,8 @@ export const NwmdMapComponent = ({
 
       // Add click handler for empty space (deselect location)
       map.current.on('click', (e) => {
+        if (!map.current) return;
+
         // Only deselect if we didn't click on a location feature
         const features = map.current.queryRenderedFeatures(e.point, {
           layers: ['locations-layer'],
@@ -149,7 +214,7 @@ export const NwmdMapComponent = ({
           }
 
           // Close popup
-          popup.current.remove();
+          if (popup.current) popup.current.remove();
         }
       });
 
@@ -161,10 +226,11 @@ export const NwmdMapComponent = ({
         });
       });
     } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
       console.error('MapComponent: Error creating map:', error);
       dispatch({
         type: ActionTypes.SET_ERROR,
-        payload: `Map initialization failed: ${error.message}`,
+        payload: `Map initialization failed: ${message}`,
       });
     }
   }, [dispatch, selectLocation, ActionTypes]);
@@ -181,37 +247,6 @@ export const NwmdMapComponent = ({
     };
   }, [initializeMap]);
 
-  // Load initial locations when map is ready and filters are available
-  useEffect(() => {
-    if (
-      state.mapLoaded !== undefined &&
-      state.mapFilters.quarter !== undefined &&
-      state.mapFilters.configuration !== undefined &&
-      state.mapFilters.variable !== undefined &&
-      state.mapFilters.threshold !== undefined &&
-      state.mapFilters.aggMethod !== undefined &&
-      state.mapFilters.leadTimeBin !== undefined
-    ) {
-      loadLocations({
-        quarter: state.mapFilters.quarter,
-        configuration: state.mapFilters.configuration,
-        variable: state.mapFilters.variable,
-        threshold: state.mapFilters.threshold,
-        aggMethod: state.mapFilters.aggMethod,
-        leadTimeBin: state.mapFilters.leadTimeBin,
-      });
-    }
-  }, [
-    state.mapLoaded,
-    state.mapFilters.quarter,
-    state.mapFilters.configuration,
-    state.mapFilters.variable,
-    loadLocations,
-    state.mapFilters.threshold,
-    state.mapFilters.aggMethod,
-    state.mapFilters.leadTimeBin,
-  ]);
-
   // Update map when locations change
   useEffect(() => {
     if (!map.current || !state.mapLoaded) return;
@@ -219,12 +254,14 @@ export const NwmdMapComponent = ({
     const mapInstance = map.current;
 
     // Validate GeoJSON structure
-    if (!state.locations || !state.locations.features || !Array.isArray(state.locations.features)) {
+    if (!locations.data || !locations.data?.features || !Array.isArray(locations.data?.features)) {
       return;
     }
 
     // Clear existing layers when there's no data
-    if (state.locations.features.length === 0) {
+    if (locations.data.features.length === 0) {
+      visibleLocationBounds.current = null;
+
       // Remove existing layers and sources to clear old data from the map
       if (mapInstance.getLayer('locations-layer')) {
         mapInstance.removeLayer('locations-layer');
@@ -243,26 +280,33 @@ export const NwmdMapComponent = ({
     }
 
     // Define event handlers outside try block so they're accessible in cleanup
-    const handleLocationClick = (e) => {
-      if (e.features.length > 0) {
-        const feature = e.features[0];
+    const handleLocationClick = (e: MapLayerMouseEvent) => {
+      if (e.features && e.features.length > 0) {
+        const feature = e.features[0] as Feature<Point>;
         selectFeatureOnMap(feature, { flyTo: false });
       }
     };
 
-    const handleLocationHover = (e) => {
+    const handleLocationHover = (e: MapLayerMouseEvent) => {
       mapInstance.getCanvas().style.cursor = 'pointer';
 
-      const coordinates = e.features[0].geometry.coordinates.slice();
-      const properties = e.features[0].properties;
+      if (!e.features?.length) return;
+      const feature = e.features[0] as Feature<Point>;
+      const coordinates = feature.geometry.coordinates;
+      const properties = feature.properties;
 
-      const metricValue = properties[state.mapFilters.metricName];
-      const metricLabel = getMetricLabel(state.mapFilters.metricName);
+      const metricName = state.mapFilters.metricName;
 
-      popup.current
-        .setLngLat(coordinates)
-        .setHTML(
-          `
+      if (!properties || !metricName || !isLngLatTuple(coordinates)) return;
+
+      const metricValue = properties[metricName];
+      const metricLabel = getMetricLabel(metricName);
+
+      if (popup.current)
+        popup.current
+          .setLngLat(coordinates)
+          .setHTML(
+            `
           <div style="padding: 8px; font-size: 0.85rem;">
             <div style="font-weight: 600; margin-bottom: 4px; color: #495057;">${properties.name}</div>
             <div style="margin: 2px 0;"><strong>ID:</strong> ${properties.primary_location_id}</div>
@@ -272,13 +316,13 @@ export const NwmdMapComponent = ({
             <div style="margin-top: 4px; font-size: 0.75rem; color: #6c757d;">Click to select</div>
           </div>
         `
-        )
-        .addTo(mapInstance);
+          )
+          .addTo(mapInstance);
     };
 
     const handleLocationLeave = () => {
       mapInstance.getCanvas().style.cursor = '';
-      popup.current.remove();
+      if (popup.current) popup.current.remove();
     };
 
     try {
@@ -294,11 +338,11 @@ export const NwmdMapComponent = ({
       }
 
       // Validate GeoJSON format before adding to map
-      const validFeatures = [];
-      const invalidFeatures = [];
-      const clampedMetrics = [];
+      const validFeatures: Feature<Point>[] = [];
+      const invalidFeatures: InvalidFeature[] = [];
+      const clampedMetrics: MapMetricClamped[] = [];
 
-      state.locations.features.forEach((feature, index) => {
+      locations.data.features.forEach((feature: Feature<Point>, index) => {
         // Basic structure validation
         if (
           !feature.type ||
@@ -317,30 +361,18 @@ export const NwmdMapComponent = ({
 
         // Coordinate validation
         if (typeof lon !== 'number' || typeof lat !== 'number') {
-          invalidFeatures.push({
-            index,
-            reason: 'non-numeric coordinates',
-            feature,
-          });
+          invalidFeatures.push({ index, reason: 'non-numeric coordinates', feature });
           return;
         }
 
         // Check for valid coordinate ranges
         if (lon < -180 || lon > 180) {
-          invalidFeatures.push({
-            index,
-            reason: `longitude out of range: ${lon}`,
-            feature,
-          });
+          invalidFeatures.push({ index, reason: `longitude out of range: ${lon}`, feature });
           return;
         }
 
         if (lat < -90 || lat > 90) {
-          invalidFeatures.push({
-            index,
-            reason: `latitude out of range: ${lat}`,
-            feature,
-          });
+          invalidFeatures.push({ index, reason: `latitude out of range: ${lat}`, feature });
           return;
         }
 
@@ -361,16 +393,19 @@ export const NwmdMapComponent = ({
 
         // Validate and clamp ALL numeric properties that might cause varint issues
         if (feature.properties) {
+          const metricName = state.mapFilters.metricName;
+
           Object.keys(feature.properties).forEach((key) => {
+            if (!feature.properties) return;
             const value = feature.properties[key];
             if (typeof value === 'number') {
               if (!isFinite(value)) {
                 feature.properties[key] = null;
               } else if (Math.abs(value) > 1e6) {
-                if (key === state.mapFilters.metricName) {
+                if (metricName && key === metricName) {
                   clampedMetrics.push({
                     index,
-                    metric: key,
+                    metric: metricName,
                     original: value,
                     clamped: Math.sign(value) * 1e6,
                   });
@@ -387,19 +422,16 @@ export const NwmdMapComponent = ({
       // Log validation results in a single message
       if (invalidFeatures.length > 0 || clampedMetrics.length > 0) {
         console.warn('MapComponent: Data validation results:', {
-          totalFeatures: state.locations.features.length,
+          totalFeatures: locations.data.features.length,
           validFeatures: validFeatures.length,
           invalidFeatures: invalidFeatures.length,
           clampedMetrics: clampedMetrics.length,
-          invalidDetails: invalidFeatures.map((f) => ({
-            index: f.index,
-            reason: f.reason,
-          })),
+          invalidDetails: invalidFeatures.map((f) => ({ index: f.index, reason: f.reason })),
           clampedDetails: clampedMetrics,
         });
       }
 
-      const geojsonData = {
+      const geojsonData: FeatureCollection<Point> = {
         type: 'FeatureCollection',
         features: validFeatures,
       };
@@ -420,17 +452,20 @@ export const NwmdMapComponent = ({
           type: 'geojson',
           data: geojsonData,
         });
-      } catch (sourceError) {
-        console.error('MapComponent: Error adding GeoJSON source:', sourceError);
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        console.error('MapComponent: Error adding GeoJSON source:', error);
         dispatch({
           type: ActionTypes.SET_ERROR,
-          payload: `Map source error: ${sourceError.message}`,
+          payload: `Map source error: ${message}`,
         });
         return;
       }
 
       // Get color expression for metric-based coloring
-      const colorExpression = getMetricColorExpression(state.mapFilters.metricName);
+      const colorExpression = getMetricColorExpression(
+        state.mapFilters.metricName ?? 'relative_bias'
+      );
 
       // Add locations layer with error handling
       try {
@@ -446,11 +481,12 @@ export const NwmdMapComponent = ({
             'circle-opacity': 0.8,
           },
         });
-      } catch (layerError) {
-        console.error('MapComponent: Error adding locations layer:', layerError);
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        console.error('MapComponent: Error adding locations layer:', error);
         dispatch({
           type: ActionTypes.SET_ERROR,
-          payload: `Map layer error: ${layerError.message}`,
+          payload: `Map layer error: ${message}`,
         });
         return;
       }
@@ -470,11 +506,12 @@ export const NwmdMapComponent = ({
           },
           filter: ['==', 'primary_location_id', ''],
         });
-      } catch (selectedLayerError) {
-        console.error('MapComponent: Error adding selected locations layer:', selectedLayerError);
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        console.error('MapComponent: Error adding selected locations layer:', error);
         dispatch({
           type: ActionTypes.SET_ERROR,
-          payload: `Map selected layer error: ${selectedLayerError.message}`,
+          payload: `Map selected layer error: ${message}`,
         });
         return;
       }
@@ -499,20 +536,23 @@ export const NwmdMapComponent = ({
         const minLat = Math.min(...lats);
         const maxLat = Math.max(...lats);
         if (isFinite(minLon) && isFinite(minLat) && isFinite(maxLon) && isFinite(maxLat)) {
-          mapInstance.fitBounds(
-            [
-              [minLon, minLat],
-              [maxLon, maxLat],
-            ],
-            { padding: 50, duration: 700, maxZoom: 14 }
-          );
+          visibleLocationBounds.current = [
+            [minLon, minLat],
+            [maxLon, maxLat],
+          ];
+
+          if (!hasAutoFitOnce.current) {
+            zoomToVisibleLocations();
+            hasAutoFitOnce.current = true;
+          }
         }
       }
     } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
       console.error('MapComponent: Error adding locations to map:', error);
       dispatch({
         type: ActionTypes.SET_ERROR,
-        payload: `Failed to add locations to map: ${error.message}`,
+        payload: `Failed to add locations to map: ${message}`,
       });
       return;
     }
@@ -530,18 +570,22 @@ export const NwmdMapComponent = ({
       }
     };
   }, [
-    state.locations,
+    locations.data,
     state.mapLoaded,
     state.mapFilters.metricName,
     selectLocation,
     dispatch,
     ActionTypes,
     selectFeatureOnMap,
+    zoomToVisibleLocations,
   ]);
 
   // Emit viewport bounds whenever map extent changes.
   useEffect(() => {
-    if (!onViewportBoundsChange || !map.current || !state.mapLoaded) return;
+    const hasLocationFeatures = (locations.data?.features?.length ?? 0) > 0;
+    if (!onViewportBoundsChange || !map.current || !state.mapLoaded || !hasLocationFeatures) {
+      return;
+    }
 
     const mapInstance = map.current;
     const handleViewportChanged = () => {
@@ -551,13 +595,11 @@ export const NwmdMapComponent = ({
     mapInstance.on('moveend', handleViewportChanged);
     mapInstance.on('zoomend', handleViewportChanged);
 
-    emitViewportBounds();
-
     return () => {
       mapInstance.off('moveend', handleViewportChanged);
       mapInstance.off('zoomend', handleViewportChanged);
     };
-  }, [emitViewportBounds, onViewportBoundsChange, state.mapLoaded, state.locations]);
+  }, [emitViewportBounds, onViewportBoundsChange, state.mapLoaded, locations.data]);
 
   // Overlay layer (e.g. huc8 polygons) at 50% opacity
   useEffect(() => {
@@ -576,10 +618,7 @@ export const NwmdMapComponent = ({
     const features = overlayLocations?.features;
     if (!features || features.length === 0) return;
 
-    mapInstance.addSource('overlay-locations', {
-      type: 'geojson',
-      data: overlayLocations,
-    });
+    mapInstance.addSource('overlay-locations', { type: 'geojson', data: overlayLocations });
 
     const geomType = features[0]?.geometry?.type;
     const beforeLayer = mapInstance.getLayer('locations-layer') ? 'locations-layer' : undefined;
@@ -600,11 +639,7 @@ export const NwmdMapComponent = ({
           type: 'line',
           source: 'overlay-locations',
           layout: { visibility: 'none' },
-          paint: {
-            'line-color': '#2c5f8a',
-            'line-width': 0.8,
-            'line-opacity': 0.7,
-          },
+          paint: { 'line-color': '#2c5f8a', 'line-width': 0.8, 'line-opacity': 0.7 },
         },
         beforeLayer
       );
@@ -651,6 +686,7 @@ export const NwmdMapComponent = ({
     if (!map.current || !state.mapLoaded) return;
     const visibility = overlayVisible ? 'visible' : 'none';
     ['overlay-fill', 'overlay-line', 'overlay-highlight'].forEach((id) => {
+      if (!map.current) return;
       if (map.current.getLayer(id)) map.current.setLayoutProperty(id, 'visibility', visibility);
     });
   }, [overlayVisible, state.mapLoaded]);
@@ -659,7 +695,7 @@ export const NwmdMapComponent = ({
   useEffect(() => {
     if (!map.current || !state.mapLoaded) return;
     if (!map.current.getLayer('overlay-highlight')) return;
-    const filter = hoveredOverlayId
+    const filter: FilterSpecification = hoveredOverlayId
       ? ['any', ['==', ['get', 'id'], hoveredOverlayId], ['==', ['id'], hoveredOverlayId]]
       : ['any', ['==', ['get', 'id'], ''], ['==', ['id'], -1]];
     map.current.setFilter('overlay-highlight', filter);
@@ -670,15 +706,15 @@ export const NwmdMapComponent = ({
       <div ref={mapContainer} className="h-100 w-100">
         {!state.mapLoaded && (
           <div className="position-absolute top-50 start-50 translate-middle text-center">
-            <div className="spinner-border text-primary mb-2" role="status">
+            <output className="spinner-border text-primary mb-2">
               <span className="visually-hidden">Loading map...</span>
-            </div>
+            </output>
             <div className="small text-muted">Initializing MapLibre GL...</div>
           </div>
         )}
 
         {/* Loading overlay for fetching locations */}
-        {state.mapLoaded && state.locationsLoading && (
+        {state.mapLoaded && locations.isLoading && (
           <div
             className="position-absolute top-0 start-0 w-100 h-100 d-flex align-items-center justify-content-center"
             style={{
@@ -688,17 +724,20 @@ export const NwmdMapComponent = ({
             }}
           >
             <div className="text-center">
-              <div className="spinner-border text-primary mb-2" role="status">
+              <output className="spinner-border text-primary mb-2">
                 <span className="visually-hidden">Loading locations...</span>
-              </div>
+              </output>
               <div className="small text-muted">Loading location data...</div>
             </div>
           </div>
         )}
 
+        {/* Map Controls */}
+        {state.mapLoaded && mapFilterControls}
+
         {/* Location search */}
         {state.mapLoaded && showSearch && (
-          <div className="position-absolute top-0 start-0 end-0 m-3" style={{ zIndex: 1200 }}>
+          <div className="position-absolute top-0 start-0 end-0 px-3 pt-3" style={{ zIndex: 1200 }}>
             <div className="input-group shadow-sm" style={{ height: '38px' }}>
               <span
                 className="input-group-text bg-white border-end-0 rounded-start-3"
@@ -739,13 +778,14 @@ export const NwmdMapComponent = ({
                 style={{ maxHeight: '260px', overflowY: 'auto' }}
               >
                 {matchedLocations.length > 0 ? (
-                  matchedLocations.map((feature) => {
+                  matchedLocations.map((feature: Feature<Point>) => {
                     const props = feature.properties || {};
                     return (
                       <button
                         key={`${props.primary_location_id}-${props.secondary_location_id || ''}`}
                         type="button"
                         className="list-group-item list-group-item-action"
+                        aria-label={props.name || 'Unnamed location'}
                         onClick={() => {
                           selectFeatureOnMap(feature, { flyTo: true });
                           setSearchTerm('');
@@ -776,8 +816,25 @@ export const NwmdMapComponent = ({
         )}
 
         {/* Map Legend */}
-        {state.mapLoaded && <MapLegend metric={state.mapFilters.metricName} />}
+        {state.mapLoaded && <MapLegend metric={state.mapFilters.metricName ?? undefined} />}
+
+        {/* Zoom control for current visible locations */}
+        {state.mapLoaded && (
+          <div className="position-absolute bottom-0 end-0 p-3" style={{ zIndex: 1200 }}>
+            <button
+              type="button"
+              className="btn btn-sm btn-light shadow-sm"
+              onClick={zoomToVisibleLocations}
+              aria-label="Zoom to visible locations"
+              title="Zoom to visible locations"
+            >
+              Fit Locations
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );
 };
+
+export default NwmdMapComponent;

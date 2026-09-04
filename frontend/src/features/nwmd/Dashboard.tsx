@@ -1,38 +1,33 @@
-import { useCallback, useEffect } from 'react';
+import { useCallback } from 'react';
 import { Card } from 'react-bootstrap';
 import Tab from 'react-bootstrap/Tab';
 import Tabs from 'react-bootstrap/Tabs';
 
-import { useNwmdDashboard, ActionTypes } from '../../../context/NwmdDashboardContext';
-import { useNwmdLocationSelection, useNwmdFilters } from '../../../hooks/useNwmdDataFetching';
-import { CdfPlot } from './CdfPlot';
-import { CdfSidebar } from './CdfSidebar';
-import { FilterSidebar } from './FilterSidebar';
-import LeadTimeBinPlot from './LeadTimeBinPlot';
-import { NwmdMapComponent } from './NwmdMapComponent';
-import { SiteInfo } from './SiteInfo';
-import TimeseriesNoControls from './TimeseriesNoControls';
-import { useCdfPlots } from './useCdfPlots';
-import { useNwmdData } from './useNwmdData';
+import { CdfPlot } from './components/CdfPlot';
+import { CdfSidebar } from './components/CdfSidebar';
+import { FilterSidebar } from './components/FilterSidebar';
+import LeadTimeBinPlot from './components/LeadTimeBinPlot';
+import NwmdMapComponent from './components/NwmdMapComponent';
+import { SiteInfo } from './components/SiteInfo';
+import TimeseriesNoControls from './components/TimeseriesNoControls';
+import { useDashboard, ActionTypes } from './DashboardContext';
+import { useFilters } from './hooks/useFilters';
+import { useInitialFilters } from './hooks/useInitialFilters';
+import { useLocationSelection } from './hooks/useLocationSelection';
+import type { ViewportBounds } from './types/maps';
 
-const Dashboard = () => {
+export const Dashboard = () => {
   const tables = ['nwmd_metrics_by_location'];
 
-  const { state, dispatch } = useNwmdDashboard();
-  const {
-    initializeNwmdData,
-    loadLocationMetadata,
-    loadLocations,
-    loadTimeseries,
-    loadLeadTimeBinMetrics,
-  } = useNwmdData();
-  const { selectLocation, selectedLocation } = useNwmdLocationSelection();
-  const { mapFilters, updateMapFilters, timeseriesFilters } = useNwmdFilters();
-  const { plotIds, setCdfPlotMetric } = useCdfPlots();
+  useInitialFilters(tables[0]);
+
+  const { state, dispatch } = useDashboard();
+  const { selectLocation, selectedLocation } = useLocationSelection();
+  const { mapFilters, timeseriesFilters } = useFilters();
   const hasSelectedLocation = Boolean(state.selectedLocation?.primary_location_id);
 
   const handleViewportBoundsChange = useCallback(
-    (bounds) => {
+    (bounds: ViewportBounds) => {
       dispatch({
         type: ActionTypes.SET_MAP_VIEWPORT_BOUNDS,
         payload: bounds,
@@ -40,19 +35,6 @@ const Dashboard = () => {
     },
     [dispatch]
   );
-
-  // Load initial data when component mounts
-  useEffect(() => {
-    const initializeData = async () => {
-      try {
-        await initializeNwmdData();
-      } catch (error) {
-        console.error('Nwmd Dashboard: Error during initialization:', error);
-      }
-    };
-
-    initializeData();
-  }, [initializeNwmdData]);
 
   return (
     <div className="d-flex flex-column" style={{ height: 'calc(100dvh - 56px)', minHeight: 0 }}>
@@ -107,21 +89,10 @@ const Dashboard = () => {
           >
             <Tabs defaultActiveKey="filter" id="cdf-tabs">
               <Tab eventKey="filter" title="Filters" className="overflow-y-auto">
-                <FilterSidebar
-                  state={state}
-                  tables={tables}
-                  mapFilters={mapFilters}
-                  updateMapFilters={updateMapFilters}
-                  loadLocations={loadLocations}
-                />
+                <FilterSidebar tables={tables} />
               </Tab>
               <Tab eventKey="cdf" title="CDF Config">
-                <CdfSidebar
-                  state={state}
-                  tables={tables}
-                  plotIds={plotIds}
-                  setCdfPlotMetric={setCdfPlotMetric}
-                />
+                <CdfSidebar tables={tables} />
               </Tab>
             </Tabs>
           </div>
@@ -142,9 +113,9 @@ const Dashboard = () => {
             <NwmdMapComponent
               state={state}
               dispatch={dispatch}
+              table={tables[0]}
               ActionTypes={ActionTypes}
               selectLocation={selectLocation}
-              loadLocations={loadLocations}
               onViewportBoundsChange={handleViewportBoundsChange}
             />
           </div>
@@ -170,10 +141,10 @@ const Dashboard = () => {
                 gap: '5px',
               }}
             >
-              <CdfPlot plotId="Metric 1" />
-              <CdfPlot plotId="Metric 2" />
-              <CdfPlot plotId="Metric 3" />
-              <CdfPlot plotId="Metric 4" />
+              <CdfPlot table={tables[0]} plotId="Metric 1" />
+              <CdfPlot table={tables[0]} plotId="Metric 2" />
+              <CdfPlot table={tables[0]} plotId="Metric 3" />
+              <CdfPlot table={tables[0]} plotId="Metric 4" />
             </div>
             {/* )} */}
           </div>
@@ -206,12 +177,7 @@ const Dashboard = () => {
             ) : (
               <>
                 <div style={{ minHeight: 0 }}>
-                  <SiteInfo
-                    selectedLocation={state.selectedLocation}
-                    metadataLoading={state.metadataLoading}
-                    metadata={state.metadata}
-                    loadLocationMetadata={loadLocationMetadata}
-                  />
+                  <SiteInfo selectedLocation={state.selectedLocation} />
                 </div>
                 <div
                   className="timeseries-panel"
@@ -227,9 +193,6 @@ const Dashboard = () => {
                   <TimeseriesNoControls
                     selectedLocation={selectedLocation}
                     timeseriesFilters={timeseriesFilters}
-                    timeseriesData={state.timeseriesData}
-                    timeseriesLoading={state.timeseriesLoading}
-                    loadTimeseries={loadTimeseries}
                   />
                 </div>
                 <div
@@ -241,12 +204,9 @@ const Dashboard = () => {
                   }}
                 >
                   <LeadTimeBinPlot
+                    table={tables[0]}
                     selectedLocation={state.selectedLocation}
                     mapFilters={mapFilters}
-                    leadTimeBins={state.leadTimeBins}
-                    rows={state.leadTimeBinMetrics}
-                    loading={state.leadTimeBinMetricsLoading}
-                    loadLeadTimeBinMetrics={loadLeadTimeBinMetrics}
                   />
                 </div>
               </>
@@ -257,5 +217,3 @@ const Dashboard = () => {
     </div>
   );
 };
-
-export default Dashboard;

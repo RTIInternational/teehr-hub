@@ -35,7 +35,7 @@ type TimeseriesPoint = {
 };
 
 export type TimeseriesRequestFilters = {
-  primary_location_id: string;
+  primary_location_id?: string;
 } & TimeseriesFilters;
 
 export type TimeseriesResponse = Timeseries[];
