@@ -9,10 +9,9 @@ from prefect.futures import wait
 from prefect.task_runners import ThreadPoolTaskRunner
 from pyspark.sql import functions as F
 
-from workflows.utils.common_utils import initialize_evaluation
-from utils.datastream_utils import (
-    coalesce_cache_files,
-    load_to_warehouse
+from workflows.utils.common_utils import (
+    initialize_evaluation,
+    load_to_warehouse,
 )
 from utils.nwps_rfc_utils import (
     query_last_reference_times,

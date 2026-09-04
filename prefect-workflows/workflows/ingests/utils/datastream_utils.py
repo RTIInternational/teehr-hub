@@ -6,55 +6,17 @@ from pathlib import Path
 import pyarrow as pa
 import pyarrow.compute as pc
 import pyarrow.parquet as pq
-import s3fs
+from pyarrow.fs import S3FileSystem
 from prefect import task, get_run_logger
 from prefect.cache_policies import NO_CACHE
 import botocore
 from botocore.exceptions import ClientError
 
 from teehr.fetching.utils import write_timeseries_parquet_file
-import teehr
 
-S3_FS = s3fs.S3FileSystem(anon=True)
-
-
-@task(cache_policy=NO_CACHE)
-def load_to_warehouse(
-    ev: teehr.Evaluation,
-    in_path: Path,
-    table_name: str,
-):
-    """Load cached parquet files into the warehouse."""
-    logger = get_run_logger()
-    logger.info(
-        f"Loading troute output from cache to {table_name}"
-    )
-    ev._load.from_cache(
-        in_path=in_path,
-        table_name=table_name
-    )
-    logger.info("Successfully loaded data to warehouse")
-    return
-
-
-@task(cache_policy=NO_CACHE)
-def coalesce_cache_files(
-    ev: teehr.Evaluation,
-    num_cache_files: int,
-    output_cache_dir: Path,
-    coalesced_cache_dir: Path,
-):
-    """Coalesce multiple parquet cache files into a single parquet file."""
-    logger = get_run_logger()
-    logger.info("Coalescing cache files for optimized loading")
-    # Read the converted files to Spark DataFrame
-    schema_func = ev.table(table_name="secondary_timeseries").schema_func
-    sdf = ev.read.from_cache(
-        path=output_cache_dir,
-        table_schema_func=schema_func()
-    ).to_sdf()
-    sdf.coalesce(num_cache_files).write.mode("overwrite").parquet(str(coalesced_cache_dir))
-    return
+# Region is required: without it HeadBucket answers 301 and pyarrow
+# reports only "AWS Error UNKNOWN (HTTP status 301)".
+S3_FS = S3FileSystem(anonymous=True, region="us-east-1")
 
 
 @task(cache_policy=NO_CACHE)
@@ -172,8 +134,10 @@ def fetch_troute_output_to_cache(
     try:
         # Load as a pyarrow table.
         filters = [("feature_id", "in", warehouse_ngen_ids)]
+        # pyarrow.fs wants "bucket/key"; the scheme stays on s3_filepath
+        # so the log line above is still copy-pasteable.
         table = pq.read_table(
-            s3_filepath,
+            s3_filepath.removeprefix("s3://"),
             filesystem=S3_FS,
             filters=filters
         )

@@ -12,12 +12,13 @@ import botocore.session
 from botocore import UNSIGNED
 from botocore.config import Config
 
-from workflows.utils.common_utils import initialize_evaluation
+from workflows.utils.common_utils import (
+    initialize_evaluation,
+    load_to_warehouse,
+)
 from utils.datastream_utils import (
     fetch_troute_output_to_cache,
     generate_s3_filepaths,
-    coalesce_cache_files,
-    load_to_warehouse
 )
 from pyspark.sql import functions as F
 from teehr.utils.utils import remove_dir_if_exists
@@ -220,15 +221,6 @@ def ingest_datastream_forecasts(
 
     if failed == total:
         raise RuntimeError("All DataStream fetch tasks failed!")
-
-    # # Coalesce cache files for optimized loading
-    # coalesced_cache_dir = output_cache_dir / "coalesced"
-    # coalesce_cache_files(
-    #     ev=ev,
-    #     num_cache_files=num_cache_files,
-    #     output_cache_dir=output_cache_dir,
-    #     coalesced_cache_dir=coalesced_cache_dir
-    # )
 
     # Load output
     load_to_warehouse(

@@ -100,3 +100,29 @@ def set_table_properties(
         ALTER TABLE iceberg.teehr.{table_name} SET TBLPROPERTIES ('{key}' = '{value}')
         """)
     logger.info(f"Table properties set for {table_name}.")
+
+
+@task(cache_policy=NO_CACHE)
+def load_to_warehouse(
+    ev: teehr.Evaluation,
+    in_path: Union[str, Path],
+    table_name: str,
+    write_mode: str = "append",
+    drop_duplicates: bool = True,
+):
+    """Load cached parquet files into a warehouse table.
+
+    A task rather than a plain call so the load shows up as its own node in
+    the Prefect UI -- it is often the slowest step in an ingest. Defaults
+    match ``from_cache``'s own, so callers that only pass a path and a table
+    behave exactly as a direct call would.
+    """
+    logger = get_run_logger()
+    logger.info(f"Loading cached data into {table_name}")
+    ev._load.from_cache(
+        in_path=in_path,
+        table_name=table_name,
+        write_mode=write_mode,
+        drop_duplicates=drop_duplicates,
+    )
+    logger.info(f"Successfully loaded data into {table_name}")

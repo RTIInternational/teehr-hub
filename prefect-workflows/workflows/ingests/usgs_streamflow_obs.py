@@ -22,7 +22,10 @@ from teehr.fetching.const import (
 )
 from teehr.utils.utils import remove_dir_if_exists
 from utils import usgs_utils
-from workflows.utils.common_utils import initialize_evaluation
+from workflows.utils.common_utils import (
+    initialize_evaluation,
+    load_to_warehouse,
+)
 from workflows.utils.time_utils import to_naive_utc
 
 logging.getLogger("teehr").setLevel(logging.INFO)
@@ -126,12 +129,11 @@ def ingest_usgs_streamflow_obs(
 
     # Todo: Coalesce cache files for better write performance?
 
-    logger.info("⏰ Loading USGS data from the cache")
-    ev._load.from_cache(
+    load_to_warehouse(
+        ev=ev,
         in_path=Path(ev.fetch.usgs_cache_dir),
+        table_name="primary_timeseries",
         write_mode=write_mode,
         drop_duplicates=drop_duplicates,
-        table_name="primary_timeseries",
     )
-    logger.info("✅ Completed loading USGS data into the warehouse")
     ev.spark.stop()
