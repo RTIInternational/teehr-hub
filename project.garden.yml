@@ -23,7 +23,7 @@ environments:
     variables:
       hostname: teehr.local.app.garden
       certificateIssuerName: letsencrypt-prod
-      devTeehrVersion: 44a1dabc135ae5f3f1254055e40fee0e1e456ef3
+      devTeehrVersion: 2bd6f5c836558e3fdb5be4724c8127bf4f68d888
       stableTeehrVersion: place-holder # Needed for sync to work for some reason.
       previousTeehrVersion: place-holder
       polaris:
@@ -63,9 +63,9 @@ environments:
     variables:
       hostname: teehr.rtiamanzi.org
       certificateIssuerName: letsencrypt-prod
-      devTeehrVersion: 44a1dabc135ae5f3f1254055e40fee0e1e456ef3
-      stableTeehrVersion: v0.6.6
-      previousTeehrVersion: v0.5.3
+      devTeehrVersion: 2bd6f5c836558e3fdb5be4724c8127bf4f68d888
+      stableTeehrVersion: v0.7.0
+      previousTeehrVersion: v0.6.6
       irsa:
         # Jupyter's role is scoped only to external, non-warehouse data
         # (e.g. ciroh-rti-hefs-data) — its Iceberg warehouse access goes
