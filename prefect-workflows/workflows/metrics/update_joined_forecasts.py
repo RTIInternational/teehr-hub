@@ -6,6 +6,7 @@ import logging
 from prefect import flow, get_run_logger
 
 from workflows.utils.common_utils import initialize_evaluation
+from workflows.utils.time_utils import to_naive_utc
 from utils.joined_forecast_utils import (
     JOINED_FORECAST_TABLE_NAME,
     apply_safety_lookback,
@@ -185,10 +186,8 @@ def update_joined_forecast_table_incremental(
         executor_memory=executor_memory,
     )
 
-    if isinstance(changed_since, str):
-        checkpoint = datetime.fromisoformat(changed_since)
-    else:
-        checkpoint = changed_since
+    # None means "no checkpoint given", handled below, so don't default it to now.
+    checkpoint = to_naive_utc(changed_since) if changed_since is not None else None
 
     if checkpoint is None:
         checkpoint = get_incremental_checkpoint(

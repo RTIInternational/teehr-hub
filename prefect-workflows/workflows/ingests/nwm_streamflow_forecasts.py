@@ -1,5 +1,5 @@
 from pathlib import Path
-from datetime import datetime, timedelta, UTC
+from datetime import datetime, timedelta
 from typing import Dict, List, Optional, Union
 import logging
 
@@ -31,6 +31,7 @@ from teehr.fetching.const import (
 )
 from teehr.fetching.models.utils import TimeseriesTypeEnum
 from workflows.utils.common_utils import initialize_evaluation
+from workflows.utils.time_utils import to_naive_utc
 
 logging.getLogger("teehr").setLevel(logging.INFO)
 
@@ -234,10 +235,7 @@ async def ingest_nwm_streamflow_forecasts(
 
         logger.info(f"Starting NWM streamflow forecast ingestion with configuration: {nwm_configuration}, variable: {variable_name}, output type: {output_type}, timeseries type: {timeseries_type}")
 
-        if end_dt is None:
-            end_dt = datetime.now(UTC).replace(tzinfo=None)
-        elif isinstance(end_dt, str):
-            end_dt = datetime.fromisoformat(end_dt)
+        end_dt = to_naive_utc(end_dt)
 
         ev = initialize_evaluation(
             temp_dir_path=temp_dir_path,

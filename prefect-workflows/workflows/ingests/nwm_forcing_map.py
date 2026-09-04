@@ -9,7 +9,7 @@ Supports both analysis/assimilation (e.g. forcing_analysis_assim) and forecast
 import re
 import time
 from pathlib import Path
-from datetime import datetime, timedelta, UTC
+from datetime import datetime, timedelta
 from typing import Union, List, Iterable
 
 import pandas as pd
@@ -29,6 +29,7 @@ from teehr.fetching.const import (
 )
 from teehr.utils.utils import remove_dir_if_exists
 from workflows.utils.common_utils import initialize_evaluation
+from workflows.utils.time_utils import to_naive_utc
 
 LOOKBACK_DAYS = 1
 LOCATION_ID_PREFIX = "usgsbasin"
@@ -370,10 +371,7 @@ def ingest_nwm_forcing_map(
     """
     logger = get_run_logger()
 
-    if end_dt is None:
-        end_dt = datetime.now(UTC).replace(tzinfo=None)
-    elif isinstance(end_dt, str):
-        end_dt = datetime.fromisoformat(end_dt)
+    end_dt = to_naive_utc(end_dt)
 
     if shuffle_partitions is not None:
         logger.info(f"Setting Spark shuffle partitions to {shuffle_partitions}")
