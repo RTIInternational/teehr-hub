@@ -30,7 +30,10 @@ from teehr.fetching.const import (
     VARIABLE_NAME
 )
 from teehr.fetching.models.utils import TimeseriesTypeEnum
-from workflows.utils.common_utils import initialize_evaluation
+from workflows.utils.common_utils import (
+    initialize_evaluation,
+    load_to_warehouse,
+)
 from workflows.utils.time_utils import to_naive_utc
 
 logging.getLogger("teehr").setLevel(logging.INFO)
@@ -374,9 +377,10 @@ async def ingest_nwm_streamflow_forecasts(
             table_name = "primary_timeseries"
         else:
             table_name = "secondary_timeseries"
-        ev._load.from_cache(
+        load_to_warehouse(
+            ev=ev,
             in_path=nwm_cache_dir,
-            table_name=table_name
+            table_name=table_name,
         )
         logger.info("Successfully loaded NWM streamflow forecasts into the warehouse")
     finally:

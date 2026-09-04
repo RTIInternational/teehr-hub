@@ -13,50 +13,10 @@ import botocore
 from botocore.exceptions import ClientError
 
 from teehr.fetching.utils import write_timeseries_parquet_file
-import teehr
 
 # Region is required: without it HeadBucket answers 301 and pyarrow
 # reports only "AWS Error UNKNOWN (HTTP status 301)".
 S3_FS = S3FileSystem(anonymous=True, region="us-east-1")
-
-
-@task(cache_policy=NO_CACHE)
-def load_to_warehouse(
-    ev: teehr.Evaluation,
-    in_path: Path,
-    table_name: str,
-):
-    """Load cached parquet files into the warehouse."""
-    logger = get_run_logger()
-    logger.info(
-        f"Loading troute output from cache to {table_name}"
-    )
-    ev._load.from_cache(
-        in_path=in_path,
-        table_name=table_name
-    )
-    logger.info("Successfully loaded data to warehouse")
-    return
-
-
-@task(cache_policy=NO_CACHE)
-def coalesce_cache_files(
-    ev: teehr.Evaluation,
-    num_cache_files: int,
-    output_cache_dir: Path,
-    coalesced_cache_dir: Path,
-):
-    """Coalesce multiple parquet cache files into a single parquet file."""
-    logger = get_run_logger()
-    logger.info("Coalescing cache files for optimized loading")
-    # Read the converted files to Spark DataFrame
-    schema_func = ev.table(table_name="secondary_timeseries").schema_func
-    sdf = ev.read.from_cache(
-        path=output_cache_dir,
-        table_schema_func=schema_func()
-    ).to_sdf()
-    sdf.coalesce(num_cache_files).write.mode("overwrite").parquet(str(coalesced_cache_dir))
-    return
 
 
 @task(cache_policy=NO_CACHE)
