@@ -6,6 +6,7 @@ import logging
 from prefect import flow, get_run_logger
 
 from workflows.utils.common_utils import initialize_evaluation
+from workflows.utils.time_utils import to_naive_utc
 from utils.joined_forecast_utils import (
     JOINED_FORECAST_TABLE_NAME,
     apply_safety_lookback,
@@ -73,6 +74,67 @@ def _initialize_joined_forecast_evaluation(
         update_configs={
             "spark.sql.shuffle.partitions": str(DEFAULT_SHUFFLE_PARTITIONS),
         }
+    )
+
+
+def _checkpoint_advance_blocker(
+    forecast_configuration_names: List[str],
+    effective_changed_since: Union[datetime, None] = None,
+    stored_checkpoint: Union[datetime, None] = None,
+) -> Union[str, None]:
+    """Explain why the shared checkpoint must not advance, or None if it may.
+
+    The checkpoint is a single row standing for every configuration, so moving
+    it forward after a run that only looked at part of the source data silently
+    strands the changes that run never considered -- they fall behind the
+    checkpoint and are never picked up again.
+    """
+    missing = sorted(
+        set(FORECAST_CONFIGURATION_NAMES) - set(forecast_configuration_names)
+    )
+    if missing:
+        return f"run covered only a subset of configurations (missing: {missing})"
+
+    if (
+        stored_checkpoint is not None
+        and effective_changed_since is not None
+        and effective_changed_since > stored_checkpoint
+    ):
+        return (
+            f"changed_since ({effective_changed_since.isoformat()}) is later than "
+            f"the stored checkpoint ({stored_checkpoint.isoformat()}), so source "
+            "changes between the two were never processed"
+        )
+
+    return None
+
+
+def _advance_checkpoint_if_complete(
+    ev,
+    logger,
+    forecast_configuration_names: List[str],
+    effective_changed_since: Union[datetime, None] = None,
+    stored_checkpoint: Union[datetime, None] = None,
+) -> None:
+    """Advance the shared checkpoint only if this run covered everything."""
+    blocker = _checkpoint_advance_blocker(
+        forecast_configuration_names=forecast_configuration_names,
+        effective_changed_since=effective_changed_since,
+        stored_checkpoint=stored_checkpoint,
+    )
+    if blocker is not None:
+        logger.warning(
+            "Leaving the %s checkpoint where it is: %s. Run the full configuration "
+            "set to move it forward.",
+            JOINED_FORECAST_CHECKPOINT_NAME,
+            blocker,
+        )
+        return
+
+    upsert_incremental_checkpoint(
+        ev=ev,
+        workflow_name=JOINED_FORECAST_CHECKPOINT_NAME,
+        checkpoint_ts=datetime.now(UTC).replace(tzinfo=None),
     )
 
 
@@ -147,10 +209,10 @@ def update_joined_forecast_table(
             table_name=JOINED_FORECAST_TABLE_NAME,
             write_mode=write_mode,
         )
-    upsert_incremental_checkpoint(
+    _advance_checkpoint_if_complete(
         ev=ev,
-        workflow_name=JOINED_FORECAST_CHECKPOINT_NAME,
-        checkpoint_ts=datetime.now(UTC).replace(tzinfo=None),
+        logger=logger,
+        forecast_configuration_names=forecast_configuration_names,
     )
     logger.info(
         f"Joined forecast timeseries table written to warehouse as"
@@ -185,17 +247,16 @@ def update_joined_forecast_table_incremental(
         executor_memory=executor_memory,
     )
 
-    if isinstance(changed_since, str):
-        checkpoint = datetime.fromisoformat(changed_since)
-    else:
-        checkpoint = changed_since
+    stored_checkpoint = get_incremental_checkpoint(
+        ev=ev,
+        workflow_name=JOINED_FORECAST_CHECKPOINT_NAME,
+    )
 
-    if checkpoint is None:
-        checkpoint = get_incremental_checkpoint(
-            ev=ev,
-            workflow_name=JOINED_FORECAST_CHECKPOINT_NAME,
-        )
-        checkpoint = apply_safety_lookback(checkpoint, safety_lookback_hours)
+    # None means "no checkpoint given", handled below, so don't default it to now.
+    if changed_since is not None:
+        checkpoint = to_naive_utc(changed_since)
+    else:
+        checkpoint = apply_safety_lookback(stored_checkpoint, safety_lookback_hours)
 
     if checkpoint is None:
         logger.info(
@@ -228,10 +289,12 @@ def update_joined_forecast_table_incremental(
                 table_name=JOINED_FORECAST_TABLE_NAME,
                 write_mode=write_mode,
             )
-        upsert_incremental_checkpoint(
+        _advance_checkpoint_if_complete(
             ev=ev,
-            workflow_name=JOINED_FORECAST_CHECKPOINT_NAME,
-            checkpoint_ts=datetime.now(UTC).replace(tzinfo=None),
+            logger=logger,
+            forecast_configuration_names=forecast_configuration_names,
+            effective_changed_since=checkpoint,
+            stored_checkpoint=stored_checkpoint,
         )
         return
 
@@ -243,10 +306,12 @@ def update_joined_forecast_table_incremental(
     )
     if not batches:
         logger.info("No joined forecast incremental batches were planned.")
-        upsert_incremental_checkpoint(
+        _advance_checkpoint_if_complete(
             ev=ev,
-            workflow_name=JOINED_FORECAST_CHECKPOINT_NAME,
-            checkpoint_ts=datetime.now(UTC).replace(tzinfo=None),
+            logger=logger,
+            forecast_configuration_names=forecast_configuration_names,
+            effective_changed_since=checkpoint,
+            stored_checkpoint=stored_checkpoint,
         )
         return
 
@@ -259,8 +324,10 @@ def update_joined_forecast_table_incremental(
             table_name=JOINED_FORECAST_TABLE_NAME,
             write_mode="upsert",
         )
-    upsert_incremental_checkpoint(
+    _advance_checkpoint_if_complete(
         ev=ev,
-        workflow_name=JOINED_FORECAST_CHECKPOINT_NAME,
-        checkpoint_ts=datetime.now(UTC).replace(tzinfo=None),
+        logger=logger,
+        forecast_configuration_names=forecast_configuration_names,
+        effective_changed_since=checkpoint,
+        stored_checkpoint=stored_checkpoint,
     )

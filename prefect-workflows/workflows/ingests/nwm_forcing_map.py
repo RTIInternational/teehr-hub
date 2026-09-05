@@ -9,7 +9,7 @@ Supports both analysis/assimilation (e.g. forcing_analysis_assim) and forecast
 import re
 import time
 from pathlib import Path
-from datetime import datetime, timedelta, UTC
+from datetime import datetime, timedelta
 from typing import Union, List, Iterable
 
 import pandas as pd
@@ -28,7 +28,11 @@ from teehr.fetching.const import (
     VARIABLE_NAME
 )
 from teehr.utils.utils import remove_dir_if_exists
-from workflows.utils.common_utils import initialize_evaluation
+from workflows.utils.common_utils import (
+    initialize_evaluation,
+    load_to_warehouse,
+)
+from workflows.utils.time_utils import to_naive_utc
 
 LOOKBACK_DAYS = 1
 LOCATION_ID_PREFIX = "usgsbasin"
@@ -197,7 +201,7 @@ def compute_and_write_map(
     GCS, explodes pixel values, joins with the cached fractions_view, and
     computes a coverage-weighted average per location and timestep. Results
     are written to a parquet file named by the chunk's start and end datetimes
-    inside nwm_cache_dir. Call ev._load.from_cache() after all chunks are
+    inside nwm_cache_dir. Call load_to_warehouse() after all chunks are
     processed to load the full dataset into the warehouse.
 
     Parameters
@@ -370,10 +374,7 @@ def ingest_nwm_forcing_map(
     """
     logger = get_run_logger()
 
-    if end_dt is None:
-        end_dt = datetime.now(UTC).replace(tzinfo=None)
-    elif isinstance(end_dt, str):
-        end_dt = datetime.fromisoformat(end_dt)
+    end_dt = to_naive_utc(end_dt)
 
     if shuffle_partitions is not None:
         logger.info(f"Setting Spark shuffle partitions to {shuffle_partitions}")
@@ -514,8 +515,8 @@ def ingest_nwm_forcing_map(
             weights_domain_name=weights_domain_name
         )
 
-    logger.info("Loading cached MAP data into the warehouse")
-    ev._load.from_cache(
+    load_to_warehouse(
+        ev=ev,
         in_path=nwm_cache_dir,
         table_name=target_table_name,
     )

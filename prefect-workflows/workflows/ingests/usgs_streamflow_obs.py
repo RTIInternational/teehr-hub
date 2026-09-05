@@ -1,5 +1,5 @@
 from pathlib import Path
-from datetime import datetime, timedelta, UTC
+from datetime import datetime, timedelta
 from typing import Union, Optional
 import logging
 import os
@@ -22,7 +22,11 @@ from teehr.fetching.const import (
 )
 from teehr.utils.utils import remove_dir_if_exists
 from utils import usgs_utils
-from workflows.utils.common_utils import initialize_evaluation
+from workflows.utils.common_utils import (
+    initialize_evaluation,
+    load_to_warehouse,
+)
+from workflows.utils.time_utils import to_naive_utc
 
 logging.getLogger("teehr").setLevel(logging.INFO)
 logging.getLogger("dataretrieval").setLevel(logging.INFO)
@@ -68,11 +72,7 @@ def ingest_usgs_streamflow_obs(
     else:
         logger.warning("⚠️ API_USGS_PAT env variable is empty after loading 'api-usgs-pat' secret.")
 
-    if end_dt is None:
-        end_dt = datetime.now(UTC).replace(tzinfo=None)
-    elif isinstance(end_dt, str):
-        # Assumes UTC
-        end_dt = datetime.fromisoformat(end_dt)
+    end_dt = to_naive_utc(end_dt)
 
     ev = initialize_evaluation(
         temp_dir_path=temp_dir_path,
@@ -129,12 +129,11 @@ def ingest_usgs_streamflow_obs(
 
     # Todo: Coalesce cache files for better write performance?
 
-    logger.info("⏰ Loading USGS data from the cache")
-    ev._load.from_cache(
+    load_to_warehouse(
+        ev=ev,
         in_path=Path(ev.fetch.usgs_cache_dir),
+        table_name="primary_timeseries",
         write_mode=write_mode,
         drop_duplicates=drop_duplicates,
-        table_name="primary_timeseries",
     )
-    logger.info("✅ Completed loading USGS data into the warehouse")
     ev.spark.stop()
