@@ -9,3 +9,9 @@ export type OgcLink = {
   title?: string;
   hreflang?: string;
 };
+
+export type OgcResponse<T> = {
+  items: T[];
+  numberReturned: number;
+  links: OgcLink[];
+};
