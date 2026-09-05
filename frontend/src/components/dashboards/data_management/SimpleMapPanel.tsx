@@ -29,6 +29,12 @@ import React, { useEffect, useRef, useState } from 'react';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import { isLngLatTuple } from '@/shared/utils/mapMetrics';
 
+export type PopupFeatureProps = {
+  name?: string;
+  primary_location_id?: string;
+  [key: string]: unknown;
+};
+
 type SimpleMapPanelProps = {
   locations?: FeatureCollection<Point> | null;
   basinLocations?: FeatureCollection<Polygon | MultiPolygon> | null;

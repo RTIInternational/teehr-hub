@@ -4,6 +4,23 @@
 
 import type { Timeseries, TimeseriesFilters } from '@/shared/types/timeseries';
 
+export const displayUnknown = (value: unknown) => {
+  if (typeof value === 'string') {
+    return value;
+  }
+  if (typeof value === 'number' || typeof value === 'boolean') {
+    return String(value);
+  }
+  if (value === null || value === undefined) {
+    return '';
+  }
+  if (typeof value === 'object') {
+    return JSON.stringify(value);
+  }
+  // oxlint-disable-next-line typescript/no-base-to-string
+  return String(value);
+};
+
 /**
  * Format variable names from snake_case to Title Case with optional lookup overrides
  * @param {string} variableName - The variable name to format
