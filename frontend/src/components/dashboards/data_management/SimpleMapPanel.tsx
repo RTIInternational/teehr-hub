@@ -1,3 +1,4 @@
+import type { FeatureCollection, Geometry, MultiPolygon, Point, Polygon, Position } from 'geojson';
 /**
  * SimpleMapPanel — a self-contained MapLibre GL map for the data management
  * dashboard tabs.  It does not use the DataDashboardContext; all state is
@@ -22,10 +23,24 @@
  * isActive         When this changes to true the map is resized so it fills
  *                  its container correctly after being hidden (display:none).
  */
-import maplibregl from 'maplibre-gl';
-import { useEffect, useRef, useState } from 'react';
+import maplibregl, { type FilterSpecification, type MapLayerMouseEvent } from 'maplibre-gl';
+import React, { useEffect, useRef, useState } from 'react';
 
 import 'maplibre-gl/dist/maplibre-gl.css';
+import { isLngLatTuple } from '@/shared/utils/mapMetrics';
+
+type SimpleMapPanelProps = {
+  locations?: FeatureCollection<Point> | null;
+  basinLocations?: FeatureCollection<Polygon | MultiPolygon> | null;
+  overlayLocations?: FeatureCollection<Polygon | MultiPolygon> | null;
+  overlayVisible?: boolean;
+  hoveredOverlayId?: string | null;
+  getPopupHTML?: ((properties: Record<string, unknown>) => string) | null;
+  showOverlayToggle?: boolean;
+  onOverlayToggle?: ((event: React.MouseEvent<HTMLButtonElement>) => void) | null;
+  onPointClick?: ((properties: Record<string, unknown>) => void) | null;
+  isActive?: boolean;
+};
 
 const SimpleMapPanel = ({
   locations = null,
@@ -38,28 +53,30 @@ const SimpleMapPanel = ({
   onOverlayToggle = null,
   onPointClick = null,
   isActive = true,
-}) => {
+}: SimpleMapPanelProps) => {
   const mapContainer = useRef(null);
-  const map = useRef(null);
-  const popup = useRef(null);
+  const map = useRef<maplibregl.Map>(null);
+  const popup = useRef<maplibregl.Popup>(null);
   const overPopupRef = useRef(false);
-  const popupElementRef = useRef(null);
+  const popupElementRef = useRef<HTMLElement>(null);
   const popupListenersBoundRef = useRef(false);
-  const popupEnterHandlerRef = useRef(null);
-  const popupLeaveHandlerRef = useRef(null);
+  const popupEnterHandlerRef = useRef<() => void>(null);
+  const popupLeaveHandlerRef = useRef<() => void>(null);
   const [mapLoaded, setMapLoaded] = useState(false);
 
   // ── 1. Initialize map once ──────────────────────────────────────────────
   useEffect(() => {
     if (map.current || !mapContainer.current) return;
 
-    map.current = new maplibregl.Map({
+    const mapInstance = new maplibregl.Map({
       container: mapContainer.current,
       style: { version: 8, sources: {}, layers: [] },
       center: [-95.7129, 37.0902],
       zoom: 4,
       attributionControl: false,
     });
+
+    map.current = mapInstance;
 
     popup.current = new maplibregl.Popup({
       closeButton: false,
@@ -75,13 +92,13 @@ const SimpleMapPanel = ({
       popup.current?.remove();
     };
 
-    map.current.on('load', () => {
-      map.current.addSource('osm', {
+    mapInstance.on('load', () => {
+      mapInstance.addSource('osm', {
         type: 'raster',
         tiles: ['https://a.tile.openstreetmap.org/{z}/{x}/{y}.png'],
         tileSize: 256,
       });
-      map.current.addLayer({ id: 'osm', type: 'raster', source: 'osm' });
+      mapInstance.addLayer({ id: 'osm', type: 'raster', source: 'osm' });
       setMapLoaded(true);
     });
 
@@ -144,16 +161,20 @@ const SimpleMapPanel = ({
     };
 
     // Event handlers (defined here so cleanup can remove exact same refs)
-    const handleEnter = (e) => {
-      m.getCanvas().style.cursor = 'pointer';
-      const feature = e.features[0];
+    const handleEnter = (e: MapLayerMouseEvent) => {
+      const feature = e.features?.[0];
+      if (!feature || feature.geometry.type !== 'Point') return;
+
       const coordinates = feature.geometry.coordinates.slice();
+      if (!isLngLatTuple(coordinates)) return;
+
+      m.getCanvas().style.cursor = 'pointer';
       const html = getPopupHTML
-        ? getPopupHTML(feature.properties, coordinates)
+        ? getPopupHTML(feature.properties)
         : `<div style="padding:6px 8px;font-size:0.85rem;">
              <strong>${feature.properties.name || feature.properties.primary_location_id || ''}</strong>
            </div>`;
-      popup.current.setLngLat(coordinates).setHTML(html).addTo(m);
+      if (popup.current) popup.current.setLngLat(coordinates).setHTML(html).addTo(m);
       bindPopupHoverListeners();
     };
 
@@ -161,13 +182,15 @@ const SimpleMapPanel = ({
       m.getCanvas().style.cursor = '';
       // Delay removal so cursor has time to enter the popup element
       setTimeout(() => {
-        if (!overPopupRef.current) popup.current.remove();
+        if (!overPopupRef.current && popup.current) popup.current.remove();
       }, 100);
     };
 
-    const handleClick = (e) => {
+    const handleClick = (e: MapLayerMouseEvent) => {
+      const feature = e.features?.[0];
+      if (!feature) return;
+
       if (onPointClick) {
-        const feature = e.features[0];
         onPointClick(feature.properties);
       }
     };
@@ -180,7 +203,7 @@ const SimpleMapPanel = ({
       m.removeLayer('locations-layer');
     }
     if (m.getSource('locations')) m.removeSource('locations');
-    popup.current.remove();
+    if (popup.current) popup.current.remove();
 
     if (valid.length === 0) return;
 
@@ -218,11 +241,12 @@ const SimpleMapPanel = ({
     } else if (valid.length > 1) {
       const lons = valid.map((f) => f.geometry.coordinates[0]);
       const lats = valid.map((f) => f.geometry.coordinates[1]);
-      const bounds = [
-        [Math.min(...lons), Math.min(...lats)],
-        [Math.max(...lons), Math.max(...lats)],
-      ];
-      if (isFinite(bounds[0][0])) {
+
+      const southWest: [number, number] = [Math.min(...lons), Math.min(...lats)];
+      const northEast: [number, number] = [Math.max(...lons), Math.max(...lats)];
+
+      if (isLngLatTuple(southWest) && isLngLatTuple(northEast)) {
+        const bounds: [[number, number], [number, number]] = [southWest, northEast];
         m.fitBounds(bounds, { padding: 50, duration: 700, maxZoom: 14 });
       }
     }
@@ -244,7 +268,7 @@ const SimpleMapPanel = ({
 
   // ── 4. Basin polygon layer (dedicated, separate from overlay system) ──────
   useEffect(() => {
-    if (!mapLoaded || !map.current) return;
+    if (!mapLoaded || !map.current || !basinLocations) return;
     const m = map.current;
 
     // Cleanup helpers
@@ -288,8 +312,8 @@ const SimpleMapPanel = ({
     );
 
     // Fit map to basin extent
-    const allCoords = [];
-    const collectCoords = (geom) => {
+    const allCoords: Position[] = [];
+    const collectCoords = (geom: Geometry) => {
       if (!geom) return;
       if (geom.type === 'Polygon')
         geom.coordinates.forEach((ring) => ring.forEach((c) => allCoords.push(c)));
@@ -392,7 +416,7 @@ const SimpleMapPanel = ({
     if (!mapLoaded || !map.current) return;
     const visibility = overlayVisible ? 'visible' : 'none';
     ['overlay-fill', 'overlay-line', 'overlay-highlight'].forEach((id) => {
-      if (map.current.getLayer(id)) {
+      if (map.current?.getLayer(id)) {
         map.current.setLayoutProperty(id, 'visibility', visibility);
       }
     });
@@ -402,7 +426,7 @@ const SimpleMapPanel = ({
   useEffect(() => {
     if (!mapLoaded || !map.current) return;
     if (!map.current.getLayer('overlay-highlight')) return;
-    const filter = hoveredOverlayId
+    const filter: FilterSpecification = hoveredOverlayId
       ? ['==', ['get', 'id'], hoveredOverlayId]
       : ['==', ['get', 'id'], ''];
     map.current.setFilter('overlay-highlight', filter);
