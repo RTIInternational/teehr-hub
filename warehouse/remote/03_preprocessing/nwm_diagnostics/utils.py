@@ -1,29 +1,15 @@
+"""Cluster-sizing instrumentation and pod templates for the NWM diagnostics runs.
+
+The metrics pipeline itself (`generate_nwmd_metrics`) lives in nwmd_metrics.ipynb,
+so this module holds only helpers that are useful across notebooks and that the
+notebook pulls in via the raw.githubusercontent download in its second cell.
+"""
+
 import os
 import json
 import urllib.request
 from urllib.parse import urlparse
 from datetime import datetime, timezone
-
-import teehr
-import pandas as pd
-# from teehr.evaluation.spark_session_utils import create_spark_session
-
-from teehr import DeterministicMetrics as dm
-from teehr import Signatures as s
-from teehr import RowLevelCalculatedFields as rcf
-from teehr import TimeseriesAwareCalculatedFields as tcf
-from teehr import Bootstrappers as bs
-
-from teehr.models.filters import TableFilter
-
-from pyspark.sql import functions as F
-
-from pyspark.sql import DataFrame
-
-import copy
-import time
-
-teehr.__version__
 
 # --- Resource-sizing instrumentation -----------------------------------------
 # Pulls executor/stage summary metrics from the Spark REST API (no external deps,
@@ -222,13 +208,16 @@ def get_stage_attempt_failures(spark, max_stages=200):
         print(f"  {f['failureReason']}\n")
     return failures
 
-def create_ondemand_pod_template():
+def create_ondemand_pod_template(ephemeral_storage_request="20Gi"):
     """Create a pod template for on-demand Spark executors.
+
+    Args:
+        ephemeral_storage_request (str): Disk to reserve per executor for shuffle
+            (SPARK_LOCAL_DIRS). See the note below -- this is not cosmetic.
 
     Returns:
         str: Path to the generated pod template YAML file.
     """
-    
 
     # Alternate executor pod template targeting the ON-DEMAND `nb-r5-4xlarge-teehr`
     # node group instead of the spot `spark-r5-4xlarge-spot` pool, for tuning runs
@@ -236,10 +225,25 @@ def create_ondemand_pod_template():
     # instance type (r5.4xlarge) so executor sizing math stays comparable to prior
     # spot-based runs. Different taint on this node group (hub.jupyter.org/dedicated
     # =user vs teehr-hub/dedicated=worker), so it needs its own tolerations.
+    #
+    # ephemeral-storage request: 2026-09-06, a full-dataset run died with ~55
+    # executor evictions ("The node was low on resource: ephemeral-storage") and
+    # the resulting FetchFailedException / "Missing an output location for shuffle
+    # N" cascade -- 71 of 135 executors were replaced before the job aborted.
+    # Spark puts SPARK_LOCAL_DIRS on an emptyDir backed by the node's root volume
+    # (r5.4xlarge has no instance store: ~71Gi allocatable, kubelet evicts under
+    # 8Gi free), 5-6 executors shared each node, and the pods requested NO
+    # ephemeral-storage at all -- so the scheduler could not account for shuffle
+    # disk, AND kubelet ranks eviction victims by usage over request, which put
+    # the executors first in line every time. Declaring a request fixes both:
+    # it spreads executors across enough nodes and buys eviction immunity up to
+    # the requested amount. At 20Gi that is ~3 executors per r5.4xlarge.
+    # Verify it survived Spark's own resource settings after launch with:
+    #   kubectl get pod <exec-pod> -o jsonpath='{.spec.containers[0].resources}'
     ONDEMAND_POD_TEMPLATE_PATH = os.path.expanduser("~/executor-pod-template-ondemand.yaml")
 
     with open(ONDEMAND_POD_TEMPLATE_PATH, "w") as f:
-        f.write("""apiVersion: v1
+        f.write(f"""apiVersion: v1
 kind: Pod
 spec:
   terminationGracePeriodSeconds: 60
@@ -253,6 +257,9 @@ spec:
       runAsUser: 1000
       runAsGroup: 1000
       allowPrivilegeEscalation: false
+    resources:
+      requests:
+        ephemeral-storage: {ephemeral_storage_request}
     lifecycle:
       preStop:
         exec:
@@ -277,399 +284,8 @@ spec:
     teehr-hub/nodegroup-name: nb-r5-4xlarge
     """)
 
-    print(f"Wrote alternate pod template to {ONDEMAND_POD_TEMPLATE_PATH}")
+    print(
+        f"Wrote alternate pod template to {ONDEMAND_POD_TEMPLATE_PATH} "
+        f"(ephemeral-storage request: {ephemeral_storage_request})"
+    )
     return ONDEMAND_POD_TEMPLATE_PATH
-
-
-def generate_nwmd_metrics(spark, config):
-    """Generate the teehr.nwmd_metrics_by_location table for the given config.
-
-    config format:
-        {
-            "configurations": ["nwm30_medium_range"],
-            "forecast_lead_time_bin_hours": 24,
-            "start_reference_time": "2025-10-01T00:00",
-            "end_reference_time": "2026-10-01T00:00"
-        },
-
-    Args:
-        spark (SparkSession): The Spark session to use for processing.
-        config (dict): Configuration dictionary containing necessary parameters.
-    """
-    # Placeholder for the actual implementation of generating metrics.
-    # This function should include the logic to process the data and populate
-    # the teehr.nwmd_metrics_by_location table based on the provided config.
-
-    configurations = config.get("configurations")
-    forecast_lead_time_bin_hours = config.get("forecast_lead_time_bin_hours")
-    start_reference_time = config.get("start_reference_time")
-    end_reference_time = config.get("end_reference_time")
-
-    # pod_template_path = create_ondemand_pod_template()
-
-    # spark = create_spark_session(
-    #     start_spark_cluster=True,
-    #     executor_instances=64,
-    #     executor_memory="16g",
-    #     executor_cores=2,
-    #     aws_profile="default",
-    #     pod_template_path=pod_template_path,
-    #     update_configs={
-    #         "spark.sql.shuffle.partitions": 1024,
-    #         "spark.sql.adaptive.coalescePartitions.enabled": "false",
-    #         "spark.kubernetes.executor.annotation.cluster-autoscaler.kubernetes.io/safe-to-evict": "false",
-    #         "spark.executorEnv.TEEHR_BOOTSTRAP_ENGINE": "vectorized",
-    #         "spark.executor.memoryOverhead": "4g",
-    #     }
-    # )
-
-    start = time.perf_counter()
-
-    ev = teehr.RemoteReadWriteEvaluation(spark=spark, enable_spark_proxy=True)
-
-    joined_cols = ev.table("fcst_joined_timeseries").to_sdf().columns
-    non_unique_fields = ['primary_value','secondary_value','created_at','updated_at', "value_time"]
-    uniquenes_fields = [c for c in joined_cols if c not in non_unique_fields]
-    print(f"Unique fields for grouping: {uniquenes_fields}")
-
-    ids = ev.locations.filter("id like 'usgs-%'").to_sdf().select("id")
-    sample = ids.sample(False, 0.5, seed=456).limit(10).collect()
-    location_ids = [r.id for r in sample]
-    print("Number of location_ids:", len(location_ids))
-
-    # spark.sql("""
-    # USE iceberg.teehr
-    # """)
-    # rows = spark.sql("""
-    # SELECT distinct primary_location_id FROM fcst_joined_timeseries
-    # """).collect()
-    # location_ids = [r.primary_location_id for r in rows]
-    # print(len(location_ids))
-
-    filters = [
-        TableFilter(
-            column="configuration_name",
-            operator="in",
-            value=configurations
-        ),
-        TableFilter(
-            column="reference_time",
-            operator=">=",
-            value=start_reference_time,
-        ),
-        TableFilter(
-            column="reference_time",
-            operator="<",
-            value=end_reference_time,
-        ),
-        TableFilter(
-            column="primary_location_id",
-            operator="in",
-            value=location_ids
-        )
-    ]   
-
-    # Define the above percentile event detection calculated fields for 85th, 95th, and 99th percentiles.
-    # Note: both the threshold and event detection are based on the primary_value field.  
-    # This may differ from the way it is done in the NWM Explorer.  Does the NWM Explorer use the primary_value 
-    # of the threshold definition but the secondary_value field for event detection?
-
-    remove_for_quantiles = ["secondary_location_id", "reference_time", "member"]
-    quantile_group = [c for c in uniquenes_fields if c not in remove_for_quantiles]
-
-    calculated_fields = [
-        rcf.GenericSQL(
-            output_field_name="quarter",
-            sql_statement="CONCAT(YEAR(reference_time), '-Q', QUARTER(reference_time))"
-        ),
-        rcf.ForecastLeadTimeBins(
-            bin_size=pd.Timedelta(hours=forecast_lead_time_bin_hours),
-            output_field_name="forecast_lead_time_bin"
-        ),
-        tcf.AbovePercentileEventDetection(
-            quantile=0.85,
-            output_event_field_name="above_q85",
-            skip_event_id=True,
-            value_field_name="primary_value",
-            uniqueness_fields=quantile_group
-        ),
-        tcf.AbovePercentileEventDetection(
-            quantile=0.95,
-            output_event_field_name="above_q95",
-            skip_event_id=True,
-            value_field_name="primary_value",
-            uniqueness_fields=quantile_group
-        ),
-        tcf.AbovePercentileEventDetection(
-            quantile=0.99,
-            output_event_field_name="above_q99",
-            skip_event_id=True,
-            value_field_name="primary_value",
-            uniqueness_fields=quantile_group
-        )
-    ]   
-
-    # Get raw joined timeseries
-    tbl = ev.table("fcst_joined_timeseries").filter(filters).add_calculated_fields(calculated_fields)       
-
-    # Stack thresholds
-    threshold_cols = ["above_q85", "above_q95", "above_q99"]
-    threshold_stack_base_cols = [c for c in tbl.columns if c not in threshold_cols]
-    # print(f"Stacking thresholds: {threshold_cols} with base columns: {threshold_stack_base_cols}")
-
-    joined_timeseries_with_thresholds_tbl = (
-        tbl.selectExpr(
-            *threshold_stack_base_cols,
-            """
-            stack(
-                4,
-                cast(null as string), true,
-                'above_q85', above_q85,
-                'above_q95', above_q95,
-                'above_q99', above_q99
-            ) as (threshold, keep_row)
-            """
-        )
-        .where("keep_row")
-        .select(*threshold_stack_base_cols, "threshold")   # no .drop()
-    )
-
-    # print(f"no threshold_rows: {joined_timeseries_with_thresholds_tbl.where("threshold is NULL").count()}")
-    # print(f"threshold_rows: {joined_timeseries_with_thresholds_tbl.where("threshold is not NULL").count()}")
-    # print(f"total: {joined_timeseries_with_thresholds_tbl.count()}")
-
-    # Add window aggregations
-    window_metrics = [
-        s.Average(
-            primary_field_name="primary_value",
-            output_field_name="mean_primary_value"
-        ),
-        s.Average(
-            primary_field_name="secondary_value",
-            output_field_name="mean_secondary_value"
-        ),
-        s.Minimum(
-            primary_field_name="primary_value",
-            output_field_name="min_primary_value"
-        ),
-        s.Minimum(
-            primary_field_name="secondary_value",
-            output_field_name="min_secondary_value"
-        ),
-        s.Maximum(
-            primary_field_name="primary_value",
-            output_field_name="max_primary_value"
-        ),
-        s.Maximum(
-            primary_field_name="secondary_value",
-            output_field_name="max_secondary_value"
-        ),
-        s.Count(
-            primary_field_name="secondary_value",
-            output_field_name="n_in_bin"
-        )
-    ]
-
-    group_by_bin = [*uniquenes_fields, "quarter", "forecast_lead_time_bin", "threshold"]
-    # print(f"Grouping by: {group_by_bin}")
-
-    bin_aggs_tbl = joined_timeseries_with_thresholds_tbl.aggregate(
-        group_by=group_by_bin,
-        metrics=window_metrics
-    )
-    # print(f"bin_aggs: {bin_aggs_tbl.count()}")
-
-    pivoted_bin_aggs_tbl = bin_aggs_tbl.selectExpr(
-        *group_by_bin,
-        """
-        stack(
-            3,
-            'mean', mean_primary_value, mean_secondary_value,
-            'min',  min_primary_value,  min_secondary_value,
-            'max',  max_primary_value,  max_secondary_value
-        ) as (window_agg, primary_value, secondary_value)
-        """
-    )
-    # print(f"pivoted_bin_aggs: {pivoted_bin_aggs_tbl.count()}")
-
-    # Configure bootstrap
-    bootstrap = bs.Stationary(
-        reps=1000,
-        seed=1234,
-        quantiles=[0.025, 0.975]
-    )
-
-    metrics = [
-        s.Count(),
-        s.Average(),
-        s.Minimum(),
-        s.Maximum(),
-        dm.RelativeMean(),
-        dm.RelativeMedian(),
-        dm.RelativeMinimum(),
-        dm.RelativeMaximum(),
-        dm.RelativeStandardDeviation(),
-        dm.RelativeBias(
-            add_epsilon=True,
-        ),
-        dm.NashSutcliffeEfficiency(
-            add_epsilon=True,
-        ),
-        dm.KlingGuptaEfficiency(
-            add_epsilon=True,
-        ),
-        dm.PearsonCorrelation(
-            add_epsilon=True,
-        ),
-        # NOTE: unpack_results is intentionally NOT set on the bootstrap metrics below.
-        # teehr's default unpack path (post_process_metric_results -> unpack_sdf_dict_columns)
-        # calls sdf.select(column_name).first() once per metric with unpack_results=True -- a
-        # real Spark action that retriggers the entire upstream lazy DAG once per metric (9x
-        # here) and is the confirmed cause of the "ShuffleMapStage ... first at
-        # teehr/querying/utils.py:207" crashes and nondeterministic same-config failures seen
-        # in the profiling table above. We unpack manually after aggregation instead (see the
-        # unpack_quantile_bootstrap_columns cell below), which needs no Spark action since the
-        # quantile keys are already known statically from `bootstap.quantiles`.
-        dm.RelativeMean(
-            output_field_name="relative_mean_boot",
-            bootstrap=bootstrap,
-        ),
-        dm.RelativeMedian(
-            output_field_name="relative_median_boot",
-            bootstrap=bootstrap,
-        ),
-        dm.RelativeMinimum(
-            output_field_name="relative_minimum_boot",
-            bootstrap=bootstrap,
-        ),
-        dm.RelativeMaximum(
-            output_field_name="relative_maximum_boot",
-            bootstrap=bootstrap,
-        ),
-        dm.RelativeStandardDeviation(
-            output_field_name="relative_standard_deviation_boot",
-            bootstrap=bootstrap,
-        ),
-        dm.NashSutcliffeEfficiency(
-            output_field_name="nash_sutcliffe_efficiency_boot",
-            bootstrap=bootstrap,
-        ),
-        dm.RelativeBias(
-            output_field_name="relative_bias_boot",
-            bootstrap=bootstrap,
-        ),
-        dm.PearsonCorrelation(
-            output_field_name="pearson_correlation_boot",
-            bootstrap=bootstrap,
-        ),
-        dm.KlingGuptaEfficiency(
-            output_field_name="kling_gupta_efficiency_boot",
-            bootstrap=bootstrap,
-        ),
-    ]
-
-    group_by = [
-        "primary_location_id",
-        "secondary_location_id",
-        "configuration_name",
-        "unit_name",
-        "variable_name",
-        "member",
-        "quarter",
-        "forecast_lead_time_bin",
-        "threshold",
-        "window_agg",
-    ]
-
-    results = pivoted_bin_aggs_tbl.aggregate(
-        group_by=group_by,
-        metrics=metrics
-    )
-
-    def unpack_quantile_bootstrap_columns(table, metrics):
-        sdf = table.to_sdf()
-        for m in metrics:
-            if not getattr(m, "bootstrap", None):
-                continue
-            for q in m.bootstrap.quantiles:
-                key = f"{m.output_field_name}_{q}"
-                sdf = sdf.withColumn(key.replace(".", "_"), F.col(m.output_field_name).getItem(key))
-            sdf = sdf.drop(m.output_field_name)
-        return table._with_sdf(sdf)
-
-    results = unpack_quantile_bootstrap_columns(results, metrics)
-
-    results = results.order_by(group_by).add_geometry()
-
-    # print(results.explain(mode="simple"))
-
-    # NOTE: pointed at a *_test table while validating the unpack_results/.first() fix so we
-    # don't overwrite the useful existing results in nwmd_metrics_by_location. Repoint back to
-    # "nwmd_metrics_by_location" only after full-scale validation succeeds consistently.
-    table_name = "nwmd_metrics_by_location_test"
-
-    nullables = ["member", "threshold"]
-    table_exists = ev.spark.catalog.tableExists(f"iceberg.teehr.{table_name}")
-
-    if table_exists:
-        results.write_to(
-            table_name=table_name,
-            write_mode="upsert",
-            uniqueness_fields=[column for column in group_by if column not in nullables],
-            nullable_fields=nullables,
-            partition_by=["quarter"],
-        )
-    else:
-        results.write_to(
-            table_name=table_name,
-            write_mode="create_or_replace",
-            partition_by=["quarter"],
-        )
-
-    # Read the metric column names off the written result rather than off the metric
-    # models. The bootstrap metrics' MapType columns are replaced by one column per
-    # quantile (e.g. relative_mean_boot -> relative_mean_boot_0_025, _0_975), so
-    # `metric.output_field_name` would advertise columns that don't exist in the
-    # table. `.columns` is schema-only, so this costs no Spark action.
-    # "name" and "geometry" come from add_geometry(), not from a metric.
-    non_metric_columns = set(group_by) | {"name", "geometry"}
-    metric_columns = [
-        c for c in results.to_sdf().columns if c not in non_metric_columns
-    ]
-
-    properties = {
-        "description": "NWM diagnostics metrics by location ID",
-        "group_by": ", ".join(group_by),
-        "metrics": ", ".join(metric_columns)
-    }
-
-    for key, value in properties.items():
-        ev.spark.sql(f"""
-            ALTER TABLE iceberg.teehr.{table_name} SET TBLPROPERTIES ('{key}' = '{value}')
-        """)
-
-    end = time.perf_counter()
-
-    elapsed_seconds = end - start
-    print(f"{elapsed_seconds:.6f} s")
-
-    # Capture resource-usage metrics for this run BEFORE spark.stop() (the REST API
-    # stops responding once the session ends). Paste the printed markdown row into
-    # the Profiling table above to keep a running record.
-    # n_locations = len(location_ids) if "location_ids" in globals() else "All"
-    # n_days = _infer_days_from_filters(filters)
-
-    # run_metrics = capture_spark_run_metrics(spark, label=f"{n_locations} locations, {n_days} days")
-    # report_utilization(run_metrics, elapsed_seconds)
-
-    # print(
-    #     f"\n| {n_locations} | {n_days} | {bootstap.reps} | Cluster - {spark_config_summary(spark)} "
-    #     f"| {elapsed_seconds:.0f}s | (see run_metrics above) |"
-    # )
-
-    # Run this against the still-live session (spark.stop() is commented out below)
-    # to see the actual failure reason for the retried/failed stages from this run,
-    # without needing to read it off the Spark UI by hand.
-    # stage_failures = get_stage_attempt_failures(spark)
-
-    # spark.stop()
