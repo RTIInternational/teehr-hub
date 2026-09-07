@@ -13,12 +13,14 @@
 import { useState, useCallback, useMemo } from 'react';
 import { Spinner, Alert } from 'react-bootstrap';
 
-import { useConfigurationsTable } from '@/features/data_management/queries/configurations';
+import {
+  useConfigurationsLocationsGeoJson,
+  useConfigurationsTable,
+} from '@/features/data_management/queries/configurations';
 import type { ConfigurationsTableItem } from '@/features/data_management/types/configurations';
 import { displayUnknown } from '@/shared/utils/formatters';
 
 import { useSortableTable, type SortValueGetter } from '../../../hooks/useSortableTable';
-import { apiService } from '../../../services/api';
 import DashboardPanel from '../../../shared/components/DashboardPanel';
 import SharedDataTable from '../../../shared/components/SharedDataTable';
 import SimpleMapPanel, { type PopupFeatureProps } from './SimpleMapPanel';
@@ -44,6 +46,13 @@ const DATE_TIME_FIELDS = [
   'max_reference_time',
 ];
 
+const compareRows = (r1: ConfigurationsTableItem | null, r2: ConfigurationsTableItem | null) => {
+  const str1 = JSON.stringify(r1);
+  const str2 = JSON.stringify(r2);
+  if (str1 === str2) return true;
+  return false;
+};
+
 // ── Component ──────────────────────────────────────────────────────────────
 const COLUMNS = [
   { key: 'configuration_name', label: 'Configuration' },
@@ -67,13 +76,16 @@ const makePopupHTML = (props: PopupFeatureProps) => `
 `;
 
 const ConfigurationsSummaryTab = ({ isActive = true }) => {
-  const [selectedRow, setSelectedRow] = useState<string | null>(null);
-  const [mapLocations, setMapLocations] = useState(null);
-  const [mapLoading, setMapLoading] = useState(false);
+  const [selectedRow, setSelectedRow] = useState<ConfigurationsTableItem | null>(null);
 
   // Load summary table on mount
   const configTable = useConfigurationsTable();
   const rows = configTable.data ?? [];
+
+  const mapLocations = useConfigurationsLocationsGeoJson(
+    selectedRow?.configuration_name,
+    selectedRow?.variable_name
+  );
 
   const { sortedRows, handleSort, SortIcon } = useSortableTable(
     rows,
@@ -92,30 +104,11 @@ const ConfigurationsSummaryTab = ({ isActive = true }) => {
   // Fetch locations for the clicked row
   const handleRowClick = useCallback(
     async (row: ConfigurationsTableItem) => {
-      const key = `${row.configuration_name}||${row.variable_name}`;
-      if (selectedRow === key) {
-        // Deselect
+      if (compareRows(selectedRow, row)) {
         setSelectedRow(null);
-        setMapLocations(null);
         return;
       }
-      setSelectedRow(key);
-      setMapLoading(true);
-
-      try {
-        // Single backend call: JOIN configurations_by_location with locations table.
-        // Avoids URL-length limits that arise from passing thousands of IDs as query params.
-        const geojson = await apiService.getConfigurationLocationsGeojson({
-          configuration_name: row.configuration_name,
-          variable_name: row.variable_name,
-        });
-        setMapLocations(geojson);
-      } catch (err) {
-        console.error('ConfigurationsSummaryTab: Failed to load locations:', err);
-        setMapLocations(null);
-      } finally {
-        setMapLoading(false);
-      }
+      setSelectedRow(row);
     },
     [selectedRow]
   );
@@ -133,11 +126,11 @@ const ConfigurationsSummaryTab = ({ isActive = true }) => {
       <div style={{ flex: '1 1 0', minHeight: 0 }}>
         <DashboardPanel bodyStyle={{ padding: 0, position: 'relative' }}>
           <SimpleMapPanel
-            locations={mapLocations}
+            locations={mapLocations.data}
             getPopupHTML={makePopupHTML}
             isActive={isActive}
           />
-          {mapLoading && (
+          {mapLocations.isLoading && (
             <div
               className="position-absolute top-50 start-50 translate-middle text-center"
               style={{ zIndex: 10 }}
@@ -146,7 +139,7 @@ const ConfigurationsSummaryTab = ({ isActive = true }) => {
               <div className="small text-muted mt-1">Loading locations…</div>
             </div>
           )}
-          {!selectedRow && !mapLoading && (
+          {!selectedRow && !mapLocations.isLoading && (
             <div
               className="position-absolute top-50 start-50 translate-middle text-center text-muted"
               style={{
@@ -238,8 +231,7 @@ const ConfigurationsSummaryTab = ({ isActive = true }) => {
                   title: `Sort by ${column.label}`,
                 })}
                 getRowProps={(row) => {
-                  const key = `${row.configuration_name}||${row.variable_name}`;
-                  const isSelected = selectedRow === key;
+                  const isSelected = compareRows(selectedRow, row);
                   return {
                     onClick: () => handleRowClick(row),
                     style: { cursor: 'pointer', background: isSelected ? '#cfe2ff' : undefined },
@@ -247,8 +239,7 @@ const ConfigurationsSummaryTab = ({ isActive = true }) => {
                   };
                 }}
                 renderCell={(row, column) => {
-                  const key = `${row.configuration_name}||${row.variable_name}`;
-                  const isSelected = selectedRow === key;
+                  const isSelected = compareRows(selectedRow, row);
                   const rawVal = row[column.key];
                   const value =
                     DATE_TIME_FIELDS.includes(column.key) &&
