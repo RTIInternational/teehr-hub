@@ -30,8 +30,11 @@ import 'maplibre-gl/dist/maplibre-gl.css';
 import { isLngLatTuple } from '@/shared/utils/mapMetrics';
 
 export type PopupFeatureProps = {
+  location_id?: string;
   name?: string;
   primary_location_id?: string;
+  rfc?: string;
+  state_name?: string;
   [key: string]: unknown;
 };
 
