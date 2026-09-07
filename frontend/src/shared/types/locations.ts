@@ -2,8 +2,6 @@ import type { FeatureCollection, Point } from 'geojson';
 
 export type LocationMetadataResponse = FeatureCollection<Point>;
 
-export type LocationsResponse = FeatureCollection<Point>;
-
 export type MapLocation = {
   primary_location_id: string;
   secondary_location_id?: string;

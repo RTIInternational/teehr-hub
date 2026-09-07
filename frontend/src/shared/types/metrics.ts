@@ -1,6 +1,8 @@
-import type { Feature, Point } from 'geojson';
+import type { Feature, FeatureCollection, Point } from 'geojson';
 
 import type { OgcLink } from './ogc';
+
+export type MetricLocationsResponse = FeatureCollection<Point>;
 
 export type MetricsFeature = Feature<Point, MetricsProperties>;
 
