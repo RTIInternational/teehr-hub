@@ -9,10 +9,11 @@ import React, { useEffect, useRef, useCallback, useMemo, useState, type Dispatch
 
 import 'maplibre-gl/dist/maplibre-gl.css';
 import MapLegend from '@/shared/components/MapLegend';
-import { useLocations } from '@/shared/queries/locations';
 import type { MapLocation } from '@/shared/types/locations';
 import type { InvalidFeature, MapMetricClamped, MapState } from '@/shared/types/maps';
 import { getMetricColorExpression, getMetricLabel, isLngLatTuple } from '@/shared/utils/mapMetrics';
+
+import { useMetricLocations } from '../queries/metrics';
 
 type MapComponentProps<TActionTypes extends ActionTypesShape> = {
   state: MapState;
@@ -68,7 +69,7 @@ const MapComponent = <TActionTypes extends ActionTypesShape>({
         }
       : undefined;
 
-  const locations = useLocations(locationFilters);
+  const locations = useMetricLocations(locationFilters);
 
   const selectFeatureOnMap = useCallback(
     (feature: Feature<Point>, options: { flyTo?: boolean } = {}) => {

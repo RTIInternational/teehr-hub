@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Card, Form, ButtonGroup, Button } from 'react-bootstrap';
 
 import MetricsTable from '@/shared/components/MetricsTable';
-import { useLocationMetrics } from '@/shared/queries/metrics';
+import { useMetricsByLocation } from '@/shared/queries/metrics';
 import { useTableProperties } from '@/shared/queries/queryables';
 import type { MapLocation } from '@/shared/types/locations';
 
@@ -18,7 +18,7 @@ const LocationMetrics = ({ selectedLocation, tables }: LocationMetricsProps) => 
   const [selectedTable, setSelectedTable] = useState(tables[0] || null);
   const [viewMode, setViewMode] = useState<'filters' | 'plot' | 'table'>('table');
 
-  const metrics = useLocationMetrics(selectedLocation?.primary_location_id, selectedTable);
+  const metrics = useMetricsByLocation(selectedLocation?.primary_location_id, selectedTable);
 
   // Check if current table has group_by fields for filter capability
   const hasFilters = selectedTable && tableProperties[selectedTable]?.group_by?.length > 0;
