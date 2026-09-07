@@ -1,3 +1,4 @@
+import type { FeatureCollection, Point } from 'geojson';
 /**
  * LocationsSummaryTab
  *
@@ -12,22 +13,24 @@
 import { useEffect, useState, useCallback, useRef, useMemo } from 'react';
 import { Spinner, Alert } from 'react-bootstrap';
 
-import { useSortableTable } from '../../../hooks/useSortableTable';
+import type { AttributesResponse } from '@/features/data_management/types/attributes';
+import type {
+  LocationAttributesResponse,
+  LocationAttributesItem,
+} from '@/features/data_management/types/locationAttributes';
+import { fmt } from '@/features/data_management/utils/utils';
+import type { LocationsResponse } from '@/shared/types/locations';
+
+import { useSortableTable, type SortValueGetter } from '../../../hooks/useSortableTable';
 import { apiService } from '../../../services/api';
 import DashboardPanel from '../../../shared/components/DashboardPanel';
 import SharedDataTable from '../../../shared/components/SharedDataTable';
-import SimpleMapPanel from './SimpleMapPanel';
+import SimpleMapPanel, { type PopupFeatureProps } from './SimpleMapPanel';
 
 // ── Helpers ────────────────────────────────────────────────────────────────
-const fmt = (val) => {
-  if (val == null) return '—';
-  return String(val)
-    .replace('T', ' ')
-    .replace(/\.\d+Z?$/, '');
-};
 
 // Returns a raw sortable value for a column key
-const sortValue = (row, key) => {
+const sortValue: SortValueGetter = (row, key) => {
   const value = row[key];
 
   if (value == null) return '';
@@ -67,8 +70,8 @@ const SIDE_PANEL_COLUMNS = [
 const DEFAULT_ATTRIBUTE_NAMES = ['state_name', 'drainage_area_km2', 'slope_mean_percent', 'rfc'];
 
 // Pivot EAV rows [{location_id, attribute_name, value}] into a map keyed by location_id
-const pivotAttributes = (items) => {
-  const map = {};
+const pivotAttributes = (items: LocationAttributesItem[]) => {
+  const map: { [location_id: string]: { [attribute_name: string]: string } } = {};
   (items || []).forEach((item) => {
     if (!map[item.location_id]) map[item.location_id] = {};
     map[item.location_id][item.attribute_name] = item.value;
@@ -77,7 +80,7 @@ const pivotAttributes = (items) => {
 };
 
 // Popup content for map hover
-const makePopupHTML = (props) => {
+const makePopupHTML = (props: PopupFeatureProps) => {
   return `
     <div style="padding:6px 10px;font-size:0.83rem;line-height:1.5;max-height:260px;overflow-y:auto;">
       <div style="font-weight:600;margin-bottom:2px;">${props.name || '—'}</div>
@@ -88,33 +91,41 @@ const makePopupHTML = (props) => {
   `;
 };
 
+type LocationAttributes = {
+  name: string;
+  location_id: string;
+  [attribute: string]: string;
+};
+
 // ── Component ──────────────────────────────────────────────────────────────
 const LocationsSummaryTab = ({ isActive = true }) => {
-  const [geojson, setGeojson] = useState(null);
+  const [geojson, setGeojson] = useState<FeatureCollection<Point> | null>(null);
   const [basinGeojson, setBasinGeojson] = useState(null);
   const [noGeometry, setNoGeometry] = useState(false);
-  const [rows, setRows] = useState([]);
+  const [rows, setRows] = useState<LocationAttributes[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-  const [selectedId, setSelectedId] = useState(null);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
 
   const [sidePanelConfigs, setSidePanelConfigs] = useState([]);
   const [sidePanelLoading, setSidePanelLoading] = useState(false);
   const [sidePanelError, setSidePanelError] = useState(null);
 
   const [activeColumns, setActiveColumns] = useState(DEFAULT_COLUMNS);
-  const [availableAttributes, setAvailableAttributes] = useState([]);
+  const [availableAttributes, setAvailableAttributes] = useState<{ key: string; label: string }[]>(
+    []
+  );
   const [pickerOpen, setPickerOpen] = useState(false);
   const [checkedKeys, setCheckedKeys] = useState(new Set());
   const [filterColumn, setFilterColumn] = useState('');
   const [filterText, setFilterText] = useState('');
   const [pickerMenuStyle, setPickerMenuStyle] = useState({});
-  const pickerRef = useRef(null);
+  const pickerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     apiService
       .getAttributes()
-      .then((data) => {
+      .then((data: AttributesResponse) => {
         const defaultKeys = new Set(DEFAULT_COLUMNS.map((c) => c.key));
         const attrs = (data?.items || [])
           .filter((item) => !defaultKeys.has(item.name))
@@ -128,8 +139,9 @@ const LocationsSummaryTab = ({ isActive = true }) => {
   }, []);
 
   useEffect(() => {
-    const handler = (e) => {
-      if (pickerRef.current && !pickerRef.current.contains(e.target)) setPickerOpen(false);
+    const handler = (e: MouseEvent) => {
+      if (pickerRef.current && e.target instanceof Node && !pickerRef.current.contains(e.target))
+        setPickerOpen(false);
     };
     document.addEventListener('mousedown', handler);
     return () => document.removeEventListener('mousedown', handler);
@@ -141,6 +153,7 @@ const LocationsSummaryTab = ({ isActive = true }) => {
     }
 
     const updatePickerMenuStyle = () => {
+      if (!pickerRef.current) return;
       const rect = pickerRef.current.getBoundingClientRect();
       const viewportHeight = window.innerHeight || document.documentElement.clientHeight;
       const viewportWidth = window.innerWidth || document.documentElement.clientWidth;
@@ -172,10 +185,11 @@ const LocationsSummaryTab = ({ isActive = true }) => {
     };
   }, [pickerOpen]);
 
-  const toggleCheck = (key) =>
+  const toggleCheck = (key: string) =>
     setCheckedKeys((prev) => {
       const next = new Set(prev);
-      next.has(key) ? next.delete(key) : next.add(key);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
       return next;
     });
 
@@ -198,7 +212,7 @@ const LocationsSummaryTab = ({ isActive = true }) => {
     fetchRows(extraAttributeNames);
   };
 
-  const handleRemoveColumn = (key) => {
+  const handleRemoveColumn = (key: string) => {
     setActiveColumns((prev) => prev.filter((c) => c.key !== key));
   };
 
@@ -236,7 +250,7 @@ const LocationsSummaryTab = ({ isActive = true }) => {
 
   const hasActiveFilter = !!filterText;
 
-  const fetchRows = useCallback((extraAttributeNames = []) => {
+  const fetchRows = useCallback((extraAttributeNames: string[] = []) => {
     const attributeNames = [...DEFAULT_ATTRIBUTE_NAMES, ...extraAttributeNames];
     setLoading(true);
     setError(null);
@@ -244,7 +258,7 @@ const LocationsSummaryTab = ({ isActive = true }) => {
       apiService.getLocationIdNames('usgs'),
       apiService.getLocationAttributesByNames(attributeNames),
     ])
-      .then(([locationsData, attrsData]) => {
+      .then(([locationsData, attrsData]: [LocationsResponse, LocationAttributesResponse]) => {
         const locItems = locationsData?.items || [];
         const attrItems = attrsData?.items || [];
         const attrMap = pivotAttributes(attrItems);
@@ -263,7 +277,7 @@ const LocationsSummaryTab = ({ isActive = true }) => {
     fetchRows();
   }, [fetchRows]);
 
-  const loadConfigurationsForLocation = useCallback((locationId) => {
+  const loadConfigurationsForLocation = useCallback((locationId: string) => {
     setSidePanelLoading(true);
     setSidePanelError(null);
     setSidePanelConfigs([]);
@@ -280,7 +294,7 @@ const LocationsSummaryTab = ({ isActive = true }) => {
   }, []);
 
   const handleRowClick = useCallback(
-    (row) => {
+    (row: LocationAttributes) => {
       if (selectedId === row.location_id) {
         setSelectedId(null);
         setGeojson(null);
@@ -306,7 +320,7 @@ const LocationsSummaryTab = ({ isActive = true }) => {
             setNoGeometry(true);
             return;
           }
-          const merged = {
+          const merged: FeatureCollection<Point> = {
             type: 'FeatureCollection',
             features: [
               {
@@ -671,7 +685,7 @@ const LocationsSummaryTab = ({ isActive = true }) => {
           <div style={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0 }}>
             {loading && (
               <div className="d-flex align-items-center justify-content-center h-100">
-                <Spinner animation="border" variant="primary" role="status">
+                <Spinner animation="border" variant="primary">
                   <span className="visually-hidden">Loading locations…</span>
                 </Spinner>
               </div>

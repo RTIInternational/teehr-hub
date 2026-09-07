@@ -18,6 +18,7 @@ import {
   useConfigurationsTable,
 } from '@/features/data_management/queries/configurations';
 import type { ConfigurationsTableItem } from '@/features/data_management/types/configurations';
+import { fmt } from '@/features/data_management/utils/utils';
 import { displayUnknown } from '@/shared/utils/formatters';
 
 import { useSortableTable, type SortValueGetter } from '../../../hooks/useSortableTable';
@@ -26,12 +27,6 @@ import SharedDataTable from '../../../shared/components/SharedDataTable';
 import SimpleMapPanel, { type PopupFeatureProps } from './SimpleMapPanel';
 
 // ── Helpers ────────────────────────────────────────────────────────────────
-const fmt = (val: string | number) => {
-  if (val == null) return '—';
-  return String(val)
-    .replace('T', ' ')
-    .replace(/\.\d+Z?$/, '');
-};
 
 // Returns a raw sortable value for a column key
 const sortValue: SortValueGetter = (row, key) => {
