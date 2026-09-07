@@ -4,14 +4,12 @@ import { createContext, useContext, useReducer } from 'react';
 const initialDataState = {
   // Data
   locations: { features: [] },
-  configurations: [],
 
   // Selected location
   selectedLocation: null,
 
   // Loading states
   locationsLoading: false,
-  configsLoading: false,
 
   // Map state
   mapLoaded: false,
@@ -23,7 +21,6 @@ const initialDataState = {
 
 export const ActionTypes = {
   SET_LOCATIONS: 'SET_LOCATIONS',
-  SET_CONFIGURATIONS: 'SET_CONFIGURATIONS',
   SET_LOADING: 'SET_LOADING',
   SELECT_LOCATION: 'SELECT_LOCATION',
   SET_MAP_LOADED: 'SET_MAP_LOADED',
@@ -38,13 +35,6 @@ const dataDashboardReducer = (state, action) => {
         ...state,
         locations: action.payload,
         locationsLoading: false,
-      };
-
-    case ActionTypes.SET_CONFIGURATIONS:
-      return {
-        ...state,
-        configurations: Array.isArray(action.payload) ? action.payload : [],
-        configsLoading: false,
       };
 
     case ActionTypes.SET_LOADING:
@@ -70,7 +60,6 @@ const dataDashboardReducer = (state, action) => {
         ...state,
         error: action.payload,
         locationsLoading: false,
-        configsLoading: false,
       };
 
     case ActionTypes.CLEAR_ERROR:

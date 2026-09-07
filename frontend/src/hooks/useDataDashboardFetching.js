@@ -31,30 +31,6 @@ export const useDataDashboardFetching = () => {
     }
   }, [dispatch]);
 
-  // Load configurations table (name, long_name, timeseries_type)
-  const loadConfigurationsTable = useCallback(async () => {
-    try {
-      dispatch({ type: ActionTypes.SET_LOADING, payload: { configsLoading: true } });
-      const data = await apiService.getConfigurationsTable();
-      // Support array, OGC features, or {items:[]} response shapes
-      const configurations = Array.isArray(data)
-        ? data
-        : Array.isArray(data.items)
-          ? data.items
-          : (data.features || []).map((f) => f.properties || f);
-      dispatch({ type: ActionTypes.SET_CONFIGURATIONS, payload: configurations });
-      return configurations;
-    } catch (error) {
-      console.error('useDataDashboardFetching: Error loading configurations:', error);
-      dispatch({ type: ActionTypes.SET_LOADING, payload: { configsLoading: false } });
-      dispatch({
-        type: ActionTypes.SET_ERROR,
-        payload: `Failed to load configurations: ${error.message}`,
-      });
-      throw error;
-    }
-  }, [dispatch]);
-
   // Select a location
   const selectLocation = useCallback(
     (location) => {
@@ -65,7 +41,6 @@ export const useDataDashboardFetching = () => {
 
   return {
     loadLocations,
-    loadConfigurationsTable,
     selectLocation,
   };
 };
