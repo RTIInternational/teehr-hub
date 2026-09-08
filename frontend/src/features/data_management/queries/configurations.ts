@@ -4,6 +4,14 @@ import apiService from '@/services/api';
 
 import type { ConfigurationsTableResponse } from '../types/configurations';
 
+export const useConfigurationsByLocationId = (locationId: string | null) =>
+  useQuery({
+    queryKey: ['configurationsByLocationId', locationId],
+    queryFn: () => apiService.getConfigurationsByLocationId(locationId),
+    select: (data: ConfigurationsTableResponse) => data.items,
+    enabled: !!locationId,
+  });
+
 export const useConfigurationsLocationsGeoJson = (configuration?: string, variable?: string) =>
   useQuery({
     queryKey: ['configurationsLocationsGeoJson', configuration, variable],
