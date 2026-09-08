@@ -43,8 +43,8 @@ Two configurations are processed:
 
 | Configuration | Forecast horizon | Grouped into |
 | --- | --- | --- |
-| `nwm30_short_range` | out to ~1 day | 4 bins of 6 hours |
-| `nwm30_medium_range` | out to ~11 days | 11 bins of 1 day |
+| `nwm30_short_range` | out to 18 hours | 3 bins of 6 hours |
+| `nwm30_medium_range` | out to 10 days | 10 bins of 1 day |
 
 The most recent run covered **water years 2025 and 2026** (1 October 2024 through
 30 September 2026) across roughly **7,500 gages**.
@@ -60,6 +60,14 @@ For medium range, bin `P2DT0H_P3DT0H` holds everything that was forecasting 2 to
 ahead. For short range, `PT6H_PT12H` holds everything 6 to 12 hours ahead. Those labels
 are ISO-8601 durations: `PT6H` is 6 hours, `P2DT0H` is 2 days.
 
+Bins are **start-exclusive and end-inclusive**: `PT6H_PT12H` covers lead times of 7 through
+12 hours, so a forecast valid exactly 6 hours out belongs to the *previous* bin. That is
+why an 18-hour forecast gives three 6-hour bins rather than four. (Before
+[teehr #815](https://github.com/RTIInternational/teehr/issues/815) the convention was the
+other way round, which produced a stray fourth bin holding only hour 18, and an eleventh
+medium-range bin holding only hour 240. Results computed before that fix are not
+comparable with results computed after it.)
+
 Every metric is reported separately for every bin. Reading a metric across bins is how
 you see forecast skill decay with lead time.
 
@@ -74,10 +82,10 @@ A medium-range forecast issued at midnight produces a value for every hour out t
 
 ```
 forecast issued 2026-01-15 00:00, gage usgs-01018009
-  hour   1  ... 24   -> bin PT0S_P1DT0H     (day 0 to 1)
-  hour  25  ... 48   -> bin P1DT0H_P2DT0H   (day 1 to 2)
+  hour   1  ... 24   -> bin PT0S_P1DT0H     (up to 1 day ahead)
+  hour  25  ... 48   -> bin P1DT0H_P2DT0H   (1 to 2 days ahead)
   ...
-  hour 241 ... 264   -> bin P10DT0H_P11DT0H (day 10 to 11)
+  hour 217 ... 240   -> bin P9DT0H_P10DT0H  (9 to 10 days ahead)
 ```
 
 ### 2. Summarize each bin three ways
@@ -122,9 +130,10 @@ Model performance during a flood is a different question from model performance 
 average Tuesday, and averages are dominated by ordinary days. So every metric is also
 computed using **only the hours when the river was actually running high**.
 
-"High" is defined per gage from its own observed record in the run: the 85th, 95th, and
-99th percentile of everything that gage measured. An hour counts as an event if the
-*observed* flow exceeded that gage's percentile.
+"High" is defined per gage from **its entire observed record** — the 85th, 95th, and 99th
+percentile of everything that streamgage has ever measured, computed once and stored in
+`teehr.nwmd_flow_thresholds`. An hour counts as an event if the *observed* flow exceeded
+that gage's threshold.
 
 | `threshold` value | Which hours are included |
 | --- | --- |
@@ -138,8 +147,12 @@ Two things to keep in mind:
 - The percentile is **specific to each gage**. A small creek and a large river have
   completely different 99th percentiles. This is deliberate — it asks "was this river
   high *for itself*", which is what matters hydrologically.
-- The percentile is computed from **the observations in the run's time window**, not from
-  a long climatological record. Change the date range and the thresholds shift.
+- The percentile comes from the gage's **full period of record**, not from the time window
+  being analyzed. So `above_q95` means the same thing in every row of the table, and
+  numbers from a run covering one quarter are directly comparable with numbers from a run
+  covering two years. The thresholds only change if someone deliberately recomputes them
+  (see `build_flow_thresholds` in Part 2) — and when that happens, every row's meaning
+  shifts with them.
 
 Restricting to `above_q99` is why some rows have small `count` values: a 99th-percentile
 event is rare by construction. `count = 13` means only 13 bins qualified. Metrics on 13
@@ -254,8 +267,8 @@ against those 13 observed peaks.
 - **Why** the model was wrong. These are diagnostics, not attribution. A low KGE doesn't
   distinguish bad precipitation forcing from bad routing.
 - Anything about ungaged locations. Every row is anchored to a USGS gage.
-- Anything about flows below the observed record's range — the thresholds are empirical
-  percentiles of what was actually measured in the window.
+- Anything about flows outside the observed record's range — the thresholds are empirical
+  percentiles of what that gage has actually measured, not modelled extremes.
 - Whether a difference is *meaningful* — that's what the confidence intervals are for,
   and overlapping intervals mean "not established".
 
@@ -275,9 +288,13 @@ notebook is the source of truth; `utils.py` holds only instrumentation and the p
 template, and is fetched from the pushed branch by cell 1 at run time.
 
 ```
+nwmd_flow_thresholds    (per-gage q85/q95/q99 over the primary_timeseries POR,
+  |                      built once by build_flow_thresholds)
+  v
 fcst_joined_timeseries  (one row per gage x hour x reference_time)
   |
   |  .filter(configuration, reference_time range)
+  |  join_flow_thresholds(...)          broadcast join -> threshold_q85/95/99
   |  .add_calculated_fields(...)        water_year, quarter, lead-time bin,
   |                                     above_q85/95/99 event flags
   v
@@ -345,6 +362,65 @@ class Dimension:
 The `reference_time`-in-bin / not-in-final asymmetry is intentional: the bin aggregation
 is per-forecast, and the final aggregation pools across forecasts.
 
+## High-flow thresholds are climatological, and precomputed
+
+`build_flow_thresholds(spark)` computes exact percentiles per
+`(location_id, variable_name, unit_name)` over the whole `primary_timeseries` record and
+writes `iceberg.teehr.nwmd_flow_thresholds` in long form
+(`location_id, variable_name, unit_name, quantile, threshold_value, n_values, por_start,
+por_end, computed_at`). `load_flow_thresholds()` pivots it to one row per location and
+`join_flow_thresholds()` broadcast-joins it on.
+
+This replaced `tcf.AbovePercentileEventDetection` computed inline over the *filtered
+joined timeseries*, which was wrong three ways:
+
+1. **Window dependence.** The percentile moved when the `reference_time` filter moved, so
+   rows written by different runs were not comparable and re-running a single quarter
+   silently redefined its own thresholds.
+2. **Coverage weighting.** Each observed hour appears in the joined table once per
+   reference time that forecasts it, so the distribution being quantiled was weighted by
+   forecast coverage rather than being the observed distribution. In a synthetic check,
+   quantiling a coverage-skewed sample moved q85 from 85.1 to 94.0.
+3. **Per-configuration thresholds.** The quantile group included `configuration_name`,
+   and each configuration runs under its own filter regardless — so `above_q85` meant
+   something different for short range than for medium range at the same gage, which
+   undermines comparing configurations.
+
+It is also cheaper: a broadcast join plus a column comparison replaces an `applyInPandas`
+UDF that shuffled by gage and pulled each gage's whole series into pandas, at a stage
+*upstream* of the 4x threshold expansion.
+
+`rcf.ThresholdValueExceeded` is `coalesce(value > threshold, False)` — strictly greater,
+matching the old comparison exactly, so the flags remain comparable. Verified: given the
+same threshold value, zero rows disagree, including NULL-valued rows (old returned NULL
+and was dropped by `.where`, new returns False).
+
+**The join key is a *parsed* variable name, not the raw one.** A `variable_name` is
+`{parameter}_{period}_{statistic}`, and observations arrive as `streamflow_none_inst`
+while forecasts are `streamflow_hourly_inst`. Those describe the same physical quantity,
+and `JoinedTimeseriesView._perform_join` in teehr already treats them as equivalent: for
+the `inst` statistic it joins on parameter and statistic only, ignoring period; non-inst
+variables must match in full. `variable_join_key_sql()` reproduces that rule, collapsing
+both names to `streamflow_inst` so the threshold join lands, while leaving
+`streamflow_daily_mean` distinct from `streamflow_hourly_mean`. Joining on the raw
+`variable_name` matches nothing and every row silently falls into the NULL threshold
+level — which is exactly how this was found. Use `get(parts, 2)` rather than `parts[2]`:
+under ANSI mode an out-of-range array index raises rather than returning NULL, so a
+variable name with fewer than three parts would abort the run.
+
+`load_flow_thresholds` prints the `(variable_name -> join key, unit_name)` combinations it
+loaded, so a key mismatch is visible in the run log rather than only in the output table.
+
+The left join is deliberate. A gage with no threshold row keeps its rows, gets `False` at
+every level, and therefore appears only under the NULL "all rows" level rather than
+vanishing from the table. Both the event flags and the joined `threshold_q*` value columns
+are listed in the threshold dimension's `consumes`, so they are dropped at the PRE_BIN
+stack and never reach the bin aggregation as group keys.
+
+**Re-running `build_flow_thresholds` changes the meaning of every existing row.** Treat it
+as a deliberate, announced operation, not routine maintenance. `n_values`, `por_start` and
+`por_end` are stored per row so you can see what a threshold was computed from.
+
 ## PRE_BIN vs POST_BIN — the load-bearing distinction
 
 Two structurally different kinds of dimension, and getting this wrong is either a
@@ -380,6 +456,14 @@ base_cols = [c for c in tbl.to_sdf().columns if c not in dropped]
 
 `stack()` may reference columns absent from `base_cols` (`above_q85`, `quarter`,
 `mean_primary_value`) — that is how helper columns get consumed and dropped in one step.
+
+**Beware which Spark methods the table accessor shadows.** `selectExpr`, `select`, `where`
+and `join` all reach Spark through the `__getattr__` proxy (which forwards `**kwargs`), but
+`filter` is teehr's own `TableFilter` API and — the dangerous one — **`.drop()` is
+`BaseTable.drop()`, which drops the TABLE FROM THE CATALOG**, not columns. It happens to
+take no arguments, so `.drop("col")` raises `TypeError` rather than destroying a table, but
+do not rely on that. To shed columns, `select` what you want, or join on column *names*
+(`on=["a", "b"]`) so Spark emits a single copy of each key and there is nothing to drop.
 
 The three shapes it covers:
 
@@ -553,6 +637,9 @@ Both configurations, all ~7,500 gages, water years 2025–2026, 1,000 bootstrap 
 | `nwm30_medium_range` | 11 | 4,761 s (~1h 19m) |
 | `nwm30_short_range` | 4 | 8,997 s (~2h 30m) |
 
+Those bin counts are from before the teehr #815 fix; runs after it produce 10 and 3 bins
+respectively, and correspondingly slightly less work.
+
 Short range takes longer despite having fewer bins: it is issued far more frequently, so
 it contributes many more reference times and therefore more rows.
 
@@ -585,6 +672,14 @@ even though it discovers dimension *values* dynamically. A new dimension reaches
 and the API automatically, but will not appear in the dashboard without a frontend change.
 The API needs nothing.
 
+**Cheap test runs.** Combine `"location_sample_n": 25` with `"bootstrap_reps": 10` to
+exercise the whole pipeline — including the threshold join, both stack shapes, and the
+executor-disk path — in a fraction of the runtime. The sample is deterministic given
+`location_sample_seed`, and is ordered by a hash of the gage id rather than by the id
+itself, since ordering by id returns only the lowest-numbered gages, which are clustered
+in the northeast. Note `build_flow_thresholds` is separate and still computes over all
+gages unless you narrow its `location_pattern`.
+
 **Testing without a cluster.** The spec is pure Python, so it can be exercised offline
 with stubs for `s`/`dm`/`rcf`/`tcf`/`pd` — extract cell 3, drop the
 `generate_nwmd_metrics` definition, `exec` the rest, and assert on `spec.group_by_bin`,
@@ -610,8 +705,14 @@ pattern is already written in `query_metrics_tables.ipynb`.
   `getQuarterDateRange()` (`shared/utils/formatters.ts`), which maps `Q1` to Jan–Mar.
 - `entity_fields` is read from the live `fcst_joined_timeseries` schema, so a new column
   there silently changes the merge key and the output schema.
-- The location sampling block in `generate_nwmd_metrics` is commented out. It caps runs at
-  10 gages when enabled — check it before a production run.
+- `nwmd_flow_thresholds` must exist before a metrics run; `load_flow_thresholds` raises
+  with instructions if it does not. It is not rebuilt automatically, by design.
+- Thresholds are computed across `configuration_name` in `primary_timeseries`. If a gage
+  ever has two observation configurations for the same variable, they will be blended —
+  pass `configuration_name=` to restrict.
+- A sampled run is opt-in via `location_sample_n` / `location_ids`, so the default is
+  always the full gage set. Check the config before reading results as production numbers —
+  `resolve_location_ids` prints `SAMPLED RUN: ...` when a subset is active.
 - Adding a dimension changes the output columns, so `MERGE ... INSERT *` will not resolve
   against an existing table; the first run after such a change needs `create_or_replace`.
 - `nwmd_metrics_by_location` is absent from the `/collections` listing in
