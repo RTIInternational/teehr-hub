@@ -1,5 +1,4 @@
 import { useQuery } from '@tanstack/react-query';
-import type { FeatureCollection, Point } from 'geojson';
 /**
  * LocationsSummaryTab
  *
@@ -17,12 +16,12 @@ import { Spinner, Alert } from 'react-bootstrap';
 import { attributesOptions } from '@/features/data_management/queries/attributes';
 import { useConfigurationsByLocationId } from '@/features/data_management/queries/configurations';
 import { useLocationRows } from '@/features/data_management/queries/locationRows';
+import { useBasinLocation, usePointLocation } from '@/features/data_management/queries/locations';
 import type { LocationRow } from '@/features/data_management/types/locationRows';
 import { fmt } from '@/features/data_management/utils/utils';
 import { formatUnknownValueForDisplay } from '@/shared/utils/formatters';
 
 import { useSortableTable, type SortValueGetter } from '../../../hooks/useSortableTable';
-import { apiService } from '../../../services/api';
 import DashboardPanel from '../../../shared/components/DashboardPanel';
 import SharedDataTable from '../../../shared/components/SharedDataTable';
 import SimpleMapPanel, { type PopupFeatureProps } from './SimpleMapPanel';
@@ -83,10 +82,8 @@ const makePopupHTML = (props: PopupFeatureProps) => {
 
 // ── Component ──────────────────────────────────────────────────────────────
 const LocationsSummaryTab = ({ isActive = true }) => {
-  const [geojson, setGeojson] = useState<FeatureCollection<Point> | null>(null);
-  const [basinGeojson, setBasinGeojson] = useState(null);
-  const [noGeometry, setNoGeometry] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [selectedName, setSelectedName] = useState<string | null>(null);
 
   const [activeColumns, setActiveColumns] = useState(DEFAULT_COLUMNS);
   const [pickerOpen, setPickerOpen] = useState(false);
@@ -115,6 +112,11 @@ const LocationsSummaryTab = ({ isActive = true }) => {
   const rows = useLocationRows(attributeNames);
 
   const locationConfigs = useConfigurationsByLocationId(selectedId);
+
+  const pointGeojson = usePointLocation(selectedId, selectedName);
+  const basinId = selectedId?.replace(/^usgs-/, 'usgsbasin-') ?? null;
+  const basinGeojson = useBasinLocation(basinId);
+  const noGeometry = !pointGeojson.data?.features.length && !basinGeojson.data?.features.length;
 
   useEffect(() => {
     const handler = (e: MouseEvent) => {
@@ -232,46 +234,12 @@ const LocationsSummaryTab = ({ isActive = true }) => {
     (row: LocationRow) => {
       if (selectedId === row.location_id) {
         setSelectedId(null);
-        setGeojson(null);
-        setBasinGeojson(null);
-        setNoGeometry(false);
+        setSelectedName(null);
         return;
       }
 
       setSelectedId(row.location_id);
-      setNoGeometry(false);
-
-      const basinId = row.location_id.replace(/^usgs-/, 'usgsbasin-');
-      Promise.all([
-        apiService.getLocationById(row.location_id),
-        apiService.getLocationById(basinId).catch(() => null),
-      ])
-        .then(([locationData, basinData]) => {
-          const feature = locationData?.features?.[0];
-          if (!feature) {
-            setNoGeometry(true);
-            return;
-          }
-          const merged: FeatureCollection<Point> = {
-            type: 'FeatureCollection',
-            features: [
-              {
-                ...feature,
-                properties: {
-                  ...feature.properties,
-                  location_id: row.location_id,
-                  name: row.name,
-                },
-              },
-            ],
-          };
-          setGeojson(merged);
-          const hasBasin = !!basinData?.features?.length;
-          setBasinGeojson(hasBasin ? basinData : null);
-        })
-        .catch(() => {
-          setNoGeometry(true);
-        });
+      setSelectedName(row.name);
     },
     [selectedId]
   );
@@ -290,8 +258,8 @@ const LocationsSummaryTab = ({ isActive = true }) => {
         <div style={{ flex: '1 1 0', minWidth: 0, minHeight: 0, position: 'relative' }}>
           <DashboardPanel bodyStyle={{ padding: 0, position: 'relative' }}>
             <SimpleMapPanel
-              locations={geojson}
-              basinLocations={basinGeojson}
+              locations={pointGeojson.data}
+              basinLocations={basinGeojson.data}
               getPopupHTML={makePopupHTML}
               isActive={isActive}
             />
@@ -309,7 +277,7 @@ const LocationsSummaryTab = ({ isActive = true }) => {
                 <small>Click a location row below to view it on the map</small>
               </div>
             )}
-            {selectedId && noGeometry && (
+            {selectedId && noGeometry && !pointGeojson.isLoading && !basinGeojson.isLoading && (
               <div
                 className="position-absolute top-50 start-50 translate-middle text-center text-muted"
                 style={{
