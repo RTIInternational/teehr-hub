@@ -1,3 +1,4 @@
+import { useQuery } from '@tanstack/react-query';
 import type { FeatureCollection, Point } from 'geojson';
 /**
  * LocationsSummaryTab
@@ -13,7 +14,7 @@ import type { FeatureCollection, Point } from 'geojson';
 import { useEffect, useState, useCallback, useRef, useMemo } from 'react';
 import { Spinner, Alert } from 'react-bootstrap';
 
-import type { AttributesResponse } from '@/features/data_management/types/attributes';
+import { attributesOptions } from '@/features/data_management/queries/attributes';
 import type {
   LocationAttributesResponse,
   LocationAttributesItem,
@@ -112,9 +113,6 @@ const LocationsSummaryTab = ({ isActive = true }) => {
   const [sidePanelError, setSidePanelError] = useState(null);
 
   const [activeColumns, setActiveColumns] = useState(DEFAULT_COLUMNS);
-  const [availableAttributes, setAvailableAttributes] = useState<{ key: string; label: string }[]>(
-    []
-  );
   const [pickerOpen, setPickerOpen] = useState(false);
   const [checkedKeys, setCheckedKeys] = useState(new Set());
   const [filterColumn, setFilterColumn] = useState('');
@@ -122,21 +120,17 @@ const LocationsSummaryTab = ({ isActive = true }) => {
   const [pickerMenuStyle, setPickerMenuStyle] = useState({});
   const pickerRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
-    apiService
-      .getAttributes()
-      .then((data: AttributesResponse) => {
-        const defaultKeys = new Set(DEFAULT_COLUMNS.map((c) => c.key));
-        const attrs = (data?.items || [])
-          .filter((item) => !defaultKeys.has(item.name))
-          .map((item) => ({ key: item.name, label: item.description || item.name }))
-          .sort((a, b) => a.label.localeCompare(b.label));
-        setAvailableAttributes(attrs);
-      })
-      .catch(() => {
-        /* non-fatal */
-      });
-  }, []);
+  const attributes = useQuery({
+    ...attributesOptions,
+    select: (data) => {
+      const defaultKeys = new Set(DEFAULT_COLUMNS.map((c) => c.key));
+      const attrs = (data?.items || [])
+        .filter((item) => !defaultKeys.has(item.name))
+        .map((item) => ({ key: item.name, label: item.description || item.name }))
+        .sort((a, b) => a.label.localeCompare(b.label));
+      return attrs;
+    },
+  });
 
   useEffect(() => {
     const handler = (e: MouseEvent) => {
@@ -194,8 +188,8 @@ const LocationsSummaryTab = ({ isActive = true }) => {
     });
 
   const handleAddToTable = () => {
-    if (checkedKeys.size === 0) return;
-    const toAdd = availableAttributes.filter(
+    if (checkedKeys.size === 0 || !attributes.data) return;
+    const toAdd = attributes.data.filter(
       (c) => checkedKeys.has(c.key) && !activeColumns.find((a) => a.key === c.key)
     );
     if (toAdd.length === 0) {
@@ -573,34 +567,35 @@ const LocationsSummaryTab = ({ isActive = true }) => {
                   <div
                     style={{ overflowY: 'auto', flex: '1 1 auto', minHeight: 0, padding: '4px 0' }}
                   >
-                    {availableAttributes.map((c) => {
-                      const alreadyAdded = addedOptionalKeys.has(c.key);
-                      return (
-                        <label
-                          key={c.key}
-                          style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: 8,
-                            padding: '3px 12px',
-                            fontSize: '0.82rem',
-                            cursor: alreadyAdded ? 'default' : 'pointer',
-                            color: alreadyAdded ? '#aaa' : 'inherit',
-                          }}
-                        >
-                          <input
-                            type="checkbox"
-                            checked={alreadyAdded || checkedKeys.has(c.key)}
-                            disabled={alreadyAdded}
-                            onChange={() => toggleCheck(c.key)}
-                          />
-                          {c.label}
-                          {alreadyAdded && (
-                            <span style={{ fontSize: '0.72rem', color: '#aaa' }}>(added)</span>
-                          )}
-                        </label>
-                      );
-                    })}
+                    {attributes.data &&
+                      attributes.data.map((c) => {
+                        const alreadyAdded = addedOptionalKeys.has(c.key);
+                        return (
+                          <label
+                            key={c.key}
+                            style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: 8,
+                              padding: '3px 12px',
+                              fontSize: '0.82rem',
+                              cursor: alreadyAdded ? 'default' : 'pointer',
+                              color: alreadyAdded ? '#aaa' : 'inherit',
+                            }}
+                          >
+                            <input
+                              type="checkbox"
+                              checked={alreadyAdded || checkedKeys.has(c.key)}
+                              disabled={alreadyAdded}
+                              onChange={() => toggleCheck(c.key)}
+                            />
+                            {c.label}
+                            {alreadyAdded && (
+                              <span style={{ fontSize: '0.72rem', color: '#aaa' }}>(added)</span>
+                            )}
+                          </label>
+                        );
+                      })}
                   </div>
                   <div
                     style={{
