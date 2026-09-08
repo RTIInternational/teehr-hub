@@ -1,0 +1,624 @@
+# NWM Diagnostics Metrics
+
+This directory builds `teehr.nwmd_metrics_by_location`, the table behind the **NWM
+Diagnostics** dashboard. It compares National Water Model streamflow forecasts against
+USGS streamgage observations and summarizes how well the model did, sliced by location,
+time period, forecast lead time, and flow condition.
+
+The document has two halves:
+
+- **[Part 1 — For scientists and dashboard users](#part-1--for-scientists-and-dashboard-users)**
+  explains what the numbers mean, in plain terms.
+- **[Part 2 — For data scientists and engineers](#part-2--for-data-scientists-and-engineers)**
+  explains how the pipeline works and how to change it.
+
+| File | What it is |
+| --- | --- |
+| `nwmd_metrics.ipynb` | The production notebook. Defines and runs the pipeline. |
+| `utils.py` | Cluster-sizing instrumentation and the executor pod template. Downloaded by the notebook from the branch at run time. |
+| `query_metrics_tables.ipynb` | Spot-check and validation queries against the output table. |
+| `explore_nwmd_metrics.ipynb` | Ad-hoc exploration. |
+| `01_calculate_nwm_metrics.ipynb` | The original cell-by-cell version. Kept for reference; superseded by `nwmd_metrics.ipynb`. |
+| `legacy_vs_vectorized_validadtion.ipynb` | Checks that the vectorized bootstrap engine reaches the executors. |
+| `profiling.md` | Running record of cluster configurations and runtimes. |
+
+---
+
+# Part 1 — For scientists and dashboard users
+
+## What goes in
+
+Two streams of hourly streamflow, already paired up by location and time:
+
+- **Observed** — what a USGS streamgage actually measured. In the table this is the
+  *primary* value.
+- **Forecast** — what the National Water Model predicted for that same place and time.
+  In the table this is the *secondary* value.
+
+The pairing is done upstream, in a table called `fcst_joined_timeseries`. Each row there
+is a single hour at a single gage: the observation, the matching forecast value, when the
+forecast was issued (its *reference time*), and which model configuration produced it.
+
+Two configurations are processed:
+
+| Configuration | Forecast horizon | Grouped into |
+| --- | --- | --- |
+| `nwm30_short_range` | out to ~1 day | 4 bins of 6 hours |
+| `nwm30_medium_range` | out to ~11 days | 11 bins of 1 day |
+
+The most recent run covered **water years 2025 and 2026** (1 October 2024 through
+30 September 2026) across roughly **7,500 gages**.
+
+## The central idea: forecasts get worse the further ahead they look
+
+A forecast issued this morning for *this afternoon* should be better than one issued
+today for *nine days from now*. If you lump all forecasts together you can't see that,
+so the first thing the pipeline does is sort every forecast value by **how far ahead it
+was looking** — its lead time — and put it in a bin.
+
+For medium range, bin `P2DT0H_P3DT0H` holds everything that was forecasting 2 to 3 days
+ahead. For short range, `PT6H_PT12H` holds everything 6 to 12 hours ahead. Those labels
+are ISO-8601 durations: `PT6H` is 6 hours, `P2DT0H` is 2 days.
+
+Every metric is reported separately for every bin. Reading a metric across bins is how
+you see forecast skill decay with lead time.
+
+## Step by step, with a worked example
+
+Take one gage, one forecast issued at midnight, and follow it through.
+
+### 1. Sort the hours into lead-time bins
+
+A medium-range forecast issued at midnight produces a value for every hour out to about
+11 days. Hours 0–24 go in the first bin, hours 24–48 in the second, and so on.
+
+```
+forecast issued 2026-01-15 00:00, gage usgs-01018009
+  hour   1  ... 24   -> bin PT0S_P1DT0H     (day 0 to 1)
+  hour  25  ... 48   -> bin P1DT0H_P2DT0H   (day 1 to 2)
+  ...
+  hour 241 ... 264   -> bin P10DT0H_P11DT0H (day 10 to 11)
+```
+
+### 2. Summarize each bin three ways
+
+Within one bin there are 24 hourly pairs. Rather than comparing all 24 individually, the
+pipeline reduces the bin to three summaries, and keeps all three:
+
+| Summary | Question it answers |
+| --- | --- |
+| `mean` | Did the model get the overall *volume* of water right? |
+| `max` | Did the model get the *peak* right? This is the one that matters for flooding. |
+| `min` | Did the model get the *low point* right? Relevant for drought and baseflow. |
+
+Both sides are summarized the same way, so `max` compares the highest observed value in
+that day against the highest forecast value in that day.
+
+This matters because a forecast can get the average right while badly missing the peak.
+Keeping `mean`, `max`, and `min` separately makes that visible instead of averaging it
+away. In the dashboard this is the "aggregation method" selector.
+
+```
+bin PT0S_P1DT0H, 24 hourly pairs
+                        observed   forecast
+  mean of the 24          12.4       11.8
+  max  of the 24          31.7       24.1     <- model under-predicted the peak
+  min  of the 24           6.2        6.4
+```
+
+### 3. Repeat for every forecast, then pool
+
+The above happens for every forecast issued in the period. One day-0-to-1 bin from one
+forecast isn't informative on its own; pooling hundreds of them is. So all the
+`PT0S_P1DT0H` + `max` pairs for that gage get pooled, and the metrics in step 6 are
+computed over that pool.
+
+The `count` column tells you how many bins went into the pool, and `n_timesteps` tells
+you how many individual hourly observations sat behind them.
+
+### 4. Optionally restrict to high flows
+
+Model performance during a flood is a different question from model performance on an
+average Tuesday, and averages are dominated by ordinary days. So every metric is also
+computed using **only the hours when the river was actually running high**.
+
+"High" is defined per gage from its own observed record in the run: the 85th, 95th, and
+99th percentile of everything that gage measured. An hour counts as an event if the
+*observed* flow exceeded that gage's percentile.
+
+| `threshold` value | Which hours are included |
+| --- | --- |
+| `NULL` | All hours. No restriction. |
+| `above_q85` | Only hours above that gage's 85th percentile |
+| `above_q95` | Only hours above its 95th percentile |
+| `above_q99` | Only hours above its 99th percentile |
+
+Two things to keep in mind:
+
+- The percentile is **specific to each gage**. A small creek and a large river have
+  completely different 99th percentiles. This is deliberate — it asks "was this river
+  high *for itself*", which is what matters hydrologically.
+- The percentile is computed from **the observations in the run's time window**, not from
+  a long climatological record. Change the date range and the thresholds shift.
+
+Restricting to `above_q99` is why some rows have small `count` values: a 99th-percentile
+event is rare by construction. `count = 13` means only 13 bins qualified. Metrics on 13
+samples are noisy, which is exactly what the confidence intervals in step 7 are for.
+
+### 5. Choose a time period
+
+Metrics are reported at two time scales, so you can see both the seasonal picture and
+the annual one:
+
+| `water_year` | `quarter` | Means |
+| --- | --- | --- |
+| `2026` | `2026-Q1` | Just that calendar quarter |
+| `2026` | `NULL` | The whole of water year 2026 |
+
+A water year runs 1 October to 30 September and is named for the year it ends in, so
+water year 2026 began in October 2025. One consequence worth knowing: because `quarter`
+is labeled by *calendar* year, water year 2026 contains quarters labeled `2025-Q4`
+*and* `2026-Q1` through `2026-Q3`. That looks odd but is correct.
+
+A `NULL` in the `quarter` column always means "aggregated across" — the row is the whole
+water year, not one quarter.
+
+### 6. Compute the metrics
+
+Two kinds of column. **Signatures** describe the observed data alone — useful context,
+not a judgment of the model:
+
+| Column | Meaning |
+| --- | --- |
+| `count` | How many binned values went into this row |
+| `n_timesteps` | How many individual hourly observations sat behind them |
+| `average`, `minimum`, `maximum` | Summary of the observed values |
+
+**Comparison metrics** judge the forecast against the observation. The ratio metrics all
+have an ideal value of **1.0**; above 1 means the model runs high, below 1 means it runs
+low:
+
+| Column | What it compares | Ideal |
+| --- | --- | --- |
+| `relative_mean` | forecast mean ÷ observed mean | 1.0 |
+| `relative_median` | forecast median ÷ observed median | 1.0 |
+| `relative_minimum` | forecast minimum ÷ observed minimum | 1.0 |
+| `relative_maximum` | forecast maximum ÷ observed maximum | 1.0 |
+| `relative_standard_deviation` | forecast variability ÷ observed variability | 1.0 |
+
+`relative_mean` and `relative_median` together are informative: if the mean ratio is far
+from 1 but the median ratio is close, a handful of large events are driving the error.
+
+The remaining metrics are standard hydrologic scores:
+
+| Column | Meaning | Ideal | Notes |
+| --- | --- | --- | --- |
+| `relative_bias` | Total error as a fraction of total observed flow. `-0.2` means the model delivered 20% too little water overall. | 0.0 | |
+| `pearson_correlation` | Does the forecast rise and fall *when* the river does? Purely about timing and shape. | 1.0 | Can be high even if magnitudes are badly wrong |
+| `nash_sutcliffe_efficiency` | Is the forecast better than just always predicting the average observed flow? | 1.0 | **0 means no better than that flat average. Negative means worse.** Unbounded below |
+| `kling_gupta_efficiency` | Combines correlation, variability, and bias into one score | 1.0 | Often preferred over NSE because you can decompose *why* it is low |
+
+A practical reading order: `pearson_correlation` for timing, `relative_bias` for volume,
+`relative_maximum` for peaks, and `kling_gupta_efficiency` as the overall summary.
+
+### 7. How confident should you be?
+
+Every comparison metric also has a **95% confidence interval**, in the columns ending
+`_boot_0_025` and `_boot_0_975`. For example `kling_gupta_efficiency` is accompanied by
+`kling_gupta_efficiency_boot_0_025` and `kling_gupta_efficiency_boot_0_975`.
+
+These come from resampling: the pooled data is re-drawn 1,000 times and the metric
+recomputed each time, giving a range of plausible values. The interval is the 2.5th to
+97.5th percentile of those 1,000 results.
+
+Why it matters: a KGE of 0.55 computed from 400 bins is a solid result. The same 0.55
+from 13 `above_q99` bins might have an interval spanning 0.05 to 0.85, which means you
+genuinely cannot distinguish it from mediocre. **Check the interval before drawing a
+conclusion, especially at the higher thresholds.** Where two configurations or two lead
+times have overlapping intervals, the difference between them is not established.
+
+The resampling preserves short-range time structure rather than shuffling hours
+independently, because streamflow is strongly autocorrelated — today's flow tells you a
+lot about tomorrow's. Ignoring that would make the intervals falsely narrow.
+
+## Reading an actual row
+
+Here is a real row from the current table, reformatted:
+
+| Column | Value |
+| --- | --- |
+| `primary_location_id` | `usgs-01018009` |
+| `secondary_location_id` | `nwm30-817499` |
+| `configuration_name` | `nwm30_medium_range` |
+| `variable_name` / `unit_name` | `streamflow_hourly_inst` / `m^3/s` |
+| `water_year` / `quarter` | `2026` / `2026-Q1` |
+| `forecast_lead_time_bin` | `PT0S_P1DT0H` |
+| `threshold` | `above_q85` |
+| `window_agg` | `max` |
+| `count` | `13` |
+| `average` | `1.38` |
+
+In words:
+
+> At USGS gage 01018009, paired with NWM reach 817499, using medium-range forecasts in
+> the first quarter of water year 2026: looking only at forecasts 0 to 1 day ahead, and
+> only at hours when observed flow exceeded this gage's 85th percentile, comparing the
+> *peak* flow in each 1-day window. Thirteen such windows qualified, and their peak
+> observed flows averaged 1.38 m³/s.
+
+The comparison metrics on that row then tell you how the forecast peaks stacked up
+against those 13 observed peaks.
+
+## What this table cannot tell you
+
+- **Why** the model was wrong. These are diagnostics, not attribution. A low KGE doesn't
+  distinguish bad precipitation forcing from bad routing.
+- Anything about ungaged locations. Every row is anchored to a USGS gage.
+- Anything about flows below the observed record's range — the thresholds are empirical
+  percentiles of what was actually measured in the window.
+- Whether a difference is *meaningful* — that's what the confidence intervals are for,
+  and overlapping intervals mean "not established".
+
+Also note that gages with short or patchy records produce percentile thresholds from
+little data, so their `above_q99` rows in particular can rest on very few observations.
+`count` and `n_timesteps` are there to let you check.
+
+---
+
+# Part 2 — For data scientists and engineers
+
+## Shape of the pipeline
+
+Everything lives in one cell of `nwmd_metrics.ipynb` (cell index 3), which defines the
+dimension spec plus `generate_nwmd_metrics(spark, config, output_table_name)`. The
+notebook is the source of truth; `utils.py` holds only instrumentation and the pod
+template, and is fetched from the pushed branch by cell 1 at run time.
+
+```
+fcst_joined_timeseries  (one row per gage x hour x reference_time)
+  |
+  |  .filter(configuration, reference_time range)
+  |  .add_calculated_fields(...)        water_year, quarter, lead-time bin,
+  |                                     above_q85/95/99 event flags
+  v
+PRE_BIN expansion                       threshold: 4 levels, row-FILTERING (4x rows)
+  |
+  v
+bin aggregation                         group_by_bin includes reference_time
+  |                                     -> mean/min/max of primary & secondary, n_in_bin
+  v
+POST_BIN expansion                      temporal rollups (grouping sets)
+  |                                     window_agg pivot (metric cols -> rows)
+  v
+final aggregation                       group_by (no reference_time)
+  |                                     signatures + 9 point metrics + 9 bootstrapped
+  v
+.order_by().add_geometry()
+  |
+  v
+write_to(nwmd_metrics_by_location*)     create_or_replace | upsert
+  |
+  v
+ALTER TABLE ... SET TBLPROPERTIES       description, group_by, metrics
+```
+
+The TBLPROPERTIES matter: `api/src/routes/queryables.py` reads `metrics`, `group_by` and
+`description` off the Iceberg table and emits them as `x-teehr-group-by` /
+`x-teehr-metrics`, so the web API exposes this table generically without knowing anything
+about it. `routes/metrics.py` then accepts any `group_by` column as an equality filter and
+maps the literal string `"null"` to `IS NULL`.
+
+## The dimension spec
+
+Every group-by column of the output is declared once, and every derived list is computed
+from those declarations. Before this refactor the same field names were spelled out by
+hand in eight places (CF list, two `stack()` strings with hard-coded arities,
+`group_by_bin`, a literal `group_by`, `nullables`, `partition_by`, TBLPROPERTIES) and had
+to be kept in sync manually.
+
+```python
+@dataclass(frozen=True)
+class Dimension:
+    names: Tuple[str, ...]           # >1 name = correlated levels (grouping sets)
+    stage: str                       # PRE_BIN | BIN | POST_BIN
+    levels: Tuple[Level, ...] = ()   # empty => plain grouping key, no expansion
+    calculated_fields: Tuple = ()
+    consumes: Tuple[str, ...] = ()   # helper cols dropped after the stack
+    payload_fields: Tuple[str, ...] = ()
+    nullable_names: Tuple[str, ...] = ()
+    partition_names: Tuple[str, ...] = ()
+    in_bin_group: bool = True
+    in_final_group: bool = True
+```
+
+`DimensionSpec` then derives:
+
+| Property | Replaces |
+| --- | --- |
+| `calculated_fields` | the hand-written CF list |
+| `group_by_bin` | the literal bin group-by (keeps `reference_time`) |
+| `group_by` | the literal 11-element final group-by (drops `reference_time`) |
+| `nullable_fields` | `nullables = [...]` |
+| `partition_by` | `partition_by=[...]` |
+| `nullable_partition_fields` | (new) the safety check described below |
+
+The `reference_time`-in-bin / not-in-final asymmetry is intentional: the bin aggregation
+is per-forecast, and the final aggregation pools across forecasts.
+
+## PRE_BIN vs POST_BIN — the load-bearing distinction
+
+Two structurally different kinds of dimension, and getting this wrong is either a
+correctness bug or a large performance loss:
+
+**`PRE_BIN`** (`threshold`) — each level selects a *subset* of rows, so expansion must
+happen **before** the bin aggregation. The per-bin mean/min/max for `above_q95` has to be
+computed over only the rows exceeding q95. Cost: 4x rows through the largest shuffle.
+
+**`POST_BIN`** (temporal rollups, `window_agg`) — every level keeps all rows. Expanding
+after the bin aggregation gives an identical result without multiplying the scan, the
+event detection, and the bin-agg shuffle, which handle far more rows than the post-bin
+stream does.
+
+`POST_BIN` is only exact if the dimension is **constant within every `group_by_bin`
+group**. That holds for anything derived from `reference_time` (itself a bin key). It
+would *not* hold for a `value_time`-derived field, since a bin spans many value times —
+adding one would silently split bins and change the bin means. Treat that as a
+precondition, not a style preference.
+
+## Three stack shapes, one generator
+
+`expand_dimension()` generates the `stack()` SQL from the spec, so arity and level list
+cannot drift apart:
+
+```python
+out_names = [*dim.names, "_keep_row", *dim.payload_fields]
+rows = [[*lvl.values, lvl.keep, *(lvl.payload[p] for p in dim.payload_fields)]
+        for lvl in dim.levels]
+dropped = set(dim.consumes) | set(out_names)
+base_cols = [c for c in tbl.to_sdf().columns if c not in dropped]
+```
+
+`stack()` may reference columns absent from `base_cols` (`above_q85`, `quarter`,
+`mean_primary_value`) — that is how helper columns get consumed and dropped in one step.
+
+The three shapes it covers:
+
+1. **Row-filtering** — `threshold`. Levels carry a `keep` predicate; a trailing
+   `.where("_keep_row")` is applied only when some level's keep is not `"true"`.
+2. **Grouping sets** — the temporal dimension. `names=("water_year", "quarter")` with
+   correlated levels. This is Spark `GROUPING SETS` emulated by row replication, because
+   teehr's `aggregate()` only accepts a flat `group_by` list.
+3. **Metric-output pivot** — `window_agg`. Uses `payload` to map output columns to source
+   columns, turning `mean_primary_value`/`min_.../max_...` into rows keyed by `window_agg`.
+
+## Temporal rollups are grouping sets, not independent nulls
+
+`config["rollups"]` selects levels over `(water_year, quarter)`; default
+`("quarter", "water_year")`:
+
+| `rollups` | levels | post-bin multiplier |
+| --- | --- | --- |
+| `["quarter"]` | `(wy, q)` | 1x |
+| `["quarter", "water_year"]` *(default)* | `+ (wy, NULL)` | 2x |
+| `["quarter", "water_year", "all"]` | `+ (NULL, NULL)` | 3x |
+
+They must be **one** `Dimension`, not two. Because every quarter belongs to exactly one
+water year, an independent NULL level on `water_year` would produce
+`(quarter='2025-Q4', water_year=NULL)` containing exactly the same rows as
+`(quarter='2025-Q4', water_year=2026)` — a duplicate. A rollup is only meaningful when the
+finer column collapses with it, which is what a grouping set expresses.
+
+**A rollup summarizes what that run read, not what is in the table.** Enabling `"all"` on
+a per-water-year run writes a period-of-record row containing only that year, and each
+subsequent run overwrites it. You cannot assemble it after the fact from the
+per-water-year rows either: NSE, KGE and correlation are not averageable, and the
+bin-level rows they would need are not persisted. So `"all"` is only valid on a run whose
+`reference_time` filters span the whole record.
+
+## Bootstrap
+
+```python
+bootstrap = bs.Stationary(reps=config.get("bootstrap_reps", 1000),
+                          seed=1234, quantiles=[0.025, 0.975])
+```
+
+Stationary block bootstrap from `arch`, with the block length estimated per series
+(`optimal_block_length`, `b_sb` estimate) since streamflow is autocorrelated.
+
+`unpack_results=True` is set on all nine bootstrapped metrics. This is only safe on
+teehr >= `162297f8`: `post_process_metric_results` now derives the quantile keys
+statically via `derive_map_key_list()` from `bootstrap.quantiles`. Before that fix,
+unpacking called `sdf.select(col).first()` **once per metric** — a real Spark action that
+re-executed the entire upstream DAG nine times, and the confirmed cause of the
+`ShuffleMapStage ... first at teehr/querying/utils.py:207` failures recorded in
+`profiling.md`. With it set, each MapType column becomes one column per quantile:
+`kling_gupta_efficiency_boot` -> `..._boot_0_025`, `..._boot_0_975` (dots become
+underscores).
+
+Point estimates and their CIs are built from the **same kwargs**, via
+`BOOTSTRAPPED_METRICS`. Previously the `*_boot` variants silently omitted
+`add_epsilon=True`, so the interval described a different estimator than the point value
+it accompanied and the point value could fall outside its own CI.
+
+Bootstrap dominates runtime. For iteration, set `"bootstrap_reps": 10` — a full-scale
+smoke test that exercises the identical shuffle and executor-disk path.
+
+## Write path
+
+```python
+if ev.spark.catalog.tableExists(full_table_name):
+    results.write_to(table_name=output_table_name, write_mode="upsert",
+                     uniqueness_fields=group_by,            # the FULL key
+                     nullable_fields=spec.nullable_fields,
+                     use_partition_filters=USE_PARTITION_FILTERS)  # False
+else:
+    results.write_to(table_name=output_table_name, write_mode="create_or_replace",
+                     partition_by=spec.partition_by)
+```
+
+Two non-obvious points, both of which were bugs:
+
+**`uniqueness_fields` must be the full key.** `Write._build_on_clause` applies null-safe
+`<=>` only to fields present in **both** `uniqueness_fields` and `nullable_fields`. The
+previous "`group_by` minus nullables" made the two lists disjoint, so `threshold` and
+`member` never entered the MERGE `ON` clause at all — one target row matched every
+threshold level, and `threshold` landed in the `UPDATE SET` clause because
+`update_fields = set(source_fields) - set(uniqueness_fields)`.
+
+**`use_partition_filters=False`.** `_build_partition_filters` runs `SELECT DISTINCT` /
+`MIN`-`MAX` over the *lazy* source view — `to_warehouse` registers the result as an
+uncached temp view — which executes the whole bootstrap DAG once before the MERGE
+executes it again. Partition pruning is not worth 2x the most expensive stage.
+
+Leaving it off is also what makes a nullable partition column safe. Iceberg itself is
+fine with NULL identity-partition values; the constraint is teehr's, and only when
+partition filters are on: those predicates are `t.<f> IN (...)` for strings (built from
+`... WHERE <f> IS NOT NULL`) and `t.<f> >= min AND t.<f> <= max` for numerics, and **both
+evaluate to NULL, i.e. not matched, for a NULL partition value** — so those rows would
+fall outside the merge and be re-INSERTed, and therefore duplicated, on every upsert.
+`DimensionSpec.nullable_partition_fields` reports the situation and the write site asserts
+on the genuinely unsafe combination.
+
+Partitioning is `["configuration_name", "water_year"]`. Both are low cardinality, appear
+in `group_by` (so they reach the MERGE `ON` clause and Iceberg can prune), and each run
+writes exactly one of each. `partition_by` is only honored by `create_or_replace`, so the
+first run fixes the layout.
+
+## Cluster sizing, and the two failure modes we hit
+
+Current working configuration (cell 4):
+
+```python
+spark = create_spark_session(
+    start_spark_cluster=True,
+    executor_instances=64, executor_memory="16g", executor_cores=2,
+    pod_template_path=pod_template_path,
+    update_configs={
+        "spark.sql.shuffle.partitions": 1024,
+        "spark.sql.adaptive.coalescePartitions.enabled": "false",
+        "spark.executorEnv.TEEHR_BOOTSTRAP_ENGINE": "vectorized",
+        "spark.executor.memoryOverhead": "4g",
+    })
+```
+
+`coalescePartitions` is disabled deliberately: AQE coalesces on shuffle *byte* size, not
+per-row compute cost, and it was collapsing the bootstrap `pandas_udf` stage to ~2 tasks
+regardless of executor count.
+
+**Failure mode 1 — executor eviction for ephemeral storage.** A full run died with ~55
+evictions and the resulting `FetchFailedException` / `Missing an output location for
+shuffle N` cascade; 71 of 135 executors were replaced before the job aborted. Spark puts
+`SPARK_LOCAL_DIRS` on an `emptyDir` backed by the node root volume — r5.4xlarge has no
+instance store and the node group provisions an 80 GB gp3 root (~71 GiB allocatable,
+kubelet evicts under 8 GiB free) — 5–6 executors shared each node, and the pods requested
+**no ephemeral storage at all**. So the scheduler could not account for shuffle disk, and
+kubelet ranks eviction victims by usage over request, which put the executors first every
+time.
+
+Fix: `create_ondemand_pod_template(ephemeral_storage_request="20Gi")` declares the
+request, which both spreads executors (~3 per r5.4xlarge) and buys eviction immunity up
+to the request. Confirm it survived Spark's own resource merge:
+
+```bash
+kubectl get pod <exec-pod> -o jsonpath='{.spec.containers[0].resources}'
+kubectl describe node <node> | grep -A6 "Allocated resources"   # ephemeral-storage != 0
+```
+
+The systemic fix is a larger root volume — `volume_size = 80` in
+`teehr-cloud-platform/terraform/eks.tf`.
+
+**Failure mode 2 — missing `requests` on the executors.** Every teehr `pandas_udf` died
+with `ModuleNotFoundError: No module named 'requests'`. teehr imports `requests` in
+`evaluation/download.py`, which `import teehr` reaches via `evaluation/evaluation.py`, so
+a missing `requests` breaks importing the package at all. It had never been declared and
+always arrived transitively; `dataretrieval` 1.3.0 switched to `httpx` and dropped it,
+while `poetry.lock` still pinned `dataretrieval` 1.1.5 — so local envs kept working while
+the lean executor image (which installs from `pyproject.toml`, not the lock) failed.
+Fixed in teehr by declaring `requests` and raising the `dataretrieval` floor to `>=1.3`
+(which is also where `usgs.py`'s `waterdata` import comes from).
+
+The general lesson: the driver runs in the Jupyter image and the executors run the lean
+`spark-executor` image. **Anything a `pandas_udf` imports must exist in the executor
+image**, and a driver-only test will not catch it. Local-mode runs
+(`create_spark_session()` with no cluster) execute all Python on the driver and mask this
+entire class of bug.
+
+## Observed runtimes
+
+Both configurations, all ~7,500 gages, water years 2025–2026, 1,000 bootstrap reps,
+64 executors:
+
+| Configuration | Lead-time bins | Runtime |
+| --- | --- | --- |
+| `nwm30_medium_range` | 11 | 4,761 s (~1h 19m) |
+| `nwm30_short_range` | 4 | 8,997 s (~2h 30m) |
+
+Short range takes longer despite having fewer bins: it is issued far more frequently, so
+it contributes many more reference times and therefore more rows.
+
+For scale, the run immediately before this one (same cluster and window, stopped by the
+`requests` failure described above) reached ~650 GB of shuffle write with zero evictions
+and no executor churn, which is what confirmed the ephemeral-storage fix. Add new
+measurements to `profiling.md`.
+
+## Working on the code
+
+**Adding a dimension** is one entry in `build_dimensions()`. Decide the stage first
+(does the level select a row subset, or relabel?), then:
+
+```python
+Dimension(
+    names=("season",),
+    stage=POST_BIN,                       # derived from reference_time -> safe
+    calculated_fields=(rcf.Seasons(value_time_field_name="reference_time"),),
+    levels=(Level(values=("cast(season as string)",)),),
+)
+```
+
+Prefer existing teehr calculated fields over hand-written SQL — `rcf.WaterYear`,
+`rcf.Seasons`, `rcf.Month`, `rcf.DayOfYear`, `rcf.ForecastLeadTimeBins` all exist and are
+Spark-native. `rcf.GenericSQL` is the escape hatch (used for `quarter`).
+
+Note the **frontend hard-codes its dimension names** in
+`frontend/src/features/nwmd/hooks/useInitialFilters.ts` and `components/FilterSidebar.tsx`
+even though it discovers dimension *values* dynamically. A new dimension reaches the table
+and the API automatically, but will not appear in the dashboard without a frontend change.
+The API needs nothing.
+
+**Testing without a cluster.** The spec is pure Python, so it can be exercised offline
+with stubs for `s`/`dm`/`rcf`/`tcf`/`pd` — extract cell 3, drop the
+`generate_nwmd_metrics` definition, `exec` the rest, and assert on `spec.group_by_bin`,
+`spec.group_by`, `spec.nullable_fields`, `spec.partition_by`. That catches list-derivation
+mistakes in seconds.
+
+The generated SQL and the aggregation semantics can be validated against a **local**
+`pyspark` session with synthetic rows and stand-ins for teehr's `aggregate`/`write_to`.
+The property worth asserting: for a fixed
+`(location, lead_time_bin, threshold, window_agg, water_year)`, the `quarter IS NULL`
+row's totals must equal the sum over that water year's per-quarter rows. Join **null-safe**
+(`eqNullSafe`) when checking — `threshold` is NULL for the no-threshold level and a plain
+equi-join silently drops those rows, which is the same trap as the upsert `ON` clause.
+
+**Equivalence when changing the aggregation.** Compare against the previous table with a
+null-safe join on the full key and assert zero differing rows in both directions; the
+pattern is already written in `query_metrics_tables.ipynb`.
+
+## Known rough edges
+
+- `quarter` is labeled by calendar year, so one water year spans `2025-Q4` and `2026-Q*`.
+  Correct but confusing; changing it would break the frontend's
+  `getQuarterDateRange()` (`shared/utils/formatters.ts`), which maps `Q1` to Jan–Mar.
+- `entity_fields` is read from the live `fcst_joined_timeseries` schema, so a new column
+  there silently changes the merge key and the output schema.
+- The location sampling block in `generate_nwmd_metrics` is commented out. It caps runs at
+  10 gages when enabled — check it before a production run.
+- Adding a dimension changes the output columns, so `MERGE ... INSERT *` will not resolve
+  against an existing table; the first run after such a change needs `create_or_replace`.
+- `nwmd_metrics_by_location` is absent from the `/collections` listing in
+  `api/src/routes/ogc_foundation.py`, which hard-codes its table list. `/items` and
+  `/queryables` work fine.
+- Three older copies of this pipeline still exist (`01_calculate_nwm_metrics.ipynb`,
+  `warehouse/local/nwmd/calculate_nwm_metrics.ipynb`) and will drift.
+- There is no Prefect workflow for this table — it is the only production metrics table
+  built by hand from a notebook. `prefect-workflows/workflows/metrics/utils/forecast_utils.py`
+  is the pattern to follow if it is ever promoted.
