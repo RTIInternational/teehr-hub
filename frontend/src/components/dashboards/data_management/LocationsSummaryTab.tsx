@@ -15,12 +15,9 @@ import { useEffect, useState, useCallback, useRef, useMemo } from 'react';
 import { Spinner, Alert } from 'react-bootstrap';
 
 import { attributesOptions } from '@/features/data_management/queries/attributes';
-import type {
-  LocationAttributesResponse,
-  LocationAttributesItem,
-} from '@/features/data_management/types/locationAttributes';
+import { useLocationRows } from '@/features/data_management/queries/locationRows';
+import type { LocationRow } from '@/features/data_management/types/locationRows';
 import { fmt } from '@/features/data_management/utils/utils';
-import type { LocationsResponse } from '@/shared/types/locations';
 
 import { useSortableTable, type SortValueGetter } from '../../../hooks/useSortableTable';
 import { apiService } from '../../../services/api';
@@ -70,16 +67,6 @@ const SIDE_PANEL_COLUMNS = [
 // Default attribute names fetched from location_attributes on initial load
 const DEFAULT_ATTRIBUTE_NAMES = ['state_name', 'drainage_area_km2', 'slope_mean_percent', 'rfc'];
 
-// Pivot EAV rows [{location_id, attribute_name, value}] into a map keyed by location_id
-const pivotAttributes = (items: LocationAttributesItem[]) => {
-  const map: { [location_id: string]: { [attribute_name: string]: string } } = {};
-  (items || []).forEach((item) => {
-    if (!map[item.location_id]) map[item.location_id] = {};
-    map[item.location_id][item.attribute_name] = item.value;
-  });
-  return map;
-};
-
 // Popup content for map hover
 const makePopupHTML = (props: PopupFeatureProps) => {
   return `
@@ -92,20 +79,11 @@ const makePopupHTML = (props: PopupFeatureProps) => {
   `;
 };
 
-type LocationAttributes = {
-  name: string;
-  location_id: string;
-  [attribute: string]: string;
-};
-
 // ── Component ──────────────────────────────────────────────────────────────
 const LocationsSummaryTab = ({ isActive = true }) => {
   const [geojson, setGeojson] = useState<FeatureCollection<Point> | null>(null);
   const [basinGeojson, setBasinGeojson] = useState(null);
   const [noGeometry, setNoGeometry] = useState(false);
-  const [rows, setRows] = useState<LocationAttributes[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
   const [sidePanelConfigs, setSidePanelConfigs] = useState([]);
@@ -131,6 +109,12 @@ const LocationsSummaryTab = ({ isActive = true }) => {
       return attrs;
     },
   });
+
+  const extraAttributeNames = activeColumns
+    .filter((c) => !DEFAULT_COLUMNS.find((d) => d.key === c.key))
+    .map((c) => c.key);
+  const attributeNames = [...DEFAULT_ATTRIBUTE_NAMES, ...extraAttributeNames];
+  const rows = useLocationRows(attributeNames);
 
   useEffect(() => {
     const handler = (e: MouseEvent) => {
@@ -200,10 +184,6 @@ const LocationsSummaryTab = ({ isActive = true }) => {
     setActiveColumns(newColumns);
     setCheckedKeys(new Set());
     setPickerOpen(false);
-    const extraAttributeNames = newColumns
-      .filter((c) => !DEFAULT_COLUMNS.find((d) => d.key === c.key))
-      .map((c) => c.key);
-    fetchRows(extraAttributeNames);
   };
 
   const handleRemoveColumn = (key: string) => {
@@ -211,7 +191,11 @@ const LocationsSummaryTab = ({ isActive = true }) => {
   };
 
   const addedOptionalKeys = new Set(activeColumns.map((c) => c.key));
-  const { sortedRows, handleSort, SortIcon } = useSortableTable(rows, 'location_id', sortValue);
+  const { sortedRows, handleSort, SortIcon } = useSortableTable(
+    rows.data ?? [],
+    'location_id',
+    sortValue
+  );
   const {
     sortedRows: sortedSidePanelConfigs,
     handleSort: handleSidePanelSort,
@@ -219,8 +203,8 @@ const LocationsSummaryTab = ({ isActive = true }) => {
   } = useSortableTable(sidePanelConfigs, 'configuration_name', sortValue);
 
   const selectedLocationRow = useMemo(
-    () => rows.find((row) => row.location_id === selectedId) ?? null,
-    [rows, selectedId]
+    () => rows.data?.find((row) => row.location_id === selectedId) ?? null,
+    [rows.data, selectedId]
   );
 
   const filteredRows = useMemo(() => {
@@ -244,33 +228,6 @@ const LocationsSummaryTab = ({ isActive = true }) => {
 
   const hasActiveFilter = !!filterText;
 
-  const fetchRows = useCallback((extraAttributeNames: string[] = []) => {
-    const attributeNames = [...DEFAULT_ATTRIBUTE_NAMES, ...extraAttributeNames];
-    setLoading(true);
-    setError(null);
-    Promise.all([
-      apiService.getLocationIdNames('usgs'),
-      apiService.getLocationAttributesByNames(attributeNames),
-    ])
-      .then(([locationsData, attrsData]: [LocationsResponse, LocationAttributesResponse]) => {
-        const locItems = locationsData?.items || [];
-        const attrItems = attrsData?.items || [];
-        const attrMap = pivotAttributes(attrItems);
-        const joined = locItems.map((loc) => ({
-          location_id: loc.id,
-          name: loc.name,
-          ...attrMap[loc.id],
-        }));
-        setRows(joined);
-      })
-      .catch((err) => setError(err.message))
-      .finally(() => setLoading(false));
-  }, []);
-
-  useEffect(() => {
-    fetchRows();
-  }, [fetchRows]);
-
   const loadConfigurationsForLocation = useCallback((locationId: string) => {
     setSidePanelLoading(true);
     setSidePanelError(null);
@@ -288,7 +245,7 @@ const LocationsSummaryTab = ({ isActive = true }) => {
   }, []);
 
   const handleRowClick = useCallback(
-    (row: LocationAttributes) => {
+    (row: LocationRow) => {
       if (selectedId === row.location_id) {
         setSelectedId(null);
         setGeojson(null);
@@ -668,9 +625,9 @@ const LocationsSummaryTab = ({ isActive = true }) => {
                   Clear
                 </button>
               )}
-              {rows.length > 0 && (
+              {rows.data && rows.data.length > 0 && (
                 <span className="text-muted ms-auto" style={{ fontSize: '0.78rem' }}>
-                  {filteredRows.length} / {rows.length} rows
+                  {filteredRows.length} / {rows.data.length} rows
                 </span>
               )}
             </div>
@@ -678,7 +635,7 @@ const LocationsSummaryTab = ({ isActive = true }) => {
           bodyStyle={{ padding: 0 }}
         >
           <div style={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0 }}>
-            {loading && (
+            {rows.isLoading && (
               <div className="d-flex align-items-center justify-content-center h-100">
                 <Spinner animation="border" variant="primary">
                   <span className="visually-hidden">Loading locations…</span>
@@ -686,20 +643,20 @@ const LocationsSummaryTab = ({ isActive = true }) => {
               </div>
             )}
 
-            {error && (
+            {rows.error && (
               <Alert variant="danger" className="m-3 mb-0">
                 <i className="bi bi-exclamation-triangle-fill me-2" />
-                {error}
+                {rows.error.message}
               </Alert>
             )}
 
-            {!loading && !error && rows.length === 0 && (
+            {!rows.isLoading && !rows.error && (!rows.data || rows.data.length === 0) && (
               <div className="d-flex align-items-center justify-content-center h-100 text-muted">
                 <span>No locations available.</span>
               </div>
             )}
 
-            {!loading && !error && rows.length > 0 && (
+            {!rows.isLoading && !rows.error && rows.data && rows.data.length > 0 && (
               <SharedDataTable
                 headers={activeColumns}
                 rows={filteredRows}
