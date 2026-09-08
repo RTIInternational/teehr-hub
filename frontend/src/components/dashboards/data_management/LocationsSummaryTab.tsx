@@ -15,9 +15,11 @@ import { useEffect, useState, useCallback, useRef, useMemo } from 'react';
 import { Spinner, Alert } from 'react-bootstrap';
 
 import { attributesOptions } from '@/features/data_management/queries/attributes';
+import { useConfigurationsByLocationId } from '@/features/data_management/queries/configurations';
 import { useLocationRows } from '@/features/data_management/queries/locationRows';
 import type { LocationRow } from '@/features/data_management/types/locationRows';
 import { fmt } from '@/features/data_management/utils/utils';
+import { formatUnknownValueForDisplay } from '@/shared/utils/formatters';
 
 import { useSortableTable, type SortValueGetter } from '../../../hooks/useSortableTable';
 import { apiService } from '../../../services/api';
@@ -86,10 +88,6 @@ const LocationsSummaryTab = ({ isActive = true }) => {
   const [noGeometry, setNoGeometry] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
-  const [sidePanelConfigs, setSidePanelConfigs] = useState([]);
-  const [sidePanelLoading, setSidePanelLoading] = useState(false);
-  const [sidePanelError, setSidePanelError] = useState(null);
-
   const [activeColumns, setActiveColumns] = useState(DEFAULT_COLUMNS);
   const [pickerOpen, setPickerOpen] = useState(false);
   const [checkedKeys, setCheckedKeys] = useState(new Set());
@@ -115,6 +113,8 @@ const LocationsSummaryTab = ({ isActive = true }) => {
     .map((c) => c.key);
   const attributeNames = [...DEFAULT_ATTRIBUTE_NAMES, ...extraAttributeNames];
   const rows = useLocationRows(attributeNames);
+
+  const locationConfigs = useConfigurationsByLocationId(selectedId);
 
   useEffect(() => {
     const handler = (e: MouseEvent) => {
@@ -200,7 +200,7 @@ const LocationsSummaryTab = ({ isActive = true }) => {
     sortedRows: sortedSidePanelConfigs,
     handleSort: handleSidePanelSort,
     SortIcon: SidePanelSortIcon,
-  } = useSortableTable(sidePanelConfigs, 'configuration_name', sortValue);
+  } = useSortableTable(locationConfigs.data ?? [], 'configuration_name', sortValue);
 
   const selectedLocationRow = useMemo(
     () => rows.data?.find((row) => row.location_id === selectedId) ?? null,
@@ -228,22 +228,6 @@ const LocationsSummaryTab = ({ isActive = true }) => {
 
   const hasActiveFilter = !!filterText;
 
-  const loadConfigurationsForLocation = useCallback((locationId: string) => {
-    setSidePanelLoading(true);
-    setSidePanelError(null);
-    setSidePanelConfigs([]);
-    apiService
-      .getConfigurationsByLocationId(locationId)
-      .then((data) => {
-        const items = Array.isArray(data) ? data : Array.isArray(data.items) ? data.items : [];
-        setSidePanelConfigs(items);
-      })
-      .catch((err) => {
-        setSidePanelError(err?.message || 'Failed to load configurations.');
-      })
-      .finally(() => setSidePanelLoading(false));
-  }, []);
-
   const handleRowClick = useCallback(
     (row: LocationRow) => {
       if (selectedId === row.location_id) {
@@ -251,9 +235,6 @@ const LocationsSummaryTab = ({ isActive = true }) => {
         setGeojson(null);
         setBasinGeojson(null);
         setNoGeometry(false);
-        setSidePanelConfigs([]);
-        setSidePanelLoading(false);
-        setSidePanelError(null);
         return;
       }
 
@@ -291,10 +272,8 @@ const LocationsSummaryTab = ({ isActive = true }) => {
         .catch(() => {
           setNoGeometry(true);
         });
-
-      loadConfigurationsForLocation(row.location_id);
     },
-    [selectedId, loadConfigurationsForLocation]
+    [selectedId]
   );
 
   return (
@@ -379,19 +358,19 @@ const LocationsSummaryTab = ({ isActive = true }) => {
                     <p>Click a location row below to view its configurations.</p>
                   </div>
                 </div>
-              ) : sidePanelLoading ? (
+              ) : locationConfigs.isLoading ? (
                 <div className="d-flex align-items-center justify-content-center flex-grow-1">
                   <div className="text-center">
                     <Spinner animation="border" variant="primary" />
                     <div className="mt-2 small text-muted">Loading configurations...</div>
                   </div>
                 </div>
-              ) : sidePanelError ? (
+              ) : locationConfigs.error ? (
                 <Alert variant="danger" className="m-3">
                   <i className="bi bi-exclamation-triangle-fill me-2" />
-                  {sidePanelError}
+                  {locationConfigs.error.message}
                 </Alert>
-              ) : sidePanelConfigs.length > 0 ? (
+              ) : locationConfigs.data && locationConfigs.data.length > 0 ? (
                 <SharedDataTable
                   headers={SIDE_PANEL_COLUMNS}
                   rows={sortedSidePanelConfigs}
@@ -416,15 +395,16 @@ const LocationsSummaryTab = ({ isActive = true }) => {
                     title: `Sort by ${column.label}`,
                   })}
                   renderCell={(row, column) => {
-                    if (
+                    const raw = row[column.key];
+                    const isDateField =
                       column.key === 'min_reference_time' ||
                       column.key === 'max_reference_time' ||
                       column.key === 'min_value_time' ||
-                      column.key === 'max_value_time'
-                    ) {
-                      return fmt(row[column.key]);
+                      column.key === 'max_value_time';
+                    if (isDateField && (typeof raw === 'string' || typeof raw === 'number')) {
+                      return fmt(raw);
                     }
-                    return row[column.key] ?? '—';
+                    return formatUnknownValueForDisplay(raw, { nullishText: '—' });
                   }}
                   getCellProps={(row, column) => {
                     const value = row[column.key] ?? '—';
@@ -433,7 +413,7 @@ const LocationsSummaryTab = ({ isActive = true }) => {
                       column.key === 'variable_name' ||
                       column.key === 'unit_name'
                     ) {
-                      return { title: String(value) };
+                      return { title: formatUnknownValueForDisplay(value) };
                     }
                     return {};
                   }}
