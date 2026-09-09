@@ -549,6 +549,35 @@ previous "`group_by` minus nullables" made the two lists disjoint, so `threshold
 threshold level, and `threshold` landed in the `UPDATE SET` clause because
 `update_fields = set(source_fields) - set(uniqueness_fields)`.
 
+**Never CTAS a table that does not exist yet.** The first write to a new table creates an
+empty table and commits it, then does an `INSERT OVERWRITE`:
+
+```python
+results.limit(0).write_to(table_name, write_mode="create_or_replace",
+                          partition_by=spec.partition_by)
+results.write_to(table_name, write_mode="overwrite")
+```
+
+A `CREATE OR REPLACE TABLE ... AS SELECT` leaves the target *staged* — not resolvable in
+the REST catalog — for the entire duration of the write. teehr requests
+`X-Iceberg-Access-Delegation: vended-credentials`
+(`spark_session_utils.py`), so executors fetch scoped S3 credentials from the catalog per
+table and refresh them as they approach expiry. On a multi-hour write that refresh returns
+`RESTException: Unable to process: Table does not exist` and kills the task, which then
+fails the stage after four attempts. A short write commits before any refresh is due, so a
+smoke test passes and only the full run dies — deep into the write, which makes it look
+like a data problem rather than an auth one.
+
+`limit(0)` is free: Spark prunes it to `LocalTableScan <empty>`, so the create step does
+not touch the upstream plan, and letting teehr perform the create keeps the audit columns
+and the partitioning. `overwrite` is `INSERT OVERWRITE TABLE`, which is also idempotent on
+a retry where `append` would double-write.
+
+`build_flow_thresholds` has the same exposure for the same reason — the exact-percentile
+scan over the whole period of record is slow, and it used to run inside the CTAS. It now
+collects the result (a few rows per gage) and creates the table from that, so the CTAS
+itself is near-instant.
+
 **`use_partition_filters=False`.** `_build_partition_filters` runs `SELECT DISTINCT` /
 `MIN`-`MAX` over the *lazy* source view — `to_warehouse` registers the result as an
 uncached temp view — which executes the whole bootstrap DAG once before the MERGE
