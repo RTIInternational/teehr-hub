@@ -1,3 +1,4 @@
+import type { FeatureCollection, MultiPolygon, Polygon } from 'geojson';
 /**
  * CompletenessTab
  *
@@ -30,10 +31,15 @@ const CompletenessTab = ({ isActive = true }) => {
   const [selectedVar, setSelectedVar] = useState('');
 
   // "Committed" state: set when Generate is clicked
-  const [committedCfg, setCommittedCfg] = useState(null);
+  const [committedCfg, setCommittedCfg] = useState<{
+    configuration_name: string;
+    variable_name: string;
+  } | null>(null);
 
   // Map overlay state
-  const [overlayGeometries, setOverlayGeometries] = useState(null);
+  const [overlayGeometries, setOverlayGeometries] = useState<FeatureCollection<
+    Polygon | MultiPolygon
+  > | null>(null);
   const [overlayVisible, setOverlayVisible] = useState(true);
   const [hoveredSpatialAggregate, setHoveredSpatialAggregate] = useState(null);
 
@@ -52,7 +58,7 @@ const CompletenessTab = ({ isActive = true }) => {
 
   // Resolve a heatmap spatial_aggregate value to the matching location id field
   const handleHeatmapHover = useCallback(
-    (spatialAggregate) => {
+    (spatialAggregate: string | null) => {
       if (!spatialAggregate || !overlayGeometries?.features) {
         setHoveredSpatialAggregate(null);
         return;
