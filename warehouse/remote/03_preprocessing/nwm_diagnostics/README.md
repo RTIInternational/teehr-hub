@@ -770,6 +770,40 @@ previous table before being trusted:
   counter, not `n_in_bin` — the latter counts non-null `secondary_value` and silently drops
   bins where events exist but every secondary value is NULL.
 
+## Executor memory
+
+The 2026-09-09 runs were killed by container OOM (`removeReason` reporting
+`exit code 137 (SIGKILL, possible container OOM)`), and the measurement that identified it is
+worth repeating before reaching for more memory:
+
+```
+JVMHeapMemory      max 15.87 GB, median 15.42 GB   against a 16g heap
+JVMOffHeapMemory   0.22 GB
+storage memory     0.16 GB          diskUsed  0
+```
+
+**Every executor sat at 96-99% of its heap.** That is the cause; the container OOM is the
+consequence, since a heap pinned near 16 GB leaves nothing under the 20 GiB container limit
+(`executor_memory` + `memoryOverhead`) for Python workers, Netty buffers and off-heap. Raising
+`memoryOverhead` alone treats the symptom and leaves the GC thrash in place.
+
+Note what those numbers rule out: storage memory of 0.16 GB and `diskUsed` of 0 mean the
+result cache is not implicated, and the heap figure means it is not primarily Python — which
+had been the earlier hypothesis.
+
+The settings now are `memoryOverhead` 8g (container 24 GiB, so 5 executors per r5.4xlarge
+rather than 6) and `spark.sql.shuffle.partitions` 4096. The partition count is the part that
+addresses the cause: the aggregate carrying the bootstrap was **87% of task time** and read
+~400 GB into 2048 tasks, so halving the data per task halves the peak heap on precisely the
+stage that dominates.
+
+`spark.executor.processTreeMetrics.enabled` is on so `ProcessTreePythonRSSMemory` is populated;
+without it Python versus JVM has to be inferred.
+
+**Beware stale profiles.** An earlier run put the bootstrap at ~16-21% of task time; a later
+one put it at 87%. Re-measure with `utils.profile_spark_stages()` rather than trusting either
+number — it decides whether `bootstrap_reps` is a marginal lever or the dominant one.
+
 ## Working on the code
 
 **Adding a dimension** is one entry in `build_dimensions()`. Decide the stage first
