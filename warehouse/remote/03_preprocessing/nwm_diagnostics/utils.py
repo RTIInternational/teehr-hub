@@ -86,7 +86,12 @@ def capture_spark_run_metrics(spark, label="run"):
     signals; treat the storage-memory-utilization note as informational only.
     """
     try:
-        executors = _spark_api_get(spark, "/executors")
+        # /allexecutors, NOT /executors. The latter returns only executors the
+        # driver still knows about, so a run that lost and replaced executors
+        # reports num_executors_removed = 0 and looks healthy. This misdiagnosed
+        # two separate failures: the giveaway both times was the executor ID
+        # range running past the requested instance count.
+        executors = _spark_api_get(spark, "/allexecutors")
         stages_complete = _spark_api_get(spark, "/stages?status=complete")
         stages_failed = _spark_api_get(spark, "/stages?status=failed")
     except Exception as e:
@@ -98,6 +103,18 @@ def capture_spark_run_metrics(spark, label="run"):
     worker_executors = [e for e in executors if e.get("id") != "driver"]
     active_executors = [e for e in worker_executors if e.get("isActive", True)]
     removed_executors = [e for e in worker_executors if not e.get("isActive", True)]
+
+    # Independent churn check that does not rely on the endpoint reporting dead
+    # executors: Spark numbers executors sequentially from 1, so a maximum ID
+    # above the requested instance count means executors were replaced.
+    executor_ids = [
+        int(e["id"]) for e in worker_executors if str(e.get("id", "")).isdigit()
+    ]
+    max_executor_id = max(executor_ids, default=0)
+    requested_instances = int(
+        spark.conf.get("spark.executor.instances", "0") or 0
+    )
+    replacements = max(0, max_executor_id - requested_instances)
 
     total_gc_ms = sum(e.get("totalGCTime", 0) for e in worker_executors)
     total_duration_ms = sum(e.get("totalDuration", 0) for e in worker_executors)
@@ -113,6 +130,9 @@ def capture_spark_run_metrics(spark, label="run"):
         "label": label,
         "timestamp": datetime.now(timezone.utc).isoformat(timespec="seconds"),
         "num_executors_seen": len(worker_executors),
+        "max_executor_id": max_executor_id,
+        "requested_instances": requested_instances,
+        "executors_replaced": replacements,
         "num_executors_active": len(active_executors),
         "num_executors_removed": len(removed_executors),
         "total_cores_active": total_cores,
@@ -129,6 +149,16 @@ def capture_spark_run_metrics(spark, label="run"):
     }
 
     print(json.dumps(summary, indent=2))
+    if replacements:
+        print(
+            f"WARNING: at least {replacements} executor(s) were replaced during this run "
+            f"(max executor id {max_executor_id} > {requested_instances} requested). "
+            "Executors died even if num_executors_removed is 0. Their shuffle output "
+            "dies with them, which surfaces downstream as "
+            "'Missing an output location for shuffle N'. To find out WHY, re-run with "
+            "spark.kubernetes.executor.deleteOnTermination=false so the dead pods "
+            "survive, then: kubectl describe pod <exec-pod> | tail -20"
+        )
     if removed_executors:
         print(
             f"WARNING: {len(removed_executors)} executor(s) were removed/lost during this "
