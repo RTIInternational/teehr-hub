@@ -732,6 +732,44 @@ Two details worth preserving if you edit that cell:
 `finally` cannot help if the kernel itself is killed. After any hard kill, check for
 orphans with `kubectl get pods | grep exec`.
 
+## Efficiency: what actually costs
+
+A profiled run measured **16 GB of disk input against 1,243 GB of shuffle write** — this
+pipeline is shuffle-bound, and the levers that scale with input volume (locations, row counts)
+barely move it. Three things are in place:
+
+- **zstd shuffle compression** (`spark.io.compression.codec`). Typically 25-40% smaller than
+  the lz4 default on this kind of columnar shuffle, which cuts both runtime and the executor
+  disk pressure that was evicting pods. No effect on results.
+- **`prune_to_required()`** drops columns before anything multiplies rows. The PRE_BIN
+  threshold stack quadruples rows and carries every base column, but `value_time`,
+  `created_at` and `updated_at` are in `NON_UNIQUE_FIELDS` — neither group keys nor metric
+  inputs — so they were quadrupled and then discarded. The required set is derived from the
+  spec, so a new dimension cannot be silently pruned away.
+- **The result is materialized once** (`persist` + `count`) before writing. The plan otherwise
+  evaluates the entire pipeline **three times**, so the scan, the expansion and the bootstrap
+  were each paid for three times over. The result is a few million rows against ~1,240 GB of
+  shuffle to produce it, so caching it is trivial by comparison.
+
+On that 3x: it is **not** the write mode — an `INSERT OVERWRITE` plan shows the same three
+scans — and it is **not** teehr splitting metrics across passes, since
+`apply_aggregation_metrics` issues a single `gp.agg()`. The cause is still unidentified;
+materializing sidesteps it either way. `utils.profile_spark_sql_plan()` reports it.
+
+Two larger reductions remain unimplemented, both requiring an equivalence check against the
+previous table before being trusted:
+
+- **`window_agg` as columns rather than rows.** The stage that expands 60 GB to 611 GB is 49%
+  of task time, largely because the `window_agg` stack triples rows *before* the aggregation.
+  Aggregating once with three sets of metrics (teehr accepts `primary_field_name=` /
+  `secondary_field_name=`) and unpivoting the small aggregated output gives a byte-identical
+  table with a third of that shuffle.
+- **Masked threshold aggregation.** Replaces the 4x PRE_BIN row expansion with masked columns
+  in one pass (`CASE WHEN above_q85 THEN primary_value END`; avg/min/max ignore NULLs).
+  Verified equivalent against real Spark **provided** the keep predicate is a per-level row
+  counter, not `n_in_bin` — the latter counts non-null `secondary_value` and silently drops
+  bins where events exist but every secondary value is NULL.
+
 ## Working on the code
 
 **Adding a dimension** is one entry in `build_dimensions()`. Decide the stage first
