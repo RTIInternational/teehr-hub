@@ -677,6 +677,28 @@ For scale, the run immediately before this one (same cluster and window, stopped
 and no executor churn, which is what confirmed the ephemeral-storage fix. Add new
 measurements to `profiling.md`.
 
+## Always release the cluster
+
+The run cell wraps the config loop in `try/finally` and calls `spark.stop()` in the
+`finally`. This is not tidiness: an exception in the loop does **not** stop the
+SparkContext, so a crash partway through leaves the executor pods running and billing --
+which happened once overnight at 22 x r5.4xlarge.
+
+Two details worth preserving if you edit that cell:
+
+- **Capture the Spark metrics before stopping.** `capture_spark_run_metrics` reads the
+  Spark REST API, which stops answering the moment the session ends, and a crashed run is
+  exactly when the executor and stage numbers are worth having. That call is wrapped in its
+  own `try` so a failure there can never skip the `spark.stop()`.
+- **It stops on success too**, deliberately -- there is no reason to hold 64 executors idle
+  once the write has committed. The inspection cells below therefore start their own
+  session, guarded with `SparkSession.getActiveSession() is None`. Note `spark._jsc` is
+  *not* a usable liveness check: it remains a live `JavaObject` after `stop()` and would
+  report a dead session as running.
+
+`finally` cannot help if the kernel itself is killed. After any hard kill, check for
+orphans with `kubectl get pods | grep exec`.
+
 ## Working on the code
 
 **Adding a dimension** is one entry in `build_dimensions()`. Decide the stage first
