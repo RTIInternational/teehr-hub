@@ -549,6 +549,24 @@ previous "`group_by` minus nullables" made the two lists disjoint, so `threshold
 threshold level, and `threshold` landed in the `UPDATE SET` clause because
 `update_fields = set(source_fields) - set(uniqueness_fields)`.
 
+**`upsert` evaluates the whole pipeline three times — prefer `overwrite`.** Iceberg's MERGE
+evaluates its source repeatedly. A profiled run showed `fcst_joined_timeseries` scanned **3x**
+(verified by distinct output-attribute ids `#79`, `#378`, `#572`, with `MergeRows` in the plan), so
+the entire bootstrap-and-shuffle chain ran three times over. That multiple dwarfs any tuning of
+`bootstrap_reps` or location count.
+
+The default is therefore `write_mode="overwrite"`, which is a single-pass `INSERT OVERWRITE`. It is
+scoped to just the partitions being rebuilt by
+`spark.sql.sources.partitionOverwriteMode=dynamic` in the session config — that setting is
+**mandatory**, and `generate_nwmd_metrics` refuses to run without it, because in the default
+`static` mode `INSERT OVERWRITE` replaces the **entire table** and would destroy every other
+configuration's rows.
+
+`write_mode="upsert"` remains available for runs that must add rows to partitions whose existing
+contents have to survive. A dynamic overwrite replaces everything in the partitions it touches, so
+combining `overwrite` with `location_sample_n` / `location_ids` would delete every location the run
+did not compute — the function raises rather than letting that happen.
+
 **Never CTAS a table that does not exist yet.** The first write to a new table creates an
 empty table and commits it, then does an `INSERT OVERWRITE`:
 
@@ -722,6 +740,21 @@ Note the **frontend hard-codes its dimension names** in
 even though it discovers dimension *values* dynamically. A new dimension reaches the table
 and the API automatically, but will not appear in the dashboard without a frontend change.
 The API needs nothing.
+
+**Profiling a run.** `utils.profile_spark_stages(spark)` ranks stages by total task time — the
+right measure, since wall time hides parallelism and a stage that is 20% of task time cannot be made
+to matter more than 20% by tuning it. It also reports disk input against shuffle write; a large ratio
+means the run is shuffle-bound and the levers that scale with input (locations, row counts) will
+disappoint. A profiled run measured **10.3 GB input against 1,063 GB shuffle write — 104x**.
+
+`utils.profile_spark_sql_plan(spark)` reports operator counts and, more usefully, **repeated table
+scans**, counted by output-attribute signature rather than by plan node (the plan description
+contains both the initial and AQE-optimized trees, so node counts double). A table scanned more than
+once means the plan evaluates the pipeline more than once, and nothing inside the pipeline can
+recover that multiple.
+
+Both read the Spark REST API and must run **before** `spark.stop()`; the run cell calls them from its
+`finally` for exactly that reason.
 
 **Cheap test runs.** Combine `"location_sample_n": 25` with `"bootstrap_reps": 10` to
 exercise the whole pipeline — including the threshold join, both stack shapes, and the

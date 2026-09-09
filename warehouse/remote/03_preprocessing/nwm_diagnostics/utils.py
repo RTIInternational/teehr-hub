@@ -7,7 +7,9 @@ notebook pulls in via the raw.githubusercontent download in its second cell.
 
 import os
 import json
+import re
 import urllib.request
+from collections import Counter
 from urllib.parse import urlparse
 from datetime import datetime, timezone
 
@@ -191,6 +193,190 @@ def report_utilization(run_metrics, wall_seconds):
     print(f"Core utilization: {pct:.0%} ({run_metrics['total_task_time_min']:.1f} task-min / "
           f"{core_minutes_available:.1f} core-min available)")
     return pct
+
+# --- Where did the time go? -----------------------------------------------
+# capture_spark_run_metrics answers "was the cluster healthy"; these two answer
+# "what was slow". Both read the Spark REST API and must run BEFORE spark.stop().
+
+
+def profile_spark_stages(spark, top=12, min_task_min=0.5):
+    """Rank stages by total task time, with the IO that explains them.
+
+    Total task time (executorRunTime summed over tasks) is the right measure of
+    where compute goes -- wall time hides parallelism, and a stage that is 20%
+    of task time cannot be made to matter more than 20% by tuning it.
+
+    Watch the input-vs-shuffle columns. A job whose disk input is small but
+    whose shuffle write is large is shuffle-bound, and tuning the things that
+    scale with input (locations, row counts) will disappoint. This pipeline
+    multiplies rows 4x for thresholds pre-bin and 6x post-bin, so the
+    expansion, not the scan, is usually the cost.
+
+    Returns the rows so they can be diffed between runs.
+    """
+    try:
+        stages = _spark_api_get(spark, "/stages")
+    except Exception as e:
+        print(f"Could not fetch Spark stages: {e}")
+        return None
+
+    def _parse(value):
+        if not value:
+            return None
+        try:
+            return datetime.strptime(value[:23], "%Y-%m-%dT%H:%M:%S.%f")
+        except ValueError:
+            return None
+
+    rows = []
+    for s in stages:
+        started, finished = _parse(s.get("submissionTime")), _parse(s.get("completionTime"))
+        rows.append({
+            "stage": f"{s['stageId']}.{s['attemptId']}",
+            "status": s.get("status", "?"),
+            "task_min": s.get("executorRunTime", 0) / 60000,
+            "wall_s": (finished - started).total_seconds() if started and finished else None,
+            "tasks": s.get("numTasks", 0),
+            "complete": s.get("numCompleteTasks", 0),
+            "failed": s.get("numFailedTasks", 0),
+            "input_gb": s.get("inputBytes", 0) / 1e9,
+            "shuffle_read_gb": s.get("shuffleReadBytes", 0) / 1e9,
+            "shuffle_write_gb": s.get("shuffleWriteBytes", 0) / 1e9,
+            "disk_spill_gb": s.get("diskBytesSpilled", 0) / 1e9,
+        })
+
+    total_task_min = sum(r["task_min"] for r in rows) or 1.0
+    ranked = sorted(rows, key=lambda r: -r["task_min"])
+
+    print(
+        f"{'stage':>8} {'status':9} {'task-min':>9} {'share':>6} {'wall-s':>7} "
+        f"{'tasks':>10} {'in GB':>7} {'shufR':>8} {'shufW':>8} {'spill':>6}"
+    )
+    for r in ranked[:top]:
+        if r["task_min"] < min_task_min:
+            continue
+        wall = f"{r['wall_s']:.0f}" if r["wall_s"] is not None else "-"
+        tasks = f"{r['complete']}/{r['tasks']}"
+        print(
+            f"{r['stage']:>8} {r['status']:9} {r['task_min']:9.1f} "
+            f"{100 * r['task_min'] / total_task_min:5.1f}% {wall:>7} {tasks:>10} "
+            f"{r['input_gb']:7.1f} {r['shuffle_read_gb']:8.1f} "
+            f"{r['shuffle_write_gb']:8.1f} {r['disk_spill_gb']:6.1f}"
+        )
+
+    total_input = sum(r["input_gb"] for r in rows)
+    total_write = sum(r["shuffle_write_gb"] for r in rows)
+    print(f"\ntotal task time: {total_task_min:.0f} task-min across {len(rows)} stages")
+    print(f"disk input: {total_input:.1f} GB | shuffle write: {total_write:.1f} GB", end="")
+    if total_input > 0:
+        print(f" | amplification: {total_write / total_input:.0f}x")
+    else:
+        print()
+    if total_input and total_write / total_input > 5:
+        print(
+            "NOTE: shuffle write greatly exceeds disk input -- this run is "
+            "shuffle-bound. Reducing locations or bootstrap reps will help far "
+            "less than reducing the row-expansion factor or the number of passes "
+            "over the pipeline (see profile_spark_sql_plan)."
+        )
+    return ranked
+
+
+def profile_spark_sql_plan(spark, execution_id=None):
+    """Report operator counts and REPEATED TABLE SCANS for one SQL execution.
+
+    The thing worth catching here is a table scanned more than once. That means
+    the plan evaluates the pipeline more than once, and no amount of tuning
+    inside the pipeline will recover the multiple. Iceberg's MERGE is the usual
+    culprit: it evaluates its source several times, so an `upsert` can run the
+    whole bootstrap and shuffle chain three times over where an
+    `INSERT OVERWRITE` runs it once.
+
+    Pass execution_id to target a specific query; by default the longest-running
+    one is profiled.
+    """
+    try:
+        executions = _spark_api_get(spark, "/sql?length=100")
+    except Exception as e:
+        print(f"Could not fetch Spark SQL executions: {e}")
+        return None
+    if not executions:
+        print("No SQL executions recorded.")
+        return None
+
+    if execution_id is None:
+        chosen = max(executions, key=lambda e: e.get("duration", 0))
+    else:
+        matches = [e for e in executions if e.get("id") == execution_id]
+        if not matches:
+            print(f"No SQL execution with id {execution_id}.")
+            return None
+        chosen = matches[0]
+
+    exec_id = chosen.get("id")
+    print(
+        f"SQL execution {exec_id}: status={chosen.get('status')} "
+        f"duration={chosen.get('duration', 0) / 1000:.0f}s"
+    )
+
+    try:
+        detail = _spark_api_get(
+            spark, f"/sql/{exec_id}?details=true&planDescription=true"
+        )
+        plan = detail.get("planDescription") or ""
+    except Exception as e:
+        print(f"Could not fetch the plan description: {e}")
+        return None
+
+    # The plan text lists the operator tree and then numbered node details;
+    # count only the numbered headers so each operator is counted once.
+    operators = Counter(re.findall(r"^\(\d+\)\s+(\S+)", plan, re.M))
+    print("\noperators:")
+    for name, count in operators.most_common(14):
+        print(f"  {count:>4}  {name}")
+
+    # Count DISTINCT scans by their output-attribute signature, not by numbered
+    # plan nodes: the plan description contains both the initial and the
+    # AQE-optimized plan, so node counts double-count. Two scan nodes that emit
+    # the same attribute ids are the same scan printed twice; different ids mean
+    # genuinely separate evaluations.
+    scans = Counter()
+    for table, attrs in re.findall(
+        r"^\(\d+\)\s+BatchScan (\S+).*?\n\s*Output \[\d+\]: \[([^\]]*)\]",
+        plan,
+        re.M | re.S,
+    ):
+        scans[(table, attrs.strip())] += 1
+    per_table = Counter(table for table, _ in scans)
+    if not per_table:  # older Spark / different plan formatting
+        per_table = Counter(re.findall(r"^\(\d+\)\s+BatchScan (\S+)", plan, re.M))
+
+    print("\ndistinct table scans in this plan:")
+    repeated = []
+    for table, count in per_table.most_common():
+        flag = ""
+        if count > 1:
+            flag = "  <-- evaluated more than once"
+            repeated.append((table, count))
+        print(f"  {count:>4}  {table}{flag}")
+
+    if repeated:
+        worst = max(count for _, count in repeated)
+        print(
+            f"\nWARNING: the pipeline is evaluated {worst}x in this plan. "
+            f"{'MergeRows present -- this is an Iceberg MERGE (upsert). ' if operators.get('MergeRows') else ''}"
+            "Everything inside the pipeline pays that multiple, so it dominates "
+            "any tuning of reps, locations or partition counts. Consider "
+            "write_mode='overwrite' with "
+            "spark.sql.sources.partitionOverwriteMode=dynamic, which writes in "
+            "one pass, when the run rebuilds whole partitions."
+        )
+    return {
+        "execution_id": exec_id,
+        "operators": dict(operators),
+        "scans": dict(per_table),
+    }
+
 
 # --- Stage-attempt failure detail -----------------------------------------
 # /stages?status=failed only reports stages whose FINAL status is failed -- a
