@@ -646,9 +646,24 @@ kubelet evicts under 8 GiB free) — 5–6 executors shared each node, and the p
 kubelet ranks eviction victims by usage over request, which put the executors first every
 time.
 
-Fix: `create_ondemand_pod_template(ephemeral_storage_request="20Gi")` declares the
-request, which both spreads executors (~3 per r5.4xlarge) and buys eviction immunity up
-to the request. Confirm it survived Spark's own resource merge:
+Fix: `create_ondemand_pod_template(ephemeral_storage_request=...)` declares the request,
+which both spreads executors and buys eviction immunity up to the request.
+
+Sizing it is a two-part change, and both parts must move together:
+
+- the **node** needs the disk. `teehr-cloud-platform` gives the three executor-running node
+  groups 300 GB gp3 root volumes (up from 80 GB, ~71 GiB allocatable) at 250 MB/s. At 80 GB
+  disk capped a node at 3 executors while its cores allowed 8 and its memory allowed 6, so
+  most of every instance was paid for and idle — and runs died once shuffle filled it.
+- the **request** should match where *memory* binds, not where disk does: 6 executors per
+  r5.4xlarge at 20 GiB each. Hence **40Gi** (6 × 40 = 240 GiB of ~290 GiB allocatable).
+  Leaving it at 20Gi with the bigger volume would let the scheduler pack 14 per node and
+  oversubscribe memory instead.
+
+A 2026-09-09 run wrote 1,243 GB of shuffle — ~19.4 GB per executor against the old 20Gi
+request, i.e. no headroom — and lost 11 executors.
+
+Confirm the request survived Spark's own resource merge:
 
 ```bash
 kubectl get pod <exec-pod> -o jsonpath='{.spec.containers[0].resources}'

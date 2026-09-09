@@ -434,7 +434,7 @@ def get_stage_attempt_failures(spark, max_stages=200):
         print(f"  {f['failureReason']}\n")
     return failures
 
-def create_ondemand_pod_template(ephemeral_storage_request="20Gi"):
+def create_ondemand_pod_template(ephemeral_storage_request="40Gi"):
     """Create a pod template for on-demand Spark executors.
 
     Args:
@@ -463,7 +463,17 @@ def create_ondemand_pod_template(ephemeral_storage_request="20Gi"):
     # disk, AND kubelet ranks eviction victims by usage over request, which put
     # the executors first in line every time. Declaring a request fixes both:
     # it spreads executors across enough nodes and buys eviction immunity up to
-    # the requested amount. At 20Gi that is ~3 executors per r5.4xlarge.
+    # the requested amount.
+    #
+    # 2026-09-09: raised 20Gi -> 40Gi. A run wrote 1,243 GB of shuffle, ~19.4 GB
+    # per executor against the 20Gi request -- no headroom -- and 11 executors
+    # were lost. The node groups that run executors now carry 300 GB gp3 root
+    # volumes instead of 80 GB (teehr-cloud-platform, spark-executor-node-disk),
+    # so the request should match where MEMORY binds rather than where disk
+    # does: 6 executors per r5.4xlarge at 20 GiB each. 40Gi x 6 = 240 GiB of the
+    # ~290 GiB now allocatable. Leaving it at 20Gi would have let the scheduler
+    # pack 14 per node and oversubscribe memory instead.
+    #
     # Verify it survived Spark's own resource settings after launch with:
     #   kubectl get pod <exec-pod> -o jsonpath='{.spec.containers[0].resources}'
     ONDEMAND_POD_TEMPLATE_PATH = os.path.expanduser("~/executor-pod-template-ondemand.yaml")
