@@ -164,8 +164,18 @@ def capture_spark_run_metrics(spark, label="run"):
     if removed_executors:
         print(
             f"WARNING: {len(removed_executors)} executor(s) were removed/lost during this "
-            "run (spot preemption or similar) -- check the Spark UI Executors tab for cause."
+            "run. Reasons reported by the driver:"
         )
+        # /allexecutors carries removeReason for dead executors, which usually
+        # names the cause outright -- OOMKilled, evicted, deleted by
+        # Kubernetes, unable to create executor -- so this normally settles
+        # "why did they die" without needing deleteOnTermination=false.
+        reasons = Counter()
+        for e in removed_executors:
+            reason = (e.get("removeReason") or "unknown").strip()
+            reasons[" ".join(reason.split())[:200]] += 1
+        for reason, count in reasons.most_common(6):
+            print(f"    {count:>3}x  {reason}")
     if summary["num_stages_failed"] > 0:
         print(f"WARNING: {summary['num_stages_failed']} stage(s) failed during this run.")
     if summary["total_disk_spill_gb"] > 0:
