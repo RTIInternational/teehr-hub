@@ -1,12 +1,24 @@
 import Plotly from 'plotly.js-dist-min';
 import { useEffect, useRef, useState } from 'react';
 
+import { type ConfigurationCompletenessResponse } from '@/features/data_management/types/completeness';
+
 import { apiService } from '../../../services/api';
 
-const CompletenessHeatmap = ({ configurationName, variableName, onHover = null }) => {
-  const plotRef = useRef(null);
+type CompletenessHeatmapProps = {
+  configurationName?: string;
+  variableName?: string;
+  onHover?: ((spatialAggregate: string | null) => void) | null;
+};
+
+const CompletenessHeatmap = ({
+  configurationName,
+  variableName,
+  onHover = null,
+}: CompletenessHeatmapProps) => {
+  const plotRef = useRef<HTMLDivElement & Plotly.PlotlyHTMLElement>(null);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
+  const [error, setError] = useState<string | null>(null);
   const [plotReady, setPlotReady] = useState(false);
 
   useEffect(() => {
@@ -20,7 +32,7 @@ const CompletenessHeatmap = ({ configurationName, variableName, onHover = null }
       setPlotReady(false);
 
       try {
-        const data = await apiService.getCompletenessHeatmap({
+        const data: ConfigurationCompletenessResponse = await apiService.getCompletenessHeatmap({
           configuration_name: configurationName,
           variable_name: variableName,
         });
@@ -29,17 +41,17 @@ const CompletenessHeatmap = ({ configurationName, variableName, onHover = null }
 
         const rows = data.items || [];
         if (rows.length === 0) {
-          Plotly.purge(plotRef.current);
+          if (plotRef.current) Plotly.purge(plotRef.current);
           setPlotReady(false);
           return;
         }
 
         // Normalise values to trimmed strings to avoid type/whitespace mismatches
-        const norm = (v) => (v == null ? '' : String(v).trim());
+        const norm = (v: string | null) => (v == null ? '' : String(v).trim());
 
         // Collect unique sorted aggregation units and periods
-        const periodSet = new Set();
-        const spatialAggregateSet = new Set();
+        const periodSet = new Set<string>();
+        const spatialAggregateSet = new Set<string>();
         rows.forEach((r) => {
           periodSet.add(norm(r.period));
           spatialAggregateSet.add(norm(r.spatial_aggregate));
@@ -84,46 +96,49 @@ const CompletenessHeatmap = ({ configurationName, variableName, onHover = null }
         // Use first 10 chars of period as x-axis label (date portion only)
         const xLabels = periods.map((p) => p.slice(0, 10));
 
-        Plotly.react(
-          plotRef.current,
-          [
+        if (plotRef.current)
+          void Plotly.react(
+            plotRef.current,
+            [
+              {
+                type: 'heatmap',
+                z,
+                x: xLabels,
+                y: sortedSpatialAggregates,
+                zmin: 0,
+                zmax: 100,
+                colorscale: [
+                  [0.0, '#fd0de9'],
+                  [0.2, '#ca0ef3'],
+                  [0.4, '#970ef9'],
+                  [0.6, '#640efc'],
+                  [0.8, '#380ffd'],
+                  [1.0, '#0d6efd'],
+                ],
+                colorbar: { title: { text: 'Completeness (%)' } },
+                opacity: 0.85,
+                hovertemplate:
+                  'Spatial Aggregate: %{y}<br>Period: %{x}<br>Completeness: %{z:.1f}%<extra></extra>',
+              },
+            ],
             {
-              type: 'heatmap',
-              z,
-              x: xLabels,
-              y: sortedSpatialAggregates,
-              zmin: 0,
-              zmax: 100,
-              colorscale: [
-                [0.0, '#fd0de9'],
-                [0.2, '#ca0ef3'],
-                [0.4, '#970ef9'],
-                [0.6, '#640efc'],
-                [0.8, '#380ffd'],
-                [1.0, '#0d6efd'],
-              ],
-              colorbar: { title: 'Completeness (%)' },
-              opacity: 0.85,
-              hovertemplate:
-                'Spatial Aggregate: %{y}<br>Period: %{x}<br>Completeness: %{z:.1f}%<extra></extra>',
+              title: {
+                text: `Primary Timeseries Completeness — ${configurationName} / ${variableName}`,
+              },
+              xaxis: { title: { text: 'Week' }, tickangle: -45, nticks: 24 },
+              yaxis: {
+                title: { text: 'Spatial Aggregate', standoff: 8 },
+                showticklabels: false,
+                type: 'category',
+              },
+              autosize: true,
+              margin: { l: 60, b: 80, t: 50, r: 20 },
             },
-          ],
-          {
-            title: `Primary Timeseries Completeness — ${configurationName} / ${variableName}`,
-            xaxis: { title: 'Week', tickangle: -45, nticks: 24 },
-            yaxis: {
-              title: { text: 'Spatial Aggregate', standoff: 8 },
-              showticklabels: false,
-              type: 'category',
-            },
-            autosize: true,
-            margin: { l: 60, b: 80, t: 50, r: 20 },
-          },
-          { responsive: true }
-        );
+            { responsive: true }
+          );
         if (!cancelled) setPlotReady(true);
       } catch (err) {
-        if (!cancelled) setError(err.message);
+        if (!cancelled && err instanceof Error) setError(err.message);
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -141,7 +156,7 @@ const CompletenessHeatmap = ({ configurationName, variableName, onHover = null }
   useEffect(() => {
     if (!plotReady || !plotRef.current) return;
     const el = plotRef.current;
-    const handleHover = (data) => {
+    const handleHover = (data: Plotly.PlotMouseEvent) => {
       if (onHover && data.points?.[0]) onHover(String(data.points[0].y));
     };
     const handleUnhover = () => {
@@ -150,8 +165,8 @@ const CompletenessHeatmap = ({ configurationName, variableName, onHover = null }
     el.on('plotly_hover', handleHover);
     el.on('plotly_unhover', handleUnhover);
     return () => {
-      el.removeListener?.('plotly_hover', handleHover);
-      el.removeListener?.('plotly_unhover', handleUnhover);
+      el.removeAllListeners('plotly_hover');
+      el.removeAllListeners('plotly_unhover');
     };
   }, [plotReady, onHover]);
 
@@ -182,7 +197,7 @@ const CompletenessHeatmap = ({ configurationName, variableName, onHover = null }
           className="position-absolute top-50 start-50 translate-middle text-center"
           style={{ zIndex: 10 }}
         >
-          <div className="spinner-border text-primary mb-2" role="status">
+          <div className="spinner-border text-primary mb-2">
             <span className="visually-hidden">Loading...</span>
           </div>
           <div className="small text-muted">Loading completeness data...</div>
