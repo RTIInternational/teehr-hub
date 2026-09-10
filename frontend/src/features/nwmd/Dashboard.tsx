@@ -17,7 +17,7 @@ import { useLocationSelection } from './hooks/useLocationSelection';
 import type { ViewportBounds } from './types/maps';
 
 export const Dashboard = () => {
-  const tables = ['nwmd_metrics_by_location'];
+  const tables = ['nwmd_metrics_by_location_v2'];
 
   useInitialFilters(tables[0]);
 
