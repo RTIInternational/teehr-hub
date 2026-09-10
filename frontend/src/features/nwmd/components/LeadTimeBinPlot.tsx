@@ -42,6 +42,7 @@ const LeadTimeBinPlot = ({ table, selectedLocation, mapFilters }: LeadTimeBinPlo
     primary_location_id: primaryLocationId,
     configuration: mapFilters.configuration,
     variable: mapFilters.variable,
+    waterYear: mapFilters.waterYear,
     quarter: mapFilters.quarter,
     threshold: mapFilters.threshold,
     aggMethod: mapFilters.aggMethod,

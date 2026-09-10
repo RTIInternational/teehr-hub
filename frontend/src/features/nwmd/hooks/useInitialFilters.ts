@@ -15,12 +15,18 @@ import { ActionTypes, useDashboard } from '../DashboardContext';
 export const useInitialFilters = (table: string) => {
   const { dispatch } = useDashboard();
 
+  const waterYears = useDistinctValues(table, 'water_year');
   const quarters = useDistinctValues(table, 'quarter');
   const configurations = useConfigurations(table);
   const variables = useVariables(table);
   const thresholds = useDistinctValues(table, 'threshold');
   const aggMethods = useDistinctValues(table, 'window_agg');
   const leadTimeBins = useDistinctValues(table, 'forecast_lead_time_bin');
+
+  const defaultWaterYear = selectDefault(
+    NWMD_DASHBOARD_DEFAULTS.preferredWaterYear,
+    waterYears.data ?? []
+  );
 
   const defaultQuarter = selectDefault(
     NWMD_DASHBOARD_DEFAULTS.preferredQuarter,
@@ -54,6 +60,7 @@ export const useInitialFilters = (table: string) => {
 
   useEffect(() => {
     if (
+      !waterYears.data?.length ||
       !quarters.data?.length ||
       !configurations.data?.length ||
       !variables.data?.length ||
@@ -68,6 +75,7 @@ export const useInitialFilters = (table: string) => {
     dispatch({
       type: ActionTypes.INITIALIZE_FILTERS,
       payload: {
+        waterYear: defaultWaterYear,
         quarter: defaultQuarter,
         configuration: defaultConfiguration,
         variable: defaultVariable,
@@ -77,11 +85,13 @@ export const useInitialFilters = (table: string) => {
       },
     });
   }, [
+    waterYears.data,
     quarters.data,
     configurations.data,
     variables.data,
     aggMethods.data,
     leadTimeBins.data,
+    defaultWaterYear,
     defaultQuarter,
     defaultConfiguration,
     defaultVariable,

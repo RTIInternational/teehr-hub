@@ -95,6 +95,7 @@ const initialState: DashboardState = {
 
   // Map filters (original structure)
   mapFilters: {
+    waterYear: undefined,
     quarter: undefined,
     configuration: undefined,
     variable: undefined,
@@ -175,7 +176,7 @@ export const ActionTypes = {
 const reducer = (state: DashboardState, action: DashboardAction) => {
   switch (action.type) {
     case ActionTypes.INITIALIZE_FILTERS: {
-      const { quarter, configuration, variable, threshold, aggMethod, leadTimeBin } =
+      const { waterYear, quarter, configuration, variable, threshold, aggMethod, leadTimeBin } =
         action.payload;
 
       const quarterToUse = state.mapFilters.quarter ?? quarter;
@@ -188,6 +189,7 @@ const reducer = (state: DashboardState, action: DashboardAction) => {
 
         mapFilters: {
           ...state.mapFilters,
+          waterYear: waterYear,
           quarter: quarterToUse,
           configuration: state.mapFilters.configuration ?? configuration,
           variable: state.mapFilters.variable ?? variable,

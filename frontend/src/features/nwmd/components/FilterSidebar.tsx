@@ -27,6 +27,7 @@ export const FilterSidebar = ({ tables }: FilterSidebarProps) => {
   const tableProperties = useTableProperties(tables);
 
   // Queryable values
+  const waterYears = useDistinctValues(tables[0], 'water_year');
   const quarters = useDistinctValues(tables[0], 'quarter');
   const configurations = useConfigurations(tables[0]);
   const thresholds = useDistinctValues(tables[0], 'threshold');
@@ -53,6 +54,23 @@ export const FilterSidebar = ({ tables }: FilterSidebarProps) => {
             configurations.data.map((config) => (
               <option key={config} value={config}>
                 {config}
+              </option>
+            ))}
+        </Form.Select>
+      </Form.Group>
+
+      {/* Water Year Filter */}
+      <Form.Group className="mb-3">
+        <Form.Label className="small fw-bold">Water Year</Form.Label>
+        <Form.Select
+          size="sm"
+          value={mapFilters.waterYear || ''}
+          onChange={(e) => handleMapFilterChange('waterYear', e.target.value || null)}
+        >
+          {Array.isArray(waterYears.data) &&
+            waterYears.data.map((waterYear) => (
+              <option key={waterYear} value={waterYear}>
+                {waterYear}
               </option>
             ))}
         </Form.Select>
