@@ -64,15 +64,30 @@ export const FilterSidebar = ({ tables }: FilterSidebarProps) => {
         <Form.Label className="small fw-bold">Water Year</Form.Label>
         <Form.Select
           size="sm"
-          value={mapFilters.waterYear || ''}
-          onChange={(e) => handleMapFilterChange('waterYear', e.target.value || null)}
+          value={mapFilters.waterYear === null ? NULL_OPTION : (mapFilters.waterYear ?? '')}
+          onChange={(e) =>
+            handleMapFilterChange(
+              'waterYear',
+              e.target.value === NULL_OPTION ? null : e.target.value || null
+            )
+          }
         >
           {Array.isArray(waterYears.data) &&
-            waterYears.data.map((waterYear) => (
-              <option key={waterYear} value={waterYear}>
-                {waterYear}
-              </option>
-            ))}
+            waterYears.data
+              .toSorted((a, b) => {
+                if (a === null) return -1;
+                if (b === null) return 1;
+                return b.localeCompare(a);
+              })
+              .map((waterYear) => {
+                const optionValue = waterYear === null ? NULL_OPTION : waterYear;
+                const optionLabel = waterYear === null ? '<all>' : waterYear;
+                return (
+                  <option key={String(optionValue)} value={optionValue}>
+                    {optionLabel}
+                  </option>
+                );
+              })}
         </Form.Select>
       </Form.Group>
 
@@ -81,15 +96,30 @@ export const FilterSidebar = ({ tables }: FilterSidebarProps) => {
         <Form.Label className="small fw-bold">Quarter</Form.Label>
         <Form.Select
           size="sm"
-          value={mapFilters.quarter || ''}
-          onChange={(e) => handleMapFilterChange('quarter', e.target.value || null)}
+          value={mapFilters.quarter === null ? NULL_OPTION : (mapFilters.quarter ?? '')}
+          onChange={(e) =>
+            handleMapFilterChange(
+              'quarter',
+              e.target.value === NULL_OPTION ? null : e.target.value || null
+            )
+          }
         >
           {Array.isArray(quarters.data) &&
-            quarters.data.map((quarter) => (
-              <option key={quarter} value={quarter}>
-                {quarter}
-              </option>
-            ))}
+            quarters.data
+              .toSorted((a, b) => {
+                if (a === null) return -1;
+                if (b === null) return 1;
+                return a.localeCompare(b);
+              })
+              .map((quarter) => {
+                const optionValue = quarter === null ? NULL_OPTION : quarter;
+                const optionLabel = quarter === null ? '<all>' : quarter;
+                return (
+                  <option key={String(optionValue)} value={optionValue}>
+                    {optionLabel}
+                  </option>
+                );
+              })}
         </Form.Select>
       </Form.Group>
 
