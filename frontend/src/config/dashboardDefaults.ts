@@ -45,8 +45,6 @@ export const DATA_DASHBOARD_DEFAULTS = {
 };
 
 export const NWMD_DASHBOARD_DEFAULTS = {
-  preferredWaterYear: null,
-  preferredQuarter: null,
   preferredConfiguration: 'nwm30_medium_range',
   preferredVariable: 'streamflow_hourly_inst',
   preferredThreshold: null,
