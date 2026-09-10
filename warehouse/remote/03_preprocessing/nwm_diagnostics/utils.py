@@ -445,12 +445,24 @@ def create_ondemand_pod_template(ephemeral_storage_request="40Gi"):
         str: Path to the generated pod template YAML file.
     """
 
-    # Alternate executor pod template targeting the ON-DEMAND `nb-r5-4xlarge-teehr`
-    # node group instead of the spot `spark-r5-4xlarge-spot` pool, for tuning runs
-    # where we want clean measurements without spot-interruption noise. Same
-    # instance type (r5.4xlarge) so executor sizing math stays comparable to prior
-    # spot-based runs. Different taint on this node group (hub.jupyter.org/dedicated
-    # =user vs teehr-hub/dedicated=worker), so it needs its own tolerations.
+    # Executor pod template targeting the ON-DEMAND `spark-r5-4xlarge` node group,
+    # not the spot `spark-r5-4xlarge-spot` pool: this job writes once at the very
+    # end, so a spot reclaim at hour 3 destroys the entire run, and tuning runs
+    # need measurements free of spot-interruption noise. Same instance type
+    # (r5.4xlarge) so executor sizing math stays comparable to prior spot runs.
+    #
+    # 2026-09-09: was `nb-r5-4xlarge`. That choice predates the non-spot
+    # `spark-r5-4xlarge` group (terraform/eks.tf:396) and read as "on-demand OR
+    # spot" when the real choice is now "on-demand worker pool OR the pool
+    # JupyterHub spawns user servers into". Executors were landing on the
+    # notebook pool -- 15 of the 16 nodes in use -- where a user server can
+    # displace an executor. At executor_cores=3 a node is ~95% committed on both
+    # CPU and memory, so that contention is no longer cheap. The worker group
+    # carries the same 300 GB gp3 volumes (local.spark_executor_block_device_
+    # mappings, eks.tf:399) and scales from desired_size=0, so nothing is lost.
+    # NOTE the taints differ (teehr-hub/dedicated=worker vs
+    # hub.jupyter.org/dedicated=user) -- the tolerations below MUST change with
+    # the nodeSelector or the pods sit unschedulable.
     #
     # ephemeral-storage request: 2026-09-06, a full-dataset run died with ~55
     # executor evictions ("The node was low on resource: ephemeral-storage") and
@@ -509,15 +521,15 @@ spec:
       claimName: data-nfs
   tolerations:
   - effect: "NoSchedule"
-    key: "hub.jupyter.org/dedicated"
+    key: "teehr-hub/dedicated"
     operator: "Equal"
-    value: "user"
+    value: "worker"
   - effect: "NoSchedule"
-    key: "hub.jupyter.org_dedicated"
+    key: "teehr-hub_dedicated"
     operator: "Equal"
-    value: "user"
+    value: "worker"
   nodeSelector:
-    teehr-hub/nodegroup-name: nb-r5-4xlarge
+    teehr-hub/nodegroup-name: spark-r5-4xlarge
     """)
 
     print(
