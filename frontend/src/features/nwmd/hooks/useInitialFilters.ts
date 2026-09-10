@@ -54,14 +54,16 @@ export const useInitialFilters = (table: string) => {
 
   useEffect(() => {
     if (
-      defaultQuarter == null ||
-      defaultConfiguration == null ||
-      defaultVariable == null ||
-      defaultAggMethod == null ||
-      defaultLeadTimeBin == null
+      !quarters.data?.length ||
+      !configurations.data?.length ||
+      !variables.data?.length ||
+      !aggMethods.data?.length ||
+      !leadTimeBins.data?.length
     ) {
       return;
     }
+
+    if (defaultConfiguration === null || defaultVariable === null) return;
 
     dispatch({
       type: ActionTypes.INITIALIZE_FILTERS,
@@ -75,12 +77,17 @@ export const useInitialFilters = (table: string) => {
       },
     });
   }, [
+    quarters.data,
+    configurations.data,
+    variables.data,
+    aggMethods.data,
+    leadTimeBins.data,
     defaultQuarter,
     defaultConfiguration,
     defaultVariable,
-    defaultThreshold,
     defaultAggMethod,
     defaultLeadTimeBin,
+    defaultThreshold,
     dispatch,
   ]);
 
