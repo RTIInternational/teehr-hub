@@ -41,23 +41,6 @@ export const FilterSidebar = ({ tables }: FilterSidebarProps) => {
 
   return (
     <div className="p-3">
-      {/* Quarter Filter */}
-      <Form.Group className="mb-3">
-        <Form.Label className="small fw-bold">Quarter</Form.Label>
-        <Form.Select
-          size="sm"
-          value={mapFilters.quarter || ''}
-          onChange={(e) => handleMapFilterChange('quarter', e.target.value || null)}
-        >
-          {Array.isArray(quarters.data) &&
-            quarters.data.map((quarter) => (
-              <option key={quarter} value={quarter}>
-                {quarter}
-              </option>
-            ))}
-        </Form.Select>
-      </Form.Group>
-
       {/* Configuration Filter */}
       <Form.Group className="mb-3">
         <Form.Label className="small fw-bold">Model Configuration</Form.Label>
@@ -70,6 +53,23 @@ export const FilterSidebar = ({ tables }: FilterSidebarProps) => {
             configurations.data.map((config) => (
               <option key={config} value={config}>
                 {config}
+              </option>
+            ))}
+        </Form.Select>
+      </Form.Group>
+
+      {/* Quarter Filter */}
+      <Form.Group className="mb-3">
+        <Form.Label className="small fw-bold">Quarter</Form.Label>
+        <Form.Select
+          size="sm"
+          value={mapFilters.quarter || ''}
+          onChange={(e) => handleMapFilterChange('quarter', e.target.value || null)}
+        >
+          {Array.isArray(quarters.data) &&
+            quarters.data.map((quarter) => (
+              <option key={quarter} value={quarter}>
+                {quarter}
               </option>
             ))}
         </Form.Select>
