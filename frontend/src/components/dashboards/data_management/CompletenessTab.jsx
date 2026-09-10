@@ -22,7 +22,7 @@ import CompletenessHeatmap from './CompletenessHeatmap';
 import SimpleMapPanel from './SimpleMapPanel';
 
 const CONFIG_OPTIONS = ['usgs_observations'];
-const VARIABLE_OPTIONS = ['streamflow_hourly_inst'];
+const VARIABLE_OPTIONS = ['streamflow_none_inst'];
 
 // ── Component ──────────────────────────────────────────────────────────────
 const CompletenessTab = ({ isActive = true }) => {

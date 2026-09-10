@@ -796,7 +796,7 @@ deployments:
     work_pool: *work_pool
     schedule:
       cron: "15 4 * * *"
-      active: true
+      active: false
 
   - name: update-locations-summary
     version:

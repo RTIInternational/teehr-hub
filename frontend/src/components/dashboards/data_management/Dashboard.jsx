@@ -19,7 +19,6 @@ import LocationsSummaryTab from './LocationsSummaryTab';
 const TABS = [
   { id: 'configurations', label: 'Configurations Summary' },
   { id: 'locations', label: 'Locations Summary' },
-  { id: 'completeness', label: 'Configuration Completeness' },
 ];
 
 const Dashboard = () => {
