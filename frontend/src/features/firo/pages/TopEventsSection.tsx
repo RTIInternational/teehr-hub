@@ -6,6 +6,7 @@ import Spinner from 'react-bootstrap/Spinner';
 
 import { useDistinctValues } from '@/shared/queries/distinctValues';
 
+import { IndividualEventForecastTrace } from '../components/IndividualEventForecastTrace';
 import TopEventsHeatmap, {
   type TopEventSummary,
   type TopEventsHeatmapMetric,
@@ -264,6 +265,16 @@ export const TopEventsSection = () => {
             </div>
           )}
         </Card.Body>
+      </Card>
+
+      <Card className="firo-metric-card mt-3">
+        <IndividualEventForecastTrace
+          rankedEvents={rankedEvents}
+          effectiveThreshold={effectiveThreshold}
+          primaryLocationId={selectedLocation.primary_location_id}
+          configurationName={selectedConfigurationName}
+          variableName={selectedVariableName}
+        />
       </Card>
     </div>
   );

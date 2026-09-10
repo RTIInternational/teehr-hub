@@ -224,6 +224,22 @@ export const apiService = {
     return apiCall(`/collections/secondary_timeseries/items?${params.toString()}`);
   },
 
+  // Get initialization metadata for an individual event trace
+  getEventTraceInitializations: (filters = {}) => {
+    const params = new URLSearchParams();
+
+    if (filters.primary_location_id)
+      params.append('primary_location_id', filters.primary_location_id);
+    if (filters.configuration_name) params.append('configuration_name', filters.configuration_name);
+    if (filters.variable_name) params.append('variable_name', filters.variable_name);
+    if (filters.threshold) params.append('threshold', filters.threshold);
+    if (filters.event_id) params.append('event_id', filters.event_id);
+
+    return apiCall(
+      `/collections/joined_timeseries/event_trace/initializations?${params.toString()}`
+    );
+  },
+
   // Get available collections (OGC API - Common)
   getCollections: () => apiCall('/collections'),
 

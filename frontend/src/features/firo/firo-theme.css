@@ -529,6 +529,39 @@
   padding: 0;
 }
 
+.firo-trace-controls {
+  display: grid;
+  grid-template-columns: minmax(260px, 320px) 1fr;
+  gap: 14px;
+  align-items: end;
+}
+
+.firo-trace-slider-group {
+  min-width: 0;
+}
+
+.firo-trace-slider-group .form-range {
+  margin-top: 0.2rem;
+  margin-bottom: 0.5rem;
+}
+
+.firo-trace-slider-readout {
+  display: flex;
+  gap: 10px;
+  justify-content: space-between;
+  font-size: 0.76rem;
+  color: var(--firo-ink-muted);
+  font-weight: 600;
+  line-height: 1.25;
+}
+
+.firo-trace-placeholder {
+  border: 1px dashed #c8d8f3;
+  border-radius: 10px;
+  padding: 12px;
+  background: rgba(249, 251, 255, 0.7);
+}
+
 @keyframes firo-fade-slide {
   from {
     opacity: 0;
@@ -586,5 +619,14 @@
 @media (max-width: 768px) {
   .firo-page {
     padding: 10px;
+  }
+
+  .firo-trace-controls {
+    grid-template-columns: 1fr;
+  }
+
+  .firo-trace-slider-readout {
+    flex-direction: column;
+    gap: 4px;
   }
 }
