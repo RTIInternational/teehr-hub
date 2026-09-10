@@ -16,5 +16,5 @@ export const useLocations = (filters?: MetricsFilters) =>
   useQuery<LocationsResponse>({
     queryKey: ['locations', filters],
     queryFn: () => apiService.getMetrics(filters),
-    enabled: !!filters,
+    enabled: !!filters && Object.values(filters).every((value) => value !== undefined),
   });
