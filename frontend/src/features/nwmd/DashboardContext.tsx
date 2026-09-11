@@ -5,7 +5,7 @@ import { NWMD_DASHBOARD_DEFAULTS } from '@/config/dashboardDefaults';
 import type { MapLocation } from '@/shared/types/locations';
 import type { MapMetric } from '@/shared/types/maps';
 import type { TimeseriesFilters } from '@/shared/types/timeseries';
-import { getQuarterDateRange } from '@/shared/utils/formatters';
+import { getQuarterDateRange } from '@/shared/utils/dates';
 
 import type { CdfPlots } from './types/cdf';
 import type { NwmdMapFilters, ViewportBounds } from './types/maps';
