@@ -1,8 +1,10 @@
+import { useMemo } from 'react';
 import { Form } from 'react-bootstrap';
 
 import { useConfigurations } from '@/shared/queries/configurations';
 import { useDistinctValues } from '@/shared/queries/distinctValues';
 import { useTableProperties } from '@/shared/queries/queryables';
+import { getWaterYearForQuarter } from '@/shared/utils/dates';
 
 import { useFilters } from '../hooks/useFilters';
 import { isNwmdMetric } from '../utils/utils';
@@ -27,11 +29,29 @@ export const FilterSidebar = ({ tables }: FilterSidebarProps) => {
   const tableProperties = useTableProperties(tables);
 
   // Queryable values
+  const waterYears = useDistinctValues(tables[0], 'water_year');
   const quarters = useDistinctValues(tables[0], 'quarter');
   const configurations = useConfigurations(tables[0]);
   const thresholds = useDistinctValues(tables[0], 'threshold');
   const aggMethods = useDistinctValues(tables[0], 'window_agg');
   const leadTimeBins = useDistinctValues(tables[0], 'forecast_lead_time_bin');
+
+  const availableQuarters = useMemo(() => {
+    if (mapFilters.waterYear === null) {
+      return [null];
+    }
+
+    const quarterValues = Array.isArray(quarters.data) ? quarters.data : [];
+    const filteredQuarters = quarterValues
+      .filter((quarter): quarter is string => typeof quarter === 'string' && quarter.length > 0)
+      .filter((quarter) => {
+        if (!mapFilters.waterYear) return true;
+        return getWaterYearForQuarter(quarter) === mapFilters.waterYear;
+      })
+      .toSorted((a, b) => a.localeCompare(b));
+
+    return [null, ...filteredQuarters];
+  }, [quarters.data, mapFilters.waterYear]);
 
   const handleMapFilterChange = async (filterType: string, value: string | null) => {
     // Reset alt hypothesis when the metric changes — the operator is metric-specific
@@ -41,23 +61,6 @@ export const FilterSidebar = ({ tables }: FilterSidebarProps) => {
 
   return (
     <div className="p-3">
-      {/* Quarter Filter */}
-      <Form.Group className="mb-3">
-        <Form.Label className="small fw-bold">Quarter</Form.Label>
-        <Form.Select
-          size="sm"
-          value={mapFilters.quarter || ''}
-          onChange={(e) => handleMapFilterChange('quarter', e.target.value || null)}
-        >
-          {Array.isArray(quarters.data) &&
-            quarters.data.map((quarter) => (
-              <option key={quarter} value={quarter}>
-                {quarter}
-              </option>
-            ))}
-        </Form.Select>
-      </Form.Group>
-
       {/* Configuration Filter */}
       <Form.Group className="mb-3">
         <Form.Label className="small fw-bold">Model Configuration</Form.Label>
@@ -72,6 +75,63 @@ export const FilterSidebar = ({ tables }: FilterSidebarProps) => {
                 {config}
               </option>
             ))}
+        </Form.Select>
+      </Form.Group>
+
+      {/* Water Year Filter */}
+      <Form.Group className="mb-3">
+        <Form.Label className="small fw-bold">Water Year</Form.Label>
+        <Form.Select
+          size="sm"
+          value={mapFilters.waterYear === null ? NULL_OPTION : (mapFilters.waterYear ?? '')}
+          onChange={(e) =>
+            handleMapFilterChange(
+              'waterYear',
+              e.target.value === NULL_OPTION ? null : e.target.value || null
+            )
+          }
+        >
+          {Array.isArray(waterYears.data) &&
+            waterYears.data
+              .toSorted((a, b) => {
+                if (a === null) return -1;
+                if (b === null) return 1;
+                return b.localeCompare(a);
+              })
+              .map((waterYear) => {
+                const optionValue = waterYear === null ? NULL_OPTION : waterYear;
+                const optionLabel = waterYear === null ? '<all>' : waterYear;
+                return (
+                  <option key={String(optionValue)} value={optionValue}>
+                    {optionLabel}
+                  </option>
+                );
+              })}
+        </Form.Select>
+      </Form.Group>
+
+      {/* Quarter Filter */}
+      <Form.Group className="mb-3">
+        <Form.Label className="small fw-bold">Quarter</Form.Label>
+        <Form.Select
+          size="sm"
+          value={mapFilters.quarter === null ? NULL_OPTION : (mapFilters.quarter ?? '')}
+          onChange={(e) =>
+            handleMapFilterChange(
+              'quarter',
+              e.target.value === NULL_OPTION ? null : e.target.value || null
+            )
+          }
+        >
+          {availableQuarters.map((quarter) => {
+            const optionValue = quarter === null ? NULL_OPTION : quarter;
+            const optionLabel = quarter === null ? '<all>' : quarter;
+            return (
+              <option key={String(optionValue)} value={optionValue}>
+                {optionLabel}
+              </option>
+            );
+          })}
         </Form.Select>
       </Form.Group>
 

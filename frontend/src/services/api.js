@@ -144,6 +144,7 @@ export const apiService = {
     const reservedKeys = ['table'];
 
     const aliasMap = {
+      waterYear: 'water_year',
       aggMethod: 'window_agg',
       configuration: 'configuration_name',
       leadTimeBin: 'forecast_lead_time_bin',

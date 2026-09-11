@@ -45,6 +45,22 @@ const DashboardsHome = () => {
       image: '/api/static/preview-forecast.png', // placeholder
       color: 'secondary',
     },
+    {
+      id: 'nwmd',
+      title: 'National Water Model Diagnostics Dashboard',
+      description:
+        'Supports routine operational evaluations and troubleshooting model runs for the National Water Model.',
+      features: [
+        'Metrics by quarter, water year, and period of record',
+        'Custom metric CDF plots per extents',
+        'Forecast vs observation timeseries comparison',
+        'Metric vs lead time visualization',
+      ],
+      path: '/nwmd',
+      status: 'available',
+      image: '/api/static/preview-nwmd.png', // placeholder
+      color: 'success',
+    },
     // Future dashboards
     {
       id: 'retrospective-model-comparisons',

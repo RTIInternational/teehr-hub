@@ -15,17 +15,13 @@ import { ActionTypes, useDashboard } from '../DashboardContext';
 export const useInitialFilters = (table: string) => {
   const { dispatch } = useDashboard();
 
+  const waterYears = useDistinctValues(table, 'water_year');
   const quarters = useDistinctValues(table, 'quarter');
   const configurations = useConfigurations(table);
   const variables = useVariables(table);
   const thresholds = useDistinctValues(table, 'threshold');
   const aggMethods = useDistinctValues(table, 'window_agg');
   const leadTimeBins = useDistinctValues(table, 'forecast_lead_time_bin');
-
-  const defaultQuarter = selectDefault(
-    NWMD_DASHBOARD_DEFAULTS.preferredQuarter,
-    quarters.data ?? []
-  );
 
   const defaultConfiguration = selectDefault(
     NWMD_DASHBOARD_DEFAULTS.preferredConfiguration,
@@ -54,19 +50,30 @@ export const useInitialFilters = (table: string) => {
 
   useEffect(() => {
     if (
-      defaultQuarter == null ||
-      defaultConfiguration == null ||
-      defaultVariable == null ||
-      defaultAggMethod == null ||
-      defaultLeadTimeBin == null
+      !waterYears.data?.length ||
+      !configurations.data?.length ||
+      !variables.data?.length ||
+      !aggMethods.data?.length ||
+      !leadTimeBins.data?.length
     ) {
       return;
     }
 
+    if (defaultConfiguration === null || defaultVariable === null) return;
+
+    const defaultWaterYear = waterYears.data
+      .filter((waterYear) => !!waterYear)
+      .sort((a, b) => (a < b ? 1 : -1))[0];
+
+    const defaultQuarter = (quarters.data ?? [])
+      .filter((quarter): quarter is string => !!quarter)
+      .sort((a, b) => (a < b ? 1 : -1))[0];
+
     dispatch({
       type: ActionTypes.INITIALIZE_FILTERS,
       payload: {
-        quarter: defaultQuarter,
+        waterYear: defaultWaterYear,
+        quarter: defaultQuarter ?? null,
         configuration: defaultConfiguration,
         variable: defaultVariable,
         threshold: defaultThreshold ?? null,
@@ -75,12 +82,17 @@ export const useInitialFilters = (table: string) => {
       },
     });
   }, [
-    defaultQuarter,
+    waterYears.data,
+    quarters.data,
+    configurations.data,
+    variables.data,
+    aggMethods.data,
+    leadTimeBins.data,
     defaultConfiguration,
     defaultVariable,
-    defaultThreshold,
     defaultAggMethod,
     defaultLeadTimeBin,
+    defaultThreshold,
     dispatch,
   ]);
 

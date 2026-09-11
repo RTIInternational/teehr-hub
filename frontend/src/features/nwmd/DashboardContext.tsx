@@ -5,7 +5,7 @@ import { NWMD_DASHBOARD_DEFAULTS } from '@/config/dashboardDefaults';
 import type { MapLocation } from '@/shared/types/locations';
 import type { MapMetric } from '@/shared/types/maps';
 import type { TimeseriesFilters } from '@/shared/types/timeseries';
-import { getQuarterDateRange } from '@/shared/utils/formatters';
+import { getQuarterDateRange } from '@/shared/utils/dates';
 
 import type { CdfPlots } from './types/cdf';
 import type { NwmdMapFilters, ViewportBounds } from './types/maps';
@@ -95,6 +95,7 @@ const initialState: DashboardState = {
 
   // Map filters (original structure)
   mapFilters: {
+    waterYear: undefined,
     quarter: undefined,
     configuration: undefined,
     variable: undefined,
@@ -175,7 +176,7 @@ export const ActionTypes = {
 const reducer = (state: DashboardState, action: DashboardAction) => {
   switch (action.type) {
     case ActionTypes.INITIALIZE_FILTERS: {
-      const { quarter, configuration, variable, threshold, aggMethod, leadTimeBin } =
+      const { waterYear, quarter, configuration, variable, threshold, aggMethod, leadTimeBin } =
         action.payload;
 
       const quarterToUse = state.mapFilters.quarter ?? quarter;
@@ -188,6 +189,7 @@ const reducer = (state: DashboardState, action: DashboardAction) => {
 
         mapFilters: {
           ...state.mapFilters,
+          waterYear: waterYear,
           quarter: quarterToUse,
           configuration: state.mapFilters.configuration ?? configuration,
           variable: state.mapFilters.variable ?? variable,
@@ -221,6 +223,19 @@ const reducer = (state: DashboardState, action: DashboardAction) => {
     }
 
     case ActionTypes.UPDATE_MAP_FILTERS: {
+      const waterYearChanged =
+        action.payload.waterYear !== undefined &&
+        action.payload.waterYear !== state.mapFilters.waterYear;
+
+      const nextMapFilters: NwmdMapFilters = {
+        ...state.mapFilters,
+        ...action.payload,
+      };
+
+      if (waterYearChanged || nextMapFilters.waterYear === null) {
+        nextMapFilters.quarter = null;
+      }
+
       // Keep timeseries defaults in sync with map display filters.
       // This mirrors retrospective behavior where map filter changes reset
       // the default timeseries selections.
@@ -241,10 +256,10 @@ const reducer = (state: DashboardState, action: DashboardAction) => {
           variables: action.payload.variable ? [action.payload.variable] : [],
         };
       }
-      if (action.payload.quarter) {
+      if (nextMapFilters.quarter) {
         const quarterTimeseriesSync = syncTimeseriesFiltersForQuarter(
           state.timeseriesFilters,
-          action.payload.quarter
+          nextMapFilters.quarter
         );
         mapTimeseriesSync.primary = {
           ...(mapTimeseriesSync.primary || state.timeseriesFilters.primary),
@@ -257,10 +272,7 @@ const reducer = (state: DashboardState, action: DashboardAction) => {
       }
       return {
         ...state,
-        mapFilters: {
-          ...state.mapFilters,
-          ...action.payload,
-        },
+        mapFilters: nextMapFilters,
         timeseriesFilters: {
           ...state.timeseriesFilters,
           ...mapTimeseriesSync,
