@@ -8,8 +8,8 @@ import { CdfSidebar } from './components/CdfSidebar';
 import { FilterSidebar } from './components/FilterSidebar';
 import LeadTimeBinPlot from './components/LeadTimeBinPlot';
 import NwmdMapComponent from './components/NwmdMapComponent';
+import NwmdTimeseriesPlot from './components/NwmdTimeseriesPlot';
 import { SiteInfo } from './components/SiteInfo';
-import TimeseriesNoControls from './components/TimeseriesNoControls';
 import { useDashboard, ActionTypes } from './DashboardContext';
 import { useFilters } from './hooks/useFilters';
 import { useInitialFilters } from './hooks/useInitialFilters';
@@ -190,7 +190,9 @@ export const Dashboard = () => {
                     overflow: 'hidden', // Prevent the panel itself from overflowing
                   }}
                 >
-                  <TimeseriesNoControls
+                  <NwmdTimeseriesPlot
+                    table={tables[0]}
+                    mapFilters={mapFilters}
                     selectedLocation={selectedLocation}
                     timeseriesFilters={timeseriesFilters}
                   />
