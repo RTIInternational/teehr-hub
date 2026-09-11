@@ -1,8 +1,10 @@
+import { useMemo } from 'react';
 import { Form } from 'react-bootstrap';
 
 import { useConfigurations } from '@/shared/queries/configurations';
 import { useDistinctValues } from '@/shared/queries/distinctValues';
 import { useTableProperties } from '@/shared/queries/queryables';
+import { getWaterYearForQuarter } from '@/shared/utils/dates';
 
 import { useFilters } from '../hooks/useFilters';
 import { isNwmdMetric } from '../utils/utils';
@@ -33,6 +35,23 @@ export const FilterSidebar = ({ tables }: FilterSidebarProps) => {
   const thresholds = useDistinctValues(tables[0], 'threshold');
   const aggMethods = useDistinctValues(tables[0], 'window_agg');
   const leadTimeBins = useDistinctValues(tables[0], 'forecast_lead_time_bin');
+
+  const availableQuarters = useMemo(() => {
+    if (mapFilters.waterYear === null) {
+      return [null];
+    }
+
+    const quarterValues = Array.isArray(quarters.data) ? quarters.data : [];
+    const filteredQuarters = quarterValues
+      .filter((quarter): quarter is string => typeof quarter === 'string' && quarter.length > 0)
+      .filter((quarter) => {
+        if (!mapFilters.waterYear) return true;
+        return getWaterYearForQuarter(quarter) === mapFilters.waterYear;
+      })
+      .toSorted((a, b) => a.localeCompare(b));
+
+    return [null, ...filteredQuarters];
+  }, [quarters.data, mapFilters.waterYear]);
 
   const handleMapFilterChange = async (filterType: string, value: string | null) => {
     // Reset alt hypothesis when the metric changes — the operator is metric-specific
@@ -104,22 +123,15 @@ export const FilterSidebar = ({ tables }: FilterSidebarProps) => {
             )
           }
         >
-          {Array.isArray(quarters.data) &&
-            quarters.data
-              .toSorted((a, b) => {
-                if (a === null) return -1;
-                if (b === null) return 1;
-                return a.localeCompare(b);
-              })
-              .map((quarter) => {
-                const optionValue = quarter === null ? NULL_OPTION : quarter;
-                const optionLabel = quarter === null ? '<all>' : quarter;
-                return (
-                  <option key={String(optionValue)} value={optionValue}>
-                    {optionLabel}
-                  </option>
-                );
-              })}
+          {availableQuarters.map((quarter) => {
+            const optionValue = quarter === null ? NULL_OPTION : quarter;
+            const optionLabel = quarter === null ? '<all>' : quarter;
+            return (
+              <option key={String(optionValue)} value={optionValue}>
+                {optionLabel}
+              </option>
+            );
+          })}
         </Form.Select>
       </Form.Group>
 

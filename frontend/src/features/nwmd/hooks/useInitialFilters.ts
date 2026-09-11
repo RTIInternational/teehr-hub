@@ -51,7 +51,6 @@ export const useInitialFilters = (table: string) => {
   useEffect(() => {
     if (
       !waterYears.data?.length ||
-      !quarters.data?.length ||
       !configurations.data?.length ||
       !variables.data?.length ||
       !aggMethods.data?.length ||
@@ -66,15 +65,15 @@ export const useInitialFilters = (table: string) => {
       .filter((waterYear) => !!waterYear)
       .sort((a, b) => (a < b ? 1 : -1))[0];
 
-    const defaultQuarter = quarters.data
-      .filter((quarter) => !!quarter)
+    const defaultQuarter = (quarters.data ?? [])
+      .filter((quarter): quarter is string => !!quarter)
       .sort((a, b) => (a < b ? 1 : -1))[0];
 
     dispatch({
       type: ActionTypes.INITIALIZE_FILTERS,
       payload: {
         waterYear: defaultWaterYear,
-        quarter: defaultQuarter,
+        quarter: defaultQuarter ?? null,
         configuration: defaultConfiguration,
         variable: defaultVariable,
         threshold: defaultThreshold ?? null,

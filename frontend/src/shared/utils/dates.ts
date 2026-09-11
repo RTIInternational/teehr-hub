@@ -65,6 +65,13 @@ export const parseQuarterValue = (quarter: string): ParsedQuarter | null => {
   };
 };
 
+export const getWaterYearForQuarter = (quarter: string) => {
+  const parsed = parseQuarterValue(quarter);
+  if (!parsed) return null;
+
+  return String(parsed.quarterNum === 4 ? parsed.year + 1 : parsed.year);
+};
+
 export const getWaterYearMonthOptionsFromQuarters = (
   quarters: Array<string | null | undefined>
 ): WaterYearMonthOption[] => {
