@@ -10,7 +10,6 @@ const DashboardsHome = () => {
       features: [
         'Data summaries by model configuration',
         'Data summaries by location',
-        'Completeness analysis of timeseries data',
       ],
       path: '/data',
       status: 'available',
