@@ -75,29 +75,12 @@ const Navbar = () => {
               className="navbar-ciroh-logo"
             />
           </Link>
-          <Dropdown key={location.pathname}>
-            <Dropdown.Toggle
-              variant="outline-light"
-              size="sm"
-              className="d-inline-flex align-items-center navbar-dashboard-toggle"
-            >
-              Dashboards
-            </Dropdown.Toggle>
-            <Dropdown.Menu>
-              <Dropdown.Item as={Link} to="/hub">
-                Dashboard Hub
-              </Dropdown.Item>
-              <Dropdown.Item as={Link} to="/data" className="ps-4">
-                Data Availability
-              </Dropdown.Item>
-              <Dropdown.Item as={Link} to="/retrospective" className="ps-4">
-                Retrospective Simulations
-              </Dropdown.Item>
-              <Dropdown.Item as={Link} to="/forecast" className="ps-4">
-                Forecast Analysis
-              </Dropdown.Item>
-            </Dropdown.Menu>
-          </Dropdown>
+          <Link
+            className="btn btn-outline-light btn-sm d-inline-flex align-items-center"
+            to={'/hub'}
+          >
+            Dashboards
+          </Link>
           {canViewHubDeployment && (
             <a
               className="btn btn-outline-light btn-sm d-inline-flex align-items-center"
