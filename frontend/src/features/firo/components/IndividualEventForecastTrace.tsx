@@ -8,6 +8,7 @@ import { useEventTraceInitializations } from '../hooks/useEventTraceInitializati
 import type { TopEventSummary } from './TopEventsHeatmap';
 
 const ALL_THRESHOLDS = 'all';
+const LEAD_TIME_OPTIONS = [24, 48, 72] as const;
 
 type IndividualEventForecastTraceProps = {
   rankedEvents: TopEventSummary[];
@@ -25,6 +26,7 @@ export const IndividualEventForecastTrace = ({
   variableName,
 }: IndividualEventForecastTraceProps) => {
   const [selectedEventId, setSelectedEventId] = useState<string>('');
+  const [leadTimeHours, setLeadTimeHours] = useState<number>(48);
   const [selectedInitializationDatetime, setSelectedInitializationDatetime] = useState<string>('');
 
   const effectiveSelectedEventId =
@@ -41,6 +43,7 @@ export const IndividualEventForecastTrace = ({
     variableName,
     threshold: traceThreshold,
     eventId: effectiveSelectedEventId || null,
+    leadTimeHours,
   });
 
   const initializationOptions = useMemo(
@@ -106,6 +109,26 @@ export const IndividualEventForecastTrace = ({
             </Form.Select>
           </Form.Group>
 
+          <Form.Group controlId="firo-trace-lead-time-select">
+            <Form.Label className="firo-filter-label mb-1">Lead Time</Form.Label>
+            <Form.Select
+              size="sm"
+              className="firo-select"
+              value={String(leadTimeHours)}
+              onChange={(e) => {
+                setLeadTimeHours(Number(e.target.value));
+                setSelectedInitializationDatetime('');
+              }}
+              style={{ minWidth: '160px' }}
+            >
+              {LEAD_TIME_OPTIONS.map((hours) => (
+                <option key={hours} value={String(hours)}>
+                  {hours} hours
+                </option>
+              ))}
+            </Form.Select>
+          </Form.Group>
+
           <div className="firo-trace-slider-group">
             <Form.Label className="firo-filter-label mb-1">Initialization Datetime</Form.Label>
 
@@ -145,11 +168,11 @@ export const IndividualEventForecastTrace = ({
                   disabled={initializationOptions.length === 0}
                 />
                 <div className="firo-trace-slider-readout">
-                  <span>Start: {initializationOptions[0] ?? 'N/A'}</span>
-                  <span>Selected: {effectiveSelectedInitializationDatetime ?? 'N/A'}</span>
                   <span>
-                    End: {initializationOptions[initializationOptions.length - 1] ?? 'N/A'}
+                    Expanded Start: {initializationQuery.data?.expanded_event_start ?? 'N/A'}
                   </span>
+                  <span>Selected: {effectiveSelectedInitializationDatetime ?? 'N/A'}</span>
+                  <span>Expanded End: {initializationQuery.data?.expanded_event_end ?? 'N/A'}</span>
                 </div>
               </>
             )}

@@ -8,6 +8,7 @@ export type EventTraceInitializationsFilters = {
   variableName?: string | null;
   threshold?: string | null;
   eventId?: string | null;
+  leadTimeHours?: number | null;
 };
 
 export type EventTraceInitializationsResponse = {
@@ -16,14 +17,18 @@ export type EventTraceInitializationsResponse = {
   variable_name: string;
   threshold: string;
   event_id: string;
+  lead_time_hours: number;
   event_start: string;
   event_end: string;
+  expanded_event_start: string;
+  expanded_event_end: string;
   available_initialization_datetimes: string[];
   default_initialization_datetime: string;
 };
 
 export const useEventTraceInitializations = (filters: EventTraceInitializationsFilters) => {
-  const { primaryLocationId, configurationName, variableName, threshold, eventId } = filters;
+  const { primaryLocationId, configurationName, variableName, threshold, eventId, leadTimeHours } =
+    filters;
 
   return useQuery<EventTraceInitializationsResponse>({
     queryKey: [
@@ -34,6 +39,7 @@ export const useEventTraceInitializations = (filters: EventTraceInitializationsF
       variableName,
       threshold,
       eventId,
+      leadTimeHours,
     ],
     queryFn: () =>
       apiService.getEventTraceInitializations({
@@ -42,9 +48,15 @@ export const useEventTraceInitializations = (filters: EventTraceInitializationsF
         variable_name: variableName ?? null,
         threshold: threshold ?? null,
         event_id: eventId ?? null,
+        lead_time_hours: leadTimeHours ?? null,
       }),
     enabled:
-      !!primaryLocationId && !!configurationName && !!variableName && !!threshold && !!eventId,
+      !!primaryLocationId &&
+      !!configurationName &&
+      !!variableName &&
+      !!threshold &&
+      !!eventId &&
+      !!leadTimeHours,
     staleTime: Infinity,
   });
 };

@@ -531,7 +531,7 @@
 
 .firo-trace-controls {
   display: grid;
-  grid-template-columns: minmax(260px, 320px) 1fr;
+  grid-template-columns: minmax(240px, 320px) minmax(140px, 180px) 1fr;
   gap: 14px;
   align-items: end;
 }

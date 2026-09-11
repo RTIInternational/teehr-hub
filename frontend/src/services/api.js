@@ -234,6 +234,8 @@ export const apiService = {
     if (filters.variable_name) params.append('variable_name', filters.variable_name);
     if (filters.threshold) params.append('threshold', filters.threshold);
     if (filters.event_id) params.append('event_id', filters.event_id);
+    if (filters.lead_time_hours != null)
+      params.append('lead_time_hours', String(filters.lead_time_hours));
 
     return apiCall(
       `/collections/joined_timeseries/event_trace/initializations?${params.toString()}`
