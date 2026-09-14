@@ -16,6 +16,12 @@ export const EventTracePlot = ({ data }: EventTracePlotProps) => {
     trace_points?: Array<{ value_time: string; value: number }>;
   };
 
+  type RawPercentiles = {
+    p10?: Array<{ value_time: string; value: number }>;
+    p50?: Array<{ value_time: string; value: number }>;
+    p90?: Array<{ value_time: string; value: number }>;
+  };
+
   useEffect(() => {
     const currentPlot = plotRef.current;
     if (!currentPlot) return;
@@ -24,9 +30,12 @@ export const EventTracePlot = ({ data }: EventTracePlotProps) => {
     const postInitTraces = data.observed.post_initialization;
     const dataAny = data as EventTraceDataResponse & {
       forecastMembers?: RawMemberTrace[];
+      forecastPercentiles?: RawPercentiles;
     };
     const rawMemberTraces: RawMemberTrace[] =
       dataAny.forecast_members ?? dataAny.forecastMembers ?? [];
+    const rawPercentiles: RawPercentiles =
+      dataAny.forecast_percentiles ?? dataAny.forecastPercentiles ?? {};
 
     const forecastPlotData: Plotly.Data[] = rawMemberTraces
       .map((memberTrace, index) => {
@@ -55,8 +64,40 @@ export const EventTracePlot = ({ data }: EventTracePlotProps) => {
       })
       .filter((trace): trace is Plotly.Data => trace !== null);
 
+    const buildPercentileTrace = (
+      points: Array<{ value_time: string; value: number }> | undefined,
+      name: string,
+      dash: 'solid' | 'dash'
+    ): Plotly.Data | null => {
+      if (!points || points.length === 0) {
+        return null;
+      }
+
+      const x = points.map((p) => new Date(p.value_time));
+      const y = points.map((p) => Number(p.value));
+      if (!x.length || !y.length) {
+        return null;
+      }
+
+      return {
+        x,
+        y,
+        type: 'scatter',
+        mode: 'lines',
+        name,
+        line: { color: '#1f77b4', width: 2, dash },
+      } as Plotly.ScatterData;
+    };
+
+    const percentilePlotData = [
+      buildPercentileTrace(rawPercentiles.p10, 'Forecast P10', 'dash'),
+      buildPercentileTrace(rawPercentiles.p50, 'Forecast P50', 'solid'),
+      buildPercentileTrace(rawPercentiles.p90, 'Forecast P90', 'dash'),
+    ].filter((trace): trace is Plotly.Data => trace !== null);
+
     const plotData: Plotly.Data[] = [
       ...forecastPlotData,
+      ...percentilePlotData,
       {
         x: preInitTraces.map((p) => p.value_time),
         y: preInitTraces.map((p) => p.value),

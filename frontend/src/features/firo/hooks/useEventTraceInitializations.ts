@@ -84,6 +84,11 @@ export type EventTraceDataResponse = {
     post_initialization: TracePoint[];
   };
   forecast_members: EnsembleMemberTrace[];
+  forecast_percentiles: {
+    p10: TracePoint[];
+    p50: TracePoint[];
+    p90: TracePoint[];
+  };
 };
 
 export type EventTraceDataFilters = {
