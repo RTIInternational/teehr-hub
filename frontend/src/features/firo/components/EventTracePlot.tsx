@@ -124,11 +124,11 @@ export const EventTracePlot = ({ data }: EventTracePlotProps) => {
         font: { size: 14 },
       },
       xaxis: {
-        title: { text: 'Valid Time' },
+        title: { text: 'Date/Time' },
         type: 'date',
       },
       yaxis: {
-        title: { text: data.variable_name },
+        title: { text: 'Streamflow (m³/s)' },
       },
       hovermode: 'x unified',
       height: 500,
