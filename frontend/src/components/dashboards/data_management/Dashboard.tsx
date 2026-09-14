@@ -25,7 +25,7 @@ const Dashboard = () => {
   // Track which tabs have ever been activated so we lazy-mount them
   const [visitedTabs, setVisitedTabs] = useState(new Set(['configurations']));
 
-  const handleTabChange = (tabId) => {
+  const handleTabChange = (tabId: string) => {
     setActiveTab(tabId);
     setVisitedTabs((prev) => new Set([...prev, tabId]));
   };
