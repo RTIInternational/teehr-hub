@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
 import Alert from 'react-bootstrap/Alert';
 import Card from 'react-bootstrap/Card';
 import Form from 'react-bootstrap/Form';
@@ -31,7 +31,12 @@ export const IndividualEventForecastTrace = ({
 }: IndividualEventForecastTraceProps) => {
   const [selectedEventId, setSelectedEventId] = useState<string>('');
   const [leadTimeHours, setLeadTimeHours] = useState<number>(48);
-  const [selectedInitializationDatetime, setSelectedInitializationDatetime] = useState<string>('');
+  const [selectedInitializationIndex, setSelectedInitializationIndex] = useState<number | null>(
+    null
+  );
+  const [committedInitializationDatetime, setCommittedInitializationDatetime] = useState<
+    string | null
+  >(null);
 
   const effectiveSelectedEventId =
     selectedEventId && rankedEvents.some((event) => event.eventId === selectedEventId)
@@ -50,24 +55,26 @@ export const IndividualEventForecastTrace = ({
     leadTimeHours,
   });
 
-  const effectiveSelectedInitializationDatetime = useMemo(() => {
-    const initializationOptions =
-      initializationQuery.data?.available_initialization_datetimes ?? [];
-    if (!initializationOptions.length) return null;
-    if (
-      selectedInitializationDatetime &&
-      initializationOptions.includes(selectedInitializationDatetime)
-    ) {
-      return selectedInitializationDatetime;
-    }
+  const initializationOptions = initializationQuery.data?.available_initialization_datetimes ?? [];
 
-    const defaultDatetime = initializationQuery.data?.default_initialization_datetime;
-    if (defaultDatetime && initializationOptions.includes(defaultDatetime)) {
-      return defaultDatetime;
-    }
-
-    return initializationOptions[0];
-  }, [initializationQuery.data, selectedInitializationDatetime]);
+  const defaultInitializationDatetime =
+    (initializationQuery.data?.default_initialization_datetime ?? initializationOptions[0]) || null;
+  const defaultInitializationIndex = defaultInitializationDatetime
+    ? Math.max(initializationOptions.indexOf(defaultInitializationDatetime), 0)
+    : 0;
+  const effectiveSelectedInitializationIndex =
+    selectedInitializationIndex !== null &&
+    selectedInitializationIndex >= 0 &&
+    selectedInitializationIndex < initializationOptions.length
+      ? selectedInitializationIndex
+      : defaultInitializationIndex;
+  const effectiveSelectedInitializationDatetime =
+    initializationOptions[effectiveSelectedInitializationIndex] ?? null;
+  const committedInitializationForQuery =
+    committedInitializationDatetime &&
+    initializationOptions.includes(committedInitializationDatetime)
+      ? committedInitializationDatetime
+      : defaultInitializationDatetime;
 
   const traceDataQuery = useEventTraceData({
     primaryLocationId,
@@ -76,16 +83,18 @@ export const IndividualEventForecastTrace = ({
     threshold: traceThreshold,
     windowStart: initializationQuery.data?.expanded_event_start ?? null,
     windowEnd: initializationQuery.data?.expanded_event_end ?? null,
-    initializationTime: effectiveSelectedInitializationDatetime,
+    initializationTime: committedInitializationForQuery,
   });
 
-  const selectedInitializationIndex = useMemo(() => {
-    const initializationOptions =
-      initializationQuery.data?.available_initialization_datetimes ?? [];
-    return effectiveSelectedInitializationDatetime
-      ? Math.max(initializationOptions.indexOf(effectiveSelectedInitializationDatetime), 0)
-      : 0;
-  }, [effectiveSelectedInitializationDatetime, initializationQuery.data]);
+  const isShowingPreviousTraceWhileUpdating =
+    !!committedInitializationForQuery &&
+    !!traceDataQuery.data?.initialization_datetime &&
+    traceDataQuery.data.initialization_datetime !== committedInitializationForQuery;
+
+  const commitInitializationSelection = (index: number) => {
+    const nextDatetime = initializationOptions[index] ?? null;
+    setCommittedInitializationDatetime(nextDatetime);
+  };
 
   return (
     <>
@@ -110,7 +119,8 @@ export const IndividualEventForecastTrace = ({
               value={effectiveSelectedEventId}
               onChange={(e) => {
                 setSelectedEventId(e.target.value);
-                setSelectedInitializationDatetime('');
+                setSelectedInitializationIndex(null);
+                setCommittedInitializationDatetime(null);
               }}
               disabled={!rankedEvents.length}
               style={{ minWidth: '280px' }}
@@ -132,7 +142,8 @@ export const IndividualEventForecastTrace = ({
               value={String(leadTimeHours)}
               onChange={(e) => {
                 setLeadTimeHours(Number(e.target.value));
-                setSelectedInitializationDatetime('');
+                setSelectedInitializationIndex(null);
+                setCommittedInitializationDatetime(null);
               }}
               style={{ minWidth: '160px' }}
             >
@@ -145,19 +156,23 @@ export const IndividualEventForecastTrace = ({
           </Form.Group>
 
           <div className="firo-trace-slider-group">
-            <Form.Label className="firo-filter-label mb-1">Initialization Datetime</Form.Label>
+            <Form.Label className="firo-filter-label mb-1">
+              {initializationQuery.isLoading ? (
+                <span className="d-inline-flex align-items-center">
+                  <Spinner animation="border" size="sm" className="me-2" />
+                  Loading initialization datetimes...
+                </span>
+              ) : (
+                <span>
+                  Initialization Datetime: {effectiveSelectedInitializationDatetime ?? 'N/A'}
+                </span>
+              )}
+            </Form.Label>
 
             {!traceThreshold && (
               <p className="small text-muted mb-2">
                 Select a specific quantile to load initialization options.
               </p>
-            )}
-
-            {traceThreshold && initializationQuery.isLoading && (
-              <div className="d-flex align-items-center text-muted small mb-2">
-                <Spinner animation="border" size="sm" className="me-2" />
-                Loading initialization datetimes...
-              </div>
             )}
 
             {traceThreshold && initializationQuery.isError && (
@@ -169,8 +184,8 @@ export const IndividualEventForecastTrace = ({
               </Alert>
             )}
 
-            {traceThreshold && !initializationQuery.isLoading && !initializationQuery.isError && (
-              <>
+            {traceThreshold && !initializationQuery.isError && (
+              <div className="firo-trace-slider-shell">
                 <Form.Range
                   min={0}
                   max={Math.max(
@@ -178,53 +193,61 @@ export const IndividualEventForecastTrace = ({
                     0
                   )}
                   step={1}
-                  value={selectedInitializationIndex}
+                  value={effectiveSelectedInitializationIndex}
                   onChange={(e) => {
                     const nextIndex = Number(e.target.value);
-                    const initializationOptions =
-                      initializationQuery.data?.available_initialization_datetimes ?? [];
-                    setSelectedInitializationDatetime(initializationOptions[nextIndex] ?? '');
+                    setSelectedInitializationIndex(nextIndex);
                   }}
+                  onMouseUp={(e) => commitInitializationSelection(Number(e.currentTarget.value))}
+                  onTouchEnd={(e) => commitInitializationSelection(Number(e.currentTarget.value))}
+                  onKeyUp={(e) => commitInitializationSelection(Number(e.currentTarget.value))}
+                  onBlur={(e) => commitInitializationSelection(Number(e.currentTarget.value))}
                   disabled={
+                    initializationQuery.isLoading ||
                     (initializationQuery.data?.available_initialization_datetimes ?? []).length ===
-                    0
+                      0
                   }
                 />
-                <div className="firo-trace-slider-readout">
-                  <span>
-                    Expanded Start: {initializationQuery.data?.expanded_event_start ?? 'N/A'}
-                  </span>
-                  <span>Selected: {effectiveSelectedInitializationDatetime ?? 'N/A'}</span>
-                  <span>Expanded End: {initializationQuery.data?.expanded_event_end ?? 'N/A'}</span>
-                </div>
-              </>
+              </div>
             )}
           </div>
         </div>
 
         <div className="firo-trace-plot-container mt-3">
-          {traceDataQuery.isLoading && (
-            <div className="d-flex align-items-center justify-content-center text-muted small p-5">
+          {(traceDataQuery.isFetching || isShowingPreviousTraceWhileUpdating) &&
+            traceDataQuery.data && (
+              <div className="firo-trace-plot-updating text-muted small">
+                <Spinner animation="border" size="sm" className="me-2" />
+                Updating trace data...
+              </div>
+            )}
+
+          {traceDataQuery.isLoading && !traceDataQuery.data && (
+            <div className="firo-trace-plot-state text-muted small">
               <Spinner animation="border" size="sm" className="me-2" />
               Loading trace data...
             </div>
           )}
 
           {traceDataQuery.isError && (
-            <Alert variant="danger" className="mb-2 py-2 small">
-              Failed to load trace data:{' '}
-              {traceDataQuery.error instanceof Error
-                ? traceDataQuery.error.message
-                : 'Unknown error'}
-            </Alert>
+            <div className="firo-trace-plot-state">
+              <Alert variant="danger" className="py-2 small mb-0 w-100">
+                Failed to load trace data:{' '}
+                {traceDataQuery.error instanceof Error
+                  ? traceDataQuery.error.message
+                  : 'Unknown error'}
+              </Alert>
+            </div>
           )}
 
-          {traceDataQuery.isSuccess && traceDataQuery.data && (
-            <EventTracePlot data={traceDataQuery.data} />
+          {traceDataQuery.data && (
+            <div className="firo-trace-plot-canvas">
+              <EventTracePlot data={traceDataQuery.data} />
+            </div>
           )}
 
           {!traceThreshold && (
-            <div className="text-center text-muted small p-5">
+            <div className="firo-trace-plot-state text-center text-muted small">
               <p className="mb-0">Select a specific quantile to load trace data.</p>
             </div>
           )}

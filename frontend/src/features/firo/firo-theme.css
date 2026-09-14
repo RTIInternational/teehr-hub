@@ -533,15 +533,26 @@
   display: grid;
   grid-template-columns: minmax(240px, 320px) minmax(140px, 180px) 1fr;
   gap: 14px;
-  align-items: end;
+  align-items: start;
 }
 
 .firo-trace-slider-group {
   min-width: 0;
 }
 
+.firo-trace-slider-group .form-label {
+  display: inline-flex;
+  align-items: center;
+  min-height: 32px;
+}
+
+.firo-trace-slider-shell {
+  position: relative;
+  min-height: 46px;
+}
+
 .firo-trace-slider-group .form-range {
-  margin-top: 0.2rem;
+  margin-top: 0;
   margin-bottom: 0.5rem;
 }
 
@@ -560,6 +571,36 @@
   border-radius: 10px;
   padding: 12px;
   background: rgba(249, 251, 255, 0.7);
+}
+
+.firo-trace-plot-container {
+  position: relative;
+  min-height: 520px;
+}
+
+.firo-trace-plot-state {
+  min-height: 500px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 12px;
+}
+
+.firo-trace-plot-canvas {
+  min-height: 500px;
+}
+
+.firo-trace-plot-updating {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  z-index: 2;
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 8px;
+  border-radius: 999px;
+  border: 1px solid var(--firo-border-soft);
+  background: rgba(255, 255, 255, 0.92);
 }
 
 @keyframes firo-fade-slide {
