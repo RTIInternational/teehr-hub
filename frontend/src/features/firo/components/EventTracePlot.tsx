@@ -120,7 +120,7 @@ export const EventTracePlot = ({ data }: EventTracePlotProps) => {
 
     const layout: Partial<Plotly.Layout> = {
       title: {
-        text: `Event Trace - Observed Data<br><sub>${data.primary_location_id} | ${data.configuration_name} | ${data.variable_name} | ${data.threshold}</sub>`,
+        text: `Event Trace - Observed vs. Ensemble Forecast<br><sub>${data.primary_location_id} | ${data.configuration_name} | ${data.variable_name} | ${data.threshold}</sub>`,
         font: { size: 14 },
       },
       xaxis: {
