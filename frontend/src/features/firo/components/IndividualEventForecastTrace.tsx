@@ -8,7 +8,7 @@ import {
   useEventTraceInitializations,
   useEventTraceData,
 } from '../hooks/useEventTraceInitializations';
-import { EventTraceObservedPlot } from './EventTraceObservedPlot';
+import { EventTracePlot } from './EventTracePlot';
 import type { TopEventSummary } from './TopEventsHeatmap';
 
 const ALL_THRESHOLDS = 'all';
@@ -220,7 +220,7 @@ export const IndividualEventForecastTrace = ({
           )}
 
           {traceDataQuery.isSuccess && traceDataQuery.data && (
-            <EventTraceObservedPlot data={traceDataQuery.data} />
+            <EventTracePlot data={traceDataQuery.data} />
           )}
 
           {!traceThreshold && (

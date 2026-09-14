@@ -66,6 +66,11 @@ export type TracePoint = {
   value: number;
 };
 
+export type EnsembleMemberTrace = {
+  member: string;
+  values: TracePoint[];
+};
+
 export type EventTraceDataResponse = {
   primary_location_id: string;
   configuration_name: string;
@@ -78,6 +83,7 @@ export type EventTraceDataResponse = {
     pre_initialization: TracePoint[];
     post_initialization: TracePoint[];
   };
+  forecast_members: EnsembleMemberTrace[];
 };
 
 export type EventTraceDataFilters = {
