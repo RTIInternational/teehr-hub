@@ -96,6 +96,8 @@ export const IndividualEventForecastTrace = ({
     setCommittedInitializationDatetime(nextDatetime);
   };
 
+  const sliderTickCount = initializationOptions.length;
+
   return (
     <>
       <Card.Header className="firo-metric-card-header">
@@ -208,6 +210,28 @@ export const IndividualEventForecastTrace = ({
                       0
                   }
                 />
+                {sliderTickCount > 0 && (
+                  <div className="firo-trace-slider-ticks" aria-hidden="true">
+                    {initializationOptions.map((_, index) => {
+                      const leftPercent =
+                        sliderTickCount === 1 ? 50 : (index / (sliderTickCount - 1)) * 100;
+                      const transform =
+                        index === 0
+                          ? 'none'
+                          : index === sliderTickCount - 1
+                            ? 'translateX(-100%)'
+                            : 'translateX(-50%)';
+
+                      return (
+                        <span
+                          key={`initialization-tick-${index}`}
+                          className="firo-trace-slider-tick"
+                          style={{ left: `${leftPercent}%`, transform }}
+                        />
+                      );
+                    })}
+                  </div>
+                )}
               </div>
             )}
           </div>

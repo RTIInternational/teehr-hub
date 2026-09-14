@@ -549,6 +549,8 @@
 .firo-trace-slider-shell {
   position: relative;
   min-height: 46px;
+  width: 100%;
+  max-width: 400px;
 }
 
 .firo-trace-slider-group .form-range {
