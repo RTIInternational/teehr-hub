@@ -242,6 +242,23 @@ export const apiService = {
     );
   },
 
+  // Get event trace observed data (pre and post-initialization)
+  getEventTraceData: (filters = {}) => {
+    const params = new URLSearchParams();
+
+    if (filters.primary_location_id)
+      params.append('primary_location_id', filters.primary_location_id);
+    if (filters.configuration_name) params.append('configuration_name', filters.configuration_name);
+    if (filters.variable_name) params.append('variable_name', filters.variable_name);
+    if (filters.threshold) params.append('threshold', filters.threshold);
+    if (filters.window_start) params.append('window_start', filters.window_start);
+    if (filters.window_end) params.append('window_end', filters.window_end);
+    if (filters.initialization_time)
+      params.append('initialization_time', filters.initialization_time);
+
+    return apiCall(`/collections/joined_timeseries/event_trace/data?${params.toString()}`);
+  },
+
   // Get available collections (OGC API - Common)
   getCollections: () => apiCall('/collections'),
 

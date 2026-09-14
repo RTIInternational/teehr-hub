@@ -4,7 +4,11 @@ import Card from 'react-bootstrap/Card';
 import Form from 'react-bootstrap/Form';
 import Spinner from 'react-bootstrap/Spinner';
 
-import { useEventTraceInitializations } from '../hooks/useEventTraceInitializations';
+import {
+  useEventTraceInitializations,
+  useEventTraceData,
+} from '../hooks/useEventTraceInitializations';
+import { EventTraceObservedPlot } from './EventTraceObservedPlot';
 import type { TopEventSummary } from './TopEventsHeatmap';
 
 const ALL_THRESHOLDS = 'all';
@@ -46,12 +50,9 @@ export const IndividualEventForecastTrace = ({
     leadTimeHours,
   });
 
-  const initializationOptions = useMemo(
-    () => initializationQuery.data?.available_initialization_datetimes ?? [],
-    [initializationQuery.data]
-  );
-
   const effectiveSelectedInitializationDatetime = useMemo(() => {
+    const initializationOptions =
+      initializationQuery.data?.available_initialization_datetimes ?? [];
     if (!initializationOptions.length) return null;
     if (
       selectedInitializationDatetime &&
@@ -66,11 +67,25 @@ export const IndividualEventForecastTrace = ({
     }
 
     return initializationOptions[0];
-  }, [initializationOptions, initializationQuery.data, selectedInitializationDatetime]);
+  }, [initializationQuery.data, selectedInitializationDatetime]);
 
-  const selectedInitializationIndex = effectiveSelectedInitializationDatetime
-    ? Math.max(initializationOptions.indexOf(effectiveSelectedInitializationDatetime), 0)
-    : 0;
+  const traceDataQuery = useEventTraceData({
+    primaryLocationId,
+    configurationName,
+    variableName,
+    threshold: traceThreshold,
+    windowStart: initializationQuery.data?.expanded_event_start ?? null,
+    windowEnd: initializationQuery.data?.expanded_event_end ?? null,
+    initializationTime: effectiveSelectedInitializationDatetime,
+  });
+
+  const selectedInitializationIndex = useMemo(() => {
+    const initializationOptions =
+      initializationQuery.data?.available_initialization_datetimes ?? [];
+    return effectiveSelectedInitializationDatetime
+      ? Math.max(initializationOptions.indexOf(effectiveSelectedInitializationDatetime), 0)
+      : 0;
+  }, [effectiveSelectedInitializationDatetime, initializationQuery.data]);
 
   return (
     <>
@@ -158,14 +173,22 @@ export const IndividualEventForecastTrace = ({
               <>
                 <Form.Range
                   min={0}
-                  max={Math.max(initializationOptions.length - 1, 0)}
+                  max={Math.max(
+                    (initializationQuery.data?.available_initialization_datetimes ?? []).length - 1,
+                    0
+                  )}
                   step={1}
                   value={selectedInitializationIndex}
                   onChange={(e) => {
                     const nextIndex = Number(e.target.value);
+                    const initializationOptions =
+                      initializationQuery.data?.available_initialization_datetimes ?? [];
                     setSelectedInitializationDatetime(initializationOptions[nextIndex] ?? '');
                   }}
-                  disabled={initializationOptions.length === 0}
+                  disabled={
+                    (initializationQuery.data?.available_initialization_datetimes ?? []).length ===
+                    0
+                  }
                 />
                 <div className="firo-trace-slider-readout">
                   <span>
@@ -179,11 +202,32 @@ export const IndividualEventForecastTrace = ({
           </div>
         </div>
 
-        <div className="firo-trace-placeholder mt-3">
-          <p className="mb-0 small text-muted">
-            Event trace plot scaffolding is ready. The chart will appear here once the trace
-            endpoint is wired.
-          </p>
+        <div className="firo-trace-plot-container mt-3">
+          {traceDataQuery.isLoading && (
+            <div className="d-flex align-items-center justify-content-center text-muted small p-5">
+              <Spinner animation="border" size="sm" className="me-2" />
+              Loading trace data...
+            </div>
+          )}
+
+          {traceDataQuery.isError && (
+            <Alert variant="danger" className="mb-2 py-2 small">
+              Failed to load trace data:{' '}
+              {traceDataQuery.error instanceof Error
+                ? traceDataQuery.error.message
+                : 'Unknown error'}
+            </Alert>
+          )}
+
+          {traceDataQuery.isSuccess && traceDataQuery.data && (
+            <EventTraceObservedPlot data={traceDataQuery.data} />
+          )}
+
+          {!traceThreshold && (
+            <div className="text-center text-muted small p-5">
+              <p className="mb-0">Select a specific quantile to load trace data.</p>
+            </div>
+          )}
         </div>
       </Card.Body>
     </>
