@@ -3,7 +3,6 @@ import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'r
 
 import { Home, DashboardsHome } from '@/components/common';
 import { DataDashboard } from '@/components/dashboards/data_management';
-import { DataDashboardProvider } from '@/context/DataDashboardContext';
 import { useAuth } from '@/features/auth';
 import { ForecastDashboard, ForecastDashboardProvider } from '@/features/forecast';
 import { NwmdDashboard, NwmdDashboardProvider } from '@/features/nwmd';
@@ -117,9 +116,7 @@ const AppRoutes = () => {
             path="/data"
             element={
               <RequireAuth>
-                <DataDashboardProvider>
-                  <DataDashboard />
-                </DataDashboardProvider>
+                <DataDashboard />
               </RequireAuth>
             }
           />

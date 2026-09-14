@@ -11,7 +11,6 @@
  */
 import { useState } from 'react';
 
-import { useDataDashboard, ActionTypes } from '../../../context/DataDashboardContext';
 import CompletenessTab from './CompletenessTab';
 import ConfigurationsSummaryTab from './ConfigurationsSummaryTab';
 import LocationsSummaryTab from './LocationsSummaryTab';
@@ -22,7 +21,6 @@ const TABS = [
 ];
 
 const Dashboard = () => {
-  const { state, dispatch } = useDataDashboard();
   const [activeTab, setActiveTab] = useState('configurations');
   // Track which tabs have ever been activated so we lazy-mount them
   const [visitedTabs, setVisitedTabs] = useState(new Set(['configurations']));
@@ -37,24 +35,6 @@ const Dashboard = () => {
       className="d-flex flex-column"
       style={{ height: 'calc(100dvh - 56px)', overflow: 'hidden', padding: '12px', gap: '8px' }}
     >
-      {/* Global error alert */}
-      {state.error && (
-        <div
-          className="alert alert-danger alert-dismissible"
-          role="alert"
-          style={{ flex: '0 0 auto', margin: 0, zIndex: 1000 }}
-        >
-          <i className="bi bi-exclamation-triangle-fill me-2" />
-          <strong>Error:</strong> {state.error}
-          <button
-            type="button"
-            className="btn-close"
-            onClick={() => dispatch({ type: ActionTypes.CLEAR_ERROR })}
-            aria-label="Close"
-          />
-        </div>
-      )}
-
       {/* Tab navigation */}
       <ul className="nav nav-tabs" style={{ flex: '0 0 auto' }}>
         {TABS.map((tab) => (
