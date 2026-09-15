@@ -19,11 +19,11 @@ import {
 } from '@/features/data_management/queries/configurations';
 import type { ConfigurationsTableItem } from '@/features/data_management/types/configurations';
 import { fmt } from '@/features/data_management/utils/utils';
+import { useSortableTable, type SortValueGetter } from '@/hooks/useSortableTable';
+import DashboardPanel from '@/shared/components/DashboardPanel';
+import SharedDataTable from '@/shared/components/SharedDataTable';
 import { displayUnknown } from '@/shared/utils/formatters';
 
-import { useSortableTable, type SortValueGetter } from '../../../hooks/useSortableTable';
-import DashboardPanel from '../../../shared/components/DashboardPanel';
-import SharedDataTable from '../../../shared/components/SharedDataTable';
 import SimpleMapPanel, { type PopupFeatureProps } from './SimpleMapPanel';
 
 // ── Helpers ────────────────────────────────────────────────────────────────

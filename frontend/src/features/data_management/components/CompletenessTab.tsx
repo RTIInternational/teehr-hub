@@ -17,8 +17,9 @@ import type { FeatureCollection, MultiPolygon, Polygon } from 'geojson';
 import { useState, useCallback, useEffect } from 'react';
 import { Form } from 'react-bootstrap';
 
-import { apiService } from '../../../services/api';
-import DashboardPanel from '../../../shared/components/DashboardPanel';
+import { apiService } from '@/services/api';
+import DashboardPanel from '@/shared/components/DashboardPanel';
+
 import CompletenessHeatmap from './CompletenessHeatmap';
 import SimpleMapPanel from './SimpleMapPanel';
 

@@ -2,8 +2,7 @@ import Plotly from 'plotly.js-dist-min';
 import { useEffect, useRef, useState } from 'react';
 
 import { type ConfigurationCompletenessResponse } from '@/features/data_management/types/completeness';
-
-import { apiService } from '../../../services/api';
+import { apiService } from '@/services/api';
 
 type CompletenessHeatmapProps = {
   configurationName?: string;
