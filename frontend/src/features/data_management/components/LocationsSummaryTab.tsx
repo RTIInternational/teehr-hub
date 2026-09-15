@@ -1,3 +1,4 @@
+import { useQuery } from '@tanstack/react-query';
 /**
  * LocationsSummaryTab
  *
@@ -12,22 +13,23 @@
 import { useEffect, useState, useCallback, useRef, useMemo } from 'react';
 import { Spinner, Alert } from 'react-bootstrap';
 
-import { useSortableTable } from '../../../hooks/useSortableTable';
-import { apiService } from '../../../services/api';
-import SharedDataTable from '../../../shared/components/SharedDataTable';
-import { DashboardPanel } from '../../common/dashboard';
-import SimpleMapPanel from './SimpleMapPanel';
+import { attributesOptions } from '@/features/data_management/queries/attributes';
+import { useConfigurationsByLocationId } from '@/features/data_management/queries/configurations';
+import { useLocationRows } from '@/features/data_management/queries/locationRows';
+import { useBasinLocation, usePointLocation } from '@/features/data_management/queries/locations';
+import type { LocationRow } from '@/features/data_management/types/locationRows';
+import { fmt } from '@/features/data_management/utils/utils';
+import { useSortableTable, type SortValueGetter } from '@/hooks/useSortableTable';
+import DashboardPanel from '@/shared/components/DashboardPanel';
+import SharedDataTable from '@/shared/components/SharedDataTable';
+import { formatUnknownValueForDisplay } from '@/shared/utils/formatters';
+
+import SimpleMapPanel, { type PopupFeatureProps } from './SimpleMapPanel';
 
 // ── Helpers ────────────────────────────────────────────────────────────────
-const fmt = (val) => {
-  if (val == null) return '—';
-  return String(val)
-    .replace('T', ' ')
-    .replace(/\.\d+Z?$/, '');
-};
 
 // Returns a raw sortable value for a column key
-const sortValue = (row, key) => {
+const sortValue: SortValueGetter = (row, key) => {
   const value = row[key];
 
   if (value == null) return '';
@@ -66,18 +68,8 @@ const SIDE_PANEL_COLUMNS = [
 // Default attribute names fetched from location_attributes on initial load
 const DEFAULT_ATTRIBUTE_NAMES = ['state_name', 'drainage_area_km2', 'slope_mean_percent', 'rfc'];
 
-// Pivot EAV rows [{location_id, attribute_name, value}] into a map keyed by location_id
-const pivotAttributes = (items) => {
-  const map = {};
-  (items || []).forEach((item) => {
-    if (!map[item.location_id]) map[item.location_id] = {};
-    map[item.location_id][item.attribute_name] = item.value;
-  });
-  return map;
-};
-
 // Popup content for map hover
-const makePopupHTML = (props) => {
+const makePopupHTML = (props: PopupFeatureProps) => {
   return `
     <div style="padding:6px 10px;font-size:0.83rem;line-height:1.5;max-height:260px;overflow-y:auto;">
       <div style="font-weight:600;margin-bottom:2px;">${props.name || '—'}</div>
@@ -90,46 +82,46 @@ const makePopupHTML = (props) => {
 
 // ── Component ──────────────────────────────────────────────────────────────
 const LocationsSummaryTab = ({ isActive = true }) => {
-  const [geojson, setGeojson] = useState(null);
-  const [basinGeojson, setBasinGeojson] = useState(null);
-  const [noGeometry, setNoGeometry] = useState(false);
-  const [rows, setRows] = useState([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
-  const [selectedId, setSelectedId] = useState(null);
-
-  const [sidePanelConfigs, setSidePanelConfigs] = useState([]);
-  const [sidePanelLoading, setSidePanelLoading] = useState(false);
-  const [sidePanelError, setSidePanelError] = useState(null);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [selectedName, setSelectedName] = useState<string | null>(null);
 
   const [activeColumns, setActiveColumns] = useState(DEFAULT_COLUMNS);
-  const [availableAttributes, setAvailableAttributes] = useState([]);
   const [pickerOpen, setPickerOpen] = useState(false);
   const [checkedKeys, setCheckedKeys] = useState(new Set());
   const [filterColumn, setFilterColumn] = useState('');
   const [filterText, setFilterText] = useState('');
   const [pickerMenuStyle, setPickerMenuStyle] = useState({});
-  const pickerRef = useRef(null);
+  const pickerRef = useRef<HTMLDivElement>(null);
+
+  const attributes = useQuery({
+    ...attributesOptions,
+    select: (data) => {
+      const defaultKeys = new Set(DEFAULT_COLUMNS.map((c) => c.key));
+      const attrs = (data?.items || [])
+        .filter((item) => !defaultKeys.has(item.name))
+        .map((item) => ({ key: item.name, label: item.description || item.name }))
+        .sort((a, b) => a.label.localeCompare(b.label));
+      return attrs;
+    },
+  });
+
+  const extraAttributeNames = activeColumns
+    .filter((c) => !DEFAULT_COLUMNS.find((d) => d.key === c.key))
+    .map((c) => c.key);
+  const attributeNames = [...DEFAULT_ATTRIBUTE_NAMES, ...extraAttributeNames];
+  const rows = useLocationRows(attributeNames);
+
+  const locationConfigs = useConfigurationsByLocationId(selectedId);
+
+  const pointGeojson = usePointLocation(selectedId, selectedName);
+  const basinId = selectedId?.replace(/^usgs-/, 'usgsbasin-') ?? null;
+  const basinGeojson = useBasinLocation(basinId);
+  const noGeometry = !pointGeojson.data?.features.length && !basinGeojson.data?.features.length;
 
   useEffect(() => {
-    apiService
-      .getAttributes()
-      .then((data) => {
-        const defaultKeys = new Set(DEFAULT_COLUMNS.map((c) => c.key));
-        const attrs = (data?.items || [])
-          .filter((item) => !defaultKeys.has(item.name))
-          .map((item) => ({ key: item.name, label: item.description || item.name }))
-          .sort((a, b) => a.label.localeCompare(b.label));
-        setAvailableAttributes(attrs);
-      })
-      .catch(() => {
-        /* non-fatal */
-      });
-  }, []);
-
-  useEffect(() => {
-    const handler = (e) => {
-      if (pickerRef.current && !pickerRef.current.contains(e.target)) setPickerOpen(false);
+    const handler = (e: MouseEvent) => {
+      if (pickerRef.current && e.target instanceof Node && !pickerRef.current.contains(e.target))
+        setPickerOpen(false);
     };
     document.addEventListener('mousedown', handler);
     return () => document.removeEventListener('mousedown', handler);
@@ -141,6 +133,7 @@ const LocationsSummaryTab = ({ isActive = true }) => {
     }
 
     const updatePickerMenuStyle = () => {
+      if (!pickerRef.current) return;
       const rect = pickerRef.current.getBoundingClientRect();
       const viewportHeight = window.innerHeight || document.documentElement.clientHeight;
       const viewportWidth = window.innerWidth || document.documentElement.clientWidth;
@@ -172,16 +165,17 @@ const LocationsSummaryTab = ({ isActive = true }) => {
     };
   }, [pickerOpen]);
 
-  const toggleCheck = (key) =>
+  const toggleCheck = (key: string) =>
     setCheckedKeys((prev) => {
       const next = new Set(prev);
-      next.has(key) ? next.delete(key) : next.add(key);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
       return next;
     });
 
   const handleAddToTable = () => {
-    if (checkedKeys.size === 0) return;
-    const toAdd = availableAttributes.filter(
+    if (checkedKeys.size === 0 || !attributes.data) return;
+    const toAdd = attributes.data.filter(
       (c) => checkedKeys.has(c.key) && !activeColumns.find((a) => a.key === c.key)
     );
     if (toAdd.length === 0) {
@@ -192,27 +186,27 @@ const LocationsSummaryTab = ({ isActive = true }) => {
     setActiveColumns(newColumns);
     setCheckedKeys(new Set());
     setPickerOpen(false);
-    const extraAttributeNames = newColumns
-      .filter((c) => !DEFAULT_COLUMNS.find((d) => d.key === c.key))
-      .map((c) => c.key);
-    fetchRows(extraAttributeNames);
   };
 
-  const handleRemoveColumn = (key) => {
+  const handleRemoveColumn = (key: string) => {
     setActiveColumns((prev) => prev.filter((c) => c.key !== key));
   };
 
   const addedOptionalKeys = new Set(activeColumns.map((c) => c.key));
-  const { sortedRows, handleSort, SortIcon } = useSortableTable(rows, 'location_id', sortValue);
+  const { sortedRows, handleSort, SortIcon } = useSortableTable(
+    rows.data ?? [],
+    'location_id',
+    sortValue
+  );
   const {
     sortedRows: sortedSidePanelConfigs,
     handleSort: handleSidePanelSort,
     SortIcon: SidePanelSortIcon,
-  } = useSortableTable(sidePanelConfigs, 'configuration_name', sortValue);
+  } = useSortableTable(locationConfigs.data ?? [], 'configuration_name', sortValue);
 
   const selectedLocationRow = useMemo(
-    () => rows.find((row) => row.location_id === selectedId) ?? null,
-    [rows, selectedId]
+    () => rows.data?.find((row) => row.location_id === selectedId) ?? null,
+    [rows.data, selectedId]
   );
 
   const filteredRows = useMemo(() => {
@@ -236,100 +230,18 @@ const LocationsSummaryTab = ({ isActive = true }) => {
 
   const hasActiveFilter = !!filterText;
 
-  const fetchRows = useCallback((extraAttributeNames = []) => {
-    const attributeNames = [...DEFAULT_ATTRIBUTE_NAMES, ...extraAttributeNames];
-    setLoading(true);
-    setError(null);
-    Promise.all([
-      apiService.getLocationIdNames('usgs'),
-      apiService.getLocationAttributesByNames(attributeNames),
-    ])
-      .then(([locationsData, attrsData]) => {
-        const locItems = locationsData?.items || [];
-        const attrItems = attrsData?.items || [];
-        const attrMap = pivotAttributes(attrItems);
-        const joined = locItems.map((loc) => ({
-          location_id: loc.id,
-          name: loc.name,
-          ...attrMap[loc.id],
-        }));
-        setRows(joined);
-      })
-      .catch((err) => setError(err.message))
-      .finally(() => setLoading(false));
-  }, []);
-
-  useEffect(() => {
-    fetchRows();
-  }, [fetchRows]);
-
-  const loadConfigurationsForLocation = useCallback((locationId) => {
-    setSidePanelLoading(true);
-    setSidePanelError(null);
-    setSidePanelConfigs([]);
-    apiService
-      .getConfigurationsByLocationId(locationId)
-      .then((data) => {
-        const items = Array.isArray(data) ? data : Array.isArray(data.items) ? data.items : [];
-        setSidePanelConfigs(items);
-      })
-      .catch((err) => {
-        setSidePanelError(err?.message || 'Failed to load configurations.');
-      })
-      .finally(() => setSidePanelLoading(false));
-  }, []);
-
   const handleRowClick = useCallback(
-    (row) => {
+    (row: LocationRow) => {
       if (selectedId === row.location_id) {
         setSelectedId(null);
-        setGeojson(null);
-        setBasinGeojson(null);
-        setNoGeometry(false);
-        setSidePanelConfigs([]);
-        setSidePanelLoading(false);
-        setSidePanelError(null);
+        setSelectedName(null);
         return;
       }
 
       setSelectedId(row.location_id);
-      setNoGeometry(false);
-
-      const basinId = row.location_id.replace(/^usgs-/, 'usgsbasin-');
-      Promise.all([
-        apiService.getLocationById(row.location_id),
-        apiService.getLocationById(basinId).catch(() => null),
-      ])
-        .then(([locationData, basinData]) => {
-          const feature = locationData?.features?.[0];
-          if (!feature) {
-            setNoGeometry(true);
-            return;
-          }
-          const merged = {
-            type: 'FeatureCollection',
-            features: [
-              {
-                ...feature,
-                properties: {
-                  ...feature.properties,
-                  location_id: row.location_id,
-                  name: row.name,
-                },
-              },
-            ],
-          };
-          setGeojson(merged);
-          const hasBasin = !!basinData?.features?.length;
-          setBasinGeojson(hasBasin ? basinData : null);
-        })
-        .catch(() => {
-          setNoGeometry(true);
-        });
-
-      loadConfigurationsForLocation(row.location_id);
+      setSelectedName(row.name);
     },
-    [selectedId, loadConfigurationsForLocation]
+    [selectedId]
   );
 
   return (
@@ -346,8 +258,8 @@ const LocationsSummaryTab = ({ isActive = true }) => {
         <div style={{ flex: '1 1 0', minWidth: 0, minHeight: 0, position: 'relative' }}>
           <DashboardPanel bodyStyle={{ padding: 0, position: 'relative' }}>
             <SimpleMapPanel
-              locations={geojson}
-              basinLocations={basinGeojson}
+              locations={pointGeojson.data}
+              basinLocations={basinGeojson.data}
               getPopupHTML={makePopupHTML}
               isActive={isActive}
             />
@@ -365,7 +277,7 @@ const LocationsSummaryTab = ({ isActive = true }) => {
                 <small>Click a location row below to view it on the map</small>
               </div>
             )}
-            {selectedId && noGeometry && (
+            {selectedId && noGeometry && !pointGeojson.isLoading && !basinGeojson.isLoading && (
               <div
                 className="position-absolute top-50 start-50 translate-middle text-center text-muted"
                 style={{
@@ -414,19 +326,19 @@ const LocationsSummaryTab = ({ isActive = true }) => {
                     <p>Click a location row below to view its configurations.</p>
                   </div>
                 </div>
-              ) : sidePanelLoading ? (
+              ) : locationConfigs.isLoading ? (
                 <div className="d-flex align-items-center justify-content-center flex-grow-1">
                   <div className="text-center">
                     <Spinner animation="border" variant="primary" />
                     <div className="mt-2 small text-muted">Loading configurations...</div>
                   </div>
                 </div>
-              ) : sidePanelError ? (
+              ) : locationConfigs.error ? (
                 <Alert variant="danger" className="m-3">
                   <i className="bi bi-exclamation-triangle-fill me-2" />
-                  {sidePanelError}
+                  {locationConfigs.error.message}
                 </Alert>
-              ) : sidePanelConfigs.length > 0 ? (
+              ) : locationConfigs.data && locationConfigs.data.length > 0 ? (
                 <SharedDataTable
                   headers={SIDE_PANEL_COLUMNS}
                   rows={sortedSidePanelConfigs}
@@ -451,15 +363,16 @@ const LocationsSummaryTab = ({ isActive = true }) => {
                     title: `Sort by ${column.label}`,
                   })}
                   renderCell={(row, column) => {
-                    if (
+                    const raw = row[column.key];
+                    const isDateField =
                       column.key === 'min_reference_time' ||
                       column.key === 'max_reference_time' ||
                       column.key === 'min_value_time' ||
-                      column.key === 'max_value_time'
-                    ) {
-                      return fmt(row[column.key]);
+                      column.key === 'max_value_time';
+                    if (isDateField && (typeof raw === 'string' || typeof raw === 'number')) {
+                      return fmt(raw);
                     }
-                    return row[column.key] ?? '—';
+                    return formatUnknownValueForDisplay(raw, { nullishText: '—' });
                   }}
                   getCellProps={(row, column) => {
                     const value = row[column.key] ?? '—';
@@ -468,7 +381,7 @@ const LocationsSummaryTab = ({ isActive = true }) => {
                       column.key === 'variable_name' ||
                       column.key === 'unit_name'
                     ) {
-                      return { title: String(value) };
+                      return { title: formatUnknownValueForDisplay(value) };
                     }
                     return {};
                   }}
@@ -559,34 +472,35 @@ const LocationsSummaryTab = ({ isActive = true }) => {
                   <div
                     style={{ overflowY: 'auto', flex: '1 1 auto', minHeight: 0, padding: '4px 0' }}
                   >
-                    {availableAttributes.map((c) => {
-                      const alreadyAdded = addedOptionalKeys.has(c.key);
-                      return (
-                        <label
-                          key={c.key}
-                          style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: 8,
-                            padding: '3px 12px',
-                            fontSize: '0.82rem',
-                            cursor: alreadyAdded ? 'default' : 'pointer',
-                            color: alreadyAdded ? '#aaa' : 'inherit',
-                          }}
-                        >
-                          <input
-                            type="checkbox"
-                            checked={alreadyAdded || checkedKeys.has(c.key)}
-                            disabled={alreadyAdded}
-                            onChange={() => toggleCheck(c.key)}
-                          />
-                          {c.label}
-                          {alreadyAdded && (
-                            <span style={{ fontSize: '0.72rem', color: '#aaa' }}>(added)</span>
-                          )}
-                        </label>
-                      );
-                    })}
+                    {attributes.data &&
+                      attributes.data.map((c) => {
+                        const alreadyAdded = addedOptionalKeys.has(c.key);
+                        return (
+                          <label
+                            key={c.key}
+                            style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: 8,
+                              padding: '3px 12px',
+                              fontSize: '0.82rem',
+                              cursor: alreadyAdded ? 'default' : 'pointer',
+                              color: alreadyAdded ? '#aaa' : 'inherit',
+                            }}
+                          >
+                            <input
+                              type="checkbox"
+                              checked={alreadyAdded || checkedKeys.has(c.key)}
+                              disabled={alreadyAdded}
+                              onChange={() => toggleCheck(c.key)}
+                            />
+                            {c.label}
+                            {alreadyAdded && (
+                              <span style={{ fontSize: '0.72rem', color: '#aaa' }}>(added)</span>
+                            )}
+                          </label>
+                        );
+                      })}
                   </div>
                   <div
                     style={{
@@ -659,9 +573,9 @@ const LocationsSummaryTab = ({ isActive = true }) => {
                   Clear
                 </button>
               )}
-              {rows.length > 0 && (
+              {rows.data && rows.data.length > 0 && (
                 <span className="text-muted ms-auto" style={{ fontSize: '0.78rem' }}>
-                  {filteredRows.length} / {rows.length} rows
+                  {filteredRows.length} / {rows.data.length} rows
                 </span>
               )}
             </div>
@@ -669,28 +583,28 @@ const LocationsSummaryTab = ({ isActive = true }) => {
           bodyStyle={{ padding: 0 }}
         >
           <div style={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0 }}>
-            {loading && (
+            {rows.isLoading && (
               <div className="d-flex align-items-center justify-content-center h-100">
-                <Spinner animation="border" variant="primary" role="status">
+                <Spinner animation="border" variant="primary">
                   <span className="visually-hidden">Loading locations…</span>
                 </Spinner>
               </div>
             )}
 
-            {error && (
+            {rows.error && (
               <Alert variant="danger" className="m-3 mb-0">
                 <i className="bi bi-exclamation-triangle-fill me-2" />
-                {error}
+                {rows.error.message}
               </Alert>
             )}
 
-            {!loading && !error && rows.length === 0 && (
+            {!rows.isLoading && !rows.error && (!rows.data || rows.data.length === 0) && (
               <div className="d-flex align-items-center justify-content-center h-100 text-muted">
                 <span>No locations available.</span>
               </div>
             )}
 
-            {!loading && !error && rows.length > 0 && (
+            {!rows.isLoading && !rows.error && rows.data && rows.data.length > 0 && (
               <SharedDataTable
                 headers={activeColumns}
                 rows={filteredRows}

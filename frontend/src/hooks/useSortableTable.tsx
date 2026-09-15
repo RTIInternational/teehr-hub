@@ -11,20 +11,27 @@ import { useState, useMemo } from 'react';
  *                                   Defaults to numeric-aware string comparison.
  * @returns {{ sortedRows, sortKey, sortDir, handleSort, SortIcon }}
  */
-const defaultGetSortValue = (row, key) => {
+
+export type SortValueGetter = (row: Record<string, string>, key: string) => string | number;
+
+const defaultGetSortValue = (row: Record<string, string>, key: string) => {
   const val = row[key];
-  if (val == null) return '';
+  if (typeof val != 'string' && typeof val != 'number') return '';
   const num = parseFloat(val);
   return isNaN(num) ? String(val).toLowerCase() : num;
 };
 
-export const useSortableTable = (rows, defaultKey = null, getSortValue = null) => {
+export const useSortableTable = <T extends Record<string, unknown>>(
+  rows: T[],
+  defaultKey: string | null = null,
+  getSortValue: typeof defaultGetSortValue | null = null
+) => {
   const [sortKey, setSortKey] = useState(defaultKey);
   const [sortDir, setSortDir] = useState('asc');
 
   const resolver = getSortValue ?? defaultGetSortValue;
 
-  const handleSort = (key) => {
+  const handleSort = (key: string) => {
     if (key === sortKey) {
       setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'));
     } else {
@@ -36,6 +43,7 @@ export const useSortableTable = (rows, defaultKey = null, getSortValue = null) =
   const sortedRows = useMemo(() => {
     if (!rows.length || !sortKey) return rows;
     return [...rows].sort((a, b) => {
+      if (typeof a != 'string' || typeof b != 'string') return 0;
       const av = resolver(a, sortKey);
       const bv = resolver(b, sortKey);
       if (av < bv) return sortDir === 'asc' ? -1 : 1;
@@ -44,11 +52,14 @@ export const useSortableTable = (rows, defaultKey = null, getSortValue = null) =
     });
   }, [rows, sortKey, sortDir, resolver]);
 
+  type SortIconProps = {
+    colKey: string;
+  };
   /**
    * Returns a sort indicator element for a given column key.
    * Active column shows ▲ or ▼; inactive columns show a faint ⇅.
    */
-  const SortIcon = ({ colKey }) => {
+  const SortIcon = ({ colKey }: SortIconProps) => {
     const active = sortKey === colKey;
     return (
       <span style={{ opacity: active ? 1 : 0.3, fontSize: '0.7rem', marginLeft: '3px' }}>

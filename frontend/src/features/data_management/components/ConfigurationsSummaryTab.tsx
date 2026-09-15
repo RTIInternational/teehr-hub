@@ -10,27 +10,42 @@
  *   configurations_by_location and shows them as points on the map.
  * - The selected row is highlighted in the table.
  */
-import { useEffect, useState, useCallback, useMemo } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import { Spinner, Alert } from 'react-bootstrap';
 
-import { useSortableTable } from '../../../hooks/useSortableTable';
-import { apiService } from '../../../services/api';
-import SharedDataTable from '../../../shared/components/SharedDataTable';
-import { DashboardPanel } from '../../common/dashboard';
-import SimpleMapPanel from './SimpleMapPanel';
+import {
+  useConfigurationsLocationsGeoJson,
+  useConfigurationsTable,
+} from '@/features/data_management/queries/configurations';
+import type { ConfigurationsTableItem } from '@/features/data_management/types/configurations';
+import { fmt } from '@/features/data_management/utils/utils';
+import { useSortableTable, type SortValueGetter } from '@/hooks/useSortableTable';
+import DashboardPanel from '@/shared/components/DashboardPanel';
+import SharedDataTable from '@/shared/components/SharedDataTable';
+import { displayUnknown } from '@/shared/utils/formatters';
+
+import SimpleMapPanel, { type PopupFeatureProps } from './SimpleMapPanel';
 
 // ── Helpers ────────────────────────────────────────────────────────────────
-const fmt = (val) => {
-  if (val == null) return '—';
-  return String(val)
-    .replace('T', ' ')
-    .replace(/\.\d+Z?$/, '');
-};
 
 // Returns a raw sortable value for a column key
-const sortValue = (row, key) => {
+const sortValue: SortValueGetter = (row, key) => {
   if (key === 'n_locations') return row.n_locations ?? 0;
   return String(row[key] ?? '').toLowerCase();
+};
+
+const DATE_TIME_FIELDS = [
+  'min_value_time',
+  'max_value_time',
+  'min_reference_time',
+  'max_reference_time',
+];
+
+const compareRows = (r1: ConfigurationsTableItem | null, r2: ConfigurationsTableItem | null) => {
+  const str1 = JSON.stringify(r1);
+  const str2 = JSON.stringify(r2);
+  if (str1 === str2) return true;
+  return false;
 };
 
 // ── Component ──────────────────────────────────────────────────────────────
@@ -48,7 +63,7 @@ const COLUMNS = [
 ];
 
 // Popup HTML for locations belonging to selected config
-const makePopupHTML = (props) => `
+const makePopupHTML = (props: PopupFeatureProps) => `
   <div style="padding:6px 10px;font-size:0.83rem;line-height:1.4;">
     <div style="font-weight:600;margin-bottom:2px;">${props.name || props.primary_location_id || ''}</div>
     <div><strong>ID:</strong> ${props.primary_location_id || '—'}</div>
@@ -56,12 +71,16 @@ const makePopupHTML = (props) => `
 `;
 
 const ConfigurationsSummaryTab = ({ isActive = true }) => {
-  const [rows, setRows] = useState([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
-  const [selectedRow, setSelectedRow] = useState(null);
-  const [mapLocations, setMapLocations] = useState(null);
-  const [mapLoading, setMapLoading] = useState(false);
+  const [selectedRow, setSelectedRow] = useState<ConfigurationsTableItem | null>(null);
+
+  // Load summary table on mount
+  const configTable = useConfigurationsTable();
+  const rows = configTable.data ?? [];
+
+  const mapLocations = useConfigurationsLocationsGeoJson(
+    selectedRow?.configuration_name,
+    selectedRow?.variable_name
+  );
 
   const { sortedRows, handleSort, SortIcon } = useSortableTable(
     rows,
@@ -74,69 +93,17 @@ const ConfigurationsSummaryTab = ({ isActive = true }) => {
   const filteredRows = useMemo(() => {
     if (!filterText.trim()) return sortedRows;
     const q = filterText.trim().toLowerCase();
-    return sortedRows.filter((row) =>
-      String(row.configuration_name ?? '')
-        .toLowerCase()
-        .includes(q)
-    );
+    return sortedRows.filter((row) => row.configuration_name.toLowerCase().includes(q));
   }, [sortedRows, filterText]);
-
-  // Load summary table on mount
-  useEffect(() => {
-    let cancelled = false;
-    setLoading(true);
-    setError(null);
-
-    apiService
-      .getConfigurationsTable()
-      .then((data) => {
-        if (cancelled) return;
-        const items = Array.isArray(data)
-          ? data
-          : Array.isArray(data.items)
-            ? data.items
-            : (data.features || []).map((f) => f.properties ?? f);
-        setRows(items);
-      })
-      .catch((err) => {
-        if (!cancelled) setError(err.message);
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false);
-      });
-
-    return () => {
-      cancelled = true;
-    };
-  }, []);
 
   // Fetch locations for the clicked row
   const handleRowClick = useCallback(
-    async (row) => {
-      const key = `${row.configuration_name}||${row.variable_name}`;
-      if (selectedRow === key) {
-        // Deselect
+    async (row: ConfigurationsTableItem) => {
+      if (compareRows(selectedRow, row)) {
         setSelectedRow(null);
-        setMapLocations(null);
         return;
       }
-      setSelectedRow(key);
-      setMapLoading(true);
-
-      try {
-        // Single backend call: JOIN configurations_by_location with locations table.
-        // Avoids URL-length limits that arise from passing thousands of IDs as query params.
-        const geojson = await apiService.getConfigurationLocationsGeojson({
-          configuration_name: row.configuration_name,
-          variable_name: row.variable_name,
-        });
-        setMapLocations(geojson);
-      } catch (err) {
-        console.error('ConfigurationsSummaryTab: Failed to load locations:', err);
-        setMapLocations(null);
-      } finally {
-        setMapLoading(false);
-      }
+      setSelectedRow(row);
     },
     [selectedRow]
   );
@@ -154,20 +121,20 @@ const ConfigurationsSummaryTab = ({ isActive = true }) => {
       <div style={{ flex: '1 1 0', minHeight: 0 }}>
         <DashboardPanel bodyStyle={{ padding: 0, position: 'relative' }}>
           <SimpleMapPanel
-            locations={mapLocations}
+            locations={mapLocations.data}
             getPopupHTML={makePopupHTML}
             isActive={isActive}
           />
-          {mapLoading && (
+          {mapLocations.isLoading && (
             <div
               className="position-absolute top-50 start-50 translate-middle text-center"
               style={{ zIndex: 10 }}
             >
-              <div className="spinner-border spinner-border-sm text-primary" role="status" />
+              <output className="spinner-border spinner-border-sm text-primary" />
               <div className="small text-muted mt-1">Loading locations…</div>
             </div>
           )}
-          {!selectedRow && !mapLoading && (
+          {!selectedRow && !mapLocations.isLoading && (
             <div
               className="position-absolute top-50 start-50 translate-middle text-center text-muted"
               style={{
@@ -216,28 +183,28 @@ const ConfigurationsSummaryTab = ({ isActive = true }) => {
           bodyStyle={{ padding: 0 }}
         >
           <div style={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0 }}>
-            {loading && (
+            {configTable.isLoading && (
               <div className="d-flex align-items-center justify-content-center h-100">
-                <Spinner animation="border" variant="primary" role="status">
+                <Spinner animation="border" variant="primary">
                   <span className="visually-hidden">Loading configurations…</span>
                 </Spinner>
               </div>
             )}
 
-            {error && (
+            {configTable.error && (
               <Alert variant="danger" className="m-3 mb-0">
                 <i className="bi bi-exclamation-triangle-fill me-2" />
-                {error}
+                {configTable.error.message}
               </Alert>
             )}
 
-            {!loading && !error && rows.length === 0 && (
+            {!configTable.isLoading && !configTable.error && rows.length === 0 && (
               <div className="d-flex align-items-center justify-content-center h-100 text-muted">
                 <span>No configurations available.</span>
               </div>
             )}
 
-            {!loading && !error && rows.length > 0 && (
+            {!configTable.isLoading && !configTable.error && rows.length > 0 && (
               <SharedDataTable
                 headers={COLUMNS}
                 rows={filteredRows}
@@ -259,8 +226,7 @@ const ConfigurationsSummaryTab = ({ isActive = true }) => {
                   title: `Sort by ${column.label}`,
                 })}
                 getRowProps={(row) => {
-                  const key = `${row.configuration_name}||${row.variable_name}`;
-                  const isSelected = selectedRow === key;
+                  const isSelected = compareRows(selectedRow, row);
                   return {
                     onClick: () => handleRowClick(row),
                     style: { cursor: 'pointer', background: isSelected ? '#cfe2ff' : undefined },
@@ -268,32 +234,27 @@ const ConfigurationsSummaryTab = ({ isActive = true }) => {
                   };
                 }}
                 renderCell={(row, column) => {
-                  const key = `${row.configuration_name}||${row.variable_name}`;
-                  const isSelected = selectedRow === key;
-                  const value = [
-                    'min_value_time',
-                    'max_value_time',
-                    'min_reference_time',
-                    'max_reference_time',
-                  ].includes(column.key)
-                    ? fmt(row[column.key])
-                    : (row[column.key] ?? '—');
+                  const isSelected = compareRows(selectedRow, row);
+                  const rawVal = row[column.key];
+                  const value =
+                    DATE_TIME_FIELDS.includes(column.key) &&
+                    (typeof rawVal === 'string' || typeof rawVal === 'number')
+                      ? fmt(rawVal)
+                      : (rawVal ?? '—');
 
                   return column.key === 'configuration_name' && isSelected ? (
-                    <strong>{value}</strong>
+                    <strong>{value as string}</strong>
                   ) : (
-                    String(value)
+                    displayUnknown(value)
                   );
                 }}
                 getCellProps={(row, column) => {
-                  const value = [
-                    'min_value_time',
-                    'max_value_time',
-                    'min_reference_time',
-                    'max_reference_time',
-                  ].includes(column.key)
-                    ? fmt(row[column.key])
-                    : (row[column.key] ?? '—');
+                  const rawVal = row[column.key];
+                  const value =
+                    DATE_TIME_FIELDS.includes(column.key) &&
+                    (typeof rawVal === 'string' || typeof rawVal === 'number')
+                      ? fmt(rawVal)
+                      : (rawVal ?? '—');
                   return {
                     style: {
                       verticalAlign: 'middle',
@@ -302,7 +263,7 @@ const ConfigurationsSummaryTab = ({ isActive = true }) => {
                       textOverflow: 'ellipsis',
                       whiteSpace: 'nowrap',
                     },
-                    title: String(value),
+                    title: displayUnknown(value),
                   };
                 }}
               />
