@@ -11,9 +11,9 @@
  */
 import { useState } from 'react';
 
-import CompletenessTab from './CompletenessTab';
-import ConfigurationsSummaryTab from './ConfigurationsSummaryTab';
-import LocationsSummaryTab from './LocationsSummaryTab';
+import CompletenessTab from './components/CompletenessTab';
+import ConfigurationsSummaryTab from './components/ConfigurationsSummaryTab';
+import LocationsSummaryTab from './components/LocationsSummaryTab';
 
 const TABS = [
   { id: 'configurations', label: 'Configurations Summary' },

@@ -2,8 +2,8 @@ import { Container, Alert } from 'react-bootstrap';
 import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 
 import { Home, DashboardsHome } from '@/components/common';
-import { DataDashboard } from '@/components/dashboards/data_management';
 import { useAuth } from '@/features/auth';
+import { DataDashboard } from '@/features/data_management';
 import { ForecastDashboard, ForecastDashboardProvider } from '@/features/forecast';
 import { NwmdDashboard, NwmdDashboardProvider } from '@/features/nwmd';
 import { RetrospectiveDashboardProvider, RetrospectiveDashboard } from '@/features/retrospective';
