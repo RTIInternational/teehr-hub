@@ -8,7 +8,7 @@ import {
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8000';
 const API_KEY = import.meta.env.VITE_API_KEY || '';
 
-const normalizeEndpoint = (endpoint) => {
+const normalizeEndpoint = (endpoint: string) => {
   if (!endpoint) return endpoint;
   if (endpoint.startsWith('http://') || endpoint.startsWith('https://')) {
     const parsed = new URL(endpoint);
@@ -17,8 +17,19 @@ const normalizeEndpoint = (endpoint) => {
   return endpoint;
 };
 
+const normalizeHeaders = (headers?: HeadersInit): Record<string, string> => {
+  if (!headers) return {};
+  if (headers instanceof Headers) {
+    return Object.fromEntries(headers);
+  }
+  if (Array.isArray(headers)) {
+    return Object.fromEntries(headers);
+  }
+  return headers as Record<string, string>;
+};
+
 // Helper function for API calls
-const apiCall = async (endpoint, options = {}) => {
+const apiCall = async (endpoint: string, options: RequestInit = {}) => {
   try {
     const normalizedEndpoint = normalizeEndpoint(endpoint);
     const url = `${API_BASE_URL}${normalizedEndpoint}`;
@@ -34,7 +45,7 @@ const apiCall = async (endpoint, options = {}) => {
       headers: {
         Accept: 'application/json',
         ...authHeaders,
-        ...extraHeaders,
+        ...normalizeHeaders(extraHeaders),
       },
       ...restOptions,
     });
@@ -68,7 +79,7 @@ const apiCall = async (endpoint, options = {}) => {
 };
 
 // Helper to format ISO 8601 datetime interval
-const formatDatetimeInterval = (startDate, endDate) => {
+const formatDatetimeInterval = (startDate: string, endDate: string) => {
   if (!startDate && !endDate) return null;
   const start = startDate || '..';
   const end = endDate || '..';
@@ -80,8 +91,8 @@ export const apiService = {
   // Get all locations (OGC API - Features)
   getLocations: (limit = 1000, offset = 0) => {
     const params = new URLSearchParams();
-    params.append('limit', limit);
-    params.append('offset', offset);
+    params.append('limit', limit.toString());
+    params.append('offset', offset.toString());
     return apiCall(`/collections/locations/items?${params.toString()}`);
   },
 
