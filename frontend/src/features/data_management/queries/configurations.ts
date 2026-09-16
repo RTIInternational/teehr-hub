@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/react-query';
+import { skipToken, useQuery } from '@tanstack/react-query';
 
 import apiService from '@/services/api';
 
@@ -7,9 +7,8 @@ import type { ConfigurationsTableResponse } from '../types/configurations';
 export const useConfigurationsByLocationId = (locationId: string | null) =>
   useQuery({
     queryKey: ['configurationsByLocationId', locationId],
-    queryFn: () => apiService.getConfigurationsByLocationId(locationId),
+    queryFn: locationId ? () => apiService.getConfigurationsByLocationId(locationId) : skipToken,
     select: (data: ConfigurationsTableResponse) => data.items,
-    enabled: !!locationId,
   });
 
 export const useConfigurationsLocationsGeoJson = (configuration?: string, variable?: string) =>
