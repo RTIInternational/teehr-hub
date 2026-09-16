@@ -3,7 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { apiService } from '@/services/api';
 import { ISO_TO_DURATION_NAME, isTimestepVariable } from '@/shared/utils/durationUtils';
 
-import type { TimeseriesResponse, Timeseries, TimeseriesRequestFilters } from '../types/timeseries';
+import type { TimeseriesResult, Timeseries, TimeseriesRequestFilters } from '../types/timeseries';
 
 const fetchPrimaryTimeseries = async (filters: TimeseriesRequestFilters) => {
   const { primary_location_id, primary } = filters;
@@ -64,7 +64,7 @@ const fetchSecondaryTimeseries = async (filters: TimeseriesRequestFilters) => {
 };
 
 export const usePrimaryTimeseries = (filters?: TimeseriesRequestFilters) =>
-  useQuery<TimeseriesResponse>({
+  useQuery<TimeseriesResult>({
     queryKey: ['timeseries', 'primary', filters],
     queryFn: () => {
       if (!filters) {
@@ -76,7 +76,7 @@ export const usePrimaryTimeseries = (filters?: TimeseriesRequestFilters) =>
   });
 
 export const useSecondaryTimeseries = (filters?: TimeseriesRequestFilters) =>
-  useQuery<TimeseriesResponse>({
+  useQuery<TimeseriesResult>({
     queryKey: ['timeseries', 'secondary', filters],
     queryFn: () => {
       if (!filters) {

@@ -7,6 +7,7 @@ export type MetricLocationsResponse = FeatureCollection<Point>;
 export type MetricsFeature = Feature<Point, MetricsProperties>;
 
 export type MetricsFilters = {
+  [queryable: string]: string;
   configuration: string;
   table: string;
   variable: string;
