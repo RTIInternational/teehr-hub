@@ -1,7 +1,9 @@
 import type { FeatureCollection } from 'geojson';
 
 import { ensureFreshToken, getKeycloak } from '@/features/auth';
+import type { ApiKeysResponse, CreateApiKeyResponse } from '@/shared/types/apiKeys';
 import type { ConfigurationsSummaryResponse } from '@/shared/types/configurations';
+import type { LocationMetadataResponse } from '@/shared/types/locations';
 import type { MetricsFilters } from '@/shared/types/metrics';
 import type { OgcResponse } from '@/shared/types/ogc';
 import type { QueryablesResponse } from '@/shared/types/queryables';
@@ -189,7 +191,7 @@ export const apiService = {
       ? `/collections/${table}/items?${queryString}`
       : `/collections/${table}/items`;
 
-    return apiCall<OgcResponse<FeatureCollection>>(endpoint);
+    return apiCall<FeatureCollection>(endpoint);
   },
 
   // Get primary timeseries (simple JSON array format)
@@ -320,15 +322,15 @@ export const apiService = {
   getMe: () => apiCall('/auth/me'),
 
   // API key management (admin JWT required)
-  listApiKeys: () => apiCall('/auth/api-keys'),
-  createApiKey: (name: string, scopes = []) =>
-    apiCall('/auth/api-keys', {
+  listApiKeys: () => apiCall<ApiKeysResponse>('/auth/api-keys'),
+  createApiKey: (name: string, scopes: string[] = []) =>
+    apiCall<CreateApiKeyResponse>('/auth/api-keys', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ name, scopes }),
     }),
   revokeApiKey: (keyId: string) =>
-    apiCall(`/auth/api-keys/${encodeURIComponent(keyId)}`, {
+    apiCall<null>(`/auth/api-keys/${encodeURIComponent(keyId)}`, {
       method: 'DELETE',
     }),
 
@@ -365,7 +367,7 @@ export const apiService = {
     params.append('id', id);
     params.append('limit', '1');
     params.append('include_attributes', includeAttributes.toString());
-    return apiCall(`/collections/locations/items?${params.toString()}`);
+    return apiCall<LocationMetadataResponse>(`/collections/locations/items?${params.toString()}`);
   },
 
   // Get configurations_by_location rows for a specific location_id (all rows for that location)

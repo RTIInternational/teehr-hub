@@ -24,7 +24,7 @@ import type { QueryablesResponse, TableProperties } from '../types/queryables';
  *   - description: Table description from schema
  *   - allProperties: Array of all property names
  */
-export const extractTableProperties = (queryables: QueryablesResponse): TableProperties => {
+export const extractTableProperties = (queryables: QueryablesResponse | null): TableProperties => {
   if (!queryables || typeof queryables !== 'object') {
     return {
       metrics: [],
