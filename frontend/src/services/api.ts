@@ -1,9 +1,20 @@
-// API configuration - OGC-compliant endpoints
-import { ensureFreshToken, getKeycloak } from '../features/auth';
+import type { FeatureCollection } from 'geojson';
+
+import { ensureFreshToken, getKeycloak } from '@/features/auth';
+import type { CompletenessRequestFilters } from '@/shared/types/completeness';
+import type { ConfigurationsSummaryResponse } from '@/shared/types/configurations';
+import type { MetricsFilters } from '@/shared/types/metrics';
+import type { OgcResponse } from '@/shared/types/ogc';
+import type { QueryablesResponse } from '@/shared/types/queryables';
+import {
+  type PrimaryTimeseriesRequestFilters,
+  type SecondaryTimeseriesRequestFilters,
+  type TimeseriesResponse,
+} from '@/shared/types/timeseries';
 import {
   groupPrimaryTimeseriesItems,
   groupSecondaryTimeseriesItems,
-} from '../shared/utils/timeseries';
+} from '@/shared/utils/timeseries';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8000';
 const API_KEY = import.meta.env.VITE_API_KEY || '';
@@ -29,7 +40,7 @@ const normalizeHeaders = (headers?: HeadersInit): Record<string, string> => {
 };
 
 // Helper function for API calls
-const apiCall = async (endpoint: string, options: RequestInit = {}) => {
+const apiCall = async <T>(endpoint: string, options: RequestInit = {}) => {
   try {
     const normalizedEndpoint = normalizeEndpoint(endpoint);
     const url = `${API_BASE_URL}${normalizedEndpoint}`;
@@ -71,7 +82,7 @@ const apiCall = async (endpoint: string, options: RequestInit = {}) => {
     }
 
     const data = await response.json();
-    return data;
+    return data as Promise<T>;
   } catch (error) {
     console.error(`API call failed for ${endpoint}:`, error);
     throw error;
@@ -79,7 +90,7 @@ const apiCall = async (endpoint: string, options: RequestInit = {}) => {
 };
 
 // Helper to format ISO 8601 datetime interval
-const formatDatetimeInterval = (startDate: string, endDate: string) => {
+const formatDatetimeInterval = (startDate?: string, endDate?: string) => {
   if (!startDate && !endDate) return null;
   const start = startDate || '..';
   const end = endDate || '..';
@@ -93,41 +104,45 @@ export const apiService = {
     const params = new URLSearchParams();
     params.append('limit', limit.toString());
     params.append('offset', offset.toString());
-    return apiCall(`/collections/locations/items?${params.toString()}`);
+    return apiCall<OgcResponse<FeatureCollection>>(
+      `/collections/locations/items?${params.toString()}`
+    );
   },
 
   // Get queryables for a collection (OGC API - Features Part 3)
   // Returns schema with x-teehr-role extensions for group_by/metric fields
   getQueryables: (collection = 'sim_metrics_by_location') => {
-    return apiCall(`/collections/${collection}/queryables`);
+    return apiCall<QueryablesResponse>(`/collections/${collection}/queryables`);
   },
 
   // Get distinct values for a queryable property (TEEHR extension)
-  getQueryableValues: (collection, propertyName) => {
-    return apiCall(`/collections/${collection}/queryables/${propertyName}/values`);
+  getQueryableValues: (collection: string, propertyName: string) => {
+    return apiCall<string[]>(`/collections/${collection}/queryables/${propertyName}/values`);
   },
 
   // Get configurations (distinct configuration_name values)
   getConfigurations: async (table = 'sim_metrics_by_location') => {
-    return apiCall(`/collections/${table}/queryables/configuration_name/values`);
+    return apiCall<string[]>(`/collections/${table}/queryables/configuration_name/values`);
   },
 
   // Get configurations summary rows from iceberg.teehr.configurations_summary
   getConfigurationsTable: (limit = 1000, offset = 0) => {
     const params = new URLSearchParams();
-    params.append('limit', limit);
-    params.append('offset', offset);
-    return apiCall(`/collections/configurations_summary/items?${params.toString()}`);
+    params.append('limit', limit.toString());
+    params.append('offset', offset.toString());
+    return apiCall<ConfigurationsSummaryResponse>(
+      `/collections/configurations_summary/items?${params.toString()}`
+    );
   },
 
   // Get variables (distinct variable_name values)
   getVariables: async (table = 'sim_metrics_by_location') => {
-    return apiCall(`/collections/${table}/queryables/variable_name/values`);
+    return apiCall<string[]>(`/collections/${table}/queryables/variable_name/values`);
   },
 
   // Get distinct values for requested column
-  getDistinctValues: async (table = 'sim_metrics_by_location', columnName) => {
-    return apiCall(`/collections/${table}/queryables/${columnName}/values`);
+  getDistinctValues: async (table = 'sim_metrics_by_location', columnName: string) => {
+    return apiCall<string[]>(`/collections/${table}/queryables/${columnName}/values`);
   },
 
   // Get table properties (now via queryables endpoint)
@@ -138,23 +153,23 @@ export const apiService = {
   // Get table properties for multiple tables in batch
   getTablePropertiesBatch: async (tables = ['sim_metrics_by_location']) => {
     const results = await Promise.all(
-      tables.map((table) => apiCall(`/collections/${table}/queryables`))
+      tables.map((table) => apiCall<QueryablesResponse>(`/collections/${table}/queryables`))
     );
     // Return as object keyed by table name
-    return tables.reduce((acc, table, idx) => {
+    return tables.reduce<Record<string, QueryablesResponse | null>>((acc, table, idx) => {
       acc[table] = results[idx];
       return acc;
     }, {});
   },
 
   // Get metrics with filtering (OGC API - Features)
-  getMetrics: (filters = {}) => {
+  getMetrics: (filters: Partial<MetricsFilters> = {}) => {
     const params = new URLSearchParams();
     const table = filters.table || 'sim_metrics_by_location';
 
     const reservedKeys = ['table'];
 
-    const aliasMap = {
+    const aliasMap: Record<string, string> = {
       waterYear: 'water_year',
       aggMethod: 'window_agg',
       configuration: 'configuration_name',
@@ -167,7 +182,7 @@ export const apiService = {
       if (reservedKeys.includes(key)) continue;
       const paramKey = aliasMap[key] || key;
       const filterValue = filters[key] === null ? 'null' : filters[key];
-      params.append(paramKey, filterValue);
+      if (filterValue) params.append(paramKey, filterValue);
     }
 
     const queryString = params.toString();
@@ -175,11 +190,14 @@ export const apiService = {
       ? `/collections/${table}/items?${queryString}`
       : `/collections/${table}/items`;
 
-    return apiCall(endpoint);
+    return apiCall<OgcResponse<FeatureCollection>>(endpoint);
   },
 
   // Get primary timeseries (simple JSON array format)
-  getPrimaryTimeseries: async (primaryLocationId, filters = {}) => {
+  getPrimaryTimeseries: async (
+    primaryLocationId: string,
+    filters: PrimaryTimeseriesRequestFilters = {}
+  ) => {
     const params = new URLSearchParams();
     params.append('primary_location_id', primaryLocationId);
 
@@ -206,18 +224,20 @@ export const apiService = {
 
     params.append('f', 'json');
     if (Number.isFinite(filters.limit)) {
-      params.append('limit', Math.max(1, Number(filters.limit)));
+      params.append('limit', Math.max(1, Number(filters.limit)).toString());
     }
 
-    let nextEndpoint = `/collections/primary_timeseries/items?${params.toString()}`;
+    let nextEndpoint: string | null = `/collections/primary_timeseries/items?${params.toString()}`;
     const allItems = [];
 
     while (nextEndpoint) {
-      const response = await apiCall(nextEndpoint);
+      const response: TimeseriesResponse | null = await apiCall<TimeseriesResponse>(nextEndpoint);
       const pageItems = Array.isArray(response?.items) ? response.items : [];
       allItems.push(...pageItems);
 
-      const nextHref = response?.links?.find((link) => link.rel === 'next')?.href;
+      const nextHref: string | undefined = response?.links?.find(
+        (link) => link.rel === 'next'
+      )?.href;
       nextEndpoint = nextHref ? normalizeEndpoint(nextHref) : null;
     }
 
@@ -225,7 +245,10 @@ export const apiService = {
   },
 
   // Get secondary timeseries (simple JSON array format)
-  getSecondaryTimeseries: async (primaryLocationId, filters = {}) => {
+  getSecondaryTimeseries: async (
+    primaryLocationId: string,
+    filters: SecondaryTimeseriesRequestFilters = {}
+  ) => {
     const params = new URLSearchParams();
     params.append('primary_location_id', primaryLocationId);
 
@@ -261,18 +284,21 @@ export const apiService = {
     // then regroup into the historical timeseries response shape expected by the UI.
     params.append('f', 'json');
     if (Number.isFinite(filters.limit)) {
-      params.append('limit', Math.max(1, Number(filters.limit)));
+      params.append('limit', Math.max(1, Number(filters.limit)).toString());
     }
 
-    let nextEndpoint = `/collections/secondary_timeseries/items?${params.toString()}`;
+    let nextEndpoint: string | null =
+      `/collections/secondary_timeseries/items?${params.toString()}`;
     const allItems = [];
 
     while (nextEndpoint) {
-      const response = await apiCall(nextEndpoint);
+      const response: TimeseriesResponse | null = await apiCall<TimeseriesResponse>(nextEndpoint);
       const pageItems = Array.isArray(response?.items) ? response.items : [];
       allItems.push(...pageItems);
 
-      const nextHref = response?.links?.find((link) => link.rel === 'next')?.href;
+      const nextHref: string | undefined = response?.links?.find(
+        (link) => link.rel === 'next'
+      )?.href;
       nextEndpoint = nextHref ? normalizeEndpoint(nextHref) : null;
     }
     const groupedSecondaryItems = groupSecondaryTimeseriesItems(allItems);
@@ -296,49 +322,49 @@ export const apiService = {
 
   // API key management (admin JWT required)
   listApiKeys: () => apiCall('/auth/api-keys'),
-  createApiKey: (name, scopes = []) =>
+  createApiKey: (name: string, scopes = []) =>
     apiCall('/auth/api-keys', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ name, scopes }),
     }),
-  revokeApiKey: (keyId) =>
+  revokeApiKey: (keyId: string) =>
     apiCall(`/auth/api-keys/${encodeURIComponent(keyId)}`, {
       method: 'DELETE',
     }),
 
   // Get locations filtered by ID prefix, returns GeoJSON FeatureCollection
-  getLocationsByPrefix: (prefix, limit = 5000) => {
+  getLocationsByPrefix: (prefix: string, limit = 5000) => {
     const params = new URLSearchParams();
     params.append('prefix', prefix);
-    params.append('limit', limit);
+    params.append('limit', limit.toString());
     return apiCall(`/collections/locations/items?${params.toString()}`);
   },
 
   // Get location id + name (no geometry) filtered by prefix, returns {items: [{id, name}]}
-  getLocationIdNames: (prefix, limit = null) => {
+  getLocationIdNames: (prefix: string, limit: number | null = null) => {
     const params = new URLSearchParams();
     if (prefix) params.append('prefix', prefix);
     params.append('include_geometry', 'false');
-    if (limit != null) params.append('limit', limit);
+    if (limit != null) params.append('limit', limit.toString());
     return apiCall(`/collections/locations/items?${params.toString()}`);
   },
 
   // Get attribute definitions (name, description, type, updated_at, etc.)
   getAttributes: (limit = 1000, offset = 0) => {
     const params = new URLSearchParams();
-    params.append('limit', limit);
-    params.append('offset', offset);
+    params.append('limit', limit.toString());
+    params.append('offset', offset.toString());
     return apiCall(`/collections/attributes/items?${params.toString()}`);
   },
 
   // Get configuration completeness heatmap data
-  getCompletenessHeatmap: (filters = {}) => {
+  getCompletenessHeatmap: (filters: CompletenessRequestFilters = {}) => {
     const params = new URLSearchParams();
     if (filters.configuration_name) params.append('configuration_name', filters.configuration_name);
     if (filters.variable_name) params.append('variable_name', filters.variable_name);
-    if (filters.limit) params.append('limit', filters.limit);
-    if (filters.offset) params.append('offset', filters.offset);
+    if (filters.limit) params.append('limit', filters.limit.toString());
+    if (filters.offset) params.append('offset', filters.offset.toString());
     return apiCall(`/collections/configuration_completeness/items?${params.toString()}`);
   },
 
@@ -353,23 +379,25 @@ export const apiService = {
 
   // Get a single location by id from the locations table
   // Returns a GeoJSON FeatureCollection with the matching feature
-  getLocationById: (id, includeAttributes = false) => {
+  getLocationById: (id: string, includeAttributes = false) => {
     const params = new URLSearchParams();
     params.append('id', id);
-    params.append('limit', 1);
-    params.append('include_attributes', includeAttributes);
+    params.append('limit', '1');
+    params.append('include_attributes', includeAttributes.toString());
     return apiCall(`/collections/locations/items?${params.toString()}`);
   },
 
   // Get configurations_by_location rows for a specific location_id (all rows for that location)
-  getConfigurationsByLocationId: (locationId) => {
+  getConfigurationsByLocationId: (locationId: string) => {
     const params = new URLSearchParams();
     params.append('location_id', locationId);
     return apiCall(`/collections/configurations_by_location/expanded?${params.toString()}`);
   },
 
   // Get GeoJSON for all locations matching a configuration + variable via a backend JOIN (no URL-length limit)
-  getConfigurationLocationsGeojson: (filters = {}) => {
+  getConfigurationLocationsGeojson: (
+    filters: { configuration_name?: string; variable_name?: string } = {}
+  ) => {
     const params = new URLSearchParams();
     if (filters.configuration_name) params.append('configuration_name', filters.configuration_name);
     if (filters.variable_name) params.append('variable_name', filters.variable_name);
