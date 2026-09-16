@@ -1,10 +1,14 @@
-import type { FeatureCollection } from 'geojson';
+import type { MultiPolygon, FeatureCollection, Point, Polygon } from 'geojson';
 
 import { ensureFreshToken, getKeycloak } from '@/features/auth';
+import type { AttributesResponse } from '@/features/data_management/types/attributes';
+import type { ConfigurationCompletenessResponse } from '@/features/data_management/types/completeness';
+import type { ConfigurationsTableResponse } from '@/features/data_management/types/configurations';
+import type { LocationAttributesResponse } from '@/features/data_management/types/locationAttributes';
 import type { ApiKeysResponse, CreateApiKeyResponse } from '@/shared/types/apiKeys';
 import type { CompletenessRequestFilters } from '@/shared/types/completeness';
 import type { ConfigurationsSummaryResponse } from '@/shared/types/configurations';
-import type { LocationMetadataResponse } from '@/shared/types/locations';
+import type { LocationMetadataResponse, LocationsResponse } from '@/shared/types/locations';
 import type { MetricsFilters } from '@/shared/types/metrics';
 import type { OgcResponse } from '@/shared/types/ogc';
 import type { QueryablesResponse } from '@/shared/types/queryables';
@@ -224,7 +228,7 @@ export const apiService = {
       ? `/collections/${table}/items?${queryString}`
       : `/collections/${table}/items`;
 
-    return apiCallJson<FeatureCollection>(endpoint);
+    return apiCallJson<FeatureCollection<Point>>(endpoint);
   },
 
   // Get primary timeseries (simple JSON array format)
@@ -374,7 +378,9 @@ export const apiService = {
     const params = new URLSearchParams();
     params.append('prefix', prefix);
     params.append('limit', limit.toString());
-    return apiCallJson(`/collections/locations/items?${params.toString()}`);
+    return apiCallJson<FeatureCollection<Polygon | MultiPolygon>>(
+      `/collections/locations/items?${params.toString()}`
+    );
   },
 
   // Get location id + name (no geometry) filtered by prefix, returns {items: [{id, name}]}
@@ -383,7 +389,7 @@ export const apiService = {
     if (prefix) params.append('prefix', prefix);
     params.append('include_geometry', 'false');
     if (limit != null) params.append('limit', limit.toString());
-    return apiCallJson(`/collections/locations/items?${params.toString()}`);
+    return apiCallJson<LocationsResponse>(`/collections/locations/items?${params.toString()}`);
   },
 
   // Get attribute definitions (name, description, type, updated_at, etc.)
@@ -391,7 +397,7 @@ export const apiService = {
     const params = new URLSearchParams();
     params.append('limit', limit.toString());
     params.append('offset', offset.toString());
-    return apiCallJson(`/collections/attributes/items?${params.toString()}`);
+    return apiCallJson<AttributesResponse>(`/collections/attributes/items?${params.toString()}`);
   },
 
   // Get configuration completeness heatmap data
@@ -401,16 +407,20 @@ export const apiService = {
     if (filters.variable_name) params.append('variable_name', filters.variable_name);
     if (filters.limit) params.append('limit', filters.limit.toString());
     if (filters.offset) params.append('offset', filters.offset.toString());
-    return apiCallJson(`/collections/configuration_completeness/items?${params.toString()}`);
+    return apiCallJson<ConfigurationCompletenessResponse>(
+      `/collections/configuration_completeness/items?${params.toString()}`
+    );
   },
 
   // Get location attributes for specified attribute names (EAV rows, one per location+name)
   // Returns {items: [{location_id, attribute_name, value}, ...]}
-  getLocationAttributesByNames: (attributeNames = [], limit = null) => {
+  getLocationAttributesByNames: (attributeNames: string[] = [], limit = null) => {
     const params = new URLSearchParams();
     attributeNames.forEach((name) => params.append('attribute_name', name));
     if (limit != null) params.append('limit', limit);
-    return apiCallJson(`/collections/location_attributes/items?${params.toString()}`);
+    return apiCallJson<LocationAttributesResponse>(
+      `/collections/location_attributes/items?${params.toString()}`
+    );
   },
 
   // Get a single location by id from the locations table
@@ -429,7 +439,9 @@ export const apiService = {
   getConfigurationsByLocationId: (locationId: string) => {
     const params = new URLSearchParams();
     params.append('location_id', locationId);
-    return apiCallJson(`/collections/configurations_by_location/expanded?${params.toString()}`);
+    return apiCallJson<ConfigurationsTableResponse>(
+      `/collections/configurations_by_location/expanded?${params.toString()}`
+    );
   },
 
   // Get GeoJSON for all locations matching a configuration + variable via a backend JOIN (no URL-length limit)
@@ -439,7 +451,7 @@ export const apiService = {
     const params = new URLSearchParams();
     if (filters.configuration_name) params.append('configuration_name', filters.configuration_name);
     if (filters.variable_name) params.append('variable_name', filters.variable_name);
-    return apiCallJson(
+    return apiCallJson<FeatureCollection<Point>>(
       `/collections/configurations_by_location/locations-geojson?${params.toString()}`
     );
   },

@@ -1,5 +1,4 @@
 import { useQuery } from '@tanstack/react-query';
-import type { FeatureCollection, Point } from 'geojson';
 
 import { apiService } from '@/services/api';
 import type { MetricsFilters } from '@/shared/types/metrics';
@@ -17,6 +16,6 @@ export const useLeadTimeBinMetrics = (filters?: LeadTimeBinFilters) =>
     queryKey: ['leadTimeBinMetrics', filters],
     queryFn: () => apiService.getMetrics(filters),
     enabled: !!filters,
-    select: (metricsData: FeatureCollection<Point>) =>
+    select: (metricsData) =>
       (metricsData?.features || []).map((feature) => feature?.properties || {}),
   });

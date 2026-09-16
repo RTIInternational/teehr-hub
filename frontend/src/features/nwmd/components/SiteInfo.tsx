@@ -2,6 +2,7 @@ import { Card, Spinner, Row, Col, Badge, ListGroup } from 'react-bootstrap';
 
 import { useLocationMetadata } from '@/shared/queries/locations';
 import type { LocationMetadataResponse, MapLocation } from '@/shared/types/locations';
+import { isPointCollection } from '@/shared/utils/geojson';
 
 const getUsTimezoneRegion = (timezone: string) => {
   if (!timezone) return null;
@@ -130,6 +131,8 @@ type SiteDetailsSectionProps = {
 };
 
 const SiteDetailsSection = ({ locationMetadata }: SiteDetailsSectionProps) => {
+  if (!isPointCollection(locationMetadata)) return null;
+
   const data = locationMetadata?.features?.[0];
   if (!data) return null;
 
