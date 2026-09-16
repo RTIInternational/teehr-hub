@@ -26,10 +26,6 @@
     "noUnusedParameters": true,
     "erasableSyntaxOnly": true,
     "noFallthroughCasesInSwitch": true,
-
-    /* JavaScript support */
-    "allowJs": true,
-    "checkJs": false,
   },
   "include": ["src"]
 }
