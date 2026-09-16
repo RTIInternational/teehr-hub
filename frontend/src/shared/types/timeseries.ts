@@ -25,6 +25,7 @@ export type Timeseries = {
   unit_name: string;
   member?: string | null;
   timeseries: TimeseriesPoint[];
+  duration_token?: string | null;
 };
 
 export type TimeseriesFilters = {
