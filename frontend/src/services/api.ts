@@ -42,7 +42,7 @@ const normalizeHeaders = (headers?: HeadersInit): Record<string, string> => {
 };
 
 // Helper function for API calls
-const apiCall = async <T>(endpoint: string, options: RequestInit = {}) => {
+const apiCallJson = async <T>(endpoint: string, options: RequestInit = {}): Promise<T> => {
   try {
     const normalizedEndpoint = normalizeEndpoint(endpoint);
     const url = `${API_BASE_URL}${normalizedEndpoint}`;
@@ -63,10 +63,6 @@ const apiCall = async <T>(endpoint: string, options: RequestInit = {}) => {
       ...restOptions,
     });
 
-    if (response.status === 204) {
-      return null;
-    }
-
     if (!response.ok) {
       let detail = '';
       try {
@@ -80,11 +76,47 @@ const apiCall = async <T>(endpoint: string, options: RequestInit = {}) => {
 
     const contentType = (response.headers.get('content-type') || '').toLowerCase();
     if (!contentType.includes('json')) {
-      return null;
+      throw new Error(`Expected JSON response, got ${contentType || 'unknown content-type'}`);
     }
 
     const data = await response.json();
-    return data as Promise<T>;
+    return data;
+  } catch (error) {
+    console.error(`API call failed for ${endpoint}:`, error);
+    throw error;
+  }
+};
+
+const apiCallVoid = async (endpoint: string, options: RequestInit = {}): Promise<void> => {
+  try {
+    const normalizedEndpoint = normalizeEndpoint(endpoint);
+    const url = `${API_BASE_URL}${normalizedEndpoint}`;
+    const refreshedToken = await ensureFreshToken();
+    const token = refreshedToken || getKeycloak().token || null;
+    const { headers: extraHeaders = {}, ...restOptions } = options;
+    const authHeaders = {
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      ...(!token && API_KEY ? { 'X-API-Key': API_KEY } : {}),
+    };
+
+    const response = await fetch(url, {
+      headers: {
+        ...authHeaders,
+        ...normalizeHeaders(extraHeaders),
+      },
+      ...restOptions,
+    });
+
+    if (!response.ok) {
+      let detail = '';
+      try {
+        const errorBody = await response.json();
+        detail = errorBody?.detail ? ` - ${errorBody.detail}` : '';
+      } catch {
+        detail = '';
+      }
+      throw new Error(`API Error: ${response.status} ${response.statusText}${detail}`);
+    }
   } catch (error) {
     console.error(`API call failed for ${endpoint}:`, error);
     throw error;
@@ -106,7 +138,7 @@ export const apiService = {
     const params = new URLSearchParams();
     params.append('limit', limit.toString());
     params.append('offset', offset.toString());
-    return apiCall<OgcResponse<FeatureCollection>>(
+    return apiCallJson<OgcResponse<FeatureCollection>>(
       `/collections/locations/items?${params.toString()}`
     );
   },
@@ -114,17 +146,17 @@ export const apiService = {
   // Get queryables for a collection (OGC API - Features Part 3)
   // Returns schema with x-teehr-role extensions for group_by/metric fields
   getQueryables: (collection = 'sim_metrics_by_location') => {
-    return apiCall<QueryablesResponse>(`/collections/${collection}/queryables`);
+    return apiCallJson<QueryablesResponse>(`/collections/${collection}/queryables`);
   },
 
   // Get distinct values for a queryable property (TEEHR extension)
   getQueryableValues: (collection: string, propertyName: string) => {
-    return apiCall<string[]>(`/collections/${collection}/queryables/${propertyName}/values`);
+    return apiCallJson<string[]>(`/collections/${collection}/queryables/${propertyName}/values`);
   },
 
   // Get configurations (distinct configuration_name values)
   getConfigurations: async (table = 'sim_metrics_by_location') => {
-    return apiCall<string[]>(`/collections/${table}/queryables/configuration_name/values`);
+    return apiCallJson<string[]>(`/collections/${table}/queryables/configuration_name/values`);
   },
 
   // Get configurations summary rows from iceberg.teehr.configurations_summary
@@ -132,30 +164,30 @@ export const apiService = {
     const params = new URLSearchParams();
     params.append('limit', limit.toString());
     params.append('offset', offset.toString());
-    return apiCall<ConfigurationsSummaryResponse>(
+    return apiCallJson<ConfigurationsSummaryResponse>(
       `/collections/configurations_summary/items?${params.toString()}`
     );
   },
 
   // Get variables (distinct variable_name values)
   getVariables: async (table = 'sim_metrics_by_location') => {
-    return apiCall<string[]>(`/collections/${table}/queryables/variable_name/values`);
+    return apiCallJson<string[]>(`/collections/${table}/queryables/variable_name/values`);
   },
 
   // Get distinct values for requested column
   getDistinctValues: async (table = 'sim_metrics_by_location', columnName: string) => {
-    return apiCall<string[]>(`/collections/${table}/queryables/${columnName}/values`);
+    return apiCallJson<string[]>(`/collections/${table}/queryables/${columnName}/values`);
   },
 
   // Get table properties (now via queryables endpoint)
   getTableProperties: (table = 'sim_metrics_by_location') => {
-    return apiCall(`/collections/${table}/queryables`);
+    return apiCallJson(`/collections/${table}/queryables`);
   },
 
   // Get table properties for multiple tables in batch
   getTablePropertiesBatch: async (tables = ['sim_metrics_by_location']) => {
     const results = await Promise.all(
-      tables.map((table) => apiCall<QueryablesResponse>(`/collections/${table}/queryables`))
+      tables.map((table) => apiCallJson<QueryablesResponse>(`/collections/${table}/queryables`))
     );
     // Return as object keyed by table name
     return tables.reduce<Record<string, QueryablesResponse | null>>((acc, table, idx) => {
@@ -192,7 +224,7 @@ export const apiService = {
       ? `/collections/${table}/items?${queryString}`
       : `/collections/${table}/items`;
 
-    return apiCall<FeatureCollection>(endpoint);
+    return apiCallJson<FeatureCollection>(endpoint);
   },
 
   // Get primary timeseries (simple JSON array format)
@@ -233,7 +265,8 @@ export const apiService = {
     const allItems = [];
 
     while (nextEndpoint) {
-      const response: TimeseriesResponse | null = await apiCall<TimeseriesResponse>(nextEndpoint);
+      const response: TimeseriesResponse | null =
+        await apiCallJson<TimeseriesResponse>(nextEndpoint);
       const pageItems = Array.isArray(response?.items) ? response.items : [];
       allItems.push(...pageItems);
 
@@ -294,7 +327,8 @@ export const apiService = {
     const allItems = [];
 
     while (nextEndpoint) {
-      const response: TimeseriesResponse | null = await apiCall<TimeseriesResponse>(nextEndpoint);
+      const response: TimeseriesResponse | null =
+        await apiCallJson<TimeseriesResponse>(nextEndpoint);
       const pageItems = Array.isArray(response?.items) ? response.items : [];
       allItems.push(...pageItems);
 
@@ -308,30 +342,30 @@ export const apiService = {
   },
 
   // Get available collections (OGC API - Common)
-  getCollections: () => apiCall('/collections'),
+  getCollections: () => apiCallJson('/collections'),
 
   // Get landing page (OGC API - Common)
-  getLandingPage: () => apiCall('/'),
+  getLandingPage: () => apiCallJson('/'),
 
   // Get conformance (OGC API - Common)
-  getConformance: () => apiCall('/conformance'),
+  getConformance: () => apiCallJson('/conformance'),
 
   // Health check
-  healthCheck: () => apiCall('/health'),
+  healthCheck: () => apiCallJson('/health'),
 
   // Auth info
-  getMe: () => apiCall('/auth/me'),
+  getMe: () => apiCallJson('/auth/me'),
 
   // API key management (admin JWT required)
-  listApiKeys: () => apiCall<ApiKeysResponse>('/auth/api-keys'),
+  listApiKeys: () => apiCallJson<ApiKeysResponse>('/auth/api-keys'),
   createApiKey: (name: string, scopes: string[] = []) =>
-    apiCall<CreateApiKeyResponse>('/auth/api-keys', {
+    apiCallJson<CreateApiKeyResponse>('/auth/api-keys', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ name, scopes }),
     }),
   revokeApiKey: (keyId: string) =>
-    apiCall<null>(`/auth/api-keys/${encodeURIComponent(keyId)}`, {
+    apiCallVoid(`/auth/api-keys/${encodeURIComponent(keyId)}`, {
       method: 'DELETE',
     }),
 
@@ -340,7 +374,7 @@ export const apiService = {
     const params = new URLSearchParams();
     params.append('prefix', prefix);
     params.append('limit', limit.toString());
-    return apiCall(`/collections/locations/items?${params.toString()}`);
+    return apiCallJson(`/collections/locations/items?${params.toString()}`);
   },
 
   // Get location id + name (no geometry) filtered by prefix, returns {items: [{id, name}]}
@@ -349,7 +383,7 @@ export const apiService = {
     if (prefix) params.append('prefix', prefix);
     params.append('include_geometry', 'false');
     if (limit != null) params.append('limit', limit.toString());
-    return apiCall(`/collections/locations/items?${params.toString()}`);
+    return apiCallJson(`/collections/locations/items?${params.toString()}`);
   },
 
   // Get attribute definitions (name, description, type, updated_at, etc.)
@@ -357,7 +391,7 @@ export const apiService = {
     const params = new URLSearchParams();
     params.append('limit', limit.toString());
     params.append('offset', offset.toString());
-    return apiCall(`/collections/attributes/items?${params.toString()}`);
+    return apiCallJson(`/collections/attributes/items?${params.toString()}`);
   },
 
   // Get configuration completeness heatmap data
@@ -367,7 +401,7 @@ export const apiService = {
     if (filters.variable_name) params.append('variable_name', filters.variable_name);
     if (filters.limit) params.append('limit', filters.limit.toString());
     if (filters.offset) params.append('offset', filters.offset.toString());
-    return apiCall(`/collections/configuration_completeness/items?${params.toString()}`);
+    return apiCallJson(`/collections/configuration_completeness/items?${params.toString()}`);
   },
 
   // Get location attributes for specified attribute names (EAV rows, one per location+name)
@@ -376,7 +410,7 @@ export const apiService = {
     const params = new URLSearchParams();
     attributeNames.forEach((name) => params.append('attribute_name', name));
     if (limit != null) params.append('limit', limit);
-    return apiCall(`/collections/location_attributes/items?${params.toString()}`);
+    return apiCallJson(`/collections/location_attributes/items?${params.toString()}`);
   },
 
   // Get a single location by id from the locations table
@@ -386,14 +420,16 @@ export const apiService = {
     params.append('id', id);
     params.append('limit', '1');
     params.append('include_attributes', includeAttributes.toString());
-    return apiCall<LocationMetadataResponse>(`/collections/locations/items?${params.toString()}`);
+    return apiCallJson<LocationMetadataResponse>(
+      `/collections/locations/items?${params.toString()}`
+    );
   },
 
   // Get configurations_by_location rows for a specific location_id (all rows for that location)
   getConfigurationsByLocationId: (locationId: string) => {
     const params = new URLSearchParams();
     params.append('location_id', locationId);
-    return apiCall(`/collections/configurations_by_location/expanded?${params.toString()}`);
+    return apiCallJson(`/collections/configurations_by_location/expanded?${params.toString()}`);
   },
 
   // Get GeoJSON for all locations matching a configuration + variable via a backend JOIN (no URL-length limit)
@@ -403,7 +439,7 @@ export const apiService = {
     const params = new URLSearchParams();
     if (filters.configuration_name) params.append('configuration_name', filters.configuration_name);
     if (filters.variable_name) params.append('variable_name', filters.variable_name);
-    return apiCall(
+    return apiCallJson(
       `/collections/configurations_by_location/locations-geojson?${params.toString()}`
     );
   },
