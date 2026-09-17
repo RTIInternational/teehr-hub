@@ -296,14 +296,6 @@ export const apiService = {
       method: 'DELETE',
     }),
 
-  // Get locations filtered by ID prefix, returns GeoJSON FeatureCollection
-  getLocationsByPrefix: (prefix, limit = 5000) => {
-    const params = new URLSearchParams();
-    params.append('prefix', prefix);
-    params.append('limit', limit);
-    return apiCall(`/collections/locations/items?${params.toString()}`);
-  },
-
   // Get location id + name (no geometry) filtered by prefix, returns {items: [{id, name}]}
   getLocationIdNames: (prefix, limit = null) => {
     const params = new URLSearchParams();
@@ -319,16 +311,6 @@ export const apiService = {
     params.append('limit', limit);
     params.append('offset', offset);
     return apiCall(`/collections/attributes/items?${params.toString()}`);
-  },
-
-  // Get configuration completeness heatmap data
-  getCompletenessHeatmap: (filters = {}) => {
-    const params = new URLSearchParams();
-    if (filters.configuration_name) params.append('configuration_name', filters.configuration_name);
-    if (filters.variable_name) params.append('variable_name', filters.variable_name);
-    if (filters.limit) params.append('limit', filters.limit);
-    if (filters.offset) params.append('offset', filters.offset);
-    return apiCall(`/collections/configuration_completeness/items?${params.toString()}`);
   },
 
   // Get location attributes for specified attribute names (EAV rows, one per location+name)
@@ -351,20 +333,22 @@ export const apiService = {
   },
 
   // Get configurations_by_location rows for a specific location_id (all rows for that location)
+  // f=json skips the GeoJSON encoding and the geometry column, which this table view does not need
   getConfigurationsByLocationId: (locationId) => {
     const params = new URLSearchParams();
     params.append('location_id', locationId);
-    return apiCall(`/collections/configurations_by_location/expanded?${params.toString()}`);
+    params.append('f', 'json');
+    return apiCall(`/collections/configurations_by_location/items?${params.toString()}`);
   },
 
-  // Get GeoJSON for all locations matching a configuration + variable via a backend JOIN (no URL-length limit)
+  // Get GeoJSON for all locations matching a configuration + variable
   getConfigurationLocationsGeojson: (filters = {}) => {
     const params = new URLSearchParams();
     if (filters.configuration_name) params.append('configuration_name', filters.configuration_name);
     if (filters.variable_name) params.append('variable_name', filters.variable_name);
-    return apiCall(
-      `/collections/configurations_by_location/locations-geojson?${params.toString()}`
-    );
+    params.append('f', 'geojson');
+    params.append('limit', filters.limit ?? 50000);
+    return apiCall(`/collections/configurations_by_location/items?${params.toString()}`);
   },
 };
 

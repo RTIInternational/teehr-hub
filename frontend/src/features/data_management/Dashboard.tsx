@@ -1,17 +1,15 @@
 /**
  * Data Management Dashboard
  *
- * Three tabs:
+ * Two tabs:
  *  1. Configurations Summary  — map + configs_summary table
  *  2. Locations Summary       — map + locations_with_attributes table
- *  3. Configuration Completeness — map with polygon overlay + completeness heatmap
  *
  * All tab contents are lazy-mounted (on first visit) and kept mounted thereafter
  * so that map state is preserved across tab switches.
  */
 import { useState } from 'react';
 
-import CompletenessTab from './components/CompletenessTab';
 import ConfigurationsSummaryTab from './components/ConfigurationsSummaryTab';
 import LocationsSummaryTab from './components/LocationsSummaryTab';
 
@@ -75,19 +73,6 @@ const Dashboard = () => {
             }}
           >
             <LocationsSummaryTab isActive={activeTab === 'locations'} />
-          </div>
-        )}
-
-        {visitedTabs.has('completeness') && (
-          <div
-            style={{
-              position: 'absolute',
-              inset: 0,
-              display: activeTab === 'completeness' ? 'flex' : 'none',
-              flexDirection: 'column',
-            }}
-          >
-            <CompletenessTab isActive={activeTab === 'completeness'} />
           </div>
         )}
       </div>
