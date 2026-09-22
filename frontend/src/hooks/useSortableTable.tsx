@@ -29,7 +29,12 @@ export const useSortableTable = <T extends Record<string, unknown>>(
   const [sortKey, setSortKey] = useState(defaultKey);
   const [sortDir, setSortDir] = useState('asc');
 
-  const resolver = getSortValue ?? defaultGetSortValue;
+  // Rows are Record<string, unknown>; the getters index into them and coerce
+  // what they find, so widen the signature rather than constrain the caller.
+  const resolver = (getSortValue ?? defaultGetSortValue) as (
+    row: T,
+    key: string
+  ) => string | number;
 
   const handleSort = (key: string) => {
     if (key === sortKey) {
@@ -43,7 +48,6 @@ export const useSortableTable = <T extends Record<string, unknown>>(
   const sortedRows = useMemo(() => {
     if (!rows.length || !sortKey) return rows;
     return [...rows].sort((a, b) => {
-      if (typeof a != 'string' || typeof b != 'string') return 0;
       const av = resolver(a, sortKey);
       const bv = resolver(b, sortKey);
       if (av < bv) return sortDir === 'asc' ? -1 : 1;
