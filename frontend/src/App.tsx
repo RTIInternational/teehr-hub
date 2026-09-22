@@ -15,6 +15,7 @@ import Navbar from '@/shared/components/Navbar';
 
 import 'bootstrap/dist/css/bootstrap.min.css';
 import './App.css';
+import ScrollToTop from './shared/utils/scrollToTop';
 
 const RequireAuth = ({ children }: React.PropsWithChildren) => {
   const { ready, authenticated, login, signup } = useAuth();
@@ -151,6 +152,7 @@ const AppRoutes = () => {
 function App() {
   return (
     <Router>
+      <ScrollToTop />
       <AppRoutes />
     </Router>
   );

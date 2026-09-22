@@ -1,4 +1,5 @@
 import { Container, Row, Col, Card, Accordion } from 'react-bootstrap';
+import { Link } from 'react-router-dom';
 
 import teehrCloudServicesDiagram from '../../assets/cloud-services-image.png';
 import teehrDashboardsDiagram from '../../assets/dashboard-snippet-image.png';
@@ -203,7 +204,7 @@ const Home = () => {
                           In addition to simulated and observed hydrologic data, the warehouse also
                           contains tables storing historical and regularly-updated performance
                           metrics and other tables supporting the{' '}
-                          <a href="https://dashboards.teehr.rtiamanzi.org/">TEEHR Dashboards</a>.
+                          <Link to="/hub">TEEHR Dashboards</Link>.
                         </p>
                       </Accordion.Body>
                     </Accordion.Item>
@@ -214,8 +215,7 @@ const Home = () => {
                         <p className="mb-0">
                           A suite of cloud-based services regularly ingests data, updates
                           performance metrics, supports data warehouse access and notebook-based
-                          interactions, and hosts the{' '}
-                          <a href="https://dashboards.teehr.rtiamanzi.org/">TEEHR Dashboards</a>.
+                          interactions, and hosts the <Link to="/hub">TEEHR Dashboards</Link>.
                         </p>
                         <div className="text-center mt-3">
                           <img
@@ -248,11 +248,10 @@ const Home = () => {
                       <Accordion.Header>TEEHR Dashboards</Accordion.Header>
                       <Accordion.Body>
                         <p className="mb-0">
-                          Purpose-built{' '}
-                          <a href="https://dashboards.teehr.rtiamanzi.org/">dashboards</a> deliver
-                          interactive performance visualizations and data exploration tools to
-                          support evaluation of historical simulations and real-time forecasts from
-                          specific perspectives and use-cases.
+                          Purpose-built <Link to="/hub">dashboards</Link> deliver interactive
+                          performance visualizations and data exploration tools to support
+                          evaluation of historical simulations and real-time forecasts from specific
+                          perspectives and use-cases.
                         </p>
                         <div className="text-center mt-3">
                           <img
