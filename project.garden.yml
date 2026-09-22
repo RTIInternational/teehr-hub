@@ -23,7 +23,7 @@ environments:
     variables:
       hostname: teehr.local.app.garden
       certificateIssuerName: letsencrypt-prod
-      devTeehrVersion: 0418e03c0922baba325989496d369409c50b4fea
+      devTeehrVersion: b1b6ef3486d737df187cdd25f2cc16190c74aaf4
       stableTeehrVersion: place-holder # Needed for sync to work for some reason.
       previousTeehrVersion: place-holder
       polaris:
@@ -53,12 +53,8 @@ environments:
       icechunk:
         bucket: "warehouse"
         prefix: "icechunk-ingests"
-        # Comma-separated icechunk repo names. Must be non-empty — xpublish-api
-        # exits at startup otherwise. Locally the service holds MinIO root
-        # credentials, so it self-initializes a missing repo on first start.
-        repos: "nwm30-forcing-analysis-assim"
       # Vector tiles (xpublish-api). PMTiles archives sit alongside the
-      # icechunk stores, in the MinIO `warehouse` bucket locally.
+      # icechunk stores.
       pmtiles:
         bucket: "warehouse"
         prefix: "vector-tiles"
@@ -68,7 +64,7 @@ environments:
     variables:
       hostname: teehr.rtiamanzi.org
       certificateIssuerName: letsencrypt-prod
-      devTeehrVersion: 0418e03c0922baba325989496d369409c50b4fea
+      devTeehrVersion: b1b6ef3486d737df187cdd25f2cc16190c74aaf4
       stableTeehrVersion: v0.7.0
       previousTeehrVersion: v0.6.6
       irsa:
@@ -113,12 +109,8 @@ environments:
       icechunk:
         bucket: "dev-teehr-icechunk-warehouse"
         prefix: "icechunk-ingests"
-        # Comma-separated icechunk repo names. Must be non-empty — xpublish-api
-        # exits at startup otherwise. Each repo must already exist in the
-        # bucket: xpublish-api holds read-only access, so it cannot create one.
-        repos: "nwm30-forcing-analysis-assim"
       # Vector tiles (xpublish-api). PMTiles archives sit alongside the
-      # icechunk stores in the same bucket.
+      # icechunk stores.
       pmtiles:
         bucket: "dev-teehr-icechunk-warehouse"
         prefix: "vector-tiles"
