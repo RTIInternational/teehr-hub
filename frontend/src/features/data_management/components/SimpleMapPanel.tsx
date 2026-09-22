@@ -204,20 +204,18 @@ const SimpleMapPanel = ({
       type: 'geojson',
       data: { type: 'FeatureCollection', features: valid },
     });
-    m.addLayer(
-      {
-        id: 'locations-layer',
-        type: 'circle',
-        source: 'locations',
-        paint: {
-          'circle-radius': ['interpolate', ['linear'], ['zoom'], 4, 6, 8, 9, 12, 12],
-          'circle-color': '#0d6efd',
-          'circle-stroke-width': 1,
-          'circle-stroke-color': '#000',
-          'circle-opacity': 0.8,
-        },
-      }
-    );
+    m.addLayer({
+      id: 'locations-layer',
+      type: 'circle',
+      source: 'locations',
+      paint: {
+        'circle-radius': ['interpolate', ['linear'], ['zoom'], 4, 6, 8, 9, 12, 12],
+        'circle-color': '#0d6efd',
+        'circle-stroke-width': 1,
+        'circle-stroke-color': '#000',
+        'circle-opacity': 0.8,
+      },
+    });
 
     m.on('mouseenter', 'locations-layer', handleEnter);
     m.on('mouseleave', 'locations-layer', handleLeave);
