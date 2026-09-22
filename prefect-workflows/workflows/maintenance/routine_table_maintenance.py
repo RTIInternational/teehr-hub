@@ -16,9 +16,18 @@ DEFAULT_SHUFFLE_PARTITIONS = 512
 ORPHAN_FILE_RETENTION_DAYS = 2
 SNAPSHOT_RETENTION_DAYS = 7
 NUM_SNAPSHOTS_TO_KEEP = 10
-DEFAULT_REWRITE_STRATEGY = "sort"  # Can be 'sort' or 'binpack'
+SORT_REWRITE_STRATEGY = "sort"
+BINPACK_REWRITE_STRATEGY = "binpack"
+SKIP_REWRITE = "skip"
 DEFAULT_TARGET_FILE_SIZE_BYTES = "536870912"  # 512 MB
-WRITE_SORT_ORDER_PROPERTY = "write.sort-order"
+
+# `sort-order` is Iceberg's read-only reflection of a sort order declared with
+# ALTER TABLE ... WRITE ORDERED BY. Migrations 0002/0006 instead set
+# `write.sort-order`, which is not an Iceberg property and never affected how
+# data was written; it is read as a fallback so those tables keep sorting until
+# migration 0011 declares their real sort order.
+SORT_ORDER_PROPERTY = "sort-order"
+LEGACY_SORT_ORDER_PROPERTY = "write.sort-order"
 WRITE_TARGET_FILE_SIZE_PROPERTY = "write.target-file-size-bytes"
 
 
@@ -90,8 +99,8 @@ def rewrite_data_files(
     if strategy == "sort":
         if not sort_order:
             logger.warning(
-                f"No {WRITE_SORT_ORDER_PROPERTY} property found for {table_name}. "
-                "Skipping sort rewrite."
+                f"Sort strategy requested for {table_name} with no sort order. "
+                "Skipping rewrite."
             )
             return
         logger.info(f"Using sort strategy with sort order: {sort_order}")
@@ -116,6 +125,30 @@ def rewrite_data_files(
     spark.sql(query).show()
 
 
+def choose_rewrite_strategy(properties: dict[str, str]) -> dict[str, str | None]:
+    """Pick a rewrite strategy from a table's Iceberg properties.
+
+    Tables that declare a sort order are rewritten with the `sort` strategy so
+    the layout is rebuilt against that order. Everything else falls back to
+    `binpack`, which consolidates small files without reordering rows.
+
+    Kept free of Spark and Prefect so the decision is unit testable.
+    """
+    sort_order = (
+        properties.get(SORT_ORDER_PROPERTY)
+        or properties.get(LEGACY_SORT_ORDER_PROPERTY)
+    )
+    return {
+        "strategy": (
+            SORT_REWRITE_STRATEGY if sort_order else BINPACK_REWRITE_STRATEGY
+        ),
+        "sort_order": sort_order,
+        "target_file_size_bytes": properties.get(
+            WRITE_TARGET_FILE_SIZE_PROPERTY, DEFAULT_TARGET_FILE_SIZE_BYTES
+        ),
+    }
+
+
 @task(
     task_run_name="get-rewrite-settings-{table_name}",
     timeout_seconds=5 * 60,
@@ -127,30 +160,44 @@ def get_rewrite_settings(
     spark: SparkSession,
     table_name: str,
 ) -> dict[str, str | None]:
-    """Read maintenance rewrite settings from Iceberg table properties."""
+    """Decide how to compact a table from its Iceberg metadata.
+
+    Every table holding data is compacted. Previously a table was skipped
+    unless it carried a `write.sort-order` or `write.target-file-size-bytes`
+    property, which left all but two tables permanently uncompacted.
+
+    Tables with no current snapshot are skipped: the rewrite procedure cannot
+    plan a scan against them.
+    """
     logger = get_run_logger()
     logger.info(f"Reading rewrite settings from table properties for {table_name}")
-    rows = spark.sql(f"SHOW TBLPROPERTIES iceberg.teehr.{table_name}").collect()
-    properties = {row["key"]: row["value"] for row in rows}
 
-    sort_order = properties.get(WRITE_SORT_ORDER_PROPERTY)
-    target_file_size_bytes = properties.get(WRITE_TARGET_FILE_SIZE_PROPERTY)
-
-    if sort_order is None and target_file_size_bytes is None:
-        return {
-            "enabled": "false",
-            "sort_order": None,
-            "target_file_size_bytes": None,
-        }
-
-    if target_file_size_bytes is None:
-        target_file_size_bytes = DEFAULT_TARGET_FILE_SIZE_BYTES
-
-    return {
-        "enabled": "true",
-        "sort_order": sort_order,
-        "target_file_size_bytes": target_file_size_bytes,
+    skip = {
+        "strategy": SKIP_REWRITE,
+        "sort_order": None,
+        "target_file_size_bytes": None,
     }
+    try:
+        snapshots = spark.sql(
+            f"SELECT count(*) AS n FROM iceberg.teehr.{table_name}.snapshots"
+        ).collect()[0]["n"]
+    except Exception as exc:  # noqa: BLE001 - never fail the flow on a probe
+        logger.warning(
+            f"Could not read snapshots for {table_name}: {exc}. Skipping rewrite."
+        )
+        return skip
+    if snapshots == 0:
+        logger.warning(f"{table_name} has no snapshots. Skipping rewrite.")
+        return skip
+
+    rows = spark.sql(f"SHOW TBLPROPERTIES iceberg.teehr.{table_name}").collect()
+    settings = choose_rewrite_strategy({row["key"]: row["value"] for row in rows})
+
+    if settings["strategy"] == BINPACK_REWRITE_STRATEGY:
+        logger.info(
+            f"No sort order declared on {table_name}. Compacting with binpack."
+        )
+    return settings
 
 
 @task(
@@ -189,7 +236,7 @@ def routine_table_maintenance(
 
     1. expire_snapshots - Delete unreferenced files first so subsequent steps skip stale data.
     2. remove_orphan_files - Cleans up left over files from failed jobs or expired snapshots.
-    3. rewrite_data_files - Consolidates small files with zorder for better read performance.
+    3. rewrite_data_files - Consolidates small files, sorting where a sort order is declared.
     4. rewrite_manifests - Merges small manifest files to speed up query planning.
     """
     logger = get_run_logger()
@@ -234,12 +281,12 @@ def routine_table_maintenance(
             spark=ev.spark,
             table_name=table_name,
         )
-        if rewrite_settings["enabled"] == "true":
+        if rewrite_settings["strategy"] != SKIP_REWRITE:
             rewrite_data_files(
                 spark=ev.spark,
                 table_name=table_name,
                 sort_order=rewrite_settings["sort_order"],
-                strategy=DEFAULT_REWRITE_STRATEGY,
+                strategy=rewrite_settings["strategy"],
                 target_file_size_bytes=rewrite_settings["target_file_size_bytes"],
             )
         rewrite_manifests(
