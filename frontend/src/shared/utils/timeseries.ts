@@ -1,4 +1,6 @@
-export const groupSecondaryTimeseriesItems = (items = []) => {
+import type { Timeseries, TimeseriesItem } from '../types/timeseries';
+
+export const groupSecondaryTimeseriesItems = (items: TimeseriesItem[] = []): Timeseries[] => {
   const grouped = new Map();
 
   items.forEach((item) => {
@@ -38,7 +40,7 @@ export const groupSecondaryTimeseriesItems = (items = []) => {
   return Array.from(grouped.values());
 };
 
-export const groupPrimaryTimeseriesItems = (items = []) => {
+export const groupPrimaryTimeseriesItems = (items: TimeseriesItem[] = []): Timeseries[] => {
   const grouped = new Map();
 
   items.forEach((item) => {

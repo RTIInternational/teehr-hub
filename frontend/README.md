@@ -5,42 +5,13 @@ This is the React frontend for the TEEHR Dashboard, a hydrological data visualiz
 ## Technologies Used
 
 - **React 19** - Frontend framework
-- **TypeScript 7** - Incrementally adopted for new development and ongoing migration
-- **TanStack Query** - Server-state fetching and caching for migrated features
+- **TypeScript 7** - Primary application language for the frontend codebase
+- **TanStack Query** - Server-state fetching and caching
 - **Vite** - Fast build tool and development server
 - **MapLibre GL JS** - Interactive mapping
 - **Plotly.js** - Data visualization and charting
 - **Bootstrap 5** - UI components and styling
 - **Oxlint + oxfmt** - Linting and formatting toolchain
-
-## Migration Status
-
-This frontend is in the middle of an incremental migration across three tracks:
-
-- JavaScript to TypeScript
-- React Context based server-state handling to TanStack Query
-- Flat component organization to feature-based structure
-- ESLint/Prettier to oxlint/oxfmt
-
-Current status:
-
-- **Migrated to TypeScript + TanStack Query + feature-based structure**:
-   - Retrospective dashboard and related components/hooks
-   - Forecast dashboard and related components/hooks
-- **Not yet migrated (still primarily JavaScript + existing context/data-fetching patterns)**:
-   - NWMD dashboard and related components/hooks
-   - Data management dashboard and related components/hooks
-
-This mixed architecture is expected during the migration window.
-
-Current migration-related configuration:
-
-- TypeScript config lives in `tsconfig.json`, `tsconfig.app.json`, and `tsconfig.node.json`.
-- Application source files under `src/` are allowed to remain JavaScript during migration via `allowJs: true`.
-- JavaScript files are not type-checked yet via `checkJs: false`.
-- Vite config has already been migrated to TypeScript in `vite.config.ts`.
-- oxlint is configured to lint both JavaScript and TypeScript files.
-- oxfmt is used for formatting JavaScript, TypeScript, and CSS files.
 
 ## Available Scripts
 
@@ -69,38 +40,34 @@ Useful for testing the production build before deployment.
 
 ### `npm run lint` and `npm run lint:fix`
 
-Runs oxlint across JavaScript and TypeScript source files.
+Runs oxlint across the frontend codebase.
 
 ### `npm run format:check` and `npm run format:fix`
 
-Runs oxfmt across JavaScript, TypeScript, and CSS files.
+Runs oxfmt across the frontend source and style files.
 
 ## Project Structure
 
 ```
 src/
 ├── features/
-│   ├── auth/                      # Auth provider and auth hooks (TS)
-│   ├── forecast/                  # Migrated dashboard feature (TS + TSQ)
-│   └── retrospective/             # Migrated dashboard feature (TS + TSQ)
+│   ├── auth/                      # Auth provider and auth hooks
+│   ├── forecast/                  # Forecast dashboard feature
+│   ├── nwmd/                      # NWMD dashboard feature
+│   ├── retrospective/             # Retrospective dashboard feature
+│   └── data_management/           # Data management dashboard feature
 ├── shared/
-│   ├── components/                # Reusable TS components
-│   ├── queries/                   # TanStack Query hooks
+│   ├── components/                # Reusable components
+│   ├── hooks/                     # Shared hooks
+│   ├── queries/                   # Shared TanStack Query hooks
 │   ├── types/                     # Shared TypeScript types
 │   └── utils/                     # Shared utilities
-├── components/
-│   └── dashboards/
-│       ├── data_management/       # Not yet migrated dashboard modules
-│       └── nwmd/                  # Not yet migrated dashboard modules
-├── context/                       # Existing contexts used by non-migrated areas
-├── hooks/                         # Shared hooks (mixed JS/TS during migration)
+├── config/                        # Frontend configuration
 ├── pages/                         # Route-level pages (e.g., admin)
 ├── services/                      # API service layer
 ├── App.tsx                        # Main app component
 └── index.tsx                      # Application entry point and QueryClientProvider
 ```
-
-During migration, you will see a mix of `.js`, `.jsx`, `.ts`, and `.tsx` files.
 
 ## Environment Variables
 
@@ -156,11 +123,10 @@ This frontend connects to a FastAPI backend. The Vite development server proxies
 ## Development Guidance
 
 - Prefer `.ts` and `.tsx` for all new modules and components.
-- Prefer TanStack Query for new server-state fetching/caching work.
+- Use TanStack Query for server-state fetching and caching.
 - Place new dashboard code under `src/features/<feature-name>/` whenever practical.
-- When modifying older JavaScript-heavy areas, convert nearby files to TypeScript when the added scope remains manageable.
-- Keep migration changes incremental and reviewable rather than attempting broad rewrites.
-- Run `npm run lint`, `npm run format:check`, and `npm run build` before merging substantial migration work.
+- Do not add new first-party JavaScript source files to this repo.
+- Run `npm run lint`, `npm run format:check`, and `npm run build` before merging substantial frontend changes.
 
 ## Learn More
 

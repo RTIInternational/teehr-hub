@@ -1,4 +1,3 @@
-/* eslint-disable react-refresh/only-export-components */
 import React, { createContext, useContext, useReducer, type Dispatch } from 'react';
 
 import { RETROSPECTIVE_DASHBOARD_DEFAULTS } from '@/config/dashboardDefaults';
