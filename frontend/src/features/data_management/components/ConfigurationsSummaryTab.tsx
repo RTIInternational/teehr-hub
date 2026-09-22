@@ -30,7 +30,7 @@ import SimpleMapPanel, { type PopupFeatureProps } from './SimpleMapPanel';
 
 // Returns a raw sortable value for a column key
 const sortValue: SortValueGetter = (row, key) => {
-  if (key === 'n_locations') return row.n_locations ?? 0;
+  if (key === 'num_locations') return row.num_locations ?? 0;
   return String(row[key] ?? '').toLowerCase();
 };
 
@@ -52,7 +52,7 @@ const compareRows = (r1: ConfigurationsTableItem | null, r2: ConfigurationsTable
 const COLUMNS = [
   { key: 'configuration_name', label: 'Configuration' },
   { key: 'variable_name', label: 'Variable' },
-  { key: 'n_locations', label: '# Locations' },
+  { key: 'num_locations', label: '# Locations' },
   { key: 'unit_name', label: 'Unit' },
   { key: 'timeseries_type', label: 'Type' },
   { key: 'min_value_time', label: 'Value Time Min' },

@@ -57,6 +57,11 @@ environments:
         # exits at startup otherwise. Locally the service holds MinIO root
         # credentials, so it self-initializes a missing repo on first start.
         repos: "nwm30-forcing-analysis-assim"
+      # Vector tiles (xpublish-api). PMTiles archives sit alongside the
+      # icechunk stores, in the MinIO `warehouse` bucket locally.
+      pmtiles:
+        bucket: "warehouse"
+        prefix: "vector-tiles"
       allowedOrigins: "https://dashboards.${var.hostname},https://api.${var.hostname}"
   - name: remote
     defaultNamespace: ${project.name}
@@ -112,6 +117,11 @@ environments:
         # exits at startup otherwise. Each repo must already exist in the
         # bucket: xpublish-api holds read-only access, so it cannot create one.
         repos: "nwm30-forcing-analysis-assim"
+      # Vector tiles (xpublish-api). PMTiles archives sit alongside the
+      # icechunk stores in the same bucket.
+      pmtiles:
+        bucket: "dev-teehr-icechunk-warehouse"
+        prefix: "vector-tiles"
       allowedOrigins: "https://dashboards.${var.hostname},https://api.${var.hostname}"
 providers:
   # The name of the provider plugin to use.
