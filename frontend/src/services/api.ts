@@ -418,7 +418,7 @@ export const apiService = {
     params.append('location_id', locationId);
     params.append('f', 'json');
     return apiCallJson<ConfigurationsTableResponse>(
-      `/collections/configurations_by_location/expanded?${params.toString()}`
+      `/collections/configurations_by_location/items?${params.toString()}`
     );
   },
 
@@ -432,7 +432,7 @@ export const apiService = {
     params.append('f', 'geojson');
     params.append('limit', filters.limit?.toString() ?? '50000');
     return apiCallJson<FeatureCollection<Point>>(
-      `/collections/configurations_by_location/locations-geojson?${params.toString()}`
+      `/collections/configurations_by_location/items?${params.toString()}`
     );
   },
 };
