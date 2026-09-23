@@ -1,8 +1,8 @@
-import type { FeatureCollection, Point } from 'geojson';
+import type { FeatureCollection } from 'geojson';
 
 import type { OgcResponse } from './ogc';
 
-export type LocationMetadataResponse = FeatureCollection<Point>;
+export type LocationMetadataResponse = FeatureCollection;
 
 export type LocationsItem = {
   id: string;

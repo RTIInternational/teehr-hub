@@ -1,12 +1,11 @@
-import type { Feature, FeatureCollection, Point } from 'geojson';
+import type { Feature, Point } from 'geojson';
 
 import type { OgcLink } from './ogc';
-
-export type MetricLocationsResponse = FeatureCollection<Point>;
 
 export type MetricsFeature = Feature<Point, MetricsProperties>;
 
 export type MetricsFilters = {
+  [queryable: string]: string | null;
   configuration: string;
   table: string;
   variable: string;

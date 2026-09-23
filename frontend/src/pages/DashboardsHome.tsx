@@ -1,16 +1,24 @@
 import { Container, Row, Col, Card, Button } from 'react-bootstrap';
 import { Link } from 'react-router-dom';
 
+type DashboardProperties = {
+  id: string;
+  title: string;
+  description: string;
+  features: string[];
+  path: string;
+  status: 'available' | 'coming-soon';
+  image: string;
+  color: string;
+};
+
 const DashboardsHome = () => {
-  const dashboards = [
+  const dashboards: DashboardProperties[] = [
     {
       id: 'data-management',
       title: 'Data Availability',
       description: 'Explore contents of the data warehouse spatially and temporally.',
-      features: [
-        'Data summaries by model configuration',
-        'Data summaries by location',
-      ],
+      features: ['Data summaries by model configuration', 'Data summaries by location'],
       path: '/data',
       status: 'available',
       image: '/api/static/preview-data.png', // placeholder
@@ -156,7 +164,7 @@ const DashboardsHome = () => {
     },
   ];
 
-  const getCardComponent = (dashboard) => {
+  const getCardComponent = (dashboard: DashboardProperties) => {
     if (dashboard.status === 'available') {
       return (
         <Link to={dashboard.path} style={{ textDecoration: 'none' }}>

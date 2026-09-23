@@ -40,7 +40,6 @@ logging.getLogger("teehr").setLevel(logging.INFO)
 
 
 LOOKBACK_DAYS = 1
-LOCATION_ID_PREFIX = "nwm30"
 OCONUS_STATE_NAMES = [
     'Northern Mariana Islands', 'Alaska', 'Hawaii', 'Guam',
     'American Samoa', 'Puerto Rico', 'Virgin Islands'
@@ -65,7 +64,7 @@ DROP_OVERLAPPING_ASSIM_VALUES = True
 def _filter_crosswalk_table(
     ev: Evaluation,
     configuration_name: str,
-    location_id_prefix: str,
+    secondary_location_id_prefix: str,
 ) -> ps.DataFrame:
     """Filter the location crosswalk table for the given configuration domain."""
     logger = get_run_logger()
@@ -88,7 +87,7 @@ def _filter_crosswalk_table(
             {
                 "column": "secondary_location_id",
                 "operator": "like",
-                "value": f"{location_id_prefix}-%"
+                "value": f"{secondary_location_id_prefix}-%"
             },
             state_filter
         ]
@@ -191,7 +190,7 @@ async def ingest_nwm_streamflow_forecasts(
     end_dt: Union[str, datetime, pd.Timestamp, None] = None,
     num_lookback_days: Union[int, None] = LOOKBACK_DAYS,
     nwm_configuration: str = "short_range",
-    nwm_version: str = "nwm30",
+    nwm_version: str = "nwm31",
     output_type: str = "channel_rt",
     variable_name: str = "streamflow",
     start_spark_cluster: bool = False,
@@ -274,11 +273,13 @@ async def ingest_nwm_streamflow_forecasts(
             start_dt = end_dt - timedelta(days=num_lookback_days)
 
         logger.info(f"Processing NWM forecasts from {start_dt} to {end_dt}")
-        # Get the NWM IDs for the correct domain based on the configuration name and prefix.
+        # Get the NWM IDs for the correct domain based on the configuration name
+        # and prefix. The prefix is nwm_version because that is what teehr
+        # prefixes the fetched secondary_location_ids with.
         filtered_crosswalks_sdf = _filter_crosswalk_table(
             ev=ev,
             configuration_name=teehr_nwm_config["name"],
-            location_id_prefix=LOCATION_ID_PREFIX
+            secondary_location_id_prefix=nwm_version
         )
         stripped_ids = [
             row[0].split("-")[1]

@@ -12,6 +12,8 @@ export type OgcLink = {
 
 export type OgcResponse<T> = {
   items: T[];
+  timeStamp?: string;
   numberReturned: number;
+  numberMatched?: number;
   links: OgcLink[];
 };

@@ -1,7 +1,6 @@
-import type { Feature, GeoJsonProperties, Point } from 'geojson';
+import type { Feature, FeatureCollection, GeoJsonProperties, Point } from 'geojson';
 
 import type { MapMetric } from '@/shared/types/maps';
-import type { MetricLocationsResponse } from '@/shared/types/metrics';
 import { isMapMetric } from '@/shared/utils/mapMetrics';
 
 import type { AltHypothesisOperator } from '../types/maps';
@@ -58,7 +57,7 @@ const evaluateAltHypothesis = (lower: number, upper: number, operator: AltHypoth
 };
 
 export const applyAltHypothesisFilter = (
-  locations: MetricLocationsResponse,
+  locations: FeatureCollection<Point>,
   metricName: MapMetric,
   altHypothesis95: AltHypothesisOperator
 ) => {

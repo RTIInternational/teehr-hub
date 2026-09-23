@@ -19,9 +19,9 @@ import { useLocationRows } from '@/features/data_management/queries/locationRows
 import { useBasinLocation, usePointLocation } from '@/features/data_management/queries/locations';
 import type { LocationRow } from '@/features/data_management/types/locationRows';
 import { fmt } from '@/features/data_management/utils/utils';
-import { useSortableTable, type SortValueGetter } from '@/hooks/useSortableTable';
 import DashboardPanel from '@/shared/components/DashboardPanel';
 import SharedDataTable from '@/shared/components/SharedDataTable';
+import { useSortableTable, type SortValueGetter } from '@/shared/hooks/useSortableTable';
 import { formatUnknownValueForDisplay } from '@/shared/utils/formatters';
 
 import SimpleMapPanel, { type PopupFeatureProps } from './SimpleMapPanel';

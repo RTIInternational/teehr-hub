@@ -11,20 +11,14 @@ import type { FeatureCollection, Geometry, MultiPolygon, Point, Polygon, Positio
  * basinLocations   GeoJSON FeatureCollection of Polygon/MultiPolygon features
  *                  to render as a basin fill (50% opacity) below the point layer.
  *                  The map will zoom to fit the basin extent.  Pass null to clear.
- * overlayLocations GeoJSON FeatureCollection of Polygon/MultiPolygon features
- *                  to render as a semi-transparent fill with an outline.
- * overlayVisible   Whether the overlay layer is visible (default true).
- * hoveredOverlayId String id to highlight in the overlay layer.  Must match
- *                  the 'id' property of the overlay features.
  * getPopupHTML     Optional fn(properties, coordinates) => HTML string shown
  *                  on location mouseenter.  Defaults to showing location id.
- * showOverlayToggle  Render a "Boundaries On/Off" button (default false).
- * onOverlayToggle  Callback fn() called when the toggle button is clicked.
+ * onPointClick     Callback fn(properties) called when a point is clicked.
  * isActive         When this changes to true the map is resized so it fills
  *                  its container correctly after being hidden (display:none).
  */
-import maplibregl, { type FilterSpecification, type MapLayerMouseEvent } from 'maplibre-gl';
-import React, { useEffect, useRef, useState } from 'react';
+import maplibregl, { type MapLayerMouseEvent } from 'maplibre-gl';
+import { useEffect, useRef, useState } from 'react';
 
 import 'maplibre-gl/dist/maplibre-gl.css';
 import { isLngLatTuple } from '@/shared/utils/mapMetrics';
@@ -41,12 +35,7 @@ export type PopupFeatureProps = {
 type SimpleMapPanelProps = {
   locations?: FeatureCollection<Point> | null;
   basinLocations?: FeatureCollection<Polygon | MultiPolygon> | null;
-  overlayLocations?: FeatureCollection<Polygon | MultiPolygon> | null;
-  overlayVisible?: boolean;
-  hoveredOverlayId?: string | null;
   getPopupHTML?: ((properties: Record<string, unknown>) => string) | null;
-  showOverlayToggle?: boolean;
-  onOverlayToggle?: ((event: React.MouseEvent<HTMLButtonElement>) => void) | null;
   onPointClick?: ((properties: Record<string, unknown>) => void) | null;
   isActive?: boolean;
 };
@@ -54,12 +43,7 @@ type SimpleMapPanelProps = {
 const SimpleMapPanel = ({
   locations = null,
   basinLocations = null,
-  overlayLocations = null,
-  overlayVisible = true,
-  hoveredOverlayId = null,
   getPopupHTML = null,
-  showOverlayToggle = false,
-  onOverlayToggle = null,
   onPointClick = null,
   isActive = true,
 }: SimpleMapPanelProps) => {
@@ -216,28 +200,22 @@ const SimpleMapPanel = ({
 
     if (valid.length === 0) return;
 
-    // Ensure overlay layers stay on top
-    const beforeLayer = m.getLayer('overlay-fill') ? 'overlay-fill' : undefined;
-
     m.addSource('locations', {
       type: 'geojson',
       data: { type: 'FeatureCollection', features: valid },
     });
-    m.addLayer(
-      {
-        id: 'locations-layer',
-        type: 'circle',
-        source: 'locations',
-        paint: {
-          'circle-radius': ['interpolate', ['linear'], ['zoom'], 4, 6, 8, 9, 12, 12],
-          'circle-color': '#0d6efd',
-          'circle-stroke-width': 1,
-          'circle-stroke-color': '#000',
-          'circle-opacity': 0.8,
-        },
+    m.addLayer({
+      id: 'locations-layer',
+      type: 'circle',
+      source: 'locations',
+      paint: {
+        'circle-radius': ['interpolate', ['linear'], ['zoom'], 4, 6, 8, 9, 12, 12],
+        'circle-color': '#0d6efd',
+        'circle-stroke-width': 1,
+        'circle-stroke-color': '#000',
+        'circle-opacity': 0.8,
       },
-      beforeLayer
-    );
+    });
 
     m.on('mouseenter', 'locations-layer', handleEnter);
     m.on('mouseleave', 'locations-layer', handleLeave);
@@ -275,7 +253,7 @@ const SimpleMapPanel = ({
     };
   }, [mapLoaded, locations, getPopupHTML, onPointClick]);
 
-  // ── 4. Basin polygon layer (dedicated, separate from overlay system) ──────
+  // ── 4. Basin polygon layer ────────────────────────────────────────────────
   useEffect(() => {
     if (!mapLoaded || !map.current || !basinLocations) return;
     const m = map.current;
@@ -354,115 +332,9 @@ const SimpleMapPanel = ({
     };
   }, [mapLoaded, basinLocations]);
 
-  // ── 5. Update overlay polygon layer ─────────────────────────────────────
-  useEffect(() => {
-    if (!mapLoaded || !map.current) return;
-    const m = map.current;
-
-    const removeOverlay = () => {
-      ['overlay-highlight', 'overlay-fill', 'overlay-line'].forEach((id) => {
-        if (m.getLayer(id)) m.removeLayer(id);
-      });
-      if (m.getSource('overlay')) m.removeSource('overlay');
-    };
-
-    removeOverlay();
-
-    const features = overlayLocations?.features;
-    if (!features || features.length === 0) return;
-
-    m.addSource('overlay', { type: 'geojson', data: overlayLocations });
-
-    const geomType = features[0]?.geometry?.type;
-    const before = m.getLayer('locations-layer') ? 'locations-layer' : undefined;
-
-    if (geomType === 'Polygon' || geomType === 'MultiPolygon') {
-      const initVis = overlayVisible ? 'visible' : 'none';
-      m.addLayer(
-        {
-          id: 'overlay-fill',
-          type: 'fill',
-          source: 'overlay',
-          layout: { visibility: initVis },
-          paint: { 'fill-color': '#4a90d9', 'fill-opacity': 0.3 },
-        },
-        before
-      );
-      m.addLayer(
-        {
-          id: 'overlay-line',
-          type: 'line',
-          source: 'overlay',
-          layout: { visibility: initVis },
-          paint: { 'line-color': '#2c5f8a', 'line-width': 0.8, 'line-opacity': 0.7 },
-        },
-        before
-      );
-      m.addLayer(
-        {
-          id: 'overlay-highlight',
-          type: 'fill',
-          source: 'overlay',
-          layout: { visibility: initVis },
-          paint: { 'fill-color': '#ff9800', 'fill-opacity': 0.7 },
-          filter: ['==', ['get', 'id'], ''],
-        },
-        before
-      );
-    }
-
-    return () => {
-      try {
-        removeOverlay();
-      } catch {
-        /* silent */
-      }
-    };
-  }, [mapLoaded, overlayLocations, overlayVisible]);
-
-  // ── 6. Toggle overlay visibility ─────────────────────────────────────────
-  useEffect(() => {
-    if (!mapLoaded || !map.current) return;
-    const visibility = overlayVisible ? 'visible' : 'none';
-    ['overlay-fill', 'overlay-line', 'overlay-highlight'].forEach((id) => {
-      if (map.current?.getLayer(id)) {
-        map.current.setLayoutProperty(id, 'visibility', visibility);
-      }
-    });
-  }, [mapLoaded, overlayVisible]);
-
-  // ── 7. Update hovered overlay highlight filter ────────────────────────────
-  useEffect(() => {
-    if (!mapLoaded || !map.current) return;
-    if (!map.current.getLayer('overlay-highlight')) return;
-    const filter: FilterSpecification = hoveredOverlayId
-      ? ['==', ['get', 'id'], hoveredOverlayId]
-      : ['==', ['get', 'id'], ''];
-    map.current.setFilter('overlay-highlight', filter);
-  }, [mapLoaded, hoveredOverlayId]);
-
   return (
     <div style={{ position: 'relative', width: '100%', height: '100%' }}>
       <div ref={mapContainer} style={{ width: '100%', height: '100%' }} />
-
-      {/* Overlay toggle button */}
-      {showOverlayToggle && onOverlayToggle && (
-        <button
-          className={`btn btn-sm position-absolute ${overlayVisible ? 'btn-primary' : 'btn-outline-secondary bg-white'}`}
-          style={{
-            bottom: '10px',
-            left: '10px',
-            zIndex: 1100,
-            fontSize: '0.7rem',
-            padding: '2px 8px',
-            opacity: 0.9,
-          }}
-          onClick={onOverlayToggle}
-          title="Toggle boundary layer"
-        >
-          Boundaries {overlayVisible ? 'On' : 'Off'}
-        </button>
-      )}
     </div>
   );
 };
