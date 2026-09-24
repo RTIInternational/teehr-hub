@@ -46,7 +46,7 @@ def build_pyramids(args: BuildPyramidsDataInput) -> None:
 
     rw_session = repo.writable_session("main")
     # Determine which time steps are not yet in the pyramid store
-    first_level = str(args.factors[0])
+    first_level = "0"  # topozarr names levels by their index in args.factors, not by factor
     if not gu.group_contains_data(store=rw_session.store, group_path=RAW_DATA_GROUP_PATH):
         logger.info(f"No data found in {RAW_DATA_GROUP_PATH}. Shutting down.")
         return

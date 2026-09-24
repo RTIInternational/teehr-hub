@@ -7,7 +7,6 @@ import xarray as xr
 import pandas as pd
 
 from utils import grid_utils as gu
-from utils.gridded_source_builders import GriddedSource, UASwan4km, NWMForcing
 from workflows.models.ingest_gridded_data_input import (
     StorageType,
     IngestGriddedDataInput,
@@ -16,7 +15,6 @@ from workflows.models.ingest_gridded_data_input import (
     REFERENCES_GROUP_PATH
 )
 from build_geozarr_pyramids import build_pyramids as build_pyramids_flow
-from teehr.fetching.const import NWM30_ANALYSIS_CONFIG
 from workflows.models.mean_areal_inputs import VARIABLE_AND_UNIT_MAPPER
 from workflows.utils.time_utils import to_naive_utc
 
@@ -34,24 +32,12 @@ _VIRTUAL_CONTAINER_MAP = {
     StorageType.gcs: lambda: ic.storage.gcs_store(opts={}),
 }
 
-# The configuration name's prefix is the NWM version the files are validated against
-_FILE_LIST_BUILDER_MAP: dict[str, GriddedSource] = {
-    f"{nwm_version}-forcing-analysis-assim": NWMForcing(
-        configuration="forcing_analysis_assim",
-        output_type="forcing",
-        analysis_config_dict=NWM30_ANALYSIS_CONFIG,  # teehr uses the 3.0 analysis config for 3.1
-        nwm_version=nwm_version,
-    )
-    for nwm_version in ("nwm30", "nwm31")
-}
-
-
 @flow(
     flow_run_name="ingest-gridded-data",
     timeout_seconds=60 * 60
 )
 def ingest_gridded_data(args: IngestGriddedDataInput) -> None:
-    """Ingest gridded data for a known configuration over a derived date range, and write to an IceChunk S3 repository.
+    """Ingest gridded data from a source over a derived date range, and write to an IceChunk S3 repository.
 
     Parameters
     ----------
@@ -59,14 +45,7 @@ def ingest_gridded_data(args: IngestGriddedDataInput) -> None:
         Pydantic model containing all flow parameters. See IngestGriddedDataInput for field descriptions.
     """
     logger = get_run_logger()
-
-    if args.configuration_name not in _FILE_LIST_BUILDER_MAP:
-        valid = list(_FILE_LIST_BUILDER_MAP.keys())
-        raise ValueError(
-            f"Unknown configuration_name '{args.configuration_name}'. "
-            f"Valid options: {valid}"
-        )
-    source_config = _FILE_LIST_BUILDER_MAP[args.configuration_name]
+    source_config = args.source
     source_bucket = source_config.source_bucket
 
     parser = _PARSER_MAP[args.parser_type]()

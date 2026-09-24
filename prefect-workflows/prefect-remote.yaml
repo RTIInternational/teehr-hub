@@ -730,24 +730,8 @@ deployments:
     entrypoint: workflows/ingests/ingest_gridded_data.py:ingest_gridded_data
     parameters: {
       "args": {
-        "configuration_name": "nwm31-forcing-analysis-assim",
-        "source_data_storage": "gcs",
-        "parser_type": "hdf",
-        "variable_names": ["RAINRATE"],
-        "num_lookback_days": 1,
-        "x_dim": "x",
-        "y_dim": "y",
-        "source_crs": "+proj=lcc +lat_0=40 +lon_0=-97 +lat_1=30 +lat_2=60 +x_0=0 +y_0=0 +R=6370000 +units=m +no_defs",
-        "factors": [1, 2, 4],
-        "pyramid_encoding": {"rainrate_hourly_mean": {"dtype": "uint16", "scale_factor": 2.0e-6, "_FillValue": 65535}},
-        "obstore_kwargs": {"skip_signature": true},
-        "xconcat_kwargs": {
-          "coords": "minimal",
-          "data_vars": "minimal",
-          "compat": "override",
-          "join": "override",
-          "combine_attrs": "override"
-        }
+        "source": {"type": "nwm", "nwm_configuration": "forcing_analysis_assim", "nwm_version": "nwm31"},
+        "num_lookback_days": 1
       }
     }
     work_pool: *work_pool_large
@@ -763,7 +747,7 @@ deployments:
     entrypoint: workflows/ingests/build_geozarr_pyramids.py:build_pyramids
     parameters: {
       "args": {
-        "configuration_name": "nwm31-forcing-analysis-assim",
+        "configuration_name": "nwm31_forcing_analysis_assim",
         "x_dim": "x",
         "y_dim": "y",
         "source_crs": "+proj=lcc +lat_0=40 +lon_0=-97 +lat_1=30 +lat_2=60 +x_0=0 +y_0=0 +R=6370000 +units=m +no_defs",
@@ -802,7 +786,7 @@ deployments:
     parameters: {
       "args": {
         "temp_dir_path": *temp_dir_path,
-        "configuration_name": "nwm31-forcing-analysis-assim",
+        "configuration_name": "nwm31_forcing_analysis_assim",
         "location_id_prefix": "usgsbasin",
         "grid_variable_name": "rainrate_hourly_mean",
         "domain_name": "nwm30_conus_forcing",
@@ -825,7 +809,7 @@ deployments:
     parameters: {
       "args": {
         "temp_dir_path": *temp_dir_path,
-        "configuration_name": "nwm31-forcing-analysis-assim",
+        "configuration_name": "nwm31_forcing_analysis_assim",
         "location_id_prefix": "usgsbasin",
         "grid_variable_name": "rainrate_hourly_mean",
         "domain_name": "nwm30_conus_forcing",

@@ -1,10 +1,13 @@
 """Define arguments and defaults for the ingest_gridded_data Prefect flow."""
 import os
 from datetime import datetime
-from typing import Any, Union
+from typing import Any, Optional, Union
 from enum import Enum
 import numpy as np
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, TypeAdapter, field_validator, model_validator
+from pydantic.json_schema import SkipJsonSchema
+
+from workflows.models.gridded_sources import GriddedSourceType
 
 
 PYRAMID_GROUP_PATH = "/pyramids"
@@ -131,7 +134,20 @@ class BuildPyramidsDataInput(BaseGriddedDataInput):
 
 
 class IngestGriddedDataInput(BuildPyramidsDataInput):
-    """Input parameters for the ingest_gridded_data Prefect flow."""
+    """Input parameters for the ingest_gridded_data Prefect flow.
+
+    ``source`` selects the data source by its ``type``. The source supplies defaults for the
+    dataset fields below (dims, CRS, parser, kwargs, ...); values set here win. The repository
+    name (``configuration_name``) and ``variable_names`` are derived from the source and hidden
+    from the flow's parameters.
+    """
+
+    source: GriddedSourceType = Field(
+        ...,
+        description="The gridded data source, e.g. {'type': 'nwm', 'nwm_configuration': 'forcing_analysis_assim'}"
+    )
+    configuration_name: SkipJsonSchema[Optional[str]] = None
+    variable_names: SkipJsonSchema[Optional[list[str]]] = None
 
     # --- Core required parameters ---
     source_data_storage: StorageType = Field(
@@ -145,10 +161,6 @@ class IngestGriddedDataInput(BuildPyramidsDataInput):
     num_lookback_days: Union[int, None] = Field(
         default=1,
         description="Number of days before end_dt to use as start_dt. If None, start_dt is derived from the latest value in the store."
-    )
-    variable_names: list[str] = Field(
-        default=["SWE", "DEPTH"],
-        description="Names of the variables attempt to ingest. Defaults are 'SWE', 'DEPTH'."
     )
     write_materialized: bool = Field(
         default=True,
@@ -165,10 +177,29 @@ class IngestGriddedDataInput(BuildPyramidsDataInput):
 
     # --- Per-component extra kwargs ---
     obstore_kwargs: dict[str, Any] = Field(
-        ...,
+        default_factory=dict,
         description="Extra keyword arguments passed to obstore.store.from_url(url, **obstore_kwargs)"
     )
     xconcat_kwargs: dict[str, Any] = Field(
-        ...,
+        default_factory=dict,
         description="Extra keyword arguments passed to xr.concat(datasets, dim=concat_dim, **xconcat_kwargs). Used when creating the virtual dataset from the raw data files"
     )
+
+    @model_validator(mode="before")
+    @classmethod
+    def _apply_source(cls, data: Any) -> Any:
+        """Fill the source's dataset defaults under the given values, and derive its names."""
+        if not isinstance(data, dict) or "source" not in data:
+            return data
+        source = _SOURCE_ADAPTER.validate_python(data["source"])
+        derived = {
+            "configuration_name": source.repository_name(),
+            "variable_names": source.ingest_variables(),
+        }
+        for field, value in derived.items():
+            if data.get(field) not in (None, value):
+                raise ValueError(f"{field} is derived from the source as {value!r}; got {data[field]!r}.")
+        return {**source.dataset_defaults(), **data, **derived, "source": source}
+
+
+_SOURCE_ADAPTER = TypeAdapter(GriddedSourceType)
