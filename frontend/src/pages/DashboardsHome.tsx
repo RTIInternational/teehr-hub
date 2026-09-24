@@ -55,7 +55,7 @@ const DashboardsHome = () => {
     },
     {
       id: 'nwmd',
-      title: 'National Water Model Diagnostics Dashboard',
+      title: 'National Water Model Diagnostics',
       description:
         'Supports routine operational evaluations and troubleshooting model runs for the National Water Model.',
       features: [
