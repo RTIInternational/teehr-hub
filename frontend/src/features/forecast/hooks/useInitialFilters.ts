@@ -15,7 +15,6 @@ export const useInitialFilters = (table: string) => {
 
   const configurations = useConfigurations(table);
   const variables = useVariables(table);
-  useVariables('primary_timeseries'); // Pre-load primary variables
 
   const defaultConfiguration = selectDefault(
     FORECAST_DASHBOARD_DEFAULTS.preferredConfiguration,
