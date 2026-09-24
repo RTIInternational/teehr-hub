@@ -19,6 +19,7 @@ const Navbar = () => {
       '/forecast': 'Forecast Analysis',
       '/data': 'Data Availability',
       '/nwmd': 'National Water Model Diagnostics',
+      '/gridded': 'Gridded Data',
       '/admin': 'Admin Page',
       '/admin/api-keys': 'API Keys',
       '/admin/keycloak': 'Keycloak Admin',

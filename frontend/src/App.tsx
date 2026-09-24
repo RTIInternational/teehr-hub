@@ -4,6 +4,7 @@ import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'r
 import { useAuth } from '@/features/auth';
 import { DataDashboard } from '@/features/data_management';
 import { ForecastDashboard, ForecastDashboardProvider } from '@/features/forecast';
+import { GriddedDashboard, GriddedDashboardProvider } from '@/features/gridded';
 import { NwmdDashboard, NwmdDashboardProvider } from '@/features/nwmd';
 import { RetrospectiveDashboardProvider, RetrospectiveDashboard } from '@/features/retrospective';
 import AdminHome from '@/pages/admin/AdminHome';
@@ -129,6 +130,16 @@ const AppRoutes = () => {
                 <NwmdDashboardProvider>
                   <NwmdDashboard />
                 </NwmdDashboardProvider>
+              </RequireAuth>
+            }
+          />
+          <Route
+            path="/gridded"
+            element={
+              <RequireAuth>
+                <GriddedDashboardProvider>
+                  <GriddedDashboard />
+                </GriddedDashboardProvider>
               </RequireAuth>
             }
           />

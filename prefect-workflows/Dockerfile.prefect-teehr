@@ -32,6 +32,15 @@ RUN ARCH=$(uname -m) && \
         echo "Skipping GDAL installation for x86_64 (not needed)"; \
     fi
 
+# Install dependencies for gridded data ingestion via IceChunk + VirtualiZarr
+# Allows for patch updates but blocks major/minor version changes
+RUN pip install --no-cache-dir \
+    "icechunk~=2.1.2" \
+    "topozarr~=0.1.3" \
+    "xproj~=0.2.1" \
+    "rioxarray~=0.23.0" \
+    "tippecanoe~=2.72.0"
+
 # Install TEEHR with GDAL compatibility for ARM64
 RUN ARCH=$(uname -m) && \
     if [ "$ARCH" = "aarch64" ]; then \
