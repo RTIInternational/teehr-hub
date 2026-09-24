@@ -23,6 +23,15 @@ import {
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8000';
 const API_KEY = import.meta.env.VITE_API_KEY || '';
 
+const aliasMap: Record<string, string> = {
+  waterYear: 'water_year',
+  aggMethod: 'window_agg',
+  configuration: 'configuration_name',
+  leadTimeBin: 'forecast_lead_time_bin',
+  primary_location_id: 'location_id',
+  variable: 'variable_name',
+};
+
 const normalizeEndpoint = (endpoint: string) => {
   if (!endpoint) return endpoint;
   if (endpoint.startsWith('http://') || endpoint.startsWith('https://')) {
@@ -176,9 +185,26 @@ export const apiService = {
     return apiCallJson<string[]>(`/collections/${table}/queryables/variable_name/values`);
   },
 
-  // Get distinct values for requested column
-  getDistinctValues: async (table = 'sim_metrics_by_location', columnName: string) => {
-    return apiCallJson<string[]>(`/collections/${table}/queryables/${columnName}/values`);
+  // Get distinct values for requested column with optional filters
+  getDistinctValues: async (
+    table = 'sim_metrics_by_location',
+    columnName: string,
+    filters?: Record<string, string>
+  ) => {
+    const params = new URLSearchParams();
+
+    for (const key in filters) {
+      const paramKey = aliasMap[key] || key;
+      const filterValue = filters[key] === null ? 'null' : filters[key];
+      if (filterValue) params.append(paramKey, filterValue);
+    }
+
+    const paramString = params.toString();
+    const endpoint = paramString
+      ? `/collections/${table}/queryables/${columnName}/values?${paramString}`
+      : `/collections/${table}/queryables/${columnName}/values`;
+
+    return apiCallJson<string[]>(endpoint);
   },
 
   // Get table properties (now via queryables endpoint)
@@ -204,15 +230,6 @@ export const apiService = {
     const table = filters.table || 'sim_metrics_by_location';
 
     const reservedKeys = ['table'];
-
-    const aliasMap: Record<string, string> = {
-      waterYear: 'water_year',
-      aggMethod: 'window_agg',
-      configuration: 'configuration_name',
-      leadTimeBin: 'forecast_lead_time_bin',
-      primary_location_id: 'location_id',
-      variable: 'variable_name',
-    };
 
     for (const key in filters) {
       if (reservedKeys.includes(key)) continue;
