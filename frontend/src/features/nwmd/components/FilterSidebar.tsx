@@ -34,7 +34,11 @@ export const FilterSidebar = ({ tables }: FilterSidebarProps) => {
   const configurations = useConfigurations(tables[0]);
   const thresholds = useDistinctValues(tables[0], 'threshold');
   const aggMethods = useDistinctValues(tables[0], 'window_agg');
-  const leadTimeBins = useDistinctValues(tables[0], 'forecast_lead_time_bin');
+  const leadTimeBins = useDistinctValues(
+    tables[0],
+    'forecast_lead_time_bin',
+    mapFilters.configuration ? { configuration_name: mapFilters.configuration } : undefined
+  );
 
   const availableQuarters = useMemo(() => {
     if (mapFilters.waterYear === null) {
