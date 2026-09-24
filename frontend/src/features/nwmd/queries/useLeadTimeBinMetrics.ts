@@ -1,11 +1,11 @@
 import { useQuery } from '@tanstack/react-query';
-import type { FeatureCollection, Point } from 'geojson';
 
 import { apiService } from '@/services/api';
 import type { MetricsFilters } from '@/shared/types/metrics';
 
 type LeadTimeBinFilters = Partial<MetricsFilters> & {
   primary_location_id?: string | null;
+  waterYear?: string | null;
   quarter?: string | null;
   threshold?: string | null;
   aggMethod?: string | null;
@@ -16,6 +16,6 @@ export const useLeadTimeBinMetrics = (filters?: LeadTimeBinFilters) =>
     queryKey: ['leadTimeBinMetrics', filters],
     queryFn: () => apiService.getMetrics(filters),
     enabled: !!filters,
-    select: (metricsData: FeatureCollection<Point>) =>
+    select: (metricsData) =>
       (metricsData?.features || []).map((feature) => feature?.properties || {}),
   });

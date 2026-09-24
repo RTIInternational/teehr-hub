@@ -4,6 +4,7 @@ import type { MetricsFilters } from '@/shared/types/metrics';
 export type AltHypothesisOperator = '=0' | '!=0' | '>0' | '<0' | '>1' | '<1';
 
 export type NwmdMapFilters = Partial<MetricsFilters> & {
+  waterYear?: string | null;
   quarter?: string | null;
   threshold?: string | null;
   aggMethod?: string | null;

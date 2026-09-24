@@ -1,7 +1,6 @@
 import { useMemo } from 'react';
 
-import { useLocations } from '@/shared/queries/locations';
-import type { LocationsResponse } from '@/shared/types/locations';
+import { useMetricLocations } from '@/shared/queries/metrics';
 import type { MetricsFilters } from '@/shared/types/metrics';
 
 import type { NwmdMapFilters } from '../types/maps';
@@ -13,11 +12,11 @@ const hasApiFilters = (filters?: Record<string, unknown>) =>
 export const useFilteredLocations = (filters?: NwmdMapFilters) => {
   const { altHypothesis95, metricName, ...apiFilters } = filters || {};
 
-  const locationsQuery = useLocations(
+  const locationsQuery = useMetricLocations(
     hasApiFilters(apiFilters) ? (apiFilters as MetricsFilters) : undefined
   );
 
-  const filteredData = useMemo<LocationsResponse | undefined>(() => {
+  const filteredData = useMemo(() => {
     const rawData = locationsQuery.data;
     if (!rawData || !metricName || !altHypothesis95) return rawData;
 

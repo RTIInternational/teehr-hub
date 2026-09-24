@@ -1,3 +1,5 @@
+from typing import List
+
 from workflows.utils.common_utils import table_exists
 from prefect.cache_policies import NO_CACHE
 from prefect import task, get_run_logger
@@ -12,10 +14,15 @@ def write_to_warehouse(
     ev: teehr.Evaluation,
     sdf: SparkDataFrame,
     table_name: str,
-    write_mode: str = None
+    write_mode: str = None,
+    partition_by: List[str] = None,
+    write_ordered_by: List[str] = None
 ) -> None:
     """
     Helper function to write a Spark DataFrame to the warehouse.
+
+    partition_by and write_ordered_by are only applied by teehr when the
+    table is created, i.e. with write_mode="create_or_replace".
     """
     logger = get_run_logger()
     if write_mode is None:
@@ -28,6 +35,8 @@ def write_to_warehouse(
     ev._write.to_warehouse(
         source_data=sdf,
         table_name=table_name,
-        write_mode=write_mode
+        write_mode=write_mode,
+        partition_by=partition_by,
+        write_ordered_by=write_ordered_by
     )
     logger.info(f"Finished writing dataFrame to warehouse table {table_name}.")

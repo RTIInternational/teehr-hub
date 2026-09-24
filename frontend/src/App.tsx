@@ -1,10 +1,8 @@
 import { Container, Alert } from 'react-bootstrap';
 import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 
-import { Home, DashboardsHome } from '@/components/common';
-import { DataDashboard } from '@/components/dashboards/data_management';
-import { DataDashboardProvider } from '@/context/DataDashboardContext';
 import { useAuth } from '@/features/auth';
+import { DataDashboard } from '@/features/data_management';
 import { ForecastDashboard, ForecastDashboardProvider } from '@/features/forecast';
 import { NwmdDashboard, NwmdDashboardProvider } from '@/features/nwmd';
 import { RetrospectiveDashboardProvider, RetrospectiveDashboard } from '@/features/retrospective';
@@ -12,10 +10,13 @@ import AdminHome from '@/pages/admin/AdminHome';
 import AdminLayout from '@/pages/admin/AdminLayout';
 import ApiKeysAdmin from '@/pages/admin/ApiKeysAdmin';
 import KeycloakAdmin from '@/pages/admin/KeycloakAdmin';
+import DashboardsHome from '@/pages/DashboardsHome';
+import Home from '@/pages/Home';
 import Navbar from '@/shared/components/Navbar';
 
 import 'bootstrap/dist/css/bootstrap.min.css';
 import './App.css';
+import ScrollToTop from './shared/utils/scrollToTop';
 
 const RequireAuth = ({ children }: React.PropsWithChildren) => {
   const { ready, authenticated, login, signup } = useAuth();
@@ -117,9 +118,7 @@ const AppRoutes = () => {
             path="/data"
             element={
               <RequireAuth>
-                <DataDashboardProvider>
-                  <DataDashboard />
-                </DataDashboardProvider>
+                <DataDashboard />
               </RequireAuth>
             }
           />
@@ -154,6 +153,7 @@ const AppRoutes = () => {
 function App() {
   return (
     <Router>
+      <ScrollToTop />
       <AppRoutes />
     </Router>
   );

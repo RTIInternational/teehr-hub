@@ -24,7 +24,7 @@ import type { QueryablesResponse, TableProperties } from '../types/queryables';
  *   - description: Table description from schema
  *   - allProperties: Array of all property names
  */
-export const extractTableProperties = (queryables: QueryablesResponse): TableProperties => {
+export const extractTableProperties = (queryables: QueryablesResponse | null): TableProperties => {
   if (!queryables || typeof queryables !== 'object') {
     return {
       metrics: [],
@@ -81,6 +81,19 @@ export const extractFeatureProperties = (featureCollection: FeatureCollection) =
   }
 
   return featureCollection.features.map((feature) => feature.properties || {});
+};
+
+/**
+ * Return distinct values for a specific property from a simplified array of features with properties.
+ * @param features An array of simplified feature property arrays.
+ * @param property The property for which to return distinct values.
+ * @returns An array of distinct values for the property.
+ */
+export const getDistinctPropertyValues = (
+  features: ReturnType<typeof extractFeatureProperties>,
+  property: string
+) => {
+  return Array.from(new Set(features.map((feature) => feature[property])));
 };
 
 /**

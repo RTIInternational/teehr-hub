@@ -1,0 +1,76 @@
+import { useState, useMemo } from 'react';
+
+/**
+ * useSortableTable
+ *
+ * Shared sorting logic for data tables across dashboards.
+ *
+ * @param {Array}    rows          - The raw row array to sort
+ * @param {string}   defaultKey    - Column key to sort by initially
+ * @param {Function} getSortValue  - Optional fn(row, key) => comparable value.
+ *                                   Defaults to numeric-aware string comparison.
+ * @returns {{ sortedRows, sortKey, sortDir, handleSort, SortIcon }}
+ */
+
+export type SortValueGetter = (row: Record<string, string>, key: string) => string | number;
+
+const defaultGetSortValue = (row: Record<string, string>, key: string) => {
+  const val = row[key];
+  if (typeof val != 'string' && typeof val != 'number') return '';
+  const num = parseFloat(val);
+  return isNaN(num) ? String(val).toLowerCase() : num;
+};
+
+export const useSortableTable = <T extends Record<string, unknown>>(
+  rows: T[],
+  defaultKey: string | null = null,
+  getSortValue: typeof defaultGetSortValue | null = null
+) => {
+  const [sortKey, setSortKey] = useState(defaultKey);
+  const [sortDir, setSortDir] = useState('asc');
+
+  // Rows are Record<string, unknown>; the getters index into them and coerce
+  // what they find, so widen the signature rather than constrain the caller.
+  const resolver = (getSortValue ?? defaultGetSortValue) as (
+    row: T,
+    key: string
+  ) => string | number;
+
+  const handleSort = (key: string) => {
+    if (key === sortKey) {
+      setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'));
+    } else {
+      setSortKey(key);
+      setSortDir('asc');
+    }
+  };
+
+  const sortedRows = useMemo(() => {
+    if (!rows.length || !sortKey) return rows;
+    return [...rows].sort((a, b) => {
+      const av = resolver(a, sortKey);
+      const bv = resolver(b, sortKey);
+      if (av < bv) return sortDir === 'asc' ? -1 : 1;
+      if (av > bv) return sortDir === 'asc' ? 1 : -1;
+      return 0;
+    });
+  }, [rows, sortKey, sortDir, resolver]);
+
+  type SortIconProps = {
+    colKey: string;
+  };
+  /**
+   * Returns a sort indicator element for a given column key.
+   * Active column shows ▲ or ▼; inactive columns show a faint ⇅.
+   */
+  const SortIcon = ({ colKey }: SortIconProps) => {
+    const active = sortKey === colKey;
+    return (
+      <span style={{ opacity: active ? 1 : 0.3, fontSize: '0.7rem', marginLeft: '3px' }}>
+        {active ? (sortDir === 'asc' ? '▲' : '▼') : '⇅'}
+      </span>
+    );
+  };
+
+  return { sortedRows, sortKey, sortDir, handleSort, SortIcon };
+};

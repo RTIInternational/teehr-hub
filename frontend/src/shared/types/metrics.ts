@@ -5,6 +5,7 @@ import type { OgcLink } from './ogc';
 export type MetricsFeature = Feature<Point, MetricsProperties>;
 
 export type MetricsFilters = {
+  [queryable: string]: string | null;
   configuration: string;
   table: string;
   variable: string;

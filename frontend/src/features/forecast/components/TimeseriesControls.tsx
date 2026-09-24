@@ -2,8 +2,7 @@ import { useState } from 'react';
 import { Form, Row, Col, Button, Tabs, Tab } from 'react-bootstrap';
 
 import MultiSelectDropdown from '@/shared/components/MultiSelectDropdown';
-import { useConfigurations } from '@/shared/queries/configurations';
-import { useVariables } from '@/shared/queries/variables';
+import { useMetricsByLocation } from '@/shared/queries/metrics';
 import type { MapLocation } from '@/shared/types/locations';
 import type { MapFilters } from '@/shared/types/maps';
 import type { TimeseriesFilters, TimeseriesRequestFilters } from '@/shared/types/timeseries';
@@ -12,7 +11,9 @@ import {
   fromDisplayVariableName,
   isTimestepVariable,
   DURATION_NAME_TO_ISO,
+  toPrimaryVariableName,
 } from '@/shared/utils/durationUtils';
+import { getDistinctPropertyValues } from '@/shared/utils/ogcTransformers';
 
 export type TimeseriesControlsProps = {
   table: string;
@@ -34,9 +35,17 @@ const TimeseriesControls = ({
 }: TimeseriesControlsProps) => {
   const [activeTab, setActiveTab] = useState('observations');
 
-  const configurations = useConfigurations(table);
-  const variables = useVariables(table);
-  const primaryVariables = useVariables('primary_timeseries');
+  const metrics = useMetricsByLocation(selectedLocation.primary_location_id, table);
+
+  const configurations = metrics.data
+    ? getDistinctPropertyValues(metrics.data, 'configuration_name')
+    : undefined;
+  const variables = metrics.data
+    ? getDistinctPropertyValues(metrics.data, 'variable_name')
+    : undefined;
+  const primaryVariables = variables
+    ? Array.from(new Set(variables.map((variable) => toPrimaryVariableName(variable))))
+    : undefined;
 
   const primaryFilters = timeseriesFilters.primary;
   const secondaryFilters = timeseriesFilters.secondary;
@@ -96,10 +105,10 @@ const TimeseriesControls = ({
                 <Form.Group>
                   <Form.Label className="small fw-bold">Variable</Form.Label>
                   <MultiSelectDropdown
-                    options={(Array.isArray(primaryVariables.data)
-                      ? primaryVariables.data
-                      : []
-                    ).map(toDisplayVariableName)}
+                    isLoading={metrics.isLoading}
+                    options={(Array.isArray(primaryVariables) ? primaryVariables : []).map(
+                      toDisplayVariableName
+                    )}
                     selected={(primaryFilters.variables || []).map(toDisplayVariableName)}
                     onChange={(displaySelected) =>
                       handlePrimaryFilterChange(
@@ -164,7 +173,8 @@ const TimeseriesControls = ({
                 <Form.Group>
                   <Form.Label className="small fw-bold">Configurations</Form.Label>
                   <MultiSelectDropdown
-                    options={Array.isArray(configurations.data) ? configurations.data : []}
+                    isLoading={metrics.isLoading}
+                    options={Array.isArray(configurations) ? configurations : []}
                     selected={secondaryFilters.configurations}
                     onChange={(selected) => handleSecondaryFilterChange('configurations', selected)}
                     allSelectedText="All configurations"
@@ -177,7 +187,8 @@ const TimeseriesControls = ({
                 <Form.Group>
                   <Form.Label className="small fw-bold">Variable</Form.Label>
                   <MultiSelectDropdown
-                    options={Array.isArray(variables.data) ? variables.data : []}
+                    isLoading={metrics.isLoading}
+                    options={Array.isArray(variables) ? variables : []}
                     selected={secondaryFilters.variables}
                     onChange={(selected) => handleSecondaryFilterChange('variables', selected)}
                     allSelectedText="All variables"
