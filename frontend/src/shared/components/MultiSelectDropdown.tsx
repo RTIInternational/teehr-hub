@@ -1,10 +1,11 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Form } from 'react-bootstrap';
+import { Form, Spinner } from 'react-bootstrap';
 
 type MultiSelectDropdownProps = {
   options?: string[];
   selected?: string[];
   onChange: (options: string[]) => void;
+  isLoading?: boolean;
   allSelectedText?: string;
   noneSelectedText?: string;
   labelledBy?: string;
@@ -20,6 +21,7 @@ const MultiSelectDropdown = ({
   options = [],
   selected = [],
   onChange,
+  isLoading = false,
   allSelectedText = 'All selected',
   noneSelectedText = 'None selected',
   labelledBy,
@@ -28,6 +30,7 @@ const MultiSelectDropdown = ({
 }: MultiSelectDropdownProps) => {
   const [isOpen, setIsOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
+  const isMenuOpen = isOpen && !isLoading;
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -41,14 +44,14 @@ const MultiSelectDropdown = ({
       }
     };
 
-    if (isOpen) {
+    if (isMenuOpen) {
       document.addEventListener('mousedown', handleClickOutside);
     }
 
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
     };
-  }, [isOpen]);
+  }, [isMenuOpen]);
 
   const handleToggle = (value: string) => {
     const newSelected = selected.includes(value)
@@ -81,17 +84,41 @@ const MultiSelectDropdown = ({
       <button
         type="button"
         className="btn btn-outline-secondary w-100 d-flex justify-content-between align-items-center"
-        onClick={() => setIsOpen(!isOpen)}
+        onClick={() => {
+          if (!isLoading) {
+            setIsOpen(!isOpen);
+          }
+        }}
         aria-labelledby={labelledBy}
         aria-label={ariaLabel}
-        style={{ fontSize: '14px' }}
+        disabled={isLoading}
+        aria-busy={isLoading}
+        style={{
+          fontSize: '14px',
+          opacity: isLoading ? 0.75 : 1,
+          backgroundColor: isLoading ? '#e9ecef' : undefined,
+          borderColor: isLoading ? '#ced4da' : undefined,
+          color: isLoading ? '#6c757d' : undefined,
+          cursor: isLoading ? 'not-allowed' : undefined,
+        }}
       >
-        <span className="text-truncate">{getDisplayText()}</span>
-        <span style={{ marginLeft: '8px' }}>{isOpen ? '▲' : '▼'}</span>
+        {isLoading ? (
+          <span className="d-inline-flex align-items-center gap-2 text-muted">
+            <output className="d-inline-flex align-items-center m-0" aria-label="Loading">
+              <Spinner animation="border" size="sm" aria-hidden="true" />
+            </output>
+            <span>Loading...</span>
+          </span>
+        ) : (
+          <>
+            <span className="text-truncate">{getDisplayText()}</span>
+            <span style={{ marginLeft: '8px' }}>{isMenuOpen ? '▲' : '▼'}</span>
+          </>
+        )}
       </button>
 
       {/* Dropdown Menu */}
-      {isOpen && (
+      {isMenuOpen && (
         <div
           className="multi-select-menu"
           style={{
