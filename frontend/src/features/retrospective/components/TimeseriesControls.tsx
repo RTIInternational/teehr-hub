@@ -1,4 +1,4 @@
-import { Form, Row, Col, Button, Spinner } from 'react-bootstrap';
+import { Form, Row, Col, Button } from 'react-bootstrap';
 
 import MultiSelectDropdown from '@/shared/components/MultiSelectDropdown';
 import { useMetricsByLocation } from '@/shared/queries/metrics';
