@@ -2,16 +2,27 @@
 
 The metrics pipeline itself (`generate_nwmd_metrics`) lives in nwmd_metrics.ipynb,
 so this module holds only helpers that are useful across notebooks and that the
-notebook pulls in via the raw.githubusercontent download in its second cell.
+notebooks pull in via the raw.githubusercontent download in their second cell.
+
+The high-flow threshold definitions at the bottom are here for exactly that
+reason: nwmd_flow_thresholds.ipynb writes the table and nwmd_metrics.ipynb reads
+it, and the two MUST agree on the table name and the quantile list. Duplicating
+them in both notebooks would let them drift, and the failure is silent -- the
+metrics run would simply find no matching quantiles, join NULL thresholds and
+put every row in the "all rows" level.
 """
 
 import os
 import json
 import re
+import time
 import urllib.request
 from collections import Counter
 from urllib.parse import urlparse
 from datetime import datetime, timezone
+
+import teehr
+from pyspark.sql import functions as F
 
 # --- Resource-sizing instrumentation -----------------------------------------
 # Pulls executor/stage summary metrics from the Spark REST API (no external deps,
@@ -537,3 +548,174 @@ spec:
         f"(ephemeral-storage request: {ephemeral_storage_request})"
     )
     return ONDEMAND_POD_TEMPLATE_PATH
+
+
+# --- High-flow thresholds --------------------------------------------------
+# Thresholds are CLIMATOLOGICAL: fixed percentiles of each gage's own observed
+# period of record, computed once from primary_timeseries, persisted, and joined
+# on at run time.
+#
+# They used to be derived inline by tcf.AbovePercentileEventDetection over the
+# filtered joined timeseries, which was wrong three ways:
+#
+#   1. the percentile moved whenever the run's reference_time window moved, so
+#      rows written by different runs were not comparable, and re-running a
+#      single quarter silently redefined its own thresholds;
+#   2. each observed hour appears in the joined table once per reference_time
+#      that forecasts it, so the distribution being quantiled was weighted by
+#      forecast coverage rather than being the observed distribution; and
+#   3. it was grouped by configuration_name (and each configuration is a
+#      separate run anyway), so `above_q85` meant something DIFFERENT for short
+#      range than for medium range at the same gage -- which quietly undermined
+#      comparing configurations.
+#
+# Reading them from primary_timeseries over the full record fixes all three, and
+# replaces an applyInPandas UDF (plus its shuffle, and its habit of pulling a
+# whole gage's series into pandas) with a broadcast join and a column compare.
+#
+# The table is built by nwmd_flow_thresholds.ipynb and read by
+# nwmd_metrics.ipynb (load_flow_thresholds / join_flow_thresholds).
+
+THRESHOLD_TABLE = "nwmd_flow_thresholds"
+THRESHOLD_QUANTILES = (0.85, 0.95, 0.99)
+
+
+def event_col(quantile) -> str:
+    """The one place a quantile maps to its event-flag column name."""
+    return f"above_q{int(quantile * 100)}"
+
+
+def threshold_value_col(quantile) -> str:
+    """The one place a quantile maps to its joined threshold-value column."""
+    return f"threshold_q{int(quantile * 100)}"
+
+
+VARIABLE_JOIN_KEY = "_variable_join_key"
+
+
+def variable_join_key_sql(column="variable_name") -> str:
+    """SQL for the key that matches an observed variable to a forecast one.
+
+    Mirrors teehr's own rule in JoinedTimeseriesView._perform_join: a
+    variable_name is `{parameter}_{period}_{statistic}`, and for the `inst`
+    statistic the PERIOD IS IGNORED. That matters here because observations
+    arrive as `streamflow_none_inst` while forecasts are
+    `streamflow_hourly_inst` -- the same physical quantity, and the joined
+    timeseries already treats them as such. Joining thresholds on the raw
+    variable_name therefore matches nothing.
+
+    Non-inst variables must still match in full, so a daily mean cannot be
+    silently compared against an instantaneous value.
+    """
+    # get() rather than [] : under ANSI mode an out-of-range array index raises
+    # instead of returning NULL, so a variable_name with fewer than three
+    # underscore-separated parts would crash the whole run. teehr's own join SQL
+    # guards this with an explicit size() check.
+    parts = f"split({column}, '_')"
+    return (
+        f"CASE WHEN get({parts}, 2) = 'inst' "
+        f"THEN concat_ws('_', get({parts}, 0), get({parts}, 2)) "
+        f"ELSE {column} END"
+    )
+
+
+def build_flow_thresholds(
+    spark,
+    quantiles=THRESHOLD_QUANTILES,
+    output_table_name=THRESHOLD_TABLE,
+    location_pattern="usgs-%",
+    configuration_name=None,
+):
+    """Compute and persist per-gage high-flow thresholds from primary_timeseries.
+
+    Run this once. Run it again only when you deliberately want the thresholds
+    to move (say after a large observation backfill) -- every metrics run reads
+    the persisted values, which is what keeps a re-run of one quarter
+    comparable with its neighbors.
+
+    Percentiles are exact (`percentile`, not `percentile_approx`) so the result
+    is reproducible, and are taken over ALL observed values for a gage,
+    across configuration_name, since a threshold is a property of the river
+    rather than of whichever ingest produced the observation. Rows with a NULL
+    value are excluded; zeros are kept, as zero flow is meaningful.
+
+    Args:
+        spark (SparkSession): The Spark session to use.
+        quantiles (tuple): Percentiles to compute, as fractions.
+        output_table_name (str): Table to create or replace.
+        location_pattern (str): SQL LIKE pattern limiting which gages to
+            compute for. None for all.
+        configuration_name (str): Restrict to one observation configuration.
+            None (default) uses every configuration present.
+    """
+    start = time.perf_counter()
+    ev = teehr.RemoteReadWriteEvaluation(spark=spark, enable_spark_proxy=True)
+
+    sdf = ev.table("primary_timeseries").to_sdf().where(F.col("value").isNotNull())
+    if location_pattern:
+        sdf = sdf.where(F.col("location_id").like(location_pattern))
+    if configuration_name:
+        sdf = sdf.where(F.col("configuration_name") == configuration_name)
+
+    qs = list(quantiles)
+    pct_list = ", ".join(str(q) for q in qs)
+    grouped = sdf.groupBy("location_id", "variable_name", "unit_name").agg(
+        F.expr(f"percentile(value, array({pct_list}))").alias("_pcts"),
+        F.count("value").alias("n_values"),
+        F.min("value_time").alias("por_start"),
+        F.max("value_time").alias("por_end"),
+    )
+
+    # Long format -- one row per (location, variable, unit, quantile). Keeps the
+    # table extensible to new quantiles without a schema change, and is the
+    # shape a dashboard would want for "this gage's q95 is 12.4 m^3/s".
+    pairs = ", ".join(f"{q}, _pcts[{i}]" for i, q in enumerate(qs))
+    thresholds = (
+        grouped.selectExpr(
+            "location_id", "variable_name", "unit_name",
+            "n_values", "por_start", "por_end",
+            f"stack({len(qs)}, {pairs}) as (quantile, threshold_value)",
+        )
+        .withColumn("computed_at", F.current_timestamp())
+    )
+
+    # Materialize before creating the table. The exact-percentile scan over the
+    # whole period of record is the slow part, and running it inside a CTAS
+    # leaves the target table staged for the duration -- long enough for an
+    # executor's vended S3 credentials to refresh against a table the catalog
+    # cannot yet resolve, which fails the task with "Table does not exist".
+    # The result is only a few rows per gage, so collecting it is cheap and
+    # makes the CTAS itself near-instant.
+    materialized = ev.spark.createDataFrame(
+        thresholds.collect(), thresholds.schema
+    )
+
+    full_table_name = f"iceberg.teehr.{output_table_name}"
+    materialized.createOrReplaceTempView("_nwmd_thresholds_src")
+    ev.spark.sql(
+        f"CREATE OR REPLACE TABLE {full_table_name} USING iceberg "
+        f"AS SELECT * FROM _nwmd_thresholds_src"
+    )
+    ev.spark.sql("DROP VIEW IF EXISTS _nwmd_thresholds_src")
+    ev.spark.sql(
+        f"ALTER TABLE {full_table_name} SET TBLPROPERTIES ("
+        f"'description' = 'Climatological high-flow thresholds per location, "
+        f"from the primary_timeseries period of record')"
+    )
+
+    summary = ev.spark.sql(f"""
+        SELECT count(DISTINCT location_id) AS locations,
+               count(*) AS rows,
+               min(n_values) AS min_obs_per_location,
+               min(por_start) AS por_start,
+               max(por_end) AS por_end
+        FROM {full_table_name}
+    """).collect()[0]
+    print(
+        f"Wrote {full_table_name}: {summary['rows']} rows for "
+        f"{summary['locations']} locations, POR {summary['por_start']} to "
+        f"{summary['por_end']}, fewest observations at any location: "
+        f"{summary['min_obs_per_location']}"
+    )
+    print(f"{time.perf_counter() - start:.1f} s")
+    return full_table_name
