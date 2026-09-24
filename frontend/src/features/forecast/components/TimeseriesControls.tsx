@@ -105,6 +105,7 @@ const TimeseriesControls = ({
                 <Form.Group>
                   <Form.Label className="small fw-bold">Variable</Form.Label>
                   <MultiSelectDropdown
+                    isLoading={metrics.isLoading}
                     options={(Array.isArray(primaryVariables) ? primaryVariables : []).map(
                       toDisplayVariableName
                     )}
@@ -172,6 +173,7 @@ const TimeseriesControls = ({
                 <Form.Group>
                   <Form.Label className="small fw-bold">Configurations</Form.Label>
                   <MultiSelectDropdown
+                    isLoading={metrics.isLoading}
                     options={Array.isArray(configurations) ? configurations : []}
                     selected={secondaryFilters.configurations}
                     onChange={(selected) => handleSecondaryFilterChange('configurations', selected)}
@@ -185,6 +187,7 @@ const TimeseriesControls = ({
                 <Form.Group>
                   <Form.Label className="small fw-bold">Variable</Form.Label>
                   <MultiSelectDropdown
+                    isLoading={metrics.isLoading}
                     options={Array.isArray(variables) ? variables : []}
                     selected={secondaryFilters.variables}
                     onChange={(selected) => handleSecondaryFilterChange('variables', selected)}

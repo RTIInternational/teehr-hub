@@ -1,4 +1,4 @@
-import { Form, Row, Col, Button } from 'react-bootstrap';
+import { Form, Row, Col, Button, Spinner } from 'react-bootstrap';
 
 import MultiSelectDropdown from '@/shared/components/MultiSelectDropdown';
 import { useMetricsByLocation } from '@/shared/queries/metrics';
@@ -108,6 +108,7 @@ const TimeseriesControls = ({
             <Form.Group>
               <Form.Label className="small fw-bold">Configurations</Form.Label>
               <MultiSelectDropdown
+                isLoading={metrics.isLoading}
                 options={Array.isArray(configurations) ? configurations : []}
                 selected={selectedConfigurations}
                 onChange={(selected) => handleSecondaryFilterChange('configurations', selected)}
@@ -122,11 +123,16 @@ const TimeseriesControls = ({
             <Form.Group>
               <Form.Label className="small fw-bold">Variable</Form.Label>
               <Form.Select
+                disabled={metrics.isLoading}
                 size="sm"
                 value={timeseriesFilters.secondary.variables[0] || mapFilters.variable || ''}
                 onChange={(e) => handleVariableChange(e.target.value || null)}
               >
-                <option value="">Select Variable...</option>
+                {metrics.isLoading ? (
+                  <option value="">Loading...</option>
+                ) : (
+                  <option value="">Select Variable...</option>
+                )}
                 {Array.isArray(variables) &&
                   variables.map((variable: string) => (
                     <option key={variable} value={toDisplayVariableName(variable)}>
