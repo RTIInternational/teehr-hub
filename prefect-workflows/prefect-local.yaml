@@ -394,62 +394,62 @@ deployments:
     }
     work_pool: *work_pool
 
-  # NWM Forcing Medium Range MAP Ingests
-  - name: ingest-nwm-forcing-medium-range
-    version:
-    tags: []
-    description: Calculate Mean Areal Precipitation from NWM forcing medium range
-    entrypoint: workflows/ingests/nwm_forcing_map.py:ingest_nwm_forcing_map
-    parameters: {
-      "temp_dir_path": *temp_dir_path,
-      "nwm_configuration": "forcing_medium_range",
-      "start_spark_cluster": false,
-      "target_table_name": "secondary_timeseries",
-      "file_chunk_size": 2
-    }
-    work_pool: *work_pool
+  # # NWM Forcing Medium Range MAP Ingests
+  # - name: ingest-nwm-forcing-medium-range
+  #   version:
+  #   tags: []
+  #   description: Calculate Mean Areal Precipitation from NWM forcing medium range
+  #   entrypoint: workflows/ingests/nwm_forcing_map.py:ingest_nwm_forcing_map
+  #   parameters: {
+  #     "temp_dir_path": *temp_dir_path,
+  #     "nwm_configuration": "forcing_medium_range",
+  #     "start_spark_cluster": false,
+  #     "target_table_name": "secondary_timeseries",
+  #     "file_chunk_size": 2
+  #   }
+  #   work_pool: *work_pool
 
-  - name: ingest-nwm-forcing-medium-range-alaska
-    version:
-    tags: []
-    description: Calculate Mean Areal Precipitation from NWM forcing medium range Alaska
-    entrypoint: workflows/ingests/nwm_forcing_map.py:ingest_nwm_forcing_map
-    parameters: {
-      "temp_dir_path": *temp_dir_path,
-      "nwm_configuration": "forcing_medium_range_alaska",
-      "start_spark_cluster": false,
-      "target_table_name": "secondary_timeseries",
-      "file_chunk_size": 2
-    }
-    work_pool: *work_pool
+  # - name: ingest-nwm-forcing-medium-range-alaska
+  #   version:
+  #   tags: []
+  #   description: Calculate Mean Areal Precipitation from NWM forcing medium range Alaska
+  #   entrypoint: workflows/ingests/nwm_forcing_map.py:ingest_nwm_forcing_map
+  #   parameters: {
+  #     "temp_dir_path": *temp_dir_path,
+  #     "nwm_configuration": "forcing_medium_range_alaska",
+  #     "start_spark_cluster": false,
+  #     "target_table_name": "secondary_timeseries",
+  #     "file_chunk_size": 2
+  #   }
+  #   work_pool: *work_pool
 
-  - name: ingest-nwm-forcing-medium-range-hawaii
-    version:
-    tags: []
-    description: Calculate Mean Areal Precipitation from NWM forcing medium range Hawaii
-    entrypoint: workflows/ingests/nwm_forcing_map.py:ingest_nwm_forcing_map
-    parameters: {
-      "temp_dir_path": *temp_dir_path,
-      "nwm_configuration": "forcing_medium_range_hawaii",
-      "start_spark_cluster": false,
-      "target_table_name": "secondary_timeseries",
-      "file_chunk_size": 2
-    }
-    work_pool: *work_pool
+  # - name: ingest-nwm-forcing-medium-range-hawaii
+  #   version:
+  #   tags: []
+  #   description: Calculate Mean Areal Precipitation from NWM forcing medium range Hawaii
+  #   entrypoint: workflows/ingests/nwm_forcing_map.py:ingest_nwm_forcing_map
+  #   parameters: {
+  #     "temp_dir_path": *temp_dir_path,
+  #     "nwm_configuration": "forcing_medium_range_hawaii",
+  #     "start_spark_cluster": false,
+  #     "target_table_name": "secondary_timeseries",
+  #     "file_chunk_size": 2
+  #   }
+  #   work_pool: *work_pool
 
-  - name: ingest-nwm-forcing-medium-range-puertorico
-    version:
-    tags: []
-    description: Calculate Mean Areal Precipitation from NWM forcing medium range Puerto Rico
-    entrypoint: workflows/ingests/nwm_forcing_map.py:ingest_nwm_forcing_map
-    parameters: {
-      "temp_dir_path": *temp_dir_path,
-      "nwm_configuration": "forcing_medium_range_puertorico",
-      "start_spark_cluster": false,
-      "target_table_name": "secondary_timeseries",
-      "file_chunk_size": 2
-    }
-    work_pool: *work_pool
+  # - name: ingest-nwm-forcing-medium-range-puertorico
+  #   version:
+  #   tags: []
+  #   description: Calculate Mean Areal Precipitation from NWM forcing medium range Puerto Rico
+  #   entrypoint: workflows/ingests/nwm_forcing_map.py:ingest_nwm_forcing_map
+  #   parameters: {
+  #     "temp_dir_path": *temp_dir_path,
+  #     "nwm_configuration": "forcing_medium_range_puertorico",
+  #     "start_spark_cluster": false,
+  #     "target_table_name": "secondary_timeseries",
+  #     "file_chunk_size": 2
+  #   }
+  #   work_pool: *work_pool
 
   # DataStream Ingests
   - name: ingest-datastream-short-range-cfe-forecasts
@@ -528,7 +528,14 @@ deployments:
     parameters: {
       "args": {
         "source": {"type": "nwm", "nwm_configuration": "forcing_analysis_assim", "nwm_version": "nwm31"},
-        "num_lookback_days": 1
+        "num_lookback_days": 1,
+        "source_data_storage": "gcs",
+        "x_dim": "x",
+        "y_dim": "y",
+        "source_crs": "+proj=lcc +lat_0=40 +lon_0=-97 +lat_1=30 +lat_2=60 +x_0=0 +y_0=0 +R=6370000 +units=m +no_defs",
+        "obstore_kwargs": {"skip_signature": true},
+        "xconcat_kwargs": {"coords": "minimal", "data_vars": "minimal", "compat": "override", "join": "override", "combine_attrs": "override"},
+        "pyramid_encoding": {"rainrate_hourly_mean": {"dtype": "uint16", "scale_factor": 2.0e-6, "_FillValue": 65535}}
       }
     }
     work_pool: *work_pool

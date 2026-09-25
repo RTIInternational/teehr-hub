@@ -136,10 +136,10 @@ class BuildPyramidsDataInput(BaseGriddedDataInput):
 class IngestGriddedDataInput(BuildPyramidsDataInput):
     """Input parameters for the ingest_gridded_data Prefect flow.
 
-    ``source`` selects the data source by its ``type``. The source supplies defaults for the
-    dataset fields below (dims, CRS, parser, kwargs, ...); values set here win. The repository
-    name (``configuration_name``) and ``variable_names`` are derived from the source and hidden
-    from the flow's parameters.
+    ``source`` selects the data source by its ``type``. Dataset fields (dims, CRS, storage,
+    kwargs, ...) default to UA SWANN's values; deployments for other sources override them. The
+    repository name (``configuration_name``) and ``variable_names`` are derived from the source
+    and hidden from the flow's parameters.
     """
 
     source: GriddedSourceType = Field(
@@ -181,14 +181,14 @@ class IngestGriddedDataInput(BuildPyramidsDataInput):
         description="Extra keyword arguments passed to obstore.store.from_url(url, **obstore_kwargs)"
     )
     xconcat_kwargs: dict[str, Any] = Field(
-        default_factory=dict,
+        default={"coords": "minimal", "compat": "override", "combine_attrs": "override"},
         description="Extra keyword arguments passed to xr.concat(datasets, dim=concat_dim, **xconcat_kwargs). Used when creating the virtual dataset from the raw data files"
     )
 
     @model_validator(mode="before")
     @classmethod
     def _apply_source(cls, data: Any) -> Any:
-        """Fill the source's dataset defaults under the given values, and derive its names."""
+        """Derive the repository and variable names from the source."""
         if not isinstance(data, dict) or "source" not in data:
             return data
         source = _SOURCE_ADAPTER.validate_python(data["source"])
@@ -199,7 +199,7 @@ class IngestGriddedDataInput(BuildPyramidsDataInput):
         for field, value in derived.items():
             if data.get(field) not in (None, value):
                 raise ValueError(f"{field} is derived from the source as {value!r}; got {data[field]!r}.")
-        return {**source.dataset_defaults(), **data, **derived, "source": source}
+        return {**data, **derived, "source": source}
 
 
 _SOURCE_ADAPTER = TypeAdapter(GriddedSourceType)

@@ -1,16 +1,15 @@
 """Gridded data sources for the ingest_gridded_data Prefect flow, selected by their ``type``."""
 from abc import ABC, abstractmethod
 from datetime import datetime, timedelta
-from typing import Annotated, Any, ClassVar, Literal, Optional, Union
+from typing import Annotated, ClassVar, Literal, Optional, Union
 
 from pydantic import BaseModel, Field, model_validator
-from teehr.fetching.const import NWM_VARIABLE_MAPPER, VARIABLE_NAME
 from teehr.fetching.nwm.nwm_grids import plan_nwm_grid_fetch
 from teehr.fetching.utils import REMOTE_RETRY_CONFIG, format_nwm_configuration_metadata
 
 
 class GriddedSource(BaseModel, ABC):
-    """A gridded source: its files, its IceChunk repository, and its dataset defaults."""
+    """A gridded source: its files and its IceChunk repository."""
 
     source_bucket: ClassVar[str]
     # Source-specific obstore kwargs; deployment obstore_kwargs override them
@@ -26,10 +25,6 @@ class GriddedSource(BaseModel, ABC):
     @abstractmethod
     def ingest_variables(self) -> list[str]:
         """Source variables to materialize."""
-
-    @abstractmethod
-    def dataset_defaults(self) -> dict[str, Any]:
-        """Defaults for the ingest input fields; values the caller sets win."""
 
 
 class UASwan4km(GriddedSource):
@@ -61,26 +56,6 @@ class UASwan4km(GriddedSource):
 
     def ingest_variables(self) -> list[str]:
         return list(self.variables)
-
-    def dataset_defaults(self) -> dict[str, Any]:
-        return {
-            "x_dim": "lon",
-            "y_dim": "lat",
-            "source_crs": "EPSG:4269",
-            "parser_type": "hdf",
-            "source_data_storage": "http",
-            "obstore_kwargs": {},
-            "xconcat_kwargs": {"coords": "minimal", "compat": "override", "combine_attrs": "override"},
-        }
-
-
-# NWM CONUS Lambert Conformal Conic grid
-NWM_CONUS_CRS = "+proj=lcc +lat_0=40 +lon_0=-97 +lat_1=30 +lat_2=60 +x_0=0 +y_0=0 +R=6370000 +units=m +no_defs"
-
-# Default pyramid packing per NWM variable; variables without an entry stay float32
-NWM_PYRAMID_ENCODING = {
-    "RAINRATE": {"dtype": "uint16", "scale_factor": 2e-6, "_FillValue": 65535},
-}
 
 
 class NWMForcing(GriddedSource):
@@ -129,28 +104,6 @@ class NWMForcing(GriddedSource):
 
     def ingest_variables(self) -> list[str]:
         return [self.variable_name]
-
-    def dataset_defaults(self) -> dict[str, Any]:
-        defaults = {
-            "x_dim": "x",
-            "y_dim": "y",
-            "source_crs": NWM_CONUS_CRS,
-            "parser_type": "hdf",
-            "source_data_storage": "gcs",
-            "obstore_kwargs": {"skip_signature": True},
-            "xconcat_kwargs": {
-                "coords": "minimal",
-                "data_vars": "minimal",
-                "compat": "override",
-                "join": "override",
-                "combine_attrs": "override",
-            },
-        }
-        if self.variable_name in NWM_PYRAMID_ENCODING:
-            # Pyramid packing is keyed by the stored (mapped) variable name
-            mapped = NWM_VARIABLE_MAPPER[VARIABLE_NAME].get(self.variable_name, {}).get("name", self.variable_name)
-            defaults["pyramid_encoding"] = {mapped: NWM_PYRAMID_ENCODING[self.variable_name]}
-        return defaults
 
 
 GriddedSourceType = Annotated[Union[UASwan4km, NWMForcing], Field(discriminator="type")]
