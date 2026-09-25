@@ -29,12 +29,12 @@ environments:
       polaris:
         inCluster: "true"
         catalogS3PathStyleAccess: "true"
-        catalogS3Endpoint: "http://minio:9000"
+        catalogS3Endpoint: "http://local-s3:9000"
         catalogS3Region: ${var.aws.region}
         catalogType: rest
         catalogUri: http://polaris:8181/api/catalog
         catalogWarehouse: s3://warehouse/
-        catalogRoleArn: "" # MinIO has no real STS; Polaris can't assume a role against it
+        catalogRoleArn: "" # local-s3 has no real STS; Polaris can't assume a role against it
         skipCredentialSubscopingIndirection: "true"
         storageStsUnavailable: "true"
         defaultRealm: teehr
@@ -49,7 +49,7 @@ environments:
         schema: teehr
       # Gridded data (xpublish-api). Icechunk stores are plain zarr on S3, not
       # Iceberg tables, so they are not vended by Polaris. Locally they live in
-      # the MinIO `warehouse` bucket.
+      # the local-s3 `warehouse` bucket.
       icechunk:
         bucket: "warehouse"
         prefix: "icechunk-ingests"
