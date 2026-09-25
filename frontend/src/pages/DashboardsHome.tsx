@@ -69,22 +69,23 @@ const DashboardsHome = () => {
       image: '/api/static/preview-nwmd.png', // placeholder
       color: 'success',
     },
-    {
-      id: 'gridded-data',
-      title: 'Gridded Data',
-      description:
-        'Explore gridded datasets, such as National Water Model forcing, from icechunk repositories.',
-      features: [
-        'Interactive raster tile map',
-        'Variable and timestep selection',
-        'Point-based timeseries query',
-        'Polygon and overlay layers',
-      ],
-      path: '/gridded',
-      status: 'available',
-      image: '/api/static/preview-gridded.png', // placeholder
-      color: 'info',
-    },
+    // Hidden for now; the /gridded route still works.
+    // {
+    //   id: 'gridded-data',
+    //   title: 'Gridded Data',
+    //   description:
+    //     'Explore gridded datasets, such as National Water Model forcing, from icechunk repositories.',
+    //   features: [
+    //     'Interactive raster tile map',
+    //     'Variable and timestep selection',
+    //     'Point-based timeseries query',
+    //     'Polygon and overlay layers',
+    //   ],
+    //   path: '/gridded',
+    //   status: 'available',
+    //   image: '/api/static/preview-gridded.png', // placeholder
+    //   color: 'info',
+    // },
     // Future dashboards
     {
       id: 'retrospective-model-comparisons',
