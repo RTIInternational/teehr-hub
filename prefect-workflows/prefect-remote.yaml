@@ -50,8 +50,6 @@ definitions:
       POLARIS_DEFAULT_REALM: "{{ $POLARIS_DEFAULT_REALM }}"
       POLARIS_USE_STS: "true"
       IN_CLUSTER: "{{ $IN_CLUSTER }}"
-    node_selector:
-      teehr-hub/nodegroup-name: spark-r5-4xlarge
     tolerations:
       - key: teehr-hub/dedicated
         operator: Equal
@@ -61,20 +59,86 @@ definitions:
         operator: Equal
         value: worker
         effect: NoSchedule
+  # Driver resource tiers.
+  #
+  # Every deployment used to request the same 4 CPU / 32Gi. Measuring 166
+  # driver pods over 3 days (2026-09) showed the real requirement is strongly
+  # bimodal, and in the opposite direction to the obvious guess:
+  #
+  #   * Flows that START a Spark cluster have the SMALLEST drivers -- the work
+  #     is on the executors, so the driver only coordinates. update-forecast-
+  #     metrics-table peaked at 0.34 CPU / 4.8Gi while requesting 8 CPU / 64Gi.
+  #   * Flows with start_spark_cluster=false run Spark in LOCAL mode inside the
+  #     driver pod, so they are the heavy ones. ingest-nwm-medium-range-blend
+  #     peaked at 5.52 CPU / 38.9Gi -- over its 32Gi request.
+  #
+  # Tiers are set from observed peak with headroom, since the sample is short
+  # and some flows run only weekly. Flows with no measurement in the window
+  # keep the old 4 CPU / 32Gi "standard" tier rather than being guessed at.
+  #
+  # CPU is compressible, so these requests are floors, not caps; the pods have
+  # no CPU limit and still burst to whatever the node has spare.
+
+  # Coordinates a Spark cluster, or does trivial work. Peak seen: 0.41 CPU / 5.5Gi.
+  work_pool_resources_small: &work_pool_resources_small
+    cpu_request: "500m"
+    memory_request: 8Gi
+    node_selector:
+      teehr-hub/nodegroup-name: driver-r5-xlarge
+  # Light local-Spark work. Peak seen: 1.95 CPU / 14.3Gi.
+  work_pool_resources_medium: &work_pool_resources_medium
+    cpu_request: "2"
+    memory_request: 20Gi
+    node_selector:
+      teehr-hub/nodegroup-name: driver-r5-xlarge
+  # Heavy local-Spark work. Peak seen: 5.52 CPU / 38.9Gi.
+  work_pool_resources_large: &work_pool_resources_large
+    cpu_request: "6"
+    memory_request: 48Gi
+    node_selector:
+      teehr-hub/nodegroup-name: driver-r5-2xlarge
+  # Full-table rebuilds. Deliberately left at the historical 8 CPU / 64Gi
+  # rather than tiered down: this is an infrequent but genuinely large job,
+  # and it has no driver measurement because its schedule is disabled. Note
+  # 8 CPU / 64Gi does NOT fit an r5.2xlarge (~7.84 CPU / ~60Gi allocatable),
+  # so this tier keeps the 4xlarge node group.
+  work_pool_resources_xlarge: &work_pool_resources_xlarge
+    cpu_request: "8"
+    memory_request: 64Gi
+    node_selector:
+      teehr-hub/nodegroup-name: spark-r5-4xlarge
+  # Retained for flows with no measurement and no basis for inference. The
+  # nwm-forcing-* deployments previously sat here; they are disabled (too
+  # expensive to run) so they never appeared in the sample, but their driver
+  # shape can be inferred from the pattern every measured flow followed --
+  # cluster-starters coordinate and stay tiny, local-mode flows do the work
+  # in-process and are heavy. Re-measure them if they are ever re-enabled.
   work_pool_resources_standard: &work_pool_resources_standard
     cpu_request: "4"
     memory_request: 32Gi
-  work_pool_resources_large: &work_pool_resources_large
-    cpu_request: "8"
-    memory_request: 64Gi
-  work_pool: &work_pool
+    node_selector:
+      teehr-hub/nodegroup-name: driver-r5-2xlarge
+
+  work_pool_small: &work_pool_small
     name: kubernetes-pool
     job_variables:
-      <<: [*work_pool_job_variables_base, *work_pool_resources_standard]
+      <<: [*work_pool_job_variables_base, *work_pool_resources_small]
+  work_pool_medium: &work_pool_medium
+    name: kubernetes-pool
+    job_variables:
+      <<: [*work_pool_job_variables_base, *work_pool_resources_medium]
   work_pool_large: &work_pool_large
     name: kubernetes-pool
     job_variables:
       <<: [*work_pool_job_variables_base, *work_pool_resources_large]
+  work_pool_xlarge: &work_pool_xlarge
+    name: kubernetes-pool
+    job_variables:
+      <<: [*work_pool_job_variables_base, *work_pool_resources_xlarge]
+  work_pool: &work_pool
+    name: kubernetes-pool
+    job_variables:
+      <<: [*work_pool_job_variables_base, *work_pool_resources_standard]
 
 # the deployments section allows you to provide configuration for deploying flows
 deployments:
@@ -88,7 +152,7 @@ deployments:
     description: Ingest USGS streamflow data from NWIS
     entrypoint: workflows/ingests/usgs_streamflow_obs.py:ingest_usgs_streamflow_obs
     parameters: {"temp_dir_path": *temp_dir_path}
-    work_pool: *work_pool
+    work_pool: *work_pool_medium
     schedule:
       cron: "0 8,20 * * *"
       active: true
@@ -106,7 +170,7 @@ deployments:
       "temp_dir_path": *temp_dir_path,
       "nwm_configuration": "short_range"
     }
-    work_pool: *work_pool
+    work_pool: *work_pool_large
     schedule:
       cron: "0 7,19 * * *"
       active: true
@@ -124,7 +188,7 @@ deployments:
       "nwm_configuration": "short_range_alaska",
       "start_spark_cluster": false
     }
-    work_pool: *work_pool
+    work_pool: *work_pool_large
     schedule:
       cron: "10 7,19 * * *"
       active: true
@@ -142,7 +206,7 @@ deployments:
       "nwm_configuration": "short_range_hawaii",
       "start_spark_cluster": false
     }
-    work_pool: *work_pool
+    work_pool: *work_pool_large
     schedule:
       cron: "20 7,19 * * *"
       active: true
@@ -160,7 +224,7 @@ deployments:
       "nwm_configuration": "short_range_puertorico",
       "start_spark_cluster": false
     }
-    work_pool: *work_pool
+    work_pool: *work_pool_medium
     schedule:
       cron: "30 7,19 * * *"
       active: true
@@ -178,7 +242,7 @@ deployments:
       "nwm_configuration": "medium_range_mem1",
       "output_type": "channel_rt_1"
     }
-    work_pool: *work_pool
+    work_pool: *work_pool_large
     schedule:
       cron: "0 6,18 * * *"
       active: true
@@ -197,7 +261,7 @@ deployments:
       "output_type": "channel_rt",
       "start_spark_cluster": false
     }
-    work_pool: *work_pool
+    work_pool: *work_pool_large
     schedule:
       cron: "10 6,18 * * *"
       active: true
@@ -216,7 +280,7 @@ deployments:
       "output_type": "channel_rt_1",
       "start_spark_cluster": false
     }
-    work_pool: *work_pool
+    work_pool: *work_pool_large
     schedule:
       cron: "20 6,18 * * *"
       active: true
@@ -235,7 +299,7 @@ deployments:
       "output_type": "channel_rt",
       "start_spark_cluster": false
     }
-    work_pool: *work_pool
+    work_pool: *work_pool_medium
     schedule:
       cron: "30 6,18 * * *"
       active: true
@@ -255,7 +319,7 @@ deployments:
       "output_type": "channel_rt",
       "start_spark_cluster": false,
     }
-    work_pool: *work_pool
+    work_pool: *work_pool_large
     schedule:
       cron: "0 5,17 * * *"
       active: true
@@ -274,7 +338,7 @@ deployments:
       "output_type": "channel_rt",
       "start_spark_cluster": false,
     }
-    work_pool: *work_pool
+    work_pool: *work_pool_large
     schedule:
       cron: "10 5,17 * * *"
       active: true
@@ -293,7 +357,7 @@ deployments:
       "output_type": "channel_rt",
       "start_spark_cluster": false,
     }
-    work_pool: *work_pool
+    work_pool: *work_pool_small
     schedule:
       cron: "20 5,17 * * *"
       active: true
@@ -312,7 +376,7 @@ deployments:
       "output_type": "channel_rt",
       "start_spark_cluster": false,
     }
-    work_pool: *work_pool
+    work_pool: *work_pool_small
     schedule:
       cron: "30 5,17 * * *"
       active: true
@@ -331,7 +395,7 @@ deployments:
       "output_type": "channel_rt",
       "start_spark_cluster": false,
     }
-    work_pool: *work_pool
+    work_pool: *work_pool_medium
     schedule:
       cron: "40 5,17 * * *"
       active: true
@@ -350,7 +414,7 @@ deployments:
       "output_type": "channel_rt",
       "start_spark_cluster": false
     }
-    work_pool: *work_pool
+    work_pool: *work_pool_large
     schedule:
       cron: "50 5,17 * * *"
       active: true
@@ -369,7 +433,7 @@ deployments:
       "nwm_configuration": "forcing_analysis_assim",
       "start_spark_cluster": false
     }
-    work_pool: *work_pool
+    work_pool: *work_pool_large
     schedule:
       cron: "0 1,13 * * *"
       active: false
@@ -387,7 +451,7 @@ deployments:
       "nwm_configuration": "forcing_analysis_assim_alaska",
       "start_spark_cluster": false
     }
-    work_pool: *work_pool
+    work_pool: *work_pool_large
     schedule:
       cron: "10 1,13 * * *"
       active: false
@@ -405,7 +469,7 @@ deployments:
       "nwm_configuration": "forcing_analysis_assim_extend",
       "start_spark_cluster": false
     }
-    work_pool: *work_pool
+    work_pool: *work_pool_large
     schedule:
       cron: "20 1,13 * * *"
       active: false
@@ -423,7 +487,7 @@ deployments:
       "nwm_configuration": "forcing_analysis_assim_extend_alaska",
       "start_spark_cluster": false
     }
-    work_pool: *work_pool
+    work_pool: *work_pool_large
     schedule:
       cron: "30 1,13 * * *"
       active: false
@@ -441,7 +505,7 @@ deployments:
       "nwm_configuration": "forcing_analysis_assim_hawaii",
       "start_spark_cluster": false
     }
-    work_pool: *work_pool
+    work_pool: *work_pool_large
     schedule:
       cron: "40 1,13 * * *"
       active: false
@@ -459,7 +523,7 @@ deployments:
       "nwm_configuration": "forcing_analysis_assim_puertorico",
       "start_spark_cluster": false
     }
-    work_pool: *work_pool
+    work_pool: *work_pool_large
     schedule:
       cron: "50 1,13 * * *"
       active: false
@@ -481,7 +545,7 @@ deployments:
       "executor_instances": 8,
       "shuffle_partitions": 200
     }
-    work_pool: *work_pool
+    work_pool: *work_pool_small
     schedule:
       cron: "0 2,14 * * *"
       active: false
@@ -500,7 +564,7 @@ deployments:
       "start_spark_cluster": false,
       "target_table_name": "secondary_timeseries"
     }
-    work_pool: *work_pool
+    work_pool: *work_pool_large
     schedule:
       cron: "10 2,14 * * *"
       active: false
@@ -519,7 +583,7 @@ deployments:
       "start_spark_cluster": false,
       "target_table_name": "secondary_timeseries"
     }
-    work_pool: *work_pool
+    work_pool: *work_pool_large
     schedule:
       cron: "20 2,14 * * *"
       active: false
@@ -538,7 +602,7 @@ deployments:
       "start_spark_cluster": false,
       "target_table_name": "secondary_timeseries"
     }
-    work_pool: *work_pool
+    work_pool: *work_pool_large
     schedule:
       cron: "30 2,14 * * *"
       active: false
@@ -560,7 +624,7 @@ deployments:
       "executor_instances": 12,
       "shuffle_partitions": 200
     }
-    work_pool: *work_pool
+    work_pool: *work_pool_small
     schedule:
       cron: "0 3,15 * * *"
       active: false
@@ -579,7 +643,7 @@ deployments:
       "start_spark_cluster": false,
       "target_table_name": "secondary_timeseries"
     }
-    work_pool: *work_pool
+    work_pool: *work_pool_large
     schedule:
       cron: "10 3,15 * * *"
       active: false
@@ -598,7 +662,7 @@ deployments:
       "start_spark_cluster": false,
       "target_table_name": "secondary_timeseries"
     }
-    work_pool: *work_pool
+    work_pool: *work_pool_large
     schedule:
       cron: "20 3,15 * * *"
       active: false
@@ -617,7 +681,7 @@ deployments:
       "start_spark_cluster": false,
       "target_table_name": "secondary_timeseries"
     }
-    work_pool: *work_pool
+    work_pool: *work_pool_large
     schedule:
       cron: "30 3,15 * * *"
       active: false
@@ -636,7 +700,7 @@ deployments:
       "forecast_configuration": "short_range",
       "datastream_name": "cfe_nom"
     }
-    work_pool: *work_pool
+    work_pool: *work_pool_medium
     schedule:
       cron: "30 10 * * *"
       active: true
@@ -654,7 +718,7 @@ deployments:
       "forecast_configuration": "medium_range",
       "datastream_name": "cfe_nom"
     }
-    work_pool: *work_pool
+    work_pool: *work_pool_large
     schedule:
       cron: "0 11 * * *"
       active: true
@@ -672,7 +736,7 @@ deployments:
       "forecast_configuration": "short_range",
       "datastream_name": "lstm_0"
     }
-    work_pool: *work_pool
+    work_pool: *work_pool_medium
     schedule:
       cron: "30 11 * * *"
       active: true
@@ -690,7 +754,7 @@ deployments:
       "forecast_configuration": "medium_range",
       "datastream_name": "lstm_0"
     }
-    work_pool: *work_pool
+    work_pool: *work_pool_large
     schedule:
       cron: "0 12 * * *"
       active: true
@@ -707,7 +771,7 @@ deployments:
     parameters: {
       "temp_dir_path": *temp_dir_path
     }
-    work_pool: *work_pool
+    work_pool: *work_pool_medium
     schedule:
       cron: "29 * * * *"
       active: true
@@ -722,7 +786,11 @@ deployments:
     description: Create the joined forecast timeseries table
     entrypoint: workflows/metrics/update_joined_forecasts.py:update_joined_forecast_table
     parameters: {"temp_dir_path": *temp_dir_path}
-    work_pool: *work_pool_large
+    # Kept at the historical 8 CPU / 64Gi. This is an infrequent full-table
+    # rebuild -- 24 executors x 4 cores, against the -incremental sibling's 8
+    # -- and its schedule is disabled, so there is no driver measurement to
+    # size it down from. Not tiered.
+    work_pool: *work_pool_xlarge
     # schedule:
     #   cron: "0 9,21 * * *"
     #   active: true
@@ -736,7 +804,7 @@ deployments:
     description: Create the joined forecast timeseries table
     entrypoint: workflows/metrics/update_joined_forecasts.py:update_joined_forecast_table_incremental
     parameters: {"temp_dir_path": *temp_dir_path}
-    work_pool: *work_pool
+    work_pool: *work_pool_small
     schedule:
       cron: "0 9,21 * * *"
       active: true
@@ -750,7 +818,7 @@ deployments:
     description: Create the forecast metrics table
     entrypoint: workflows/metrics/update_forecast_metrics.py:update_forecast_metrics_table
     parameters: {"temp_dir_path": *temp_dir_path}
-    work_pool: *work_pool_large
+    work_pool: *work_pool_small
     schedule:
       cron: "0 10,22 * * *"
       active: true
@@ -763,8 +831,17 @@ deployments:
       collision_strategy: "CANCEL_NEW"
     description: Run routine Iceberg table maintenance (expire snapshots, remove orphan files, compact data files, rewrite manifests)
     entrypoint: workflows/maintenance/routine_table_maintenance.py:routine_table_maintenance
-    parameters: {"temp_dir_path": *temp_dir_path}
-    work_pool: *work_pool
+    # The flow defaults to 24 executors, which issue #379 observed sitting
+    # largely idle -- 24 x 2 cores x 32g reserves ~48 cores and ~845Gi of pod
+    # requests, roughly 7 r5.4xlarge nodes, for a job that has been averaging
+    # ~15 min. Cut to 8 while keeping the per-executor shape; rewrite_data_files
+    # is the only step with real parallelism to lose, and the flow has a 3 hour
+    # timeout, so there is plenty of room if this run takes longer.
+    parameters: {
+      "temp_dir_path": *temp_dir_path,
+      "executor_instances": 8
+    }
+    work_pool: *work_pool_small
     schedule:
       cron: "0 4 * * 0"
       active: true
@@ -778,7 +855,7 @@ deployments:
     description: Delete old Prefect flow runs (status=COMPLETED, older than 7 days)
     entrypoint: workflows/maintenance/prefect_cleanup.py:rm_completed_flow_runs
     parameters: {"age_limit_days": 7}
-    work_pool: *work_pool
+    work_pool: *work_pool_small
     schedule:
       cron: "15 3 * * *"
       active: true
@@ -793,7 +870,7 @@ deployments:
     description: Update the data management dashboard tables (configurations_by_location, configurations_summary, locations_with_attributes)
     entrypoint: workflows/data_management/update_data_management_tables.py:update_data_management_tables
     parameters: {"temp_dir_path": *temp_dir_path, "start_spark_cluster": true}
-    work_pool: *work_pool
+    work_pool: *work_pool_small
     schedule:
       cron: "25 4 * * *"
       active: true
