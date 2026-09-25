@@ -1,1 +1,0 @@
-panel serve panel-dashboards/apps/simulation_dashboard.ipynb --port 5007 --dev
