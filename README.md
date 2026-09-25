@@ -68,10 +68,9 @@ This should create all the services in the cluster.  To test, open a browser and
 ```bash
 # Add for TEEHR-HUB development
 127.0.0.1       hub.teehr.local.app.garden
-127.0.0.1       minio.teehr.local.app.garden
+127.0.0.1       s3.teehr.local.app.garden
 127.0.0.1       dashboards.teehr.local.app.garden
 127.0.0.1       api.teehr.local.app.garden
-127.0.0.1       panel.teehr.local.app.garden
 127.0.0.1       prefect.teehr.local.app.garden
 ```
 
@@ -100,7 +99,7 @@ Loading data is a little fractured depending on what data you are loading.  For 
 2) Copy the contents of `warehouse/local` to JupyterHub.  Note that the local_data folder and its contents will have to be uploaded as separate operations (i.e. create a folder manually, upload the file(s), and move into the folder).
 
 3) Run the following notebooks in order.  This will create an Iceberg data warehouse in the KinD cluster and populate it with historic observations and simulations for 10 sites.
-- `01_setup_minio_warehouse.ipynb`
+- `01_setup_local_warehouse.ipynb`
 - `02_create_joined_timeseries.ipynb`
 - `03_generate_basic_metrics.ipynb`
 

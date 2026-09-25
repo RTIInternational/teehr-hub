@@ -1,8 +1,7 @@
 import { Form, Row, Col, Button } from 'react-bootstrap';
 
 import MultiSelectDropdown from '@/shared/components/MultiSelectDropdown';
-import { useConfigurations } from '@/shared/queries/configurations';
-import { useVariables } from '@/shared/queries/variables';
+import { useMetricsByLocation } from '@/shared/queries/metrics';
 import type { MapLocation } from '@/shared/types/locations';
 import type { MapFilters } from '@/shared/types/maps';
 import type { TimeseriesFilters, TimeseriesRequestFilters } from '@/shared/types/timeseries';
@@ -11,6 +10,7 @@ import {
   toDisplayVariableName,
   toPrimaryVariableName,
 } from '@/shared/utils/durationUtils';
+import { getDistinctPropertyValues } from '@/shared/utils/ogcTransformers';
 
 export type TimeseriesControlsProps = {
   table: string;
@@ -31,8 +31,14 @@ const TimeseriesControls = ({
   mapFilters,
   onViewModeChange,
 }: TimeseriesControlsProps) => {
-  const configurations = useConfigurations(table);
-  const variables = useVariables(table);
+  const metrics = useMetricsByLocation(selectedLocation.primary_location_id, table);
+
+  const configurations = metrics.data
+    ? getDistinctPropertyValues(metrics.data, 'configuration_name')
+    : undefined;
+  const variables = metrics.data
+    ? getDistinctPropertyValues(metrics.data, 'variable_name')
+    : undefined;
 
   const primaryFilters = timeseriesFilters.primary;
   const secondaryFilters = timeseriesFilters.secondary;
@@ -102,7 +108,8 @@ const TimeseriesControls = ({
             <Form.Group>
               <Form.Label className="small fw-bold">Configurations</Form.Label>
               <MultiSelectDropdown
-                options={Array.isArray(configurations.data) ? configurations.data : []}
+                isLoading={metrics.isLoading}
+                options={Array.isArray(configurations) ? configurations : []}
                 selected={selectedConfigurations}
                 onChange={(selected) => handleSecondaryFilterChange('configurations', selected)}
                 allSelectedText="All configurations"
@@ -116,13 +123,18 @@ const TimeseriesControls = ({
             <Form.Group>
               <Form.Label className="small fw-bold">Variable</Form.Label>
               <Form.Select
+                disabled={metrics.isLoading}
                 size="sm"
                 value={timeseriesFilters.secondary.variables[0] || mapFilters.variable || ''}
                 onChange={(e) => handleVariableChange(e.target.value || null)}
               >
-                <option value="">Select Variable...</option>
-                {Array.isArray(variables.data) &&
-                  variables.data.map((variable: string) => (
+                {metrics.isLoading ? (
+                  <option value="">Loading...</option>
+                ) : (
+                  <option value="">Select Variable...</option>
+                )}
+                {Array.isArray(variables) &&
+                  variables.map((variable: string) => (
                     <option key={variable} value={toDisplayVariableName(variable)}>
                       {variable}
                     </option>

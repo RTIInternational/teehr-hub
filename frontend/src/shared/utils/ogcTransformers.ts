@@ -84,6 +84,19 @@ export const extractFeatureProperties = (featureCollection: FeatureCollection) =
 };
 
 /**
+ * Return distinct values for a specific property from a simplified array of features with properties.
+ * @param features An array of simplified feature property arrays.
+ * @param property The property for which to return distinct values.
+ * @returns An array of distinct values for the property.
+ */
+export const getDistinctPropertyValues = (
+  features: ReturnType<typeof extractFeatureProperties>,
+  property: string
+) => {
+  return Array.from(new Set(features.map((feature) => feature[property])));
+};
+
+/**
  * Build OGC-compliant CQL filter string from filter object.
  *
  * @param {Object} filters - Filter key-value pairs
