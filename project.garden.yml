@@ -23,18 +23,18 @@ environments:
     variables:
       hostname: teehr.local.app.garden
       certificateIssuerName: letsencrypt-prod
-      devTeehrVersion: 7505137b3b4be5269c7725c5e2445b32545834ac
+      devTeehrVersion: 9e0bcb137a3f52b8f1699104939d6e2614c2264a
       stableTeehrVersion: place-holder # Needed for sync to work for some reason.
       previousTeehrVersion: place-holder
       polaris:
         inCluster: "true"
         catalogS3PathStyleAccess: "true"
-        catalogS3Endpoint: "http://minio:9000"
+        catalogS3Endpoint: "http://local-s3:9000"
         catalogS3Region: ${var.aws.region}
         catalogType: rest
         catalogUri: http://polaris:8181/api/catalog
         catalogWarehouse: s3://warehouse/
-        catalogRoleArn: "" # MinIO has no real STS; Polaris can't assume a role against it
+        catalogRoleArn: "" # local S3 has no real STS; Polaris can't assume a role against it
         skipCredentialSubscopingIndirection: "true"
         storageStsUnavailable: "true"
         defaultRealm: teehr
@@ -49,7 +49,7 @@ environments:
         schema: teehr
       # Gridded data (xpublish-api). Icechunk stores are plain zarr on S3, not
       # Iceberg tables, so they are not vended by Polaris. Locally they live in
-      # the MinIO `warehouse` bucket.
+      # the local S3 `warehouse` bucket.
       icechunk:
         bucket: "warehouse"
         prefix: "icechunk-ingests"
@@ -64,7 +64,7 @@ environments:
     variables:
       hostname: teehr.rtiamanzi.org
       certificateIssuerName: letsencrypt-prod
-      devTeehrVersion: 7505137b3b4be5269c7725c5e2445b32545834ac
+      devTeehrVersion: 9e0bcb137a3f52b8f1699104939d6e2614c2264a
       stableTeehrVersion: v0.7.0
       previousTeehrVersion: v0.6.6
       irsa:
