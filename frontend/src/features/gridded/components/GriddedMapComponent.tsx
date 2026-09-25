@@ -500,7 +500,6 @@ const GriddedMapComponent = () => {
     }
 
     const handleClick = async (e: maplibregl.MapMouseEvent) => {
-      if (!dataset || !variable || !currentTimestep) return;
       const popupInstance = popup.current;
       if (!popupInstance) return;
 
