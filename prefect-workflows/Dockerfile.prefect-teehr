@@ -48,12 +48,16 @@ RUN ARCH=$(uname -m) && \
 ENV JAVA_HOME=/usr/lib/jvm/java-21-openjdk-${TARGETARCH}
 ENV PATH=$PATH:/usr/lib/jvm/java-21-openjdk-${TARGETARCH}/bin
 
-# Create a user for UID 1000 so Java/Spark can resolve a home directory
-# when the pod runs with securityContext runAsUser: 1000
+# Create a user for UID 1000 so Java/Spark can resolve a home directory,
+# and actually run as it. Everything that writes to the shared /data drive
+# (JupyterHub singleuser, Spark executors, Prefect jobs) runs as uid 1000, so
+# that files stay mutually deletable -- removing a file needs write on its
+# parent directory, so a stray uid leaves data nobody can clean up. See
+# RTIInternational/teehr-cloud-core#69.
 RUN groupadd -g 1000 prefect && \
     useradd -u 1000 -g 1000 -m -d /home/prefect prefect
 
-RUN mkdir -p /teehr && mkdir -p /teehr/workflows
+RUN mkdir -p /teehr && mkdir -p /teehr/workflows && chown -R prefect:prefect /teehr
 
 COPY prefect-local.yaml /teehr/prefect-local.yaml
 
@@ -68,4 +72,10 @@ COPY executor-pod-template.yaml /opt/teehr/executor-pod-template.yaml
 
 COPY update_job_template.py /opt/teehr/update_job_template.py
 
+# The COPYs above land as root; hand /teehr back to the runtime user.
+RUN chown -R prefect:prefect /teehr /opt/teehr
+
 WORKDIR /teehr
+
+# Run as uid 1000 (see the groupadd/useradd above).
+USER prefect
