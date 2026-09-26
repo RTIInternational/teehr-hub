@@ -717,7 +717,7 @@ deployments:
       active: true
 
   # Gridded Data Ingests (IceChunk)
-  - name: ingest-nwm31-forcing-analysis-assim-grids
+  - name: ingest-nwm31-forcing-analysis-assim-icechunk
     version:
     tags: []
     concurrency_limit: 1
@@ -725,20 +725,26 @@ deployments:
       collision_strategy: "CANCEL_NEW"
     description: >-
       Ingest NWM 3.1 forcing analysis/assimilation RAINRATE grids (CONUS) into an IceChunk S3
-      repository using VirtualiZarr, then build pyramids. Keep num_lookback_days set; resuming
-      from the store (null) steps forward a full day and would skip hours.
+      repository using VirtualiZarr, then build pyramids.
     entrypoint: workflows/ingests/ingest_gridded_data.py:ingest_gridded_data
     parameters: {
       "args": {
         "source": {"type": "nwm", "nwm_configuration": "forcing_analysis_assim", "nwm_version": "nwm31"},
         "num_lookback_days": 1,
-        "source_data_storage": "gcs",
         "x_dim": "x",
         "y_dim": "y",
         "source_crs": "+proj=lcc +lat_0=40 +lon_0=-97 +lat_1=30 +lat_2=60 +x_0=0 +y_0=0 +R=6370000 +units=m +no_defs",
         "obstore_kwargs": {"skip_signature": true},
-        "xconcat_kwargs": {"coords": "minimal", "data_vars": "minimal", "compat": "override", "join": "override", "combine_attrs": "override"},
-        "pyramid_encoding": {"rainrate_hourly_mean": {"dtype": "uint16", "scale_factor": 2.0e-6, "_FillValue": 65535}}
+        "xconcat_kwargs": {
+          "coords": "minimal",
+          "data_vars": "minimal",
+          "compat": "override",
+          "join": "override",
+          "combine_attrs": "override"
+        },
+        "pyramid_encoding": {
+          "rainrate_hourly_mean": {"dtype": "uint16", "scale_factor": 2.0e-6, "_FillValue": 65535}
+        }
       }
     }
     work_pool: *work_pool_large
@@ -747,7 +753,7 @@ deployments:
       active: false
 
   # Gridded Pyramid Builds
-  - name: build-nwm31-forcing-analysis-assim-grids-pyramids
+  - name: build-nwm31-forcing-analysis-assim-icechunk-pyramids
     version:
     tags: []
     description: Build multiscale pyramids for the NWM 3.1 forcing analysis/assimilation IceChunk repository
@@ -759,16 +765,18 @@ deployments:
         "y_dim": "y",
         "source_crs": "+proj=lcc +lat_0=40 +lon_0=-97 +lat_1=30 +lat_2=60 +x_0=0 +y_0=0 +R=6370000 +units=m +no_defs",
         "factors": [1, 2, 4],
-        "pyramid_encoding": {"rainrate_hourly_mean": {"dtype": "uint16", "scale_factor": 2.0e-6, "_FillValue": 65535}}
+        "pyramid_encoding": {
+          "rainrate_hourly_mean": {"dtype": "uint16", "scale_factor": 2.0e-6, "_FillValue": 65535}
+        }
       }
     }
     work_pool: *work_pool_large
 
   # Create Vector Tiles
-  - name: create-usgsbasin-vector-tiles
+  - name: create-vector-tiles
     version:
     tags: []
-    description: Create vector tiles from the usgsbasin locations and upload to S3
+    description: Create vector tiles from polygons stored in the locations and upload to S3 as a .pmtiles archive. By default, the usgsbasin- prefix is used for the location IDs.
     entrypoint: workflows/data_management/create_vector_tiles.py:create_vector_tile_archive
     parameters: {
       "args": {
@@ -780,9 +788,7 @@ deployments:
     work_pool: *work_pool
 
   # Gridded Mean Areal Values
-  # The mapper is overridden because ingest stores the grid under its standardized
-  # name and units (rainrate_hourly_mean, mm/s).
-  - name: calculate-nwm31-forcing-analysis-assim-grids-pixel-coverage-weights
+  - name: calculate-nwm31-forcing-analysis-assim-icechunk-pixel-coverage-weights
     version:
     tags: []
     description: >-
@@ -797,16 +803,12 @@ deployments:
         "location_id_prefix": "usgsbasin",
         "grid_variable_name": "rainrate_hourly_mean",
         "domain_name": "nwm30_conus_forcing",
-        "write_mode": "append",
-        "variable_and_unit_mapper": {
-          "variable_name": {"rainrate_hourly_mean": {"name": "rainrate_hourly_mean", "long_name": "Hourly Mean Rainfall Rate"}},
-          "unit_name": {"mm/s": {"name": "mm/s", "long_name": "Millimeters per Second"}}
-        }
+        "write_mode": "append"
       }
     }
     work_pool: *work_pool
 
-  - name: calculate-nwm31-forcing-analysis-assim-grids-mean-areal-values
+  - name: calculate-nwm31-forcing-analysis-assim-icechunk-mean-areal-values
     version:
     tags: []
     description: >-
@@ -819,11 +821,7 @@ deployments:
         "configuration_name": "nwm31_forcing_analysis_assim",
         "location_id_prefix": "usgsbasin",
         "grid_variable_name": "rainrate_hourly_mean",
-        "domain_name": "nwm30_conus_forcing",
-        "variable_and_unit_mapper": {
-          "variable_name": {"rainrate_hourly_mean": {"name": "rainrate_hourly_mean", "long_name": "Hourly Mean Rainfall Rate"}},
-          "unit_name": {"mm/s": {"name": "mm/s", "long_name": "Millimeters per Second"}}
-        }
+        "domain_name": "nwm30_conus_forcing"
       }
     }
     work_pool: *work_pool

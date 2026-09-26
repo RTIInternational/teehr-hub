@@ -1,7 +1,7 @@
-from prefect import flow, get_run_logger
+from prefect import flow, task, get_run_logger
+from prefect.cache_policies import NO_CACHE
 import icechunk as ic
 import numpy as np
-from icechunk.xarray import to_icechunk
 import xarray as xr
 from topozarr import create_pyramid
 import rioxarray  # noqa: rio accessor
@@ -44,44 +44,20 @@ def build_pyramids(args: BuildPyramidsDataInput) -> None:
         f"Icechunk repo opened at: {args.dest_bucket}/{args.base_prefix}/{args.configuration_name}."
     )
 
-    rw_session = repo.writable_session("main")
-    # Determine which time steps are not yet in the pyramid store
-    first_level = "0"  # topozarr names levels by their index in args.factors, not by factor
-    if not gu.group_contains_data(store=rw_session.store, group_path=RAW_DATA_GROUP_PATH):
-        logger.info(f"No data found in {RAW_DATA_GROUP_PATH}. Shutting down.")
+    store = repo.readonly_session("main").store
+    if not gu.group_contains_data(store, RAW_DATA_GROUP_PATH):
+        logger.info(f"No data found in {RAW_DATA_GROUP_PATH}.")
         return
 
-    if not gu.group_contains_data(
-        store=rw_session.store,
-        group_path=PYRAMID_GROUP_PATH,
-        sub_group_name=first_level
-    ):
-        is_new_pyramid = True
-        logger.info(f"No existing pyramids found in {PYRAMID_GROUP_PATH}/{first_level}. Building for all data in {RAW_DATA_GROUP_PATH}.")
-        ds_new = gu.open_zarr_group(
-            store=rw_session.store,
-            group_path=RAW_DATA_GROUP_PATH
-        )
-    else:
-        is_new_pyramid = False
-        logger.info(f"Existing pyramids found. Checking for new data against {RAW_DATA_GROUP_PATH}.")
-        incoming_ds = gu.open_zarr_group(
-            store=rw_session.store,
-            group_path=RAW_DATA_GROUP_PATH
-        )
-        existing_ds = gu.open_zarr_group(
-            store=rw_session.store,
-            group_path=f"{PYRAMID_GROUP_PATH}/{first_level}"
-        )
-        ds_new = gu.filter_for_new_data(
-            incoming_ds=incoming_ds,
-            existing_ds=existing_ds,
-            append_dim=args.append_dim,
-        )
-        if ds_new is None:
-            logger.info(f"No new data steps found in {RAW_DATA_GROUP_PATH}. Shutting down.")
-            return
-        logger.info(f"Found {len(ds_new[args.append_dim])} new time step(s) to process.")
+    # topozarr names levels by their index in args.factors, not by factor
+    first_level = f"{PYRAMID_GROUP_PATH}/0"
+    is_new_pyramid = not gu.group_contains_data(store, first_level)
+    raw_ds = gu.open_zarr_group(store=store, group_path=RAW_DATA_GROUP_PATH)
+    ds_new = gu.new_steps(raw_ds, store, first_level, args.append_dim)
+    if ds_new is None:
+        logger.info(f"No new steps for {PYRAMID_GROUP_PATH}.")
+        return
+    logger.info(f"Found {len(ds_new[args.append_dim])} new time step(s) to process.")
 
     # Process time steps in batches so memory stays bounded by the batch, not the backlog.
     # Each batch is committed, so a failed run resumes from the last committed batch.
@@ -110,6 +86,21 @@ def _clip_to_packed_range(ds: xr.Dataset, pyramid_encoding: dict[str, PackedEnco
     return ds
 
 
+def _pyramid_encoding(ds: xr.Dataset, args: BuildPyramidsDataInput) -> dict:
+    """Chunk/shard encoding for a new pyramid level, with any per-variable packing applied."""
+    encoding = gu.create_encoding_config(
+        ds,
+        append_dim=args.append_dim,
+        chunk_size=args.chunk_size,
+        num_shard_chunks=args.num_shard_chunks,
+    )
+    for var, packing in args.pyramid_encoding.items():
+        if var in encoding:
+            encoding[var].update(packing.to_encoding())
+    return encoding
+
+
+@task(cache_policy=NO_CACHE)
 def _write_pyramid_batch(
     repo: ic.Repository,
     ds_batch: xr.Dataset,
@@ -185,40 +176,12 @@ def _write_pyramid_batch(
         level_ds.attrs.update(attrs)
         level_ds = _clip_to_packed_range(level_ds, args.pyramid_encoding)
 
-        logger.info("Updated GeoZarr attributes for pyramid level: %s", level_name)
-        # Create the level on first write, append to it afterwards
-        if gu.group_contains_data(
-            store=rw_session.store,
-            group_path=PYRAMID_GROUP_PATH,
-            sub_group_name=level_name
-        ):
-            encoding_config = None
-            write_mode = "a"
-            append_dim = args.append_dim
-        else:
-            encoding_config = gu.create_encoding_config(
-                level_ds,
-                append_dim=args.append_dim,
-                chunk_size=args.chunk_size,
-                num_shard_chunks=args.num_shard_chunks,
-            )
-            for var, packing in args.pyramid_encoding.items():
-                if var in encoding_config:
-                    encoding_config[var].update(packing.to_encoding())
-            write_mode = "w"
-            append_dim = None
-
-        group_path = f"{PYRAMID_GROUP_PATH}/{level_name}"
-        logger.info(f"Writing pyramid level '{level_name}' to: {group_path} (mode='{write_mode}').")
-        level_ds = level_ds.sortby(args.append_dim)
-        to_icechunk(
+        gu.write_group(
             level_ds,
             rw_session,
-            group=group_path,
-            encoding=encoding_config,
-            align_chunks=True,
-            mode=write_mode,
-            append_dim=append_dim,
+            f"{PYRAMID_GROUP_PATH}/{level_name}",
+            args.append_dim,
+            make_encoding=lambda d: _pyramid_encoding(d, args),
         )
 
     snapshot_id = rw_session.commit(

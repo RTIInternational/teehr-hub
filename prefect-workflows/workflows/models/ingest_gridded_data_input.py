@@ -6,9 +6,16 @@ from enum import Enum
 import numpy as np
 from pydantic import BaseModel, ConfigDict, Field, TypeAdapter, field_validator, model_validator
 from pydantic.json_schema import SkipJsonSchema
+from teehr.fetching.const import NWM_VARIABLE_MAPPER
 
 from workflows.models.gridded_sources import GriddedSourceType
 
+
+# Renames source variables and units to teehr's on ingest
+VARIABLE_AND_UNIT_MAPPER = NWM_VARIABLE_MAPPER
+
+# NWM CONUS Lambert Conformal Conic grid
+NWM_CONUS_CRS = "+proj=lcc +lat_0=40 +lon_0=-97 +lat_1=30 +lat_2=60 +x_0=0 +y_0=0 +R=6370000 +units=m +no_defs"
 
 PYRAMID_GROUP_PATH = "/pyramids"
 RAW_DATA_GROUP_PATH = "/raw_data"
@@ -20,13 +27,6 @@ class ParserType(str, Enum):
     """Supported parsers for reading virtual datasets."""
     hdf = "hdf"
     zarr = "zarr"
-
-
-class StorageType(str, Enum):
-    """Supported storage types for incoming data."""
-    http = "http"
-    s3 = "s3"
-    gcs = "gcs"
 
 
 class PackedEncoding(BaseModel):
@@ -90,11 +90,11 @@ class BaseGriddedDataInput(BaseModel):
     )
     # TODO: Can these just be derived?
     x_dim: str = Field(
-        default="lon",
+        default="x",
         description="Name of the x spatial dimension in the source data"
     )
     y_dim: str = Field(
-        default="lat",
+        default="y",
         description="Name of the y spatial dimension in the source data"
     )
 
@@ -103,7 +103,7 @@ class BuildPyramidsDataInput(BaseGriddedDataInput):
     """Input parameters for the build_geozarr_pyramids Prefect flow."""
 
     source_crs: str = Field(
-        default="EPSG:4269",
+        default=NWM_CONUS_CRS,
         description="Source CRS of the input data"
     )
     target_crs: str = Field(
@@ -124,7 +124,7 @@ class BuildPyramidsDataInput(BaseGriddedDataInput):
         description="Number of time steps reprojected and written per pyramid batch. Bounds memory use when many new time steps are pending."
     )
     pyramid_encoding: dict[str, PackedEncoding] = Field(
-        default={},
+        default={"rainrate_hourly_mean": PackedEncoding(dtype="uint16", scale_factor=2e-6, fill_value=65535)},
         description=(
             "Per-variable CF packing for pyramid levels, keyed by the stored variable name, "
             "e.g. {'rainrate_hourly_mean': {'dtype': 'uint16', 'scale_factor': 2e-6, '_FillValue': 65535}}. "
@@ -136,8 +136,8 @@ class BuildPyramidsDataInput(BaseGriddedDataInput):
 class IngestGriddedDataInput(BuildPyramidsDataInput):
     """Input parameters for the ingest_gridded_data Prefect flow.
 
-    ``source`` selects the data source by its ``type``. Dataset fields (dims, CRS, storage,
-    kwargs, ...) default to UA SWANN's values; deployments for other sources override them. The
+    ``source`` selects the data source by its ``type``. Dataset fields (dims, CRS, kwargs, ...)
+    default to NWM forcing's values; deployments for other sources override them. The
     repository name (``configuration_name``) and ``variable_names`` are derived from the source
     and hidden from the flow's parameters.
     """
@@ -150,10 +150,6 @@ class IngestGriddedDataInput(BuildPyramidsDataInput):
     variable_names: SkipJsonSchema[Optional[list[str]]] = None
 
     # --- Core required parameters ---
-    source_data_storage: StorageType = Field(
-        default=StorageType.http,
-        description="Storage type of the source data (e.g., 's3', 'gcs', 'local', 'http')"
-    )
     end_dt: Union[str, datetime, None] = Field(
         default=None,
         description="End datetime for ingestion. Defaults to current UTC time if not provided."
@@ -177,11 +173,17 @@ class IngestGriddedDataInput(BuildPyramidsDataInput):
 
     # --- Per-component extra kwargs ---
     obstore_kwargs: dict[str, Any] = Field(
-        default_factory=dict,
+        default={"skip_signature": True},
         description="Extra keyword arguments passed to obstore.store.from_url(url, **obstore_kwargs)"
     )
     xconcat_kwargs: dict[str, Any] = Field(
-        default={"coords": "minimal", "compat": "override", "combine_attrs": "override"},
+        default={
+            "coords": "minimal",
+            "data_vars": "minimal",
+            "compat": "override",
+            "join": "override",
+            "combine_attrs": "override",
+        },
         description="Extra keyword arguments passed to xr.concat(datasets, dim=concat_dim, **xconcat_kwargs). Used when creating the virtual dataset from the raw data files"
     )
 

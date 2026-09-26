@@ -1,5 +1,6 @@
 import base64
 import struct
+from typing import Callable
 
 import xarray as xr
 from obstore.store import from_url
@@ -9,6 +10,7 @@ from virtualizarr.manifests import ManifestArray
 from zarr.core.metadata import ArrayV3Metadata
 import virtualizarr as vz
 import icechunk as ic
+from icechunk.xarray import to_icechunk
 from pyproj import CRS as PyprojCRS
 import zarr
 import os
@@ -17,7 +19,6 @@ from prefect import task, get_run_logger
 from prefect.cache_policies import NO_CACHE
 
 
-@task(cache_policy=NO_CACHE)
 def create_objectstore_registry(bucket: str, **kwargs) -> ObjectStoreRegistry:
     """Create an ObjectStoreRegistry for a given bucket.
 
@@ -82,12 +83,28 @@ def _resolve_virtual_chunk_credentials(
     return None
 
 
+_VIRTUAL_STORES = {
+    "http": ic.storage.http_store,
+    "https": ic.storage.http_store,
+    "s3": ic.storage.s3_store,
+    "gs": ic.storage.gcs_store,
+    "gcs": ic.storage.gcs_store,
+}
+
+
+def _virtual_chunk_store(url_prefix: str) -> ic.storage.ObjectStoreConfig:
+    """Return the object store config for a virtual chunk container, from the URL scheme."""
+    scheme = url_prefix.split("://", 1)[0]
+    if scheme not in _VIRTUAL_STORES:
+        raise ValueError(f"Unsupported source URL scheme '{scheme}' in {url_prefix}")
+    return _VIRTUAL_STORES[scheme]()
+
+
 @task(cache_policy=NO_CACHE)
 def configure_icechunk_s3_repo(
     source_bucket: str,
     dest_bucket: str,
     prefix: str,
-    virtual_store: ic.storage.ObjectStoreConfig,
     **kwargs
 ) -> ic.repository.Repository:
     """Configure an IceChunk S3 repository with a virtual chunk container.
@@ -97,13 +114,11 @@ def configure_icechunk_s3_repo(
     Parameters
     ----------
     source_bucket : str
-        The source bucket or base URL for the virtual chunk container (e.g., "https://climate.arizona.edu").
+        The source bucket or base URL for the virtual chunk container (e.g., "gs://national-water-model").
     dest_bucket : str
         The destination S3 bucket for the IceChunk repository (e.g., "warehouse").
     prefix : str
         The prefix within the destination bucket where the data is stored.
-    virtual_store : ic.storage.ObjectStoreConfig
-        The virtual store configuration to use.
     **kwargs : dict
         Additional keyword arguments to pass to the s3_storage function.
     """
@@ -127,7 +142,7 @@ def configure_icechunk_s3_repo(
     url_prefix = source_bucket if source_bucket.endswith("/") else f"{source_bucket}/"
     container = ic.virtual.VirtualChunkContainer(
         url_prefix=url_prefix,
-        store=virtual_store
+        store=_virtual_chunk_store(url_prefix)
     )
     config.set_virtual_chunk_container(container)
     vc_credentials = _resolve_virtual_chunk_credentials(url_prefix)
@@ -226,7 +241,6 @@ def create_virtual_xarray_dataset(
     return virtual_ds
 
 
-@task(cache_policy=NO_CACHE)
 def align_virtual_fill_values(virtual_ds: xr.Dataset) -> xr.Dataset:
     """Set each virtual data variable's zarr fill_value to its CF _FillValue.
 
@@ -252,7 +266,6 @@ def align_virtual_fill_values(virtual_ds: xr.Dataset) -> xr.Dataset:
     return virtual_ds
 
 
-@task(cache_policy=NO_CACHE)
 def create_encoding_config(
     dataset: xr.Dataset,
     append_dim: str,
@@ -316,7 +329,6 @@ def create_encoding_config(
     return encoding_config
 
 
-@task(cache_policy=NO_CACHE)
 def reproject_dataset(
     dataset: xr.Dataset,
     target_crs: str,
@@ -355,7 +367,6 @@ def reproject_dataset(
     return ds_mercator
 
 
-@task(cache_policy=NO_CACHE)
 def standardize_and_inject_geozarr(
     ds: xr.Dataset,
     source_crs: str | None = None,
@@ -474,7 +485,6 @@ def standardize_and_inject_geozarr(
     return ds
 
 
-@task(cache_policy=NO_CACHE)
 def filter_for_new_data(
     incoming_ds: xr.Dataset,
     existing_ds: xr.Dataset,
@@ -516,52 +526,58 @@ def filter_for_new_data(
 
 
 
-@task(cache_policy=NO_CACHE)
-def group_contains_data(
-    store: ic.storage.ObjectStoreConfig,
-    group_path: str,
-    sub_group_name: str = None
-) -> bool:
-    """Check if a group in the IceChunk repository contains any data.
+def group_contains_data(store: ic.IcechunkStore, group_path: str) -> bool:
+    """Return True if the group at ``group_path`` (e.g. "/pyramids/0") exists and holds arrays."""
+    try:
+        group = zarr.open_group(store, path=group_path.strip("/"), mode="r", zarr_format=3)
+    except (zarr.errors.GroupNotFoundError, FileNotFoundError):
+        return False
+    return any(True for _ in group.array_keys())
 
-    Parameters
-    ----------
-    store : ic.storage.ObjectStoreConfig
-        The IceChunk storage configuration.
-    group_path : str
-        The group path in the IceChunk repository to check.
-    sub_group_name : str, optional
-        If provided, checks for data in a sub-group of the specified group path.
-        
-    Returns
-    ------- 
-    bool
-        True if the group contains data, False otherwise.
+
+def new_steps(
+    ds: xr.Dataset,
+    store: ic.IcechunkStore,
+    group_path: str,
+    append_dim: str,
+) -> xr.Dataset | None:
+    """Return the steps of ``ds`` not yet in ``group_path``: all of it for an empty group, None if nothing is new."""
+    if not group_contains_data(store, group_path):
+        return ds
+    existing = open_zarr_group(store=store, group_path=group_path)
+    return filter_for_new_data(incoming_ds=ds, existing_ds=existing, append_dim=append_dim)
+
+
+def write_group(
+    ds: xr.Dataset,
+    session: ic.session.Session,
+    group_path: str,
+    append_dim: str,
+    make_encoding: Callable[[xr.Dataset], dict] | None = None,
+    virtual: bool = False,
+) -> None:
+    """Create ``group_path`` from ``ds`` on the first write, append along ``append_dim`` after.
+
+    ``make_encoding`` builds the encoding for the first write; appends reuse the existing arrays.
+    ``virtual`` writes VirtualiZarr references instead of materialized data.
     """
     logger = get_run_logger()
-    group_path = group_path.removeprefix("/")
-    try:
-        existing_store = zarr.open_group(store, mode="r", zarr_format=3)
-    except Exception:
-        logger.info("Unable to open IceChunk store; treating as empty.")
-        return False
-    if group_path not in list(existing_store.group_keys()):
-        logger.info(f"Group {group_path} does not exist in the IceChunk repository.")
-        return False
-    if sub_group_name is not None:
-        if sub_group_name not in list(existing_store[group_path].group_keys()):
-            logger.info(f"Sub-group {sub_group_name} does not exist in {group_path}.")
-            return False
-        group_path = f"{group_path}/{sub_group_name}"
-    if len(list(existing_store[group_path].array_keys())) > 0:
-        logger.info(f"Group {group_path} exists and contains data.")
-        return True
-    else:
-        logger.info(f"Group {group_path} exists but contains no data.")
-        return False
+    exists = group_contains_data(session.store, group_path)
+    logger.info(f"{'Appending to' if exists else 'Creating'} {group_path} ({len(ds[append_dim])} step(s)).")
+    if virtual:
+        ds.vz.to_icechunk(session.store, group=group_path, append_dim=append_dim if exists else None)
+        return
+    to_icechunk(
+        ds.sortby(append_dim),
+        session,
+        group=group_path,
+        mode="a" if exists else "w",  # TODO: upsert?
+        append_dim=append_dim if exists else None,
+        encoding=None if exists or make_encoding is None else make_encoding(ds),
+        align_chunks=True,
+    )
 
 
-@task(cache_policy=NO_CACHE)
 def open_zarr_group(
     store: ic.storage.ObjectStoreConfig,
     group_path: str,

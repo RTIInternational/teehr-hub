@@ -1,7 +1,7 @@
 """Gridded data sources for the ingest_gridded_data Prefect flow, selected by their ``type``."""
 from abc import ABC, abstractmethod
-from datetime import datetime, timedelta
-from typing import Annotated, ClassVar, Literal, Optional, Union
+from datetime import datetime
+from typing import ClassVar, Literal, Optional
 
 from pydantic import BaseModel, Field, model_validator
 from teehr.fetching.nwm.nwm_grids import plan_nwm_grid_fetch
@@ -25,37 +25,6 @@ class GriddedSource(BaseModel, ABC):
     @abstractmethod
     def ingest_variables(self) -> list[str]:
         """Source variables to materialize."""
-
-
-class UASwan4km(GriddedSource):
-    type: Literal["ua-swann-4km"] = "ua-swann-4km"
-    # status controls which data variant to fetch: "stable", "provisional", or "early".
-    status: list[str] = ["stable", "provisional", "early"]
-    variables: list[str] = ["SWE", "DEPTH"]
-
-    source_bucket: ClassVar[str] = "https://climate.arizona.edu"
-
-    def build_file_list(self, start_dt: datetime, end_dt: datetime) -> list[str]:
-        """Build UA SWANN 4km daily SWE/depth file URLs for the given date range and status(es)."""
-        file_list = []
-        current = start_dt.date()
-        end = end_dt.date()
-        while current <= end:
-            # Water year starts October 1; directories are organized by water year
-            wy = current.year + 1 if current.month >= 10 else current.year
-            for s in self.status:
-                file_list.append(
-                    f"https://climate.arizona.edu/data/UA_SWE/DailyData_4km/"
-                    f"WY{wy}/UA_SWE_Depth_4km_v1_{current:%Y%m%d}_{s}.nc"
-                )
-            current += timedelta(days=1)
-        return file_list
-
-    def repository_name(self) -> str:
-        return "ua-swann-4km"
-
-    def ingest_variables(self) -> list[str]:
-        return list(self.variables)
 
 
 class NWMForcing(GriddedSource):
@@ -106,4 +75,5 @@ class NWMForcing(GriddedSource):
         return [self.variable_name]
 
 
-GriddedSourceType = Annotated[Union[UASwan4km, NWMForcing], Field(discriminator="type")]
+# One source type here; with more, use Annotated[Union[...], Field(discriminator="type")]
+GriddedSourceType = NWMForcing

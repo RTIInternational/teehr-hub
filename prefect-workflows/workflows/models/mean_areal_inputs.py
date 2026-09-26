@@ -1,32 +1,7 @@
 """Define arguments and defaults for the mean_areal Prefect flow."""
-from pydantic import Field, BaseModel
-from teehr.fetching.const import NWM_VARIABLE_MAPPER, UNIT_NAME, VARIABLE_NAME
+from pydantic import Field
 
 from workflows.models.ingest_gridded_data_input import BaseGriddedDataInput
-
-# teehr's NWM mapper plus the UA SWANN snow variables it doesn't cover
-VARIABLE_AND_UNIT_MAPPER = {
-    VARIABLE_NAME: {
-        **NWM_VARIABLE_MAPPER[VARIABLE_NAME],
-        "SWE": {"name": "swe_daily_mean", "long_name": "Snow Water Equivalent"},
-        "DEPTH": {"name": "depth_daily_mean", "long_name": "Snow Depth"}
-    },
-    UNIT_NAME: {
-        **NWM_VARIABLE_MAPPER[UNIT_NAME],
-        "millimeters h20": {"name": "mm", "long_name": "Millimeters"},
-        "millimeters snow thickness": {"name": "mm", "long_name": "Millimeters"},
-    }
-}
-
-
-class Metadata(BaseModel):
-    name: str
-    long_name: str
-
-
-class VariableAndUnitMapper(BaseModel):
-    variable_name: dict[str, Metadata]
-    unit_name: dict[str, Metadata]
 
 
 class PixelCoverageWeightsInput(BaseGriddedDataInput):
@@ -42,11 +17,7 @@ class PixelCoverageWeightsInput(BaseGriddedDataInput):
     )
     grid_variable_name: str = Field(
         ...,
-        description="Name of variable in the gridded dataset"
-    )
-    variable_and_unit_mapper: VariableAndUnitMapper = Field(
-        default=VARIABLE_AND_UNIT_MAPPER,
-        description="Mapping of variable names and units to their corresponding metadata"
+        description="Name of variable in the gridded dataset, already the teehr variable name (e.g. 'rainrate_hourly_mean')"
     )
     domain_name: str = Field(
         ...,

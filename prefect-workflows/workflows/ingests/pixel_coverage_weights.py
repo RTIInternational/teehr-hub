@@ -231,12 +231,11 @@ def calculate_pixel_coverage_weights(args: PixelCoverageWeightsInput):
         unique_zone_id="id",
     )
 
-    teehr_variable_name = args.variable_and_unit_mapper.variable_name[args.grid_variable_name].name
     weights_df = format_weights_df(
         weights_df=weights_df,
         grid_da=grid_template_da,
         configuration_name=args.configuration_name,
-        variable_name=teehr_variable_name,
+        variable_name=args.grid_variable_name,
         domain_name=args.domain_name
     )
 
