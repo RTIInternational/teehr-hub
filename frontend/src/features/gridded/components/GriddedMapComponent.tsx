@@ -47,6 +47,10 @@ const HTML_ESCAPES: Record<string, string> = {
 const escapeHtml = (value: unknown): string =>
   String(value).replace(/[&<>"']/g, (c) => HTML_ESCAPES[c] ?? c);
 
+const CONUS_BOUNDS: maplibregl.LngLatBoundsLike = [
+  [-125.0, 24.4],
+  [-66.9, 49.4],
+];
 const POLYGON_LAYER_ID = 'polygon-layer';
 const POLYGON_SOURCE_ID = 'polygon-source';
 const POLYGON_SELECTED_LAYER_ID = 'polygon-layer-selected';
@@ -142,8 +146,9 @@ const GriddedMapComponent = () => {
         sources: {},
         layers: [],
       },
-      center: [-105.2, 41.48],
-      zoom: 4.6,
+      // Fit the lower 48 to the panel, whatever its size
+      bounds: CONUS_BOUNDS,
+      fitBoundsOptions: { padding: 20 },
       attributionControl: false,
       // Add the Bearer token to every tile request aimed at the xpublish-api.
       // transformRequest is synchronous — tokenRef is kept current by updateTileLayer.
