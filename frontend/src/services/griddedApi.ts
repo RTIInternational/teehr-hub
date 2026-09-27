@@ -2,7 +2,7 @@
 import { ensureFreshToken } from '@/features/auth/keycloak';
 import type { DatasetsResponse } from '@/shared/types/gridded/datasets';
 import type { EdrPointResponse, EdrTimeseriesResponse } from '@/shared/types/gridded/edr';
-import type { VectorTilesResponse } from '@/shared/types/gridded/tiles';
+import type { TilesLegendResponse, VectorTilesResponse } from '@/shared/types/gridded/tiles';
 import type { TimestepsResponse } from '@/shared/types/gridded/timesteps';
 import type { VariableAttrsResponse } from '@/shared/types/gridded/variableAttrs';
 import type { VariablesResponse } from '@/shared/types/gridded/variables';
@@ -78,6 +78,25 @@ export const griddedApiService = {
     griddedApiCall<VariableAttrsResponse>(
       `/api/datasets/${encodeURIComponent(datasetId)}/variable-attrs`
     ),
+
+  getTilesLegend: (
+    datasetId: string,
+    variable: string,
+    colorRamp = 'raster/plasma',
+    min = 0,
+    max = 100
+  ) => {
+    const params = new URLSearchParams({
+      variables: variable,
+      style: colorRamp,
+      colorscalerange: `${min},${max}`,
+      belowmincolor: 'transparent',
+      f: 'application/json',
+    });
+    return griddedApiCall<TilesLegendResponse>(
+      `/api/datasets/${encodeURIComponent(datasetId)}/tiles/legend?${params.toString()}`
+    );
+  },
 
   // Note: {z}/{y}/{x} order (y before x) is required by TilesPlugin.
   buildGriddedTileUrl: (

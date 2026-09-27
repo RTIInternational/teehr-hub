@@ -5,12 +5,13 @@ import { useEffect, useRef, useCallback, useState } from 'react';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import { ensureFreshToken } from '@/features/auth/keycloak';
 import { griddedApiService, GRIDDED_API_BASE_URL } from '@/services/griddedApi';
-import { usePolygonLayers } from '@/shared/queries/gridded/tiles';
+import { usePolygonLayers, useTilesLegend } from '@/shared/queries/gridded/tiles';
 import { useTimesteps } from '@/shared/queries/gridded/timesteps';
 import type { PolygonFeatureProps, PolygonFeatures } from '@/shared/types/gridded/tiles';
 
 import { useDashboard, ActionTypes } from '../DashboardContext';
 import { OVERLAY_LAYERS } from '../utils/overlayLayers';
+import GriddedColorBar from './GriddedColorBar';
 
 // The pmtiles Protocol issues its own fetches, so maplibre's transformRequest
 // never sees them — the archive's bearer token has to be attached to a
@@ -103,9 +104,7 @@ const GriddedMapComponent = () => {
   const [overlayLegends, setOverlayLegends] = useState<Record<string, ArcGisLegendEntry[]>>({});
   const fetchedLegends = useRef<Set<string>>(new Set());
 
-  const [legendBlobUrl, setLegendBlobUrl] = useState<string | null>(null);
-  // Kept in a ref so the cleanup closure always sees the latest URL to revoke
-  const prevLegendBlobUrl = useRef<string | null>(null);
+  const tilesLegend = useTilesLegend(dataset, variable, colorRamp, colorRampMin, colorRampMax);
 
   // Fetch ArcGIS legend JSON for newly-activated overlays that declare a legendUrl.
   useEffect(() => {
@@ -131,56 +130,6 @@ const GriddedMapComponent = () => {
       }
     });
   }, [activeOverlays]);
-
-  useEffect(() => {
-    if (!dataset || !variable || !mapLoaded) {
-      if (prevLegendBlobUrl.current) {
-        URL.revokeObjectURL(prevLegendBlobUrl.current);
-        prevLegendBlobUrl.current = null;
-      }
-      return;
-    }
-
-    const controller = new AbortController();
-    let cancelled = false;
-
-    void (async () => {
-      const token = await ensureFreshToken();
-      const params = new URLSearchParams({
-        variables: variable,
-        style: colorRamp,
-        colorscalerange: `${colorRampMin},${colorRampMax}`,
-        belowmincolor: 'transparent',
-        f: 'image/png',
-        background_color: 'white',
-        width: '80', // px
-        height: '200', // px
-      });
-      const url = `${GRIDDED_API_BASE_URL}/api/datasets/${encodeURIComponent(dataset)}/tiles/legend?${params}`;
-      try {
-        const res = await fetch(url, {
-          headers: token ? { Authorization: `Bearer ${token}` } : undefined,
-          signal: controller.signal,
-        });
-        if (!res.ok || cancelled) return;
-
-        const blob = await res.blob();
-        if (cancelled) return;
-
-        const blobUrl = URL.createObjectURL(blob);
-        if (prevLegendBlobUrl.current) URL.revokeObjectURL(prevLegendBlobUrl.current);
-        prevLegendBlobUrl.current = blobUrl;
-        setLegendBlobUrl(blobUrl);
-      } catch {
-        // Legend fetch failure is non-critical; silently skip.
-      }
-    })();
-
-    return () => {
-      cancelled = true;
-      controller.abort();
-    };
-  }, [mapLoaded, dataset, variable, colorRamp, colorRampMin, colorRampMax]);
 
   // Initialize map once on mount
   useEffect(() => {
@@ -569,6 +518,8 @@ const GriddedMapComponent = () => {
     };
   }, [mapLoaded, dataset, variable, currentTimestep, activePolygonLayer, dispatch]);
 
+  const colorLegend = mapLoaded && dataset && variable ? (tilesLegend.data ?? null) : null;
+
   const activeLegendEntries = OVERLAY_LAYERS.filter(
     (o) => activeOverlays.includes(o.id) && overlayLegends[o.id]
   ).map((o) => ({ label: o.label, entries: overlayLegends[o.id] }));
@@ -576,7 +527,7 @@ const GriddedMapComponent = () => {
   return (
     <div style={{ position: 'relative', width: '100%', height: '100%' }}>
       <div ref={mapContainer} style={{ width: '100%', height: '100%' }} />
-      {(legendBlobUrl || activeLegendEntries.length > 0) && (
+      {(colorLegend || activeLegendEntries.length > 0) && (
         <div
           style={{
             position: 'absolute',
@@ -592,12 +543,10 @@ const GriddedMapComponent = () => {
             zIndex: 1,
           }}
         >
-          {legendBlobUrl && (
-            <img
-              src={legendBlobUrl}
-              alt="Legend"
-              style={{ display: 'block', marginBottom: activeLegendEntries.length > 0 ? '8px' : 0 }}
-            />
+          {colorLegend && (
+            <div style={{ marginBottom: activeLegendEntries.length > 0 ? '8px' : 0 }}>
+              <GriddedColorBar legend={colorLegend} />
+            </div>
           )}
           {activeLegendEntries.map(({ label, entries }) => (
             <div
