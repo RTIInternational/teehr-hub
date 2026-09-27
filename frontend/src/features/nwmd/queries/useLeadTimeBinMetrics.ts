@@ -15,7 +15,7 @@ export const useLeadTimeBinMetrics = (filters?: LeadTimeBinFilters) =>
   useQuery({
     queryKey: ['leadTimeBinMetrics', filters],
     queryFn: () => apiService.getMetrics(filters),
-    enabled: !!filters,
+    enabled: !!filters?.primary_location_id && !!filters.configuration && !!filters.variable,
     select: (metricsData) =>
       (metricsData?.features || []).map((feature) => feature?.properties || {}),
   });
