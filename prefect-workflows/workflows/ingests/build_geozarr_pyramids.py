@@ -1,7 +1,6 @@
 from prefect import flow, task, get_run_logger
 from prefect.cache_policies import NO_CACHE
 import icechunk as ic
-import numpy as np
 import xarray as xr
 from topozarr import create_pyramid
 import rioxarray  # noqa: rio accessor
@@ -53,6 +52,7 @@ def build_pyramids(args: BuildPyramidsDataInput) -> None:
     first_level = f"{PYRAMID_GROUP_PATH}/0"
     is_new_pyramid = not gu.group_contains_data(store, first_level)
     raw_ds = gu.open_zarr_group(store=store, group_path=RAW_DATA_GROUP_PATH)
+    _check_packing_units(raw_ds, args.pyramid_encoding)
     ds_new = gu.new_steps(raw_ds, store, first_level, args.append_dim)
     if ds_new is None:
         logger.info(f"No new steps for {PYRAMID_GROUP_PATH}.")
@@ -69,20 +69,21 @@ def build_pyramids(args: BuildPyramidsDataInput) -> None:
         logger.info(f"Processed time steps {start + 1}-{start + len(ds_batch[args.append_dim])} of {num_steps}.")
 
 
-def _clip_to_packed_range(ds: xr.Dataset, pyramid_encoding: dict[str, PackedEncoding]) -> xr.Dataset:
-    """Clip packed variables to the range their integer dtype can hold, so values cannot wrap."""
+def _check_packing_units(ds: xr.Dataset, pyramid_encoding: dict[str, PackedEncoding]) -> None:
+    """Fail if a packing range is given in other units than its variable is stored in."""
     for var, packing in pyramid_encoding.items():
-        if var not in ds:
-            continue
-        info = np.iinfo(packing.dtype)
-        lo, hi = info.min, info.max
-        if packing.fill_value == hi:
-            hi -= 1
-        elif packing.fill_value == lo:
-            lo += 1
-        lo_val = packing.add_offset + packing.scale_factor * lo
-        hi_val = packing.add_offset + packing.scale_factor * hi
-        ds[var] = ds[var].clip(lo_val, hi_val).assign_attrs(ds[var].attrs)
+        stored_units = ds[var].attrs.get("units") if var in ds else None
+        if var in ds and stored_units != packing.units:
+            raise ValueError(
+                f"pyramid_encoding for '{var}' is in '{packing.units}', but the variable is stored in '{stored_units}'."
+            )
+
+
+def _clip_to_packed_range(ds: xr.Dataset, pyramid_encoding: dict[str, PackedEncoding]) -> xr.Dataset:
+    """Clip packed variables to their packing range, so values cannot wrap."""
+    for var, packing in pyramid_encoding.items():
+        if var in ds:
+            ds[var] = ds[var].clip(packing.min_value, packing.max_value).assign_attrs(ds[var].attrs)
     return ds
 
 
