@@ -35,7 +35,7 @@ export const VARIABLE_STYLES: Record<string, VariableStyle> = {
   },
   rainrate_hourly_mean: {
     colorRamp: 'raster/turbo',
-    min: 0.001,
+    min: 0.000028, // ~0.1 mm/hr, the threshold for detectable rain
     max: 0.005,
     units: 'mm/s',
   },
