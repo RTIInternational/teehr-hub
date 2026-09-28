@@ -784,8 +784,8 @@ deployments:
   - name: ingest-nwm31-forcing-analysis-assim-icechunk
     version:
     tags: []
-    concurrency_limit: 1
-    concurrency_options:
+    concurrency_limit:
+      limit: 1
       collision_strategy: "CANCEL_NEW"
     description: >-
       Ingest NWM 3.1 forcing analysis/assimilation RAINRATE grids (CONUS) into an IceChunk S3
@@ -820,6 +820,9 @@ deployments:
   - name: build-nwm31-forcing-analysis-assim-icechunk-pyramids
     version:
     tags: []
+    concurrency_limit:
+      limit: 1
+      collision_strategy: "CANCEL_NEW"
     description: Build multiscale pyramids for the NWM 3.1 forcing analysis/assimilation IceChunk repository
     entrypoint: workflows/ingests/build_geozarr_pyramids.py:build_pyramids
     parameters: {
@@ -840,6 +843,9 @@ deployments:
   - name: create-vector-tiles
     version:
     tags: []
+    concurrency_limit:
+      limit: 1
+      collision_strategy: "CANCEL_NEW"
     description: Create vector tiles from polygons stored in the locations and upload to S3 as a .pmtiles archive. By default, the usgsbasin- prefix is used for the location IDs.
     entrypoint: workflows/data_management/create_vector_tiles.py:create_vector_tile_archive
     parameters: {
@@ -852,13 +858,18 @@ deployments:
     work_pool: *work_pool_medium
 
   # Gridded Mean Areal Values
-  - name: calculate-nwm31-forcing-analysis-assim-icechunk-pixel-coverage-weights
+  - name: calculate-pixel-coverage-weights-icechunk
     version:
     tags: []
+    concurrency_limit:
+      limit: 1
+      collision_strategy: "CANCEL_NEW"
     description: >-
-      Calculate usgsbasin pixel coverage weights for the NWM 3.1 CONUS forcing grid. The rows
-      include position_index, so they also serve the Sedona MAP flow. Run on demand; write_mode
-      "overwrite" replaces the whole table, including other domains.
+      Calculate pixel coverage weights for filtering the polygons from the locations table
+      by location_id_prefix, and reading the grid variable from the Icechunk repo corresponding
+      to the configuration name. By default, usgs basin polygons are used with NWM v3.1 forcing.
+      The rows include position_index, so they also serve the Sedona MAP flow. Run on demand;
+      write_mode "overwrite" replaces the whole table, including other domains.
     entrypoint: workflows/ingests/pixel_coverage_weights.py:calculate_pixel_coverage_weights
     parameters: {
       "args": {
