@@ -3,7 +3,7 @@
  *
  * Two tabs:
  *  1. Configurations Summary  — map + configs_summary table
- *  2. Locations Summary       — map + locations_with_attributes table
+ *  2. Locations Summary       — map + locations and location_attributes table
  *
  * All tab contents are lazy-mounted (on first visit) and kept mounted thereafter
  * so that map state is preserved across tab switches.

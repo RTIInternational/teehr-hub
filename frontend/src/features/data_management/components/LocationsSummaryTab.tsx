@@ -6,7 +6,7 @@ import { useQuery } from '@tanstack/react-query';
  *
  * Behaviour
  * ---------
- * - Loads tabular rows from locations_with_attributes on mount.
+ * - Loads tabular rows from locations and location_attributes on mount.
  * - Clicking a table row plots that single location as a point on the map.
  * - Table rows show: location id, name, and various location attributes.
  */
