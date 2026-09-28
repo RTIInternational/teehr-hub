@@ -11,11 +11,21 @@ type LeadTimeBinFilters = Partial<MetricsFilters> & {
   aggMethod?: string | null;
 };
 
+const hasRequiredFilters = (filters: LeadTimeBinFilters) =>
+  !!filters.table &&
+  !!filters.primary_location_id &&
+  !!filters.configuration &&
+  !!filters.variable &&
+  filters.waterYear !== undefined &&
+  filters.quarter !== undefined &&
+  filters.threshold !== undefined &&
+  !!filters.aggMethod;
+
 export const useLeadTimeBinMetrics = (filters?: LeadTimeBinFilters) =>
   useQuery({
     queryKey: ['leadTimeBinMetrics', filters],
     queryFn: () => apiService.getMetrics(filters),
-    enabled: !!filters,
+    enabled: hasRequiredFilters(filters ?? {}),
     select: (metricsData) =>
       (metricsData?.features || []).map((feature) => feature?.properties || {}),
   });
