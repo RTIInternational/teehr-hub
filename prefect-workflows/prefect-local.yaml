@@ -556,7 +556,7 @@ deployments:
   - name: update-data-management-tables
     version:
     tags: []
-    description: Update the data management dashboard tables (configurations_by_location, configurations_summary, locations_with_attributes)
+    description: Update the data management dashboard tables (configurations_by_location, configurations_summary)
     entrypoint: workflows/data_management/update_data_management_tables.py:update_data_management_tables
     parameters: {"temp_dir_path": *temp_dir_path, "start_spark_cluster": false}
     work_pool: *work_pool
