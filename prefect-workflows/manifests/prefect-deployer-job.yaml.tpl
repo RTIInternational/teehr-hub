@@ -69,6 +69,14 @@ spec:
           value: ${var.polaris.defaultRealm}
         - name: IN_CLUSTER
           value: "${var.polaris.inCluster}"
+        - name: ICECHUNK_BUCKET
+          value: ${var.icechunk.bucket}
+        - name: ICECHUNK_PREFIX
+          value: ${var.icechunk.prefix}
+        - name: PMTILES_BUCKET
+          value: ${var.pmtiles.bucket}
+        - name: PMTILES_PREFIX
+          value: ${var.pmtiles.prefix}
         resources:
           requests:
             cpu: 500m
