@@ -12,7 +12,11 @@ const hasRequiredFilters = (filters: NwmdMapFilters) =>
   !!filters.table &&
   !!filters.configuration &&
   !!filters.variable &&
-  filters.waterYear !== undefined;
+  filters.waterYear !== undefined &&
+  filters.quarter !== undefined &&
+  filters.threshold !== undefined &&
+  !!filters.aggMethod &&
+  !!filters.leadTimeBin;
 
 export const useFilteredLocations = (filters?: NwmdMapFilters) => {
   const { altHypothesis95, metricName, ...apiFilters } = filters || {};
