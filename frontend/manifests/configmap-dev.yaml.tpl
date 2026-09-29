@@ -13,3 +13,4 @@ data:
   VITE_KEYCLOAK_REALM: "teehr"
   VITE_KEYCLOAK_CLIENT_ID: "teehr-frontend"
   VITE_ALLOWED_HOSTS: "dashboards.${var.hostname}"
+  VITE_XPUBLISH_API_BASE_URL: "https://xpublish-api.${var.hostname}"
