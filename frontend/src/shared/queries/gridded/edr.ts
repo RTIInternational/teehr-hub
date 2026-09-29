@@ -1,4 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
+
 import { griddedApiService } from '@/services/griddedApi';
 import type { EdrTimeseriesFilters, TimeseriesData } from '@/shared/types/gridded/edr';
 
