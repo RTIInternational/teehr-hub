@@ -58,20 +58,6 @@ SUMMARY_DESCRIPTION = (
     "time ranges and location counts"
 )
 
-LOCATIONS_TABLE_NAME = "locations_with_attributes"
-
-# The attribute columns are discovered from the data rather than listed here,
-# and go in 'metrics': they are values of a location, not dimensions. Keeping
-# them out of 'group_by' also holds the API's ORDER BY to two columns while
-# still listing every attribute in /queryables for column discovery.
-LOCATIONS_GROUP_BY = [
-    "location_id",
-    "name",
-]
-LOCATIONS_DESCRIPTION = (
-    "One row per location with its attributes pivoted into columns"
-)
-
 
 @task(cache_policy=NO_CACHE)
 def summarize_primary_locations(
@@ -165,22 +151,6 @@ def summarize_configurations(
 
 
 @task(cache_policy=NO_CACHE)
-def summarize_locations_with_attributes(
-    ev: teehr.Evaluation
-) -> SparkDataFrame:
-    """Pivot location attributes into one row per location.
-
-    location_attributes_view() does the long-to-wide pivot; the join adds
-    'name' and is a LEFT join so locations without attributes still appear.
-    """
-    logger = get_run_logger()
-    logger.info("Pivoting location attributes into a spark dataframe...")
-    attributes_sdf = ev.location_attributes_view().to_sdf()
-    locations_sdf = ev.locations.to_sdf().selectExpr("id AS location_id", "name")
-    return locations_sdf.join(attributes_sdf, on="location_id", how="left")
-
-
-@task(cache_policy=NO_CACHE)
 def add_location_geometry(
     ev: teehr.Evaluation,
     by_location_sdf: SparkDataFrame
@@ -212,8 +182,7 @@ def update_data_management_tables(
     """Create the tables behind the data management dashboard.
 
     Builds 'configurations_by_location' and its rollup 'configurations_summary'
-    from a single scan of the timeseries tables, plus 'locations_with_attributes'
-    from the pivoted location attributes.
+    from a single scan of the timeseries tables.
 
     Each table declares its own filterable dimensions ('group_by') and value
     columns ('metrics') as Iceberg table properties, which is how the OGC API
@@ -242,8 +211,6 @@ def update_data_management_tables(
         by_location_sdf=by_location_sdf
     )
 
-    locations_with_attributes_sdf = summarize_locations_with_attributes(ev=ev)
-
     # create_or_replace (not overwrite) because the schema changes between
     # runs. Partitioned on configuration_name: the dashboard's hot query
     # filters on it, and that is the query carrying geometry for every row.
@@ -261,15 +228,6 @@ def update_data_management_tables(
         table_name=SUMMARY_TABLE_NAME,
         write_mode="create_or_replace",
         write_ordered_by=SUMMARY_GROUP_BY
-    )
-    # create_or_replace because the attribute set -- and therefore the schema
-    # -- changes as attributes are added to the warehouse.
-    write_to_warehouse(
-        ev=ev,
-        sdf=locations_with_attributes_sdf,
-        table_name=LOCATIONS_TABLE_NAME,
-        write_mode="create_or_replace",
-        write_ordered_by=["location_id"]
     )
 
     # Must run after the writes: create_or_replace drops the table, taking any
@@ -291,21 +249,4 @@ def update_data_management_tables(
             "group_by": ", ".join(SUMMARY_GROUP_BY),
             "metrics": ", ".join(SUMMARY_METRICS),
         }
-    )
-
-    # Attribute columns are whatever the pivot produced.
-    locations_metrics = [
-        column for column in locations_with_attributes_sdf.columns
-        if column not in LOCATIONS_GROUP_BY
-    ]
-    locations_properties = {
-        "description": LOCATIONS_DESCRIPTION,
-        "group_by": ", ".join(LOCATIONS_GROUP_BY),
-    }
-    if locations_metrics:
-        locations_properties["metrics"] = ", ".join(locations_metrics)
-    set_table_properties(
-        ev=ev,
-        table_name=LOCATIONS_TABLE_NAME,
-        properties=locations_properties
     )
