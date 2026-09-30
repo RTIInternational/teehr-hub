@@ -22,6 +22,25 @@ METRICS_BY_LOCATION_TABLE_NAME = "fcst_metrics_by_location"
 METRIC_COL_NAMES = [metric.output_field_name for metric in FORECAST_METRICS]
 
 
+def _metrics_write_mode(ev, table_name: str, group_by: list[str]) -> str:
+    """Overwrite the metrics table, unless it is missing or has a stale schema.
+
+    ``overwrite`` inserts by column position, so writing into a table whose
+    group_by columns differ (e.g. from before the teehr 0.9 column renaming)
+    would fail or put values in the wrong columns. Recreate it instead.
+    """
+    if not table_exists(ev=ev, table_name=table_name):
+        return "create_or_replace"
+    columns = set(ev.spark.table(f"iceberg.teehr.{table_name}").columns)
+    missing = [c for c in group_by if c not in columns]
+    if missing:
+        get_run_logger().info(
+            f"{table_name} is missing group_by columns {missing}; recreating it."
+        )
+        return "create_or_replace"
+    return "overwrite"
+
+
 @flow(
     flow_run_name="update-forecast-metrics-table",
     timeout_seconds=60 * 60
@@ -55,10 +74,8 @@ def update_forecast_metrics_table(
     )
 
     logger.info("Calculating and writing forecast metrics by lead time bins...")
-    lead_time_write_mode = (
-        "overwrite"
-        if table_exists(ev=ev, table_name=METRICS_BY_LEAD_TIME_TABLE_NAME)
-        else "create_or_replace"
+    lead_time_write_mode = _metrics_write_mode(
+        ev, METRICS_BY_LEAD_TIME_TABLE_NAME, FORECAST_BY_LEAD_TIME_BIN_GROUPBY
     )
     write_forecast_metrics_by_lead_time_bins(
         ev=ev,
@@ -78,10 +95,8 @@ def update_forecast_metrics_table(
     logger.info("Forecast metrics by lead time bins table created.")
 
     logger.info("Calculating and writing forecast metrics by location...")
-    location_write_mode = (
-        "overwrite"
-        if table_exists(ev=ev, table_name=METRICS_BY_LOCATION_TABLE_NAME)
-        else "create_or_replace"
+    location_write_mode = _metrics_write_mode(
+        ev, METRICS_BY_LOCATION_TABLE_NAME, FORECAST_BY_LOCATION_GROUPBY
     )
     write_forecast_metrics_by_location(
         ev=ev,

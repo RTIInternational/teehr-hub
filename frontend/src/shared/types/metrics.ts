@@ -12,7 +12,7 @@ export type MetricsFilters = {
 };
 
 export type MetricsProperties = {
-  primary_location_id: string;
+  location_id: string;
   [key: string]: unknown;
 };
 

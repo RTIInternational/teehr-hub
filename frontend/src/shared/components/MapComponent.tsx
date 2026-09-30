@@ -81,18 +81,14 @@ const MapComponent = <TActionTypes extends ActionTypesShape>({
       const properties = feature.properties;
 
       selectLocation({
-        primary_location_id: properties.primary_location_id,
+        primary_location_id: properties.location_id,
         secondary_location_id: properties.secondary_location_id,
         name: properties.name,
         coordinates,
       });
 
       if (map.current?.getLayer('locations-selected')) {
-        map.current.setFilter('locations-selected', [
-          '==',
-          'primary_location_id',
-          properties.primary_location_id,
-        ]);
+        map.current.setFilter('locations-selected', ['==', 'location_id', properties.location_id]);
       }
 
       if (flyTo && map.current) {
@@ -116,11 +112,11 @@ const MapComponent = <TActionTypes extends ActionTypesShape>({
     return features
       .filter((feature: Feature) => {
         const props = feature?.properties || {};
-        const primaryId = String(props.primary_location_id || '').toLowerCase();
+        const locationId = String(props.location_id || '').toLowerCase();
         const secondaryId = String(props.secondary_location_id || '').toLowerCase();
         const name = String(props.name || '').toLowerCase();
 
-        return primaryId.includes(term) || secondaryId.includes(term) || name.includes(term);
+        return locationId.includes(term) || secondaryId.includes(term) || name.includes(term);
       })
       .slice(0, 15);
   }, [searchTerm, locations.data]);
@@ -187,7 +183,7 @@ const MapComponent = <TActionTypes extends ActionTypesShape>({
 
           // Clear map selection
           if (map.current.getLayer('locations-selected')) {
-            map.current.setFilter('locations-selected', ['==', 'primary_location_id', '']);
+            map.current.setFilter('locations-selected', ['==', 'location_id', '']);
           }
 
           // Close popup
@@ -282,7 +278,7 @@ const MapComponent = <TActionTypes extends ActionTypesShape>({
             `
           <div style="padding: 8px; font-size: 0.85rem;">
             <div style="font-weight: 600; margin-bottom: 4px; color: #495057;">${properties.name}</div>
-            <div style="margin: 2px 0;"><strong>ID:</strong> ${properties.primary_location_id}</div>
+            <div style="margin: 2px 0;"><strong>ID:</strong> ${properties.location_id}</div>
             <div style="margin: 2px 0;"><strong>Lat:</strong> ${coordinates[1].toFixed(4)}</div>
             <div style="margin: 2px 0;"><strong>Lon:</strong> ${coordinates[0].toFixed(4)}</div>
             <div style="margin: 2px 0;"><strong>${metricLabel}:</strong> ${metricValue !== null && metricValue !== undefined ? Number(metricValue).toFixed(3) : 'N/A'}</div>
@@ -475,7 +471,7 @@ const MapComponent = <TActionTypes extends ActionTypesShape>({
             'circle-stroke-color': 'black',
             'circle-opacity': 1,
           },
-          filter: ['==', 'primary_location_id', ''],
+          filter: ['==', 'location_id', ''],
         });
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error);
@@ -732,7 +728,7 @@ const MapComponent = <TActionTypes extends ActionTypesShape>({
                     const props = feature.properties || {};
                     return (
                       <button
-                        key={`${props.primary_location_id}-${props.secondary_location_id || ''}`}
+                        key={`${props.location_id}-${props.secondary_location_id || ''}`}
                         type="button"
                         className="list-group-item list-group-item-action"
                         aria-label={props.name || 'Unnamed location'}
@@ -745,7 +741,7 @@ const MapComponent = <TActionTypes extends ActionTypesShape>({
                           <div className="text-start">
                             <div className="fw-semibold">{props.name || 'Unnamed location'}</div>
                             <div className="small text-muted">
-                              Primary: {props.primary_location_id || 'N/A'}
+                              Location: {props.location_id || 'N/A'}
                             </div>
                             <div className="small text-muted">
                               Secondary: {props.secondary_location_id || 'N/A'}
