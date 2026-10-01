@@ -794,6 +794,7 @@ deployments:
     parameters: {
       "args": {
         "source": {"type": "nwm", "nwm_configuration": "forcing_analysis_assim", "nwm_version": "nwm31"},
+        "write_materialized": false,
         "num_lookback_days": 1,
         "x_dim": "x",
         "y_dim": "y",
