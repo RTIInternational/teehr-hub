@@ -3,6 +3,7 @@ from abc import ABC, abstractmethod
 from datetime import datetime
 from typing import ClassVar, Literal, Optional
 
+import xarray as xr
 from pydantic import BaseModel, Field, model_validator
 from teehr.fetching.nwm.nwm_grids import plan_nwm_grid_fetch
 from teehr.fetching.utils import REMOTE_RETRY_CONFIG, format_nwm_configuration_metadata
@@ -14,6 +15,8 @@ class GriddedSource(BaseModel, ABC):
     source_bucket: ClassVar[str]
     # Source-specific obstore kwargs; deployment obstore_kwargs override them
     store_kwargs: ClassVar[dict] = {}
+    # Options for the IceChunk virtual chunk container's object store, e.g. region
+    virtual_store_kwargs: ClassVar[dict] = {}
 
     @abstractmethod
     def build_file_list(self, start_dt: datetime, end_dt: datetime) -> list[str]: ...
@@ -25,6 +28,19 @@ class GriddedSource(BaseModel, ABC):
     @abstractmethod
     def ingest_variables(self) -> list[str]:
         """Source variables to materialize."""
+
+    def credentials(self) -> dict:
+        """Source access keys, for obstore and the virtual chunk container; empty means anonymous.
+
+        Both take the same dict, so use keys they share: S3 ``access_key_id``, ``secret_access_key``,
+        ``session_token``; GCS ``service_account_key``, ``application_credentials``, ``bearer_token``.
+        Keys are read once per run, so they must outlive it.
+        """
+        return {}
+
+    def preprocess(self, ds: xr.Dataset, url: str) -> xr.Dataset:
+        """Adjust one file's virtual dataset before concatenation."""
+        return ds
 
 
 class NWMForcing(GriddedSource):
