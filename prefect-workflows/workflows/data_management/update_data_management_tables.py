@@ -1,16 +1,16 @@
 import logging
-from typing import Union
 from pathlib import Path
 
-from prefect.cache_policies import NO_CACHE
-from prefect import task, flow, get_run_logger
-
-from pyspark.sql import DataFrame as SparkDataFrame
-
 import teehr
-from teehr.querying.utils import join_geometry
-from workflows.utils.common_utils import initialize_evaluation, set_table_properties
 from data_utils import write_to_warehouse
+from prefect import flow, get_run_logger, task
+from prefect.cache_policies import NO_CACHE
+from pyspark.sql import DataFrame as SparkDataFrame
+from teehr.querying.utils import join_geometry
+from workflows.data_management.update_queryable_combinations import (
+    update_queryable_combinations,
+)
+from workflows.utils.common_utils import initialize_evaluation, set_table_properties
 
 logging.getLogger("teehr").setLevel(logging.INFO)
 
@@ -60,14 +60,10 @@ SUMMARY_DESCRIPTION = (
 
 
 @task(cache_policy=NO_CACHE)
-def summarize_primary_locations(
-    ev: teehr.Evaluation
-) -> SparkDataFrame:
+def summarize_primary_locations(ev: teehr.Evaluation) -> SparkDataFrame:
     """Summarize primary locations."""
     logger = get_run_logger()
-    logger.info(
-        "Summarizing primary locations into a spark dataframe..."
-    )
+    logger.info("Summarizing primary locations into a spark dataframe...")
     return ev.spark.sql("""
         SELECT
             location_id as primary_location_id,
@@ -85,14 +81,10 @@ def summarize_primary_locations(
 
 
 @task(cache_policy=NO_CACHE)
-def summarize_secondary_locations(
-    ev: teehr.Evaluation
-) -> SparkDataFrame:
+def summarize_secondary_locations(ev: teehr.Evaluation) -> SparkDataFrame:
     """Summarize secondary locations."""
     logger = get_run_logger()
-    logger.info(
-        "Summarizing secondary locations into a spark dataframe..."
-    )
+    logger.info("Summarizing secondary locations into a spark dataframe...")
     return ev.spark.sql("""
         SELECT
             cf.primary_location_id,
@@ -113,8 +105,7 @@ def summarize_secondary_locations(
 
 @task(cache_policy=NO_CACHE)
 def summarize_configurations(
-    ev: teehr.Evaluation,
-    by_location_sdf: SparkDataFrame
+    ev: teehr.Evaluation, by_location_sdf: SparkDataFrame
 ) -> SparkDataFrame:
     """Roll the per-location summary up to one row per configuration.
 
@@ -122,9 +113,7 @@ def summarize_configurations(
     every location with timeseries, not only those carrying geometry.
     """
     logger = get_run_logger()
-    logger.info(
-        "Rolling the location summary up to one row per configuration..."
-    )
+    logger.info("Rolling the location summary up to one row per configuration...")
     by_location_sdf.createOrReplaceTempView("by_location")
     return ev.spark.sql("""
         WITH agg AS (
@@ -152,8 +141,7 @@ def summarize_configurations(
 
 @task(cache_policy=NO_CACHE)
 def add_location_geometry(
-    ev: teehr.Evaluation,
-    by_location_sdf: SparkDataFrame
+    ev: teehr.Evaluation, by_location_sdf: SparkDataFrame
 ) -> SparkDataFrame:
     """Join 'name' and 'geometry' onto the per-location summary.
 
@@ -163,17 +151,14 @@ def add_location_geometry(
     """
     logger = get_run_logger()
     logger.info("Joining location geometry onto the location summary...")
-    return join_geometry(
-        by_location_sdf, ev.locations.to_sdf()
-    ).filter("geometry IS NOT NULL")
+    return join_geometry(by_location_sdf, ev.locations.to_sdf()).filter(
+        "geometry IS NOT NULL"
+    )
 
 
-@flow(
-    flow_run_name="update-data-management-tables",
-    timeout_seconds=60 * 60
-)
+@flow(flow_run_name="update-data-management-tables", timeout_seconds=60 * 60)
 def update_data_management_tables(
-    temp_dir_path: Union[str, Path],
+    temp_dir_path: str | Path,
     start_spark_cluster: bool = True,
     executor_instances: int = 48,
     executor_cores: int = 4,
@@ -202,13 +187,11 @@ def update_data_management_tables(
     )
 
     configurations_summary_sdf = summarize_configurations(
-        ev=ev,
-        by_location_sdf=by_location_sdf
+        ev=ev, by_location_sdf=by_location_sdf
     )
 
     by_location_with_geometry_sdf = add_location_geometry(
-        ev=ev,
-        by_location_sdf=by_location_sdf
+        ev=ev, by_location_sdf=by_location_sdf
     )
 
     # create_or_replace (not overwrite) because the schema changes between
@@ -220,14 +203,14 @@ def update_data_management_tables(
         table_name=BY_LOCATION_TABLE_NAME,
         write_mode="create_or_replace",
         partition_by=["configuration_name"],
-        write_ordered_by=BY_LOCATION_GROUP_BY
+        write_ordered_by=BY_LOCATION_GROUP_BY,
     )
     write_to_warehouse(
         ev=ev,
         sdf=configurations_summary_sdf,
         table_name=SUMMARY_TABLE_NAME,
         write_mode="create_or_replace",
-        write_ordered_by=SUMMARY_GROUP_BY
+        write_ordered_by=SUMMARY_GROUP_BY,
     )
 
     # Must run after the writes: create_or_replace drops the table, taking any
@@ -239,7 +222,7 @@ def update_data_management_tables(
             "description": BY_LOCATION_DESCRIPTION,
             "group_by": ", ".join(BY_LOCATION_GROUP_BY),
             "metrics": ", ".join(BY_LOCATION_METRICS),
-        }
+        },
     )
     set_table_properties(
         ev=ev,
@@ -248,5 +231,8 @@ def update_data_management_tables(
             "description": SUMMARY_DESCRIPTION,
             "group_by": ", ".join(SUMMARY_GROUP_BY),
             "metrics": ", ".join(SUMMARY_METRICS),
-        }
+        },
     )
+
+    # Update cached table as a subflow
+    update_queryable_combinations(temp_dir_path=temp_dir_path)
