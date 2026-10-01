@@ -11,7 +11,8 @@ from utils import grid_utils as gu
 from workflows.models.ingest_gridded_data_input import (
     BuildPyramidsDataInput,
     PackedEncoding,
-    PYRAMID_GROUP_PATH
+    PYRAMID_GROUP_PATH,
+    PYRAMID_CHUNK_SIZE,
 )
 
 
@@ -73,11 +74,8 @@ def build_pyramids(args: BuildPyramidsDataInput) -> None:
     # Each batch is committed, so a failed run resumes from the last committed batch.
     ds_new = ds_new.sortby(args.append_dim)
     num_steps = len(ds_new[args.append_dim])
-    # Batches end on multiples of time_batch_size along the stored axis, so a batch size that is
-    # a multiple of the shard size writes each shard once
-    stored = 0 if is_new_pyramid else xr.open_zarr(store, group=first_level, consolidated=False).sizes[args.append_dim]
-    starts = [0, *range(args.time_batch_size - stored % args.time_batch_size, num_steps, args.time_batch_size)]
-    for start, stop in zip(starts, [*starts[1:], num_steps]):
+    stored = gu.stored_steps(store, first_level, args.append_dim)
+    for start, stop in gu.batch_bounds(stored, num_steps, args.time_batch_size):
         ds_batch = ds_new.isel({args.append_dim: slice(start, stop)})
         _write_pyramid_batch(repo, ds_batch, args, write_root_metadata=is_new_pyramid and start == 0)
         logger.info(f"Processed time steps {start + 1}-{start + len(ds_batch[args.append_dim])} of {num_steps}.")
@@ -106,7 +104,7 @@ def _pyramid_encoding(ds: xr.Dataset, args: BuildPyramidsDataInput) -> dict:
     encoding = gu.create_encoding_config(
         ds,
         append_dim=args.append_dim,
-        chunk_size=args.chunk_size,
+        chunk_size=PYRAMID_CHUNK_SIZE,
         # Tiles read one step at a time; shards span as many steps as /raw_data's
         num_shard_chunks=args.num_shard_chunks * args.time_chunk_size,
         time_chunk_size=1,

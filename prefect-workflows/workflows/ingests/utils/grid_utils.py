@@ -680,6 +680,23 @@ def drop_existing_steps(
     return ds if ds.sizes[append_dim] else None
 
 
+def stored_steps(store: ic.IcechunkStore, group_path: str, append_dim: str) -> int:
+    """Number of steps along ``append_dim`` already in ``group_path`` (0 if it has none)."""
+    if not group_contains_data(store, group_path):
+        return 0
+    return xr.open_zarr(store, group=group_path, consolidated=False).sizes[append_dim]
+
+
+def batch_bounds(stored: int, num_steps: int, batch_size: int) -> list[tuple[int, int]]:
+    """(start, stop) of each batch of ``num_steps`` new steps, appended after ``stored`` existing ones.
+
+    Batches end on multiples of ``batch_size`` along the stored axis, so a batch size that is a
+    multiple of the shard length writes each shard once.
+    """
+    starts = [0, *range(batch_size - stored % batch_size, num_steps, batch_size)]
+    return list(zip(starts, [*starts[1:], num_steps]))
+
+
 def new_steps(
     ds: xr.Dataset,
     store: ic.IcechunkStore,

@@ -147,33 +147,39 @@ def write_references(repo: ic.Repository, virtual_ds: xr.Dataset, args: IngestGr
     logger.info(f"Committed virtual references: {snapshot_id}")
 
 
-# Retried because reading source chunks can drop connections; nothing is committed on failure
-@task(cache_policy=NO_CACHE, retries=2, retry_delay_seconds=30)
+# Retried because reading source chunks can drop connections. Each shard's worth of steps is committed
+# on its own, so a retry (or the next run) resumes after the last committed batch.
+@task(cache_policy=NO_CACHE, retries=3, retry_delay_seconds=30)
 def materialize_references(repo: ic.Repository, args: IngestGriddedDataInput) -> None:
     """Copy referenced steps not yet in ``/raw_data`` into it, in its own chunk/shard layout."""
     logger = get_run_logger()
-    session = repo.writable_session("main")
-    if not gu.group_contains_data(session.store, REFERENCES_GROUP_PATH):
+    store = repo.readonly_session("main").store
+    if not gu.group_contains_data(store, REFERENCES_GROUP_PATH):
         logger.info(f"No data in {REFERENCES_GROUP_PATH} to materialize.")
         return
-    ds = gu.restore_grid_mapping_attrs(gu.open_zarr_group(store=session.store, group_path=REFERENCES_GROUP_PATH))
+    ds = gu.restore_grid_mapping_attrs(gu.open_zarr_group(store=store, group_path=REFERENCES_GROUP_PATH))
     # References are already standardized and de-duplicated; select only the new steps
-    ds = gu.drop_existing_steps(ds, session.store, RAW_DATA_GROUP_PATH, args.append_dim)
+    ds = gu.drop_existing_steps(ds, store, RAW_DATA_GROUP_PATH, args.append_dim)
     if ds is None:
         logger.info(f"No new steps for {RAW_DATA_GROUP_PATH}.")
         return
-    gu.write_group(
-        ds,
-        session,
-        RAW_DATA_GROUP_PATH,
-        args.append_dim,
-        make_encoding=lambda d: gu.create_encoding_config(
-            d,
-            append_dim=args.append_dim,
-            chunk_size=args.chunk_size,
-            num_shard_chunks=args.num_shard_chunks,
-            time_chunk_size=args.time_chunk_size,
-        ),
-    )
-    snapshot_id = session.commit(f"Materialized {len(ds[args.append_dim])} step(s) into {RAW_DATA_GROUP_PATH}")
-    logger.info(f"Committed materialized data: {snapshot_id}")
+    num_steps = ds.sizes[args.append_dim]
+    shard_steps = args.time_chunk_size * args.num_shard_chunks
+    stored = gu.stored_steps(store, RAW_DATA_GROUP_PATH, args.append_dim)
+    for start, stop in gu.batch_bounds(stored, num_steps, shard_steps):
+        session = repo.writable_session("main")
+        gu.write_group(
+            ds.isel({args.append_dim: slice(start, stop)}),
+            session,
+            RAW_DATA_GROUP_PATH,
+            args.append_dim,
+            make_encoding=lambda d: gu.create_encoding_config(
+                d,
+                append_dim=args.append_dim,
+                chunk_size=args.chunk_size,
+                num_shard_chunks=args.num_shard_chunks,
+                time_chunk_size=args.time_chunk_size,
+            ),
+        )
+        snapshot_id = session.commit(f"Materialized {stop - start} step(s) into {RAW_DATA_GROUP_PATH}")
+        logger.info(f"Committed materialized steps {start + 1}-{stop} of {num_steps}: {snapshot_id}")
