@@ -37,7 +37,7 @@ const TimeseriesControls = ({
     ? getDistinctPropertyValues(metrics.data, 'secondary_configuration_name')
     : undefined;
   const variables = metrics.data
-    ? getDistinctPropertyValues(metrics.data, 'variable_name')
+    ? getDistinctPropertyValues(metrics.data, 'secondary_variable_name')
     : undefined;
 
   const primaryFilters = timeseriesFilters.primary;
