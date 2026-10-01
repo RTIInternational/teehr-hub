@@ -16,17 +16,19 @@ JOINED_FORECAST_TABLE_NAME = "fcst_joined_timeseries"
 JOINED_FORECAST_UNIQUENESS_FIELDS = [
     "reference_time",
     "value_time",
-    "primary_location_id",
+    "location_id",
     "secondary_location_id",
-    "configuration_name",
+    "primary_configuration_name",
+    "secondary_configuration_name",
     "unit_name",
-    "variable_name",
+    "primary_variable_name",
+    "secondary_variable_name",
     "member",
 ]
 JOINED_FORECAST_NULLABLE_FIELDS = ["member"]
-JOINED_FORECAST_PARTITION_BY = ["months(value_time)", "configuration_name"]
+JOINED_FORECAST_PARTITION_BY = ["months(value_time)", "secondary_configuration_name"]
 JOINED_FORECAST_WRITE_ORDERED_BY = [
-    "primary_location_id",
+    "location_id",
     "secondary_location_id",
     "reference_time",
     "value_time",

@@ -240,10 +240,10 @@ Here is a real row from the current table, reformatted:
 
 | Column | Value |
 | --- | --- |
-| `primary_location_id` | `usgs-01018009` |
+| `location_id` | `usgs-01018009` |
 | `secondary_location_id` | `nwm30-817499` |
-| `configuration_name` | `nwm30_medium_range` |
-| `variable_name` / `unit_name` | `streamflow_hourly_inst` / `m^3/s` |
+| `secondary_configuration_name` | `nwm30_medium_range` |
+| `secondary_variable_name` / `unit_name` | `streamflow_hourly_inst` / `m^3/s` |
 | `water_year` / `quarter` | `2026` / `2026-Q1` |
 | `forecast_lead_time_bin` | `PT0S_P1DT0H` |
 | `threshold` | `above_q85` |
@@ -610,7 +610,7 @@ fall outside the merge and be re-INSERTed, and therefore duplicated, on every up
 `DimensionSpec.nullable_partition_fields` reports the situation and the write site asserts
 on the genuinely unsafe combination.
 
-Partitioning is `["configuration_name", "water_year"]`. Both are low cardinality, appear
+Partitioning is `["secondary_configuration_name", "water_year"]`. Both are low cardinality, appear
 in `group_by` (so they reach the MERGE `ON` clause and Iceberg can prune), and each run
 writes exactly one of each. `partition_by` is only honored by `create_or_replace`, so the
 first run fixes the layout.
