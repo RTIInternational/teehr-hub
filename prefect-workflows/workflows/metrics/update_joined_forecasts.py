@@ -32,7 +32,15 @@ FORECAST_CONFIGURATION_NAMES = [
     "nwm30_short_range_puertorico",
     "nwm30_medium_range_alaska",
     "nwm30_medium_range_blend",
-    "nwm30_medium_range_blend_alaska"
+    "nwm30_medium_range_blend_alaska",
+    "nwm31_short_range",
+    "nwm31_medium_range",
+    "nwm31_short_range_alaska",
+    "nwm31_short_range_hawaii",
+    "nwm31_short_range_puertorico",
+    "nwm31_medium_range_alaska",
+    "nwm31_medium_range_blend",
+    "nwm31_medium_range_blend_alaska"
 ]
 DEFAULT_SHUFFLE_PARTITIONS = 256
 DEFAULT_INCREMENTAL_LOOKBACK_HOURS = 2

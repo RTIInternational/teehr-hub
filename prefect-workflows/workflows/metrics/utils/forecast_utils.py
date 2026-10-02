@@ -12,20 +12,20 @@ from teehr import Signatures as s
 logging.getLogger("teehr").setLevel(logging.INFO)
 
 FORECAST_BY_LEAD_TIME_BIN_GROUPBY = [
-    "primary_location_id",
+    "location_id",
     "secondary_location_id",
-    "configuration_name",
+    "secondary_configuration_name",
     "forecast_lead_time_bin",
-    "variable_name",
+    "secondary_variable_name",
     "unit_name",
     "member"
 ]
 FORECAST_BY_LOCATION_GROUPBY = [
-    "primary_location_id",
+    "location_id",
     "secondary_location_id",
-    "configuration_name",
+    "secondary_configuration_name",
     "unit_name",
-    "variable_name",
+    "secondary_variable_name",
     "member"
 ]
 

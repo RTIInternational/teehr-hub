@@ -1000,3 +1000,17 @@ deployments:
     schedule:
       cron: "25 4 * * *"
       active: true
+
+  - name: update-queryable-combinations
+    version:
+    tags: []
+    concurrency_limit:
+      limit: 1
+      collision_strategy: "CANCEL_NEW"
+    description: Precompute distinct group_by combinations that back the API queryable values endpoint
+    entrypoint: workflows/data_management/update_queryable_combinations.py:update_queryable_combinations
+    parameters: {"temp_dir_path": *temp_dir_path, "start_spark_cluster": false}
+    work_pool: *work_pool_medium
+    schedule:
+      cron: "0 5 * * *"
+      active: true

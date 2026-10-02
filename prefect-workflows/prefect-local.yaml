@@ -670,6 +670,14 @@ deployments:
     parameters: {"temp_dir_path": *temp_dir_path, "start_spark_cluster": false}
     work_pool: *work_pool
 
+  - name: update-queryable-combinations
+    version:
+    tags: []
+    description: Precompute distinct group_by combinations that back the API queryable values endpoint
+    entrypoint: workflows/data_management/update_queryable_combinations.py:update_queryable_combinations
+    parameters: {"temp_dir_path": *temp_dir_path, "start_spark_cluster": false}
+    work_pool: *work_pool
+
   - name: test-distributed-rw-auth
     version:
     tags: []
