@@ -34,12 +34,12 @@ spec:
         - name: AWS_ACCESS_KEY_ID
           valueFrom:
             secretKeyRef:
-              name: minio-secrets
+              name: local-s3-secrets
               key: accesskey
         - name: AWS_SECRET_ACCESS_KEY
           valueFrom:
             secretKeyRef:
-              name: minio-secrets
+              name: local-s3-secrets
               key: secretkey
         - name: REMOTE_CATALOG_S3_ENDPOINT
           value: ${var.polaris.catalogS3Endpoint}
@@ -69,6 +69,14 @@ spec:
           value: ${var.polaris.defaultRealm}
         - name: IN_CLUSTER
           value: "${var.polaris.inCluster}"
+        - name: ICECHUNK_BUCKET
+          value: ${var.icechunk.bucket}
+        - name: ICECHUNK_PREFIX
+          value: ${var.icechunk.prefix}
+        - name: PMTILES_BUCKET
+          value: ${var.pmtiles.bucket}
+        - name: PMTILES_PREFIX
+          value: ${var.pmtiles.prefix}
         resources:
           requests:
             cpu: 500m

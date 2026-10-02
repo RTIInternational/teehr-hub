@@ -1,17 +1,23 @@
-from pathlib import Path
-from typing import Union
 import logging
+from pathlib import Path
 
 from prefect import flow, get_run_logger
-
-from workflows.utils.common_utils import initialize_evaluation, set_table_properties, table_exists
 from update_joined_forecasts import JOINED_FORECAST_TABLE_NAME
 from utils.forecast_utils import (
-    write_forecast_metrics_by_lead_time_bins,
-    write_forecast_metrics_by_location,
     FORECAST_BY_LEAD_TIME_BIN_GROUPBY,
     FORECAST_BY_LOCATION_GROUPBY,
-    FORECAST_METRICS
+    FORECAST_METRICS,
+    write_forecast_metrics_by_lead_time_bins,
+    write_forecast_metrics_by_location,
+)
+
+from workflows.data_management.update_queryable_combinations import (
+    update_queryable_combinations,
+)
+from workflows.utils.common_utils import (
+    initialize_evaluation,
+    set_table_properties,
+    table_exists,
 )
 
 logging.getLogger("teehr").setLevel(logging.INFO)
@@ -22,16 +28,32 @@ METRICS_BY_LOCATION_TABLE_NAME = "fcst_metrics_by_location"
 METRIC_COL_NAMES = [metric.output_field_name for metric in FORECAST_METRICS]
 
 
-@flow(
-    flow_run_name="update-forecast-metrics-table",
-    timeout_seconds=60 * 60
-)
+def _metrics_write_mode(ev, table_name: str, group_by: list[str]) -> str:
+    """Overwrite the metrics table, unless it is missing or has a stale schema.
+
+    ``overwrite`` inserts by column position, so writing into a table whose
+    group_by columns differ (e.g. from before the teehr 0.9 column renaming)
+    would fail or put values in the wrong columns. Recreate it instead.
+    """
+    if not table_exists(ev=ev, table_name=table_name):
+        return "create_or_replace"
+    columns = set(ev.spark.table(f"iceberg.teehr.{table_name}").columns)
+    missing = [c for c in group_by if c not in columns]
+    if missing:
+        get_run_logger().info(
+            f"{table_name} is missing group_by columns {missing}; recreating it."
+        )
+        return "create_or_replace"
+    return "overwrite"
+
+
+@flow(flow_run_name="update-forecast-metrics-table", timeout_seconds=60 * 60)
 def update_forecast_metrics_table(
-    temp_dir_path: Union[str, Path],
+    temp_dir_path: str | Path,
     start_spark_cluster: bool = True,
     executor_instances: int = 64,
     executor_cores: int = 2,
-    executor_memory: str = "32g"
+    executor_memory: str = "32g",
 ) -> None:
     """Create the forecast metrics table
 
@@ -51,20 +73,18 @@ def update_forecast_metrics_table(
         executor_memory=executor_memory,
         update_configs={
             "spark.sql.shuffle.partitions": str(DEFAULT_SHUFFLE_PARTITIONS),
-        }
+        },
     )
 
     logger.info("Calculating and writing forecast metrics by lead time bins...")
-    lead_time_write_mode = (
-        "overwrite"
-        if table_exists(ev=ev, table_name=METRICS_BY_LEAD_TIME_TABLE_NAME)
-        else "create_or_replace"
+    lead_time_write_mode = _metrics_write_mode(
+        ev, METRICS_BY_LEAD_TIME_TABLE_NAME, FORECAST_BY_LEAD_TIME_BIN_GROUPBY
     )
     write_forecast_metrics_by_lead_time_bins(
         ev=ev,
         joined_forecast_table_name=JOINED_FORECAST_TABLE_NAME,
         output_table_name=METRICS_BY_LEAD_TIME_TABLE_NAME,
-        write_mode=lead_time_write_mode
+        write_mode=lead_time_write_mode,
     )
     set_table_properties(
         ev=ev,
@@ -72,22 +92,20 @@ def update_forecast_metrics_table(
         properties={
             "description": "Forecast metrics by location ID and lead time bins",
             "group_by": ", ".join(FORECAST_BY_LEAD_TIME_BIN_GROUPBY),
-            "metrics": ", ".join(METRIC_COL_NAMES)
-        }
+            "metrics": ", ".join(METRIC_COL_NAMES),
+        },
     )
     logger.info("Forecast metrics by lead time bins table created.")
 
     logger.info("Calculating and writing forecast metrics by location...")
-    location_write_mode = (
-        "overwrite"
-        if table_exists(ev=ev, table_name=METRICS_BY_LOCATION_TABLE_NAME)
-        else "create_or_replace"
+    location_write_mode = _metrics_write_mode(
+        ev, METRICS_BY_LOCATION_TABLE_NAME, FORECAST_BY_LOCATION_GROUPBY
     )
     write_forecast_metrics_by_location(
         ev=ev,
         joined_forecast_table_name=JOINED_FORECAST_TABLE_NAME,
         output_table_name=METRICS_BY_LOCATION_TABLE_NAME,
-        write_mode=location_write_mode
+        write_mode=location_write_mode,
     )
     set_table_properties(
         ev=ev,
@@ -95,7 +113,10 @@ def update_forecast_metrics_table(
         properties={
             "description": "Forecast metrics by location ID",
             "group_by": ", ".join(FORECAST_BY_LOCATION_GROUPBY),
-            "metrics": ", ".join(METRIC_COL_NAMES)
-        }
+            "metrics": ", ".join(METRIC_COL_NAMES),
+        },
     )
     logger.info("Forecast metrics by location table created.")
+
+    # Update cached table as a subflow
+    update_queryable_combinations(temp_dir_path=temp_dir_path)

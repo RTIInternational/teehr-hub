@@ -23,10 +23,13 @@ spec:
         image: ${actions.build.teehr-frontend-prod.outputs.deployment-image-id}
         ports:
         - containerPort: 8080
+        # nginx serving a static bundle: CPU p95 and peak were both ~0 cores
+        # over 47h (2026-09), memory peak 0.01Gi across both replicas. The
+        # limit is left alone so a burst of requests can still be absorbed.
         resources:
           requests:
             memory: "64Mi"
-            cpu: "50m"
+            cpu: "25m"
           limits:
             memory: "256Mi"
             cpu: "200m"

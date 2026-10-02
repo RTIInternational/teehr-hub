@@ -38,10 +38,10 @@ const TimeseriesControls = ({
   const metrics = useMetricsByLocation(selectedLocation.primary_location_id, table);
 
   const configurations = metrics.data
-    ? getDistinctPropertyValues(metrics.data, 'configuration_name')
+    ? getDistinctPropertyValues(metrics.data, 'secondary_configuration_name')
     : undefined;
   const variables = metrics.data
-    ? getDistinctPropertyValues(metrics.data, 'variable_name')
+    ? getDistinctPropertyValues(metrics.data, 'secondary_variable_name')
     : undefined;
   const primaryVariables = variables
     ? Array.from(new Set(variables.map((variable) => toPrimaryVariableName(variable))))

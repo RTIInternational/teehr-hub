@@ -134,6 +134,30 @@ const formatDatetimeInterval = (startDate?: string, endDate?: string) => {
 };
 
 // API service object - OGC API compliant
+// Metrics tables written before teehr 0.9 use primary_location_id,
+// configuration_name and variable_name. Fill in the renamed columns so
+// components read one set of names while tables are regenerated.
+const LEGACY_METRIC_COLUMNS: Record<string, string> = {
+  location_id: 'primary_location_id',
+  secondary_configuration_name: 'configuration_name',
+  secondary_variable_name: 'variable_name',
+};
+
+const withRenamedMetricColumns = (
+  collection: FeatureCollection<Point>
+): FeatureCollection<Point> => {
+  for (const feature of collection.features ?? []) {
+    const props = feature.properties;
+    if (!props) continue;
+    for (const [column, legacy] of Object.entries(LEGACY_METRIC_COLUMNS)) {
+      if (props[column] === undefined && props[legacy] !== undefined) {
+        props[column] = props[legacy];
+      }
+    }
+  }
+  return collection;
+};
+
 export const apiService = {
   // Get all locations (OGC API - Features)
   getLocations: (limit = 1000, offset = 0) => {
@@ -205,6 +229,8 @@ export const apiService = {
 
     const reservedKeys = ['table'];
 
+    // configuration_name, variable_name and location_id are resolved by the API
+    // against either the pre- or post-0.9 teehr column names.
     const aliasMap: Record<string, string> = {
       waterYear: 'water_year',
       aggMethod: 'window_agg',
@@ -226,7 +252,7 @@ export const apiService = {
       ? `/collections/${table}/items?${queryString}`
       : `/collections/${table}/items`;
 
-    return apiCallJson<FeatureCollection<Point>>(endpoint);
+    return apiCallJson<FeatureCollection<Point>>(endpoint).then(withRenamedMetricColumns);
   },
 
   // Get primary timeseries (simple JSON array format)

@@ -180,12 +180,15 @@ def _process_chunk(
     return str(filepath)
 
 
+# Must stay sync: in Prefect 3.4 an async flow renews its concurrency lease on
+# its own event loop, which the blocking Spark work starves until the lease
+# expires and the run is marked CRASHED (#431).
 @flow(
     flow_run_name="ingest-nwm-streamflow-forecasts",
     timeout_seconds=60 * 60,
     task_runner=ProcessPoolTaskRunner(max_workers=CHUNK_TASK_WORKERS)
 )
-async def ingest_nwm_streamflow_forecasts(
+def ingest_nwm_streamflow_forecasts(
     temp_dir_path: Union[str, Path],
     end_dt: Union[str, datetime, pd.Timestamp, None] = None,
     num_lookback_days: Union[int, None] = LOOKBACK_DAYS,
