@@ -18,6 +18,8 @@ VARIABLE_AND_UNIT_MAPPER = NWM_VARIABLE_MAPPER
 NWM_CONUS_CRS = "+proj=lcc +lat_0=40 +lon_0=-97 +lat_1=30 +lat_2=60 +x_0=0 +y_0=0 +R=6370000 +units=m +no_defs"
 
 PYRAMID_GROUP_PATH = "/pyramids"
+# Spatial chunk size of pyramid levels, about one 256 px map tile
+PYRAMID_CHUNK_SIZE = 256
 RAW_DATA_GROUP_PATH = "/raw_data"
 REFERENCES_GROUP_PATH = "/references"
 ICECHUNK_BUCKET = os.getenv("ICECHUNK_BUCKET")
@@ -27,6 +29,7 @@ class ParserType(str, Enum):
     """Supported parsers for reading virtual datasets."""
     hdf = "hdf"
     zarr = "zarr"
+    tiff = "tiff"
 
 
 class PackedEncoding(BaseModel):
@@ -117,13 +120,29 @@ class BaseGriddedDataInput(BaseModel):
         description="Dimension along which to append data when writing to the IceChunk repository"
     )
     chunk_size: int = Field(
-        default=256,
-        description="Inner chunk size applied to all non-append spatial dimensions when materializing data"
+        default=128,
+        description=(
+            "Inner chunk size along each spatial dimension of /raw_data. Smaller chunks cut the bytes a "
+            "time-series read fetches; pyramids use PYRAMID_CHUNK_SIZE"
+        )
     )
     num_shard_chunks: int = Field(
         default=30,
-        description="Number of inner chunks along the append dimension to group into a single shard"
+        description=(
+            "Number of inner chunks along the append dimension to group into a single shard, so a shard "
+            "holds time_chunk_size * num_shard_chunks steps; pyramid shards hold as many 1-step chunks"
+        )
     )
+    time_chunk_size: int = Field(
+        default=1,
+        gt=0,
+        description=(
+            "Steps per inner chunk along the append dimension of /raw_data; pyramids always use 1. Larger "
+            "chunks speed time-series reads but slow single-step reads, and a small append rewrites a "
+            "partial chunk. Lower num_shard_chunks when raising this. Applies only when /raw_data is first created."
+        )
+    )
+
     # TODO: Can these just be derived?
     x_dim: str = Field(
         default="x",
@@ -186,6 +205,10 @@ class IngestGriddedDataInput(BuildPyramidsDataInput):
     variable_names: SkipJsonSchema[Optional[list[str]]] = None
 
     # --- Core required parameters ---
+    start_dt: Union[str, datetime, None] = Field(
+        default=None,
+        description="Start datetime for ingestion. If provided, num_lookback_days is ignored."
+    )
     end_dt: Union[str, datetime, None] = Field(
         default=None,
         description="End datetime for ingestion. Defaults to current UTC time if not provided."
@@ -196,7 +219,18 @@ class IngestGriddedDataInput(BuildPyramidsDataInput):
     )
     write_materialized: bool = Field(
         default=True,
-        description="If True, the virtual datasets are materialized and written to the repository"
+        description=(
+            "If True, the references are materialized into /raw_data, which readers use. If False, nothing "
+            "is copied and readers (pyramids, EDR, mean areal values) read /references directly from the source"
+        )
+    )
+    ignore_unreadable_file: bool = Field(
+        default=True,
+        description=(
+            "If True, a source file that exists but can't be opened (corrupt, or a network error) is skipped. "
+            "If False, it fails the run before anything is written, so a later run can fill it in order. "
+            "Missing files are skipped either way."
+        )
     )
     parser_type: ParserType = Field(
         default=ParserType.hdf,

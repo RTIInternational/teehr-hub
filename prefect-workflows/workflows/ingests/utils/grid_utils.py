@@ -1,7 +1,10 @@
 import base64
+import contextvars
 import struct
 from typing import Callable
 
+import numpy as np
+import obstore
 import xarray as xr
 from obstore.store import from_url
 from obspec_utils.registry import ObjectStoreRegistry
@@ -17,6 +20,27 @@ import os
 
 from prefect import task, get_run_logger
 from prefect.cache_policies import NO_CACHE
+from teehr.utils.concurrency import resolve_budget, run_concurrent_map
+
+
+# Store kwargs whose values are kept out of logs
+_SECRET_KWARGS = {"access_key_id", "secret_access_key", "session_token", "service_account_key", "bearer_token"}
+
+# Object store config for each virtual chunk container URL scheme
+_VIRTUAL_STORES = {
+    "http": ic.storage.http_store,
+    "https": ic.storage.http_store,
+    "s3": ic.storage.s3_store,
+    "gs": ic.storage.gcs_store,
+    "gcs": ic.storage.gcs_store,
+}
+
+# Root-group attribute naming the group that holds a repo's full-resolution data
+DATA_GROUP_ATTR = "data_group"
+_DEFAULT_DATA_GROUP = "/raw_data"
+
+# GeoTIFF geokey value for a user-defined CRS, i.e. one without an EPSG code
+_GEOTIFF_USER_DEFINED = 32767
 
 
 def create_objectstore_registry(bucket: str, **kwargs) -> ObjectStoreRegistry:
@@ -32,7 +56,8 @@ def create_objectstore_registry(bucket: str, **kwargs) -> ObjectStoreRegistry:
     """
     logger = get_run_logger()
     bucket_key = bucket if bucket.endswith("/") else f"{bucket}/"
-    logger.info(f"Creating ObjectStoreRegistry for bucket: {bucket_key} and kwargs: {kwargs}")
+    logged = {k: "<redacted>" if k in _SECRET_KWARGS else v for k, v in kwargs.items()}
+    logger.info(f"Creating ObjectStoreRegistry for bucket: {bucket_key} and kwargs: {logged}")
     store = from_url(bucket_key, **kwargs)
     registry = ObjectStoreRegistry({bucket_key: store})
     return registry
@@ -83,21 +108,12 @@ def _resolve_virtual_chunk_credentials(
     return None
 
 
-_VIRTUAL_STORES = {
-    "http": ic.storage.http_store,
-    "https": ic.storage.http_store,
-    "s3": ic.storage.s3_store,
-    "gs": ic.storage.gcs_store,
-    "gcs": ic.storage.gcs_store,
-}
-
-
-def _virtual_chunk_store(url_prefix: str) -> ic.storage.ObjectStoreConfig:
+def _virtual_chunk_store(url_prefix: str, **kwargs) -> ic.storage.ObjectStoreConfig:
     """Return the object store config for a virtual chunk container, from the URL scheme."""
     scheme = url_prefix.split("://", 1)[0]
     if scheme not in _VIRTUAL_STORES:
         raise ValueError(f"Unsupported source URL scheme '{scheme}' in {url_prefix}")
-    return _VIRTUAL_STORES[scheme]()
+    return _VIRTUAL_STORES[scheme](**kwargs)
 
 
 @task(cache_policy=NO_CACHE)
@@ -105,6 +121,8 @@ def configure_icechunk_s3_repo(
     source_bucket: str,
     dest_bucket: str,
     prefix: str,
+    vc_credentials_kwargs: dict | None = None,
+    vc_store_kwargs: dict | None = None,
     **kwargs
 ) -> ic.repository.Repository:
     """Configure an IceChunk S3 repository with a virtual chunk container.
@@ -119,6 +137,11 @@ def configure_icechunk_s3_repo(
         The destination S3 bucket for the IceChunk repository (e.g., "warehouse").
     prefix : str
         The prefix within the destination bucket where the data is stored.
+    vc_credentials_kwargs : dict, optional
+        Credentials for reading the source (e.g., access_key_id, secret_access_key). Anonymous if empty.
+        Given only when opening the repository; never saved in its config.
+    vc_store_kwargs : dict, optional
+        Options for the source's object store config (e.g., region).
     **kwargs : dict
         Additional keyword arguments to pass to the s3_storage function.
     """
@@ -142,10 +165,10 @@ def configure_icechunk_s3_repo(
     url_prefix = source_bucket if source_bucket.endswith("/") else f"{source_bucket}/"
     container = ic.virtual.VirtualChunkContainer(
         url_prefix=url_prefix,
-        store=_virtual_chunk_store(url_prefix)
+        store=_virtual_chunk_store(url_prefix, **(vc_store_kwargs or {}))
     )
     config.set_virtual_chunk_container(container)
-    vc_credentials = _resolve_virtual_chunk_credentials(url_prefix)
+    vc_credentials = _resolve_virtual_chunk_credentials(url_prefix, vc_credentials_kwargs or {"anonymous": True})
 
     if ic.Repository.exists(storage):
         logger.info(f"Existing IceChunk repository found at bucket: {dest_bucket}, prefix: {prefix}. Opening repository.")
@@ -166,26 +189,71 @@ def configure_icechunk_s3_repo(
     return repo
 
 
+def write_data_group(store: ic.IcechunkStore, group_path: str) -> bool:
+    """Record ``group_path`` as the repo's data group, for readers; True if that changed it."""
+    root = zarr.open_group(store, mode="a", zarr_format=3)
+    if root.attrs.get(DATA_GROUP_ATTR) == group_path:
+        return False
+    root.attrs[DATA_GROUP_ATTR] = group_path
+    return True
+
+
+def read_data_group(store: ic.IcechunkStore) -> str:
+    """The repo's data group: ``/references`` or ``/raw_data`` (repos built before it was recorded)."""
+    try:
+        attrs = zarr.open_group(store, mode="r", zarr_format=3).attrs
+    except (zarr.errors.GroupNotFoundError, FileNotFoundError):
+        return _DEFAULT_DATA_GROUP
+    return attrs.get(DATA_GROUP_ATTR, _DEFAULT_DATA_GROUP)
+
+
+def open_repo_for_reading(storage: ic.storage.Storage, vc_credentials_kwargs: dict | None = None) -> ic.Repository:
+    """Open a repo with read access to its virtual chunk containers, anonymous unless credentials are given."""
+    config = ic.Repository.fetch_config(storage)
+    containers = config.virtual_chunk_containers if config else {}
+    authorize = {
+        prefix: _resolve_virtual_chunk_credentials(prefix, vc_credentials_kwargs or {"anonymous": True})
+        for prefix in (containers or {})
+    }
+    return ic.Repository.open(storage, authorize_virtual_chunk_access=authorize)
+
+
+def _is_missing(registry: ObjectStoreRegistry, url: str) -> bool:
+    """True only if the store confirms the object doesn't exist."""
+    store, path = registry.resolve(url)
+    try:
+        obstore.head(store, path)
+    except FileNotFoundError:
+        return True
+    except Exception:
+        return False
+    return False
+
+
 def _open_virtual_safe(
     url: str,
     registry: ObjectStoreRegistry,
     parser: vz.parsers,
     ignore_missing_file: bool,
+    ignore_unreadable_file: bool = True,
+    preprocess: Callable[[xr.Dataset, str], xr.Dataset] | None = None,
 ) -> xr.Dataset | None:
     """Open a virtual dataset safely, handling missing or unreadable files."""
     logger = get_run_logger()
     try:
-        return open_virtual_dataset(url, registry=registry, parser=parser)
-    except FileNotFoundError:
-        if not ignore_missing_file:
-            raise
-        logger.warning(f"Missing file skipped: {url}")
-        return None
+        ds = open_virtual_dataset(url, registry=registry, parser=parser)
     except Exception as e:
-        if not ignore_missing_file:
+        # Some parsers (e.g. VirtualTIFF) wrap a missing object in their own error, so ask the store
+        if isinstance(e, FileNotFoundError) or _is_missing(registry, url):
+            if not ignore_missing_file:
+                raise
+            logger.warning(f"Missing file skipped: {url}")
+            return None
+        if not ignore_unreadable_file:
             raise
         logger.warning(f"Corrupt or unreadable file skipped: {url} ({e})")
         return None
+    return preprocess(ds, url) if preprocess else ds
 
 
 @task(cache_policy=NO_CACHE)
@@ -195,6 +263,8 @@ def create_virtual_xarray_dataset(
     parser: vz.parsers,
     concat_dim: str,
     ignore_missing_file: bool = True,
+    ignore_unreadable_file: bool = True,
+    preprocess: Callable[[xr.Dataset, str], xr.Dataset] | None = None,
     **kwargs
 ) -> xr.Dataset:
     """Create a virtual xarray dataset from a list of files.
@@ -210,18 +280,27 @@ def create_virtual_xarray_dataset(
     concat_dim : str
         The dimension along which to concatenate the datasets.
     ignore_missing_file : bool, optional
-        Whether to ignore missing or unreadable files. Default is True.
+        Whether to skip files that don't exist. Default is True.
+    ignore_unreadable_file : bool, optional
+        Whether to skip files that exist but can't be opened, including after a network error.
+        Default is True; with False, such a file fails the run before anything is written.
+    preprocess : Callable[[xr.Dataset, str], xr.Dataset], optional
+        Applied to each file's virtual dataset, with its URL, before concatenation.
     **kwargs : dict
         Additional keyword arguments to pass to xr.concat.
     """
     logger = get_run_logger()
-    virtual_datasets = [
-        ds for ds in (
-            _open_virtual_safe(url, registry, parser, ignore_missing_file)
-            for url in file_list
-        )
-        if ds is not None
-    ]
+    # Opening is network-bound, so size the threads by the io budget; each carries the
+    # Prefect run context, which get_run_logger needs and worker threads don't inherit
+    ctx = contextvars.copy_context()
+    opened = run_concurrent_map(
+        lambda url: ctx.copy().run(
+            _open_virtual_safe, url, registry, parser, ignore_missing_file, ignore_unreadable_file, preprocess
+        ),
+        file_list,
+        max_workers=resolve_budget().io,
+    )
+    virtual_datasets = [ds for ds in opened if ds is not None]
     if len(virtual_datasets) == 0:
         raise ValueError("No virtual datasets were created. Check the file list and registry of the source data.")
     logger.info(f"Found {len(virtual_datasets)} virtual datasets from {len(file_list)} files.")
@@ -266,11 +345,41 @@ def align_virtual_fill_values(virtual_ds: xr.Dataset) -> xr.Dataset:
     return virtual_ds
 
 
+def assign_geotiff_coords(ds: xr.Dataset, fallback_crs: str | None = None) -> xr.Dataset:
+    """Add x/y pixel-centre coords, the CRS, and units from the GeoTIFF tags VirtualTIFF keeps as attrs.
+
+    Assumes a north-up grid (no rotation) with a single tiepoint. ``fallback_crs`` is used when
+    the file's CRS has no EPSG code; without one, such a file raises.
+    """
+    attrs = next(ds[v].attrs for v in ds.data_vars if {"x", "y"} <= set(ds[v].dims))
+    _, _, _, x0, y0, _ = attrs["model_tiepoint"]
+    dx, dy, _ = attrs["model_pixel_scale"]
+    # PixelIsPoint (raster_type 2) tiepoints are already pixel centres
+    half = 0.0 if attrs.get("raster_type") == 2 else 0.5
+    ds = ds.assign_coords(
+        x=x0 + (np.arange(ds.sizes["x"]) + half) * dx,
+        y=y0 - (np.arange(ds.sizes["y"]) + half) * dy,
+    )
+    # model_type 2 is geographic; a projected CRS may also carry its base geographic code
+    epsg = attrs.get("geographic_type" if attrs.get("model_type") == 2 else "projected_type")
+    if epsg not in (None, _GEOTIFF_USER_DEFINED):
+        ds = ds.rio.write_crs(f"EPSG:{epsg}")
+    elif fallback_crs is not None:
+        ds = ds.rio.write_crs(fallback_crs)
+    else:
+        raise ValueError(f"GeoTIFF CRS has no EPSG code ({attrs.get('citation')!r}); set source_crs.")
+    for var in ds.data_vars:
+        if "UNITTYPE" in ds[var].attrs:
+            ds[var].attrs.setdefault("units", ds[var].attrs["UNITTYPE"])
+    return ds
+
+
 def create_encoding_config(
     dataset: xr.Dataset,
     append_dim: str,
     chunk_size: int = 512,
     num_shard_chunks: int = 30,
+    time_chunk_size: int = 1,
     compression: str = "zstd",
     compression_level: int = 3,
     shuffle: str = "shuffle",
@@ -291,12 +400,14 @@ def create_encoding_config(
         The dataset to create encoding for.
     append_dim : str
         The dimension used for appending (e.g. "time").  Inner chunks along
-        this dimension are set to 1; shards pack ``num_shard_chunks`` of them.
+        this dimension hold ``time_chunk_size`` steps; shards pack ``num_shard_chunks`` of them.
     chunk_size : int
-        Inner chunk size for all non-append dimensions (default 512).
+        Inner chunk size for all non-append (spatial) dimensions (default 512).
     num_shard_chunks : int
         Number of inner chunks to group into a single shard along ``append_dim``
         (default 30).
+    time_chunk_size : int
+        Steps per inner chunk along ``append_dim`` (default 1).
     compression : str
         Compression algorithm to use (default "zstd").
     compression_level : int
@@ -307,8 +418,8 @@ def create_encoding_config(
     encoding_config = {}
     for var in dataset.data_vars:
         dims = dataset[var].dims
-        chunks = tuple(1 if d == append_dim else chunk_size for d in dims)
-        shards = tuple(num_shard_chunks if d == append_dim else chunk_size for d in dims)
+        chunks = tuple(time_chunk_size if d == append_dim else chunk_size for d in dims)
+        shards = tuple(time_chunk_size * num_shard_chunks if d == append_dim else chunk_size for d in dims)
         encoding_config[var] = {
             "chunks": chunks,
             "shards": shards,
@@ -453,6 +564,12 @@ def standardize_and_inject_geozarr(
             "standard_name", "latitude" if is_geographic else "projection_y_coordinate"
         )
 
+    # --- Time coordinate attrs; cf_xarray (e.g. xpublish-edr) finds the T axis by them ---
+    for name in ds.dims:
+        if name in ds.coords and np.issubdtype(ds[name].dtype, np.datetime64):
+            ds[name].attrs.setdefault("standard_name", "time")
+            ds[name].attrs.setdefault("axis", "T")
+
     # --- Dataset-level attrs ---
     conventions = ds.attrs.get("Conventions")
     if conventions is None:
@@ -476,12 +593,27 @@ def standardize_and_inject_geozarr(
                 new_var_name = variable_and_unit_mapper["variable_name"].get(var_name, {}).get("name", var_name)
                 new_long_name = variable_and_unit_mapper["variable_name"].get(var_name, {}).get("long_name", var_name)
                 ds[var_name].attrs["long_name"] = new_long_name
+                ds[var_name].attrs.setdefault("source_name", var_name)
                 unit_name = ds[var_name].attrs.get("units")
                 if unit_name:
                     new_unit_name = variable_and_unit_mapper["unit_name"].get(unit_name, {}).get("name", unit_name)
+                    if new_unit_name != unit_name:
+                        ds[var_name].attrs.setdefault("source_units", unit_name)
                     ds[var_name].attrs["units"] = new_unit_name
                 ds = ds.rename({var_name: new_var_name})
 
+    return ds
+
+
+def restore_grid_mapping_attrs(ds: xr.Dataset) -> xr.Dataset:
+    """Move each variable's ``grid_mapping`` from encoding back to attrs.
+
+    Opening with ``decode_coords="all"`` moves it into encoding, which an explicit write encoding
+    replaces, so a copy would lose its link to the CRS coordinate.
+    """
+    for var in ds.data_vars:
+        if "grid_mapping" in ds[var].encoding:
+            ds[var].attrs["grid_mapping"] = ds[var].encoding.pop("grid_mapping")
     return ds
 
 
@@ -533,6 +665,36 @@ def group_contains_data(store: ic.IcechunkStore, group_path: str) -> bool:
     except (zarr.errors.GroupNotFoundError, FileNotFoundError):
         return False
     return any(True for _ in group.array_keys())
+
+
+def drop_existing_steps(
+    ds: xr.Dataset,
+    store: ic.IcechunkStore,
+    group_path: str,
+    append_dim: str,
+) -> xr.Dataset | None:
+    """Drop the steps of ``ds`` already in ``group_path``, keeping duplicates among the rest; None if nothing is new."""
+    if group_contains_data(store, group_path):
+        existing_values = xr.open_zarr(store, group=group_path, consolidated=False)[append_dim].values
+        ds = ds.isel({append_dim: ~np.isin(ds[append_dim].values, existing_values)})
+    return ds if ds.sizes[append_dim] else None
+
+
+def stored_steps(store: ic.IcechunkStore, group_path: str, append_dim: str) -> int:
+    """Number of steps along ``append_dim`` already in ``group_path`` (0 if it has none)."""
+    if not group_contains_data(store, group_path):
+        return 0
+    return xr.open_zarr(store, group=group_path, consolidated=False).sizes[append_dim]
+
+
+def batch_bounds(stored: int, num_steps: int, batch_size: int) -> list[tuple[int, int]]:
+    """(start, stop) of each batch of ``num_steps`` new steps, appended after ``stored`` existing ones.
+
+    Batches end on multiples of ``batch_size`` along the stored axis, so a batch size that is a
+    multiple of the shard length writes each shard once.
+    """
+    starts = [0, *range(batch_size - stored % batch_size, num_steps, batch_size)]
+    return list(zip(starts, [*starts[1:], num_steps]))
 
 
 def new_steps(
