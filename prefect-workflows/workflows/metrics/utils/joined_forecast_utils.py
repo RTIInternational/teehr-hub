@@ -33,6 +33,14 @@ JOINED_FORECAST_WRITE_ORDERED_BY = [
     "reference_time",
     "value_time",
 ]
+# Write properties that teehr's write_to cannot set. Routine table maintenance
+# compacts this table into 512 MB files using these properties, so they decide
+# how finely large scans can split: Parquet row groups are the smallest unit a
+# reader can split on. Iceberg's 128 MB default gave a 3-year scan of one
+# configuration ~88 tasks; 16 MB matches Iceberg's adaptive-split floor.
+JOINED_FORECAST_TABLE_PROPERTIES = {
+    "write.parquet.row-group-size-bytes": str(16 * 1024 * 1024),
+}
 JOINED_FORECAST_CHECKPOINT_TABLE_NAME = "workflow_state_joined_forecasts"
 PRIMARY_CONFIGURATION_NAME = "usgs_observations"
 
@@ -492,6 +500,34 @@ def build_secondary_filters(batch: dict[str, Any]) -> list[TableFilter]:
     return filters
 
 
+def ensure_joined_forecast_table_properties(
+    ev: teehr.Evaluation,
+    table_name: str,
+) -> None:
+    """Set JOINED_FORECAST_TABLE_PROPERTIES on the table if any differ.
+
+    Checked after every write rather than only on create: create_or_replace
+    drops existing properties, and this also brings an existing table in line.
+    Only commits when something changed, so it does not add a metadata version
+    per batch.
+    """
+    full_table_name = f"iceberg.teehr.{table_name}"
+    current = {
+        row["key"]: row["value"]
+        for row in ev.spark.sql(f"SHOW TBLPROPERTIES {full_table_name}").collect()
+    }
+    missing = {
+        key: value
+        for key, value in JOINED_FORECAST_TABLE_PROPERTIES.items()
+        if current.get(key) != value
+    }
+    if not missing:
+        return
+    assignments = ", ".join(f"'{key}' = '{value}'" for key, value in missing.items())
+    ev.spark.sql(f"ALTER TABLE {full_table_name} SET TBLPROPERTIES ({assignments})")
+    get_run_logger().info("Set %s on %s.", missing, full_table_name)
+
+
 @task(cache_policy=NO_CACHE)
 def write_joined_forecast_batch(
     ev: teehr.Evaluation,
@@ -523,6 +559,7 @@ def write_joined_forecast_batch(
         partition_by=JOINED_FORECAST_PARTITION_BY,
         write_ordered_by=JOINED_FORECAST_WRITE_ORDERED_BY,
     )
+    ensure_joined_forecast_table_properties(ev=ev, table_name=table_name)
 
     # Workaround by dropping duplicates unitl TEEHR supports that natively for non-core tables.
     # ether via a validate option on the table or in load_dataframe. 

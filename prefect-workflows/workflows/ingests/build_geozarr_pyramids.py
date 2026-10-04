@@ -1,6 +1,7 @@
 from prefect import flow, task, get_run_logger
 from prefect.cache_policies import NO_CACHE
 import icechunk as ic
+import numpy as np
 import xarray as xr
 from topozarr import create_pyramid
 import rioxarray  # noqa: rio accessor
@@ -10,8 +11,8 @@ from utils import grid_utils as gu
 from workflows.models.ingest_gridded_data_input import (
     BuildPyramidsDataInput,
     PackedEncoding,
-    RAW_DATA_GROUP_PATH,
-    PYRAMID_GROUP_PATH
+    PYRAMID_GROUP_PATH,
+    PYRAMID_CHUNK_SIZE,
 )
 
 
@@ -22,7 +23,8 @@ from workflows.models.ingest_gridded_data_input import (
 def build_pyramids(args: BuildPyramidsDataInput) -> None:
     """Build multiscale pyramids incrementally for newly ingested data and write them to an IceChunk repository.
 
-    Reads only time steps not yet present in the pyramid store, reprojects to web
+    Reads the repo's data group (``/raw_data``, or ``/references`` when not materialized), only the
+    time steps not yet present in the pyramid store, reprojects to web
     mercator, creates downsampled pyramid levels, and appends to the existing
     pyramid groups (or creates them on the first run).
 
@@ -38,22 +40,31 @@ def build_pyramids(args: BuildPyramidsDataInput) -> None:
         prefix=f"{args.base_prefix}/{args.configuration_name}",
         **args.s3_storage_kwargs
     )
-    repo = ic.Repository.open(storage)
+    # The data group may be /references, whose chunks live in the source; the ingest flow's args carry its credentials
+    source = getattr(args, "source", None)
+    repo = gu.open_repo_for_reading(storage, source.credentials() if source else None)
     logger.info(
         f"Icechunk repo opened at: {args.dest_bucket}/{args.base_prefix}/{args.configuration_name}."
     )
 
     store = repo.readonly_session("main").store
-    if not gu.group_contains_data(store, RAW_DATA_GROUP_PATH):
-        logger.info(f"No data found in {RAW_DATA_GROUP_PATH}.")
+    data_group = gu.read_data_group(store)
+    if not gu.group_contains_data(store, data_group):
+        logger.info(f"No data found in {data_group}.")
         return
 
     # topozarr names levels by their index in args.factors, not by factor
     first_level = f"{PYRAMID_GROUP_PATH}/0"
     is_new_pyramid = not gu.group_contains_data(store, first_level)
-    raw_ds = gu.open_zarr_group(store=store, group_path=RAW_DATA_GROUP_PATH)
-    _check_packing_units(raw_ds, args.pyramid_encoding)
-    ds_new = gu.new_steps(raw_ds, store, first_level, args.append_dim)
+    data_ds = gu.open_zarr_group(store=store, group_path=data_group)
+    # Values are decoded, with NaN for missing, as in /raw_data; a source's own fill marker (e.g. -9999
+    # in /references) would otherwise reach reprojection and coarsening as the fill to skip
+    for var in data_ds.data_vars:
+        if np.issubdtype(data_ds[var].dtype, np.floating):
+            data_ds[var].encoding.pop("missing_value", None)
+            data_ds[var].encoding["_FillValue"] = np.nan
+    _check_packing_units(data_ds, args.pyramid_encoding)
+    ds_new = gu.new_steps(data_ds, store, first_level, args.append_dim)
     if ds_new is None:
         logger.info(f"No new steps for {PYRAMID_GROUP_PATH}.")
         return
@@ -63,8 +74,9 @@ def build_pyramids(args: BuildPyramidsDataInput) -> None:
     # Each batch is committed, so a failed run resumes from the last committed batch.
     ds_new = ds_new.sortby(args.append_dim)
     num_steps = len(ds_new[args.append_dim])
-    for start in range(0, num_steps, args.time_batch_size):
-        ds_batch = ds_new.isel({args.append_dim: slice(start, start + args.time_batch_size)})
+    stored = gu.stored_steps(store, first_level, args.append_dim)
+    for start, stop in gu.batch_bounds(stored, num_steps, args.time_batch_size):
+        ds_batch = ds_new.isel({args.append_dim: slice(start, stop)})
         _write_pyramid_batch(repo, ds_batch, args, write_root_metadata=is_new_pyramid and start == 0)
         logger.info(f"Processed time steps {start + 1}-{start + len(ds_batch[args.append_dim])} of {num_steps}.")
 
@@ -92,8 +104,10 @@ def _pyramid_encoding(ds: xr.Dataset, args: BuildPyramidsDataInput) -> dict:
     encoding = gu.create_encoding_config(
         ds,
         append_dim=args.append_dim,
-        chunk_size=args.chunk_size,
-        num_shard_chunks=args.num_shard_chunks,
+        chunk_size=PYRAMID_CHUNK_SIZE,
+        # Tiles read one step at a time; shards span as many steps as /raw_data's
+        num_shard_chunks=args.num_shard_chunks * args.time_chunk_size,
+        time_chunk_size=1,
     )
     for var, packing in args.pyramid_encoding.items():
         if var in encoding:

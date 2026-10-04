@@ -7,6 +7,7 @@ import pyspark.sql.functions as F
 
 from teehr import Evaluation
 
+from utils import grid_utils as gu
 from workflows.utils.common_utils import initialize_evaluation
 from workflows.models.mean_areal_inputs import MeanArealValuesInput
 from pixel_coverage_weights import get_readonly_repo_store, write_dataframe_to_warehouse
@@ -171,7 +172,7 @@ def calculate_mean_areal_values(args: MeanArealValuesInput):
 
     grid_template_da = xr.open_zarr(
         store,
-        group="raw_data",
+        group=gu.read_data_group(store),
         decode_coords="all"
     )[args.grid_variable_name]
 

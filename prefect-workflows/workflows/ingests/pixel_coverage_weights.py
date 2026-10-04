@@ -55,14 +55,15 @@ def get_readonly_repo_store(
     configuration_name: str,
     s3_storage_kwargs: dict
 ) -> ic.IcechunkStore:
-    """Get a read-only IceChunk S3 repository store for reading the grid data."""
+    """Get a read-only IceChunk S3 repository store for reading the grid data from its data group."""
     logger = get_run_logger()
     storage = gu.build_icechunk_s3_storage(
         bucket=dest_bucket,
         prefix=f"{base_prefix}/{configuration_name}",
         **s3_storage_kwargs
     )
-    repo = ic.Repository.open(storage)
+    # The data group may be /references, read from the source
+    repo = gu.open_repo_for_reading(storage)
     session = repo.readonly_session(branch="main")
     store = session.store
     logger.info(
@@ -203,7 +204,7 @@ def calculate_pixel_coverage_weights(args: PixelCoverageWeightsInput):
     )
     grid_template_da = xr.open_zarr(
         store,
-        group="raw_data",
+        group=gu.read_data_group(store),
         decode_coords="all"
     )[args.grid_variable_name].isel({args.append_dim: 0}).squeeze(drop=True)
     # TODO: # Ensure latitude and longitude are strictly increasing (left to right/top to bottom)?
