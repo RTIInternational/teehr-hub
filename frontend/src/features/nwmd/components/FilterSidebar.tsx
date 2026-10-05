@@ -1,12 +1,15 @@
+import { useQueryClient } from '@tanstack/react-query';
 import { useMemo } from 'react';
 import { Form } from 'react-bootstrap';
 
+import { NWMD_DASHBOARD_DEFAULTS, selectDefault } from '@/config/dashboardDefaults';
 import { useConfigurations } from '@/shared/queries/configurations';
-import { useDistinctValues } from '@/shared/queries/distinctValues';
+import { distinctValuesQuery, useDistinctValues } from '@/shared/queries/distinctValues';
 import { useTableProperties } from '@/shared/queries/queryables';
 import { getWaterYearForQuarter } from '@/shared/utils/dates';
 
 import { useFilters } from '../hooks/useFilters';
+import { sortLeadTimeBins } from '../utils/leadTimeBins';
 import { isNwmdMetric } from '../utils/utils';
 import LeadTimeRangeFilter from './LeadTimeRangeFilter';
 
@@ -26,6 +29,7 @@ type FilterSidebarProps = {
 
 export const FilterSidebar = ({ tables }: FilterSidebarProps) => {
   const { mapFilters, updateMapFilters } = useFilters();
+  const queryClient = useQueryClient();
   const tableProperties = useTableProperties(tables);
 
   // Queryable values
@@ -63,6 +67,25 @@ export const FilterSidebar = ({ tables }: FilterSidebarProps) => {
     updateMapFilters({ [filterType]: value, ...extraUpdates });
   };
 
+  const handleConfigurationChange = async (configuration: string) => {
+    try {
+      const nextBins = await queryClient.fetchQuery(
+        distinctValuesQuery(tables[0], 'forecast_lead_time_bin', {
+          configuration_name: configuration,
+        })
+      );
+
+      const leadTimeBin =
+        mapFilters.leadTimeBin && nextBins.includes(mapFilters.leadTimeBin)
+          ? mapFilters.leadTimeBin
+          : selectDefault(NWMD_DASHBOARD_DEFAULTS.preferredLeadTimeBin, sortLeadTimeBins(nextBins));
+
+      updateMapFilters({ configuration, leadTimeBin });
+    } catch {
+      updateMapFilters({ configuration });
+    }
+  };
+
   return (
     <div className="p-3">
       {/* Configuration Filter */}
@@ -71,7 +94,7 @@ export const FilterSidebar = ({ tables }: FilterSidebarProps) => {
         <Form.Select
           size="sm"
           value={mapFilters.configuration || ''}
-          onChange={(e) => handleMapFilterChange('configuration', e.target.value || null)}
+          onChange={(e) => void handleConfigurationChange(e.target.value)}
         >
           {Array.isArray(configurations.data) &&
             configurations.data.map((config) => (
