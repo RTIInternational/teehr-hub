@@ -4,6 +4,7 @@ import { NWMD_DASHBOARD_DEFAULTS, selectDefault } from '@/config/dashboardDefaul
 import { useConfigurations } from '@/shared/queries/configurations';
 import { useDistinctValues } from '@/shared/queries/distinctValues';
 import { useVariables } from '@/shared/queries/variables';
+import { combineLoadingStates } from '@/shared/utils/loading';
 
 import { ActionTypes, useDashboard } from '../DashboardContext';
 
@@ -108,5 +109,14 @@ export const useInitialFilters = (table: string) => {
     thresholds,
     aggMethods,
     leadTimeBins,
+    isLoading: combineLoadingStates(
+      waterYears,
+      quarters,
+      configurations,
+      variables,
+      thresholds,
+      aggMethods,
+      leadTimeBins
+    ),
   };
 };

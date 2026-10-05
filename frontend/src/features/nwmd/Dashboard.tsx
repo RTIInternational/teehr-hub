@@ -19,7 +19,7 @@ import type { ViewportBounds } from './types/maps';
 export const Dashboard = () => {
   const tables = ['nwmd_metrics_by_location_v3'];
 
-  useInitialFilters(tables[0]);
+  const initialFilters = useInitialFilters(tables[0]);
 
   const { state, dispatch } = useDashboard();
   const { selectLocation, selectedLocation } = useLocationSelection();
@@ -117,6 +117,7 @@ export const Dashboard = () => {
               ActionTypes={ActionTypes}
               selectLocation={selectLocation}
               onViewportBoundsChange={handleViewportBoundsChange}
+              isLoading={initialFilters.isLoading}
             />
           </div>
 
