@@ -2,14 +2,17 @@ import { useQueryClient } from '@tanstack/react-query';
 import { useMemo } from 'react';
 import { Form } from 'react-bootstrap';
 
-import { NWMD_DASHBOARD_DEFAULTS, selectDefault } from '@/config/dashboardDefaults';
 import { useConfigurations } from '@/shared/queries/configurations';
-import { distinctValuesQuery, useDistinctValues } from '@/shared/queries/distinctValues';
+import { useDistinctValues } from '@/shared/queries/distinctValues';
 import { useTableProperties } from '@/shared/queries/queryables';
-import { getWaterYearForQuarter } from '@/shared/utils/dates';
 
 import { useFilters } from '../hooks/useFilters';
-import { sortLeadTimeBins } from '../utils/leadTimeBins';
+import {
+  getFilterSelectionsByConfig,
+  fetchFilterOptionsByConfig,
+  getAvailableQuartersForWaterYear,
+  getConfigurationFilter,
+} from '../utils/filters';
 import { isNwmdMetric } from '../utils/utils';
 import LeadTimeRangeFilter from './LeadTimeRangeFilter';
 
@@ -31,34 +34,24 @@ export const FilterSidebar = ({ tables }: FilterSidebarProps) => {
   const { mapFilters, updateMapFilters } = useFilters();
   const queryClient = useQueryClient();
   const tableProperties = useTableProperties(tables);
+  const configurationFilter = getConfigurationFilter(mapFilters.configuration ?? undefined);
 
   // Queryable values
-  const waterYears = useDistinctValues(tables[0], 'water_year');
-  const quarters = useDistinctValues(tables[0], 'quarter');
+  const waterYears = useDistinctValues(tables[0], 'water_year', configurationFilter);
+  const quarters = useDistinctValues(tables[0], 'quarter', configurationFilter);
   const configurations = useConfigurations(tables[0]);
-  const thresholds = useDistinctValues(tables[0], 'threshold');
-  const aggMethods = useDistinctValues(tables[0], 'window_agg');
-  const leadTimeBins = useDistinctValues(
-    tables[0],
-    'forecast_lead_time_bin',
-    mapFilters.configuration ? { configuration_name: mapFilters.configuration } : undefined
-  );
+  const thresholds = useDistinctValues(tables[0], 'threshold', configurationFilter);
+  const aggMethods = useDistinctValues(tables[0], 'window_agg', configurationFilter);
+  const leadTimeBins = useDistinctValues(tables[0], 'forecast_lead_time_bin', configurationFilter);
 
   const availableQuarters = useMemo(() => {
-    if (mapFilters.waterYear === null) {
-      return [null];
-    }
+    const quarterValues = Array.isArray(quarters.data)
+      ? quarters.data.filter(
+          (quarter): quarter is string => typeof quarter === 'string' && quarter.length > 0
+        )
+      : [];
 
-    const quarterValues = Array.isArray(quarters.data) ? quarters.data : [];
-    const filteredQuarters = quarterValues
-      .filter((quarter): quarter is string => typeof quarter === 'string' && quarter.length > 0)
-      .filter((quarter) => {
-        if (!mapFilters.waterYear) return true;
-        return getWaterYearForQuarter(quarter) === mapFilters.waterYear;
-      })
-      .toSorted((a, b) => a.localeCompare(b));
-
-    return [null, ...filteredQuarters];
+    return getAvailableQuartersForWaterYear(quarterValues, mapFilters.waterYear);
   }, [quarters.data, mapFilters.waterYear]);
 
   const handleMapFilterChange = async (filterType: string, value: string | null) => {
@@ -69,18 +62,12 @@ export const FilterSidebar = ({ tables }: FilterSidebarProps) => {
 
   const handleConfigurationChange = async (configuration: string) => {
     try {
-      const nextBins = await queryClient.fetchQuery(
-        distinctValuesQuery(tables[0], 'forecast_lead_time_bin', {
-          configuration_name: configuration,
-        })
-      );
+      const nextOptions = await fetchFilterOptionsByConfig(queryClient, tables[0], configuration);
 
-      const leadTimeBin =
-        mapFilters.leadTimeBin && nextBins.includes(mapFilters.leadTimeBin)
-          ? mapFilters.leadTimeBin
-          : selectDefault(NWMD_DASHBOARD_DEFAULTS.preferredLeadTimeBin, sortLeadTimeBins(nextBins));
-
-      updateMapFilters({ configuration, leadTimeBin });
+      updateMapFilters({
+        configuration,
+        ...getFilterSelectionsByConfig(mapFilters, nextOptions),
+      });
     } catch {
       updateMapFilters({ configuration });
     }

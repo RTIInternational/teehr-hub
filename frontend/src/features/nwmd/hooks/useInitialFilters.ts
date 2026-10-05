@@ -7,6 +7,11 @@ import { useVariables } from '@/shared/queries/variables';
 import { combineLoadingStates } from '@/shared/utils/loading';
 
 import { ActionTypes, useDashboard } from '../DashboardContext';
+import {
+  getFilterSelectionsByConfig,
+  getConfigurationFilter,
+  shouldInitializeFilters,
+} from '../utils/filters';
 
 /**
  * Load filters from the data warehouse API and apply defaults.
@@ -14,50 +19,31 @@ import { ActionTypes, useDashboard } from '../DashboardContext';
  * bin query is scoped to the resolved default configuration.
  */
 export const useInitialFilters = (table: string) => {
-  const { dispatch } = useDashboard();
+  const { state, dispatch } = useDashboard();
 
-  const waterYears = useDistinctValues(table, 'water_year');
-  const quarters = useDistinctValues(table, 'quarter');
   const configurations = useConfigurations(table);
   const variables = useVariables(table);
-  const thresholds = useDistinctValues(table, 'threshold');
-  const aggMethods = useDistinctValues(table, 'window_agg');
 
   const defaultConfiguration = selectDefault(
     NWMD_DASHBOARD_DEFAULTS.preferredConfiguration,
     configurations.data ?? []
   );
+  const configurationFilter = getConfigurationFilter(defaultConfiguration ?? undefined);
 
-  const leadTimeBins = useDistinctValues(
-    table,
-    'forecast_lead_time_bin',
-    defaultConfiguration ? { configuration_name: defaultConfiguration } : undefined
-  );
+  const waterYears = useDistinctValues(table, 'water_year', configurationFilter);
+  const quarters = useDistinctValues(table, 'quarter', configurationFilter);
+  const thresholds = useDistinctValues(table, 'threshold', configurationFilter);
+  const aggMethods = useDistinctValues(table, 'window_agg', configurationFilter);
+  const leadTimeBins = useDistinctValues(table, 'forecast_lead_time_bin', configurationFilter);
 
   const defaultVariable = selectDefault(
     NWMD_DASHBOARD_DEFAULTS.preferredVariable,
     variables.data ?? []
   );
 
-  const defaultThreshold = selectDefault(
-    NWMD_DASHBOARD_DEFAULTS.preferredThreshold,
-    thresholds.data ?? []
-  );
-
-  const defaultAggMethod = selectDefault(
-    NWMD_DASHBOARD_DEFAULTS.preferredAggMethod,
-    aggMethods.data ?? []
-  );
-
-  const defaultLeadTimeBin = selectDefault(
-    NWMD_DASHBOARD_DEFAULTS.preferredLeadTimeBin,
-    leadTimeBins.data ?? []
-  );
-
   useEffect(() => {
     if (
       !waterYears.data?.length ||
-      !configurations.data?.length ||
       !variables.data?.length ||
       !aggMethods.data?.length ||
       !leadTimeBins.data?.length
@@ -67,38 +53,39 @@ export const useInitialFilters = (table: string) => {
 
     if (defaultConfiguration === null || defaultVariable === null) return;
 
-    const defaultWaterYear = waterYears.data
-      .filter((waterYear) => !!waterYear)
-      .sort((a, b) => (a < b ? 1 : -1))[0];
+    const nextSelections = getFilterSelectionsByConfig(state.mapFilters, {
+      waterYears: waterYears.data,
+      quarters: (quarters.data ?? []).filter((quarter): quarter is string => !!quarter),
+      thresholds: thresholds.data ?? [],
+      aggMethods: aggMethods.data ?? [],
+      leadTimeBins: leadTimeBins.data ?? [],
+    });
 
-    const defaultQuarter = (quarters.data ?? [])
-      .filter((quarter): quarter is string => !!quarter)
-      .sort((a, b) => (a < b ? 1 : -1))[0];
+    const nextPayload = {
+      configuration: defaultConfiguration,
+      variable: defaultVariable,
+      ...nextSelections,
+    };
+
+    if (!shouldInitializeFilters(state.mapFilters, nextPayload)) {
+      return;
+    }
 
     dispatch({
       type: ActionTypes.INITIALIZE_FILTERS,
-      payload: {
-        waterYear: defaultWaterYear,
-        quarter: defaultQuarter ?? null,
-        configuration: defaultConfiguration,
-        variable: defaultVariable,
-        threshold: defaultThreshold ?? null,
-        aggMethod: defaultAggMethod,
-        leadTimeBin: defaultLeadTimeBin,
-      },
+      payload: nextPayload,
     });
   }, [
+    state.mapFilters,
     waterYears.data,
     quarters.data,
     configurations.data,
     variables.data,
+    thresholds.data,
     aggMethods.data,
     leadTimeBins.data,
     defaultConfiguration,
     defaultVariable,
-    defaultAggMethod,
-    defaultLeadTimeBin,
-    defaultThreshold,
     dispatch,
   ]);
 
