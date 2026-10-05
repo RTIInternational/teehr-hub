@@ -8,9 +8,9 @@ import { useVariables } from '@/shared/queries/variables';
 import { ActionTypes, useDashboard } from '../DashboardContext';
 
 /**
- * Load filters from data warehouse API and apply defaults
- * @param table Data warehouse table to reference in queries
- * @returns UseQueryResult objects for distinct values
+ * Load filters from the data warehouse API and apply defaults.
+ * Lead time bins depend on the chosen configuration, so the initial lead time
+ * bin query is scoped to the resolved default configuration.
  */
 export const useInitialFilters = (table: string) => {
   const { dispatch } = useDashboard();
@@ -21,11 +21,16 @@ export const useInitialFilters = (table: string) => {
   const variables = useVariables(table);
   const thresholds = useDistinctValues(table, 'threshold');
   const aggMethods = useDistinctValues(table, 'window_agg');
-  const leadTimeBins = useDistinctValues(table, 'forecast_lead_time_bin');
 
   const defaultConfiguration = selectDefault(
     NWMD_DASHBOARD_DEFAULTS.preferredConfiguration,
     configurations.data ?? []
+  );
+
+  const leadTimeBins = useDistinctValues(
+    table,
+    'forecast_lead_time_bin',
+    defaultConfiguration ? { configuration_name: defaultConfiguration } : undefined
   );
 
   const defaultVariable = selectDefault(
