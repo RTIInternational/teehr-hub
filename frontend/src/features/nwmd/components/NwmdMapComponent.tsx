@@ -68,7 +68,7 @@ const NwmdMapComponent = <TActionTypes extends ActionTypesShape>({
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<Map>(null);
   const popup = useRef<Popup>(null);
-  const hasAutoFitOnce = useRef(false);
+  const lastAutoFitConfiguration = useRef<string | null | undefined>(undefined);
   const visibleLocationBounds = useRef<[[number, number], [number, number]] | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
 
@@ -250,6 +250,7 @@ const NwmdMapComponent = <TActionTypes extends ActionTypesShape>({
     if (!map.current || !state.mapLoaded) return;
 
     const mapInstance = map.current;
+    const currentConfiguration = state.mapFilters.configuration ?? null;
 
     // Validate GeoJSON structure
     if (!locations.data || !locations.data?.features || !Array.isArray(locations.data?.features)) {
@@ -539,9 +540,9 @@ const NwmdMapComponent = <TActionTypes extends ActionTypesShape>({
             [maxLon, maxLat],
           ];
 
-          if (!hasAutoFitOnce.current) {
+          if (lastAutoFitConfiguration.current !== currentConfiguration) {
             zoomToVisibleLocations();
-            hasAutoFitOnce.current = true;
+            lastAutoFitConfiguration.current = currentConfiguration;
           }
         }
       }
@@ -570,6 +571,7 @@ const NwmdMapComponent = <TActionTypes extends ActionTypesShape>({
   }, [
     locations.data,
     state.mapLoaded,
+    state.mapFilters.configuration,
     state.mapFilters.metricName,
     selectLocation,
     dispatch,
