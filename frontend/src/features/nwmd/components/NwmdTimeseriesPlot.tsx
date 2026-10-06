@@ -14,6 +14,7 @@ import {
 } from '@/shared/utils/dates';
 
 import type { NwmdMapFilters } from '../types/maps';
+import { getConfigurationFilter } from '../utils/filters';
 
 const MONTH_ORDER = [10, 11, 12, 1, 2, 3, 4, 5, 6, 7, 8, 9];
 
@@ -37,7 +38,11 @@ const NwmdTimeseriesPlot = ({
   selectedLocation,
   timeseriesFilters,
 }: NwmdTimeseriesPlotProps) => {
-  const quarters = useDistinctValues(table, 'quarter');
+  const quarters = useDistinctValues(
+    table,
+    'quarter',
+    getConfigurationFilter(mapFilters.configuration ?? undefined)
+  );
 
   const [waterYearPreference, setWaterYearPreference] = useState<string | null>(null);
   const [monthPreference, setMonthPreference] = useState<string | null>(null);
@@ -91,29 +96,43 @@ const NwmdTimeseriesPlot = ({
     return monthKey(mostRecentMonth.monthNumber);
   }, [availableMonths, monthPreference]);
 
+  const baseTimeseriesFilters = useMemo(
+    () => ({
+      ...timeseriesFilters,
+      secondary: {
+        ...timeseriesFilters.secondary,
+        configurations: mapFilters.configuration ? [mapFilters.configuration] : [],
+        variables: mapFilters.variable
+          ? [mapFilters.variable]
+          : timeseriesFilters.secondary.variables,
+      },
+    }),
+    [timeseriesFilters, mapFilters.configuration, mapFilters.variable]
+  );
+
   const timeseriesFiltersForSelection = useMemo(() => {
-    if (!selectedWaterYear || !selectedMonth) return timeseriesFilters;
+    if (!selectedWaterYear || !selectedMonth) return baseTimeseriesFilters;
 
     const monthNumber = Number.parseInt(selectedMonth, 10);
-    if (!Number.isFinite(monthNumber)) return timeseriesFilters;
+    if (!Number.isFinite(monthNumber)) return baseTimeseriesFilters;
 
     const monthRange = getMonthDateRangeFromWaterYearMonth(selectedWaterYear, monthNumber);
-    if (!monthRange) return timeseriesFilters;
+    if (!monthRange) return baseTimeseriesFilters;
 
     return {
-      ...timeseriesFilters,
+      ...baseTimeseriesFilters,
       primary: {
-        ...timeseriesFilters.primary,
+        ...baseTimeseriesFilters.primary,
         start_date: monthRange.start_date,
         end_date: monthRange.end_date,
       },
       secondary: {
-        ...timeseriesFilters.secondary,
+        ...baseTimeseriesFilters.secondary,
         reference_start_date: monthRange.start_date,
         reference_end_date: monthRange.end_date,
       },
     };
-  }, [timeseriesFilters, selectedWaterYear, selectedMonth]);
+  }, [baseTimeseriesFilters, selectedWaterYear, selectedMonth]);
 
   const primary_location_id = selectedLocation?.primary_location_id;
   const primary = usePrimaryTimeseries({ primary_location_id, ...timeseriesFiltersForSelection });

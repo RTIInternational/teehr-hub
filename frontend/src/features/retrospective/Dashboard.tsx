@@ -16,8 +16,7 @@ export const Dashboard = () => {
   const { state, dispatch } = useDashboard();
   const { selectLocation, selectedLocation } = useLocationSelection();
   const { mapFilters, updateMapFilters, timeseriesFilters, updateTimeseriesFilters } = useFilters();
-
-  useInitialFilters(tables[0]);
+  const initialFilters = useInitialFilters(tables[0]);
 
   return (
     <div className="d-flex flex-column" style={{ height: 'calc(100dvh - 56px)', minHeight: 0 }}>
@@ -79,6 +78,7 @@ export const Dashboard = () => {
               table={tables[0]}
               ActionTypes={ActionTypes}
               selectLocation={selectLocation}
+              isLoading={initialFilters.isLoading}
               mapFilterControls={
                 <MapFilterButton
                   tables={tables}

@@ -28,6 +28,7 @@ type MapComponentProps<TActionTypes extends ActionTypesShape> = {
   ActionTypes: TActionTypes;
   selectLocation: (location: MapLocation | null) => void;
   onViewportBoundsChange?: ((bounds: ViewportBounds) => void) | null;
+  isLoading?: boolean;
   mapFilterControls?: React.ReactNode;
   showSearch?: boolean;
   overlayLocations?: FeatureCollection;
@@ -57,6 +58,7 @@ const NwmdMapComponent = <TActionTypes extends ActionTypesShape>({
   ActionTypes,
   selectLocation,
   onViewportBoundsChange = null,
+  isLoading = false,
   mapFilterControls,
   showSearch = true,
   overlayLocations,
@@ -710,7 +712,7 @@ const NwmdMapComponent = <TActionTypes extends ActionTypesShape>({
         )}
 
         {/* Loading overlay for fetching locations */}
-        {state.mapLoaded && locations.isLoading && (
+        {state.mapLoaded && (isLoading || locations.isLoading) && (
           <div
             className="position-absolute top-0 start-0 w-100 h-100 d-flex align-items-center justify-content-center"
             style={{
@@ -721,9 +723,9 @@ const NwmdMapComponent = <TActionTypes extends ActionTypesShape>({
           >
             <div className="text-center">
               <output className="spinner-border text-primary mb-2">
-                <span className="visually-hidden">Loading locations...</span>
+                <span className="visually-hidden">Loading map data...</span>
               </output>
-              <div className="small text-muted">Loading location data...</div>
+              <div className="small text-muted">Loading map data...</div>
             </div>
           </div>
         )}

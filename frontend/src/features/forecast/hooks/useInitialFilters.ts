@@ -4,6 +4,7 @@ import { FORECAST_DASHBOARD_DEFAULTS, selectDefault } from '@/config/dashboardDe
 import { ActionTypes, useDashboard } from '@/features/forecast/DashboardContext';
 import { useConfigurations } from '@/shared/queries/configurations';
 import { useVariables } from '@/shared/queries/variables';
+import { combineLoadingStates } from '@/shared/utils/loading';
 
 /**
  * Load filters from data warehouse API and apply defaults
@@ -43,5 +44,6 @@ export const useInitialFilters = (table: string) => {
   return {
     configurations,
     variables,
+    isLoading: combineLoadingStates(configurations, variables),
   };
 };

@@ -3,6 +3,7 @@ import { useEffect } from 'react';
 import { RETROSPECTIVE_DASHBOARD_DEFAULTS, selectDefault } from '@/config/dashboardDefaults';
 import { useConfigurations } from '@/shared/queries/configurations';
 import { useVariables } from '@/shared/queries/variables';
+import { combineLoadingStates } from '@/shared/utils/loading';
 
 import { ActionTypes, useDashboard } from '../DashboardContext';
 
@@ -44,5 +45,6 @@ export const useInitialFilters = (table: string) => {
   return {
     configurations,
     variables,
+    isLoading: combineLoadingStates(configurations, variables),
   };
 };
