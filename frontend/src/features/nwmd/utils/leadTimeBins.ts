@@ -29,7 +29,7 @@ export const formatLeadTimeBinLabel = (leadTimeBin: string) => {
   const bounds = getLeadTimeBinBounds(leadTimeBin);
   if (!bounds) return leadTimeBin || '';
 
-  return `${bounds.minHours} to <${bounds.maxHours}`;
+  return `>${bounds.minHours} to ${bounds.maxHours}`;
 };
 
 export const sortLeadTimeBins = (bins: string[] = []) =>
