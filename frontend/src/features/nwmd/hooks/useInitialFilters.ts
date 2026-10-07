@@ -3,7 +3,6 @@ import { useEffect } from 'react';
 import { NWMD_DASHBOARD_DEFAULTS, selectDefault } from '@/config/dashboardDefaults';
 import { useConfigurations } from '@/shared/queries/configurations';
 import { useDistinctValues } from '@/shared/queries/distinctValues';
-import { useVariables } from '@/shared/queries/variables';
 import { combineLoadingStates } from '@/shared/utils/loading';
 
 import { ActionTypes, useDashboard } from '../DashboardContext';
@@ -22,7 +21,6 @@ export const useInitialFilters = (table: string) => {
   const { state, dispatch } = useDashboard();
 
   const configurations = useConfigurations(table);
-  const variables = useVariables(table);
 
   const defaultConfiguration = selectDefault(
     NWMD_DASHBOARD_DEFAULTS.preferredConfiguration,
@@ -30,6 +28,7 @@ export const useInitialFilters = (table: string) => {
   );
   const configurationFilter = getConfigurationFilter(defaultConfiguration ?? undefined);
 
+  const variables = useDistinctValues(table, 'variable_name', configurationFilter);
   const waterYears = useDistinctValues(table, 'water_year', configurationFilter);
   const quarters = useDistinctValues(table, 'quarter', configurationFilter);
   const thresholds = useDistinctValues(table, 'threshold', configurationFilter);
@@ -54,6 +53,7 @@ export const useInitialFilters = (table: string) => {
     if (defaultConfiguration === null || defaultVariable === null) return;
 
     const nextSelections = getFilterSelectionsByConfig(state.mapFilters, {
+      variables: variables.data,
       waterYears: waterYears.data,
       quarters: (quarters.data ?? []).filter((quarter): quarter is string => !!quarter),
       thresholds: thresholds.data ?? [],
@@ -63,7 +63,6 @@ export const useInitialFilters = (table: string) => {
 
     const nextPayload = {
       configuration: defaultConfiguration,
-      variable: defaultVariable,
       ...nextSelections,
     };
 
