@@ -10,6 +10,7 @@ import { sortLeadTimeBins } from './leadTimeBins';
 type NullableString = string | null;
 
 export type ConfigurationScopedOptions = {
+  variables: string[];
   waterYears: NullableString[];
   quarters: string[];
   thresholds: NullableString[];
@@ -42,10 +43,15 @@ export const getAvailableQuartersForWaterYear = (
 export const getFilterSelectionsByConfig = (
   currentFilters: Pick<
     NwmdMapFilters,
-    'waterYear' | 'quarter' | 'threshold' | 'aggMethod' | 'leadTimeBin'
+    'variable' | 'waterYear' | 'quarter' | 'threshold' | 'aggMethod' | 'leadTimeBin'
   >,
   options: ConfigurationScopedOptions
 ) => {
+  const variable =
+    currentFilters.variable !== undefined && options.variables.includes(currentFilters.variable)
+      ? currentFilters.variable
+      : pickLatestValue(options.variables);
+
   const waterYear =
     currentFilters.waterYear !== undefined && options.waterYears.includes(currentFilters.waterYear)
       ? currentFilters.waterYear
@@ -74,6 +80,7 @@ export const getFilterSelectionsByConfig = (
       : selectDefault(NWMD_DASHBOARD_DEFAULTS.preferredLeadTimeBin, orderedLeadTimeBins);
 
   return {
+    variable,
     waterYear,
     quarter,
     threshold,
@@ -120,15 +127,19 @@ export const fetchFilterOptionsByConfig = async (
 ): Promise<ConfigurationScopedOptions> => {
   const filters = getConfigurationFilter(configuration);
 
-  const [waterYears, quarters, thresholds, aggMethods, leadTimeBins] = await Promise.all([
-    queryClient.fetchQuery(distinctValuesQuery(table, 'water_year', filters)),
-    queryClient.fetchQuery(distinctValuesQuery(table, 'quarter', filters)),
-    queryClient.fetchQuery(distinctValuesQuery(table, 'threshold', filters)),
-    queryClient.fetchQuery(distinctValuesQuery(table, 'window_agg', filters)),
-    queryClient.fetchQuery(distinctValuesQuery(table, 'forecast_lead_time_bin', filters)),
-  ]);
+  const [variables, waterYears, quarters, thresholds, aggMethods, leadTimeBins] = await Promise.all(
+    [
+      queryClient.fetchQuery(distinctValuesQuery(table, 'variable_name', filters)),
+      queryClient.fetchQuery(distinctValuesQuery(table, 'water_year', filters)),
+      queryClient.fetchQuery(distinctValuesQuery(table, 'quarter', filters)),
+      queryClient.fetchQuery(distinctValuesQuery(table, 'threshold', filters)),
+      queryClient.fetchQuery(distinctValuesQuery(table, 'window_agg', filters)),
+      queryClient.fetchQuery(distinctValuesQuery(table, 'forecast_lead_time_bin', filters)),
+    ]
+  );
 
   return {
+    variables,
     waterYears,
     quarters,
     thresholds,
