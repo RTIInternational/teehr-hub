@@ -14,6 +14,7 @@ import KeycloakAdmin from '@/pages/admin/KeycloakAdmin';
 import DashboardsHome from '@/pages/DashboardsHome';
 import Home from '@/pages/Home';
 import Navbar from '@/shared/components/Navbar';
+import StatusBanner from '@/shared/components/StatusBanner';
 
 import 'bootstrap/dist/css/bootstrap.min.css';
 import './App.css';
@@ -88,6 +89,7 @@ const AppRoutes = () => {
   return (
     <div className="App">
       <Navbar />
+      <StatusBanner />
       <main>
         <Routes>
           <Route path="/" element={<Home />} />
