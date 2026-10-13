@@ -64,6 +64,8 @@ environments:
     variables:
       hostname: teehr.rtiamanzi.org
       certificateIssuerName: letsencrypt-prod
+      # Maintenance status, served outside the cluster (teehr-cloud-platform)
+      statusUrl: https://status.teehr.rtiamanzi.org/status.json
       devTeehrVersion: ee5f8268f33da5bacc59443fb422e12050250683
       stableTeehrVersion: v0.7.0
       previousTeehrVersion: v0.6.6
