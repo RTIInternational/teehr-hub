@@ -49,9 +49,9 @@ def initialize_evaluation(
         "spark.kubernetes.executor.podNamePrefix": "prefect-job",
         "spark.sql.catalog.iceberg.token-exchange-enabled": "false",
         "spark.sql.catalog.iceberg.token-refresh-enabled": "true",
-        "spark.sql.catalog.iceberg.client.region": os.getenv(
-            "AWS_REGION", "us-east-2"
-        )
+        # Set from the deploy target's region; no default, since a wrong
+        # region fails S3 signing in confusing ways.
+        "spark.sql.catalog.iceberg.client.region": os.environ["AWS_REGION"]
     }
     if update_configs:
         default_configs.update(update_configs)

@@ -11,16 +11,17 @@ variables:
     replyToDisplayName: TEEHR Support
     starttls: "true"
     ssl: "false"
-  aws:
-    region: us-east-2
+  # Set per cluster by the remote deploy target (deploy-targets/).
   remoteCluster:
-    contextArn: arn:aws:eks:us-east-2:935462133478:cluster/teehr-hub
-    ecrRegistry: 935462133478.dkr.ecr.us-east-2.amazonaws.com
+    contextArn: ""
+    ecrRegistry: ""
 
 environments:
   - name: local
     defaultNamespace: ${project.name}
     variables:
+      aws:
+        region: us-east-2
       hostname: teehr.local.app.garden
       certificateIssuerName: letsencrypt-prod
       devTeehrVersion: ee5f8268f33da5bacc59443fb422e12050250683
@@ -61,29 +62,18 @@ environments:
       allowedOrigins: "https://dashboards.${var.hostname},https://api.${var.hostname}"
   - name: remote
     defaultNamespace: ${project.name}
+    # Cluster-specific values (region, cluster, ECR, EFS, IRSA roles, buckets,
+    # hostname) come from deploy-targets/<target>.yml, chosen with DEPLOY_TARGET.
+    # It overrides anything below. See teehr-cloud-core
+    # docs/platform-app-deployment-contract.md.
+    varfile: deploy-targets/${local.env.DEPLOY_TARGET || "use2"}.yml
     variables:
-      hostname: teehr.rtiamanzi.org
       certificateIssuerName: letsencrypt-prod
       # Maintenance status, served outside the cluster (teehr-cloud-platform)
       statusUrl: https://status.teehr.rtiamanzi.org/status.json
       devTeehrVersion: ee5f8268f33da5bacc59443fb422e12050250683
       stableTeehrVersion: v0.7.0
       previousTeehrVersion: v0.6.6
-      irsa:
-        # Jupyter's role is scoped only to external, non-warehouse data
-        # (e.g. ciroh-rti-hefs-data) — its Iceberg warehouse access goes
-        # through Polaris-vended credentials like every other client.
-        jupyterRoleArn: arn:aws:iam::935462133478:role/teehr-hub-iceberg-s3-warehouse-readonly-irsa
-        # Polaris's own identity, used to assume the warehouse data-access
-        # role and vend scoped, short-lived S3 credentials to Trino, Spark,
-        # Prefect, and Jupyter.
-        polarisRoleArn: arn:aws:iam::935462133478:role/teehr-hub-polaris-irsa
-        # Prefect's role covers only non-catalog S3 work (icechunk); its
-        # Iceberg access still comes from Polaris via POLARIS_USE_STS.
-        prefectJobRoleArn: arn:aws:iam::935462133478:role/teehr-hub-prefect-job-irsa
-        # xpublish-api reads icechunk zarr stores, which Polaris cannot vend
-        # credentials for, so it holds a direct read-only role.
-        xpublishRoleArn: arn:aws:iam::935462133478:role/teehr-hub-xpublish-api-irsa
       polaris:
         inCluster: "true"
         catalogS3PathStyleAccess: "false"
@@ -91,15 +81,12 @@ environments:
         catalogS3Region: ${var.aws.region}
         catalogType: rest
         catalogUri: http://polaris:8181/api/catalog
-        catalogWarehouse: s3://dev-teehr-iceberg-warehouse/
-        catalogRoleArn: arn:aws:iam::935462133478:role/teehr-hub-iceberg-s3-warehouse-access
         skipCredentialSubscopingIndirection: "false"
         storageStsUnavailable: "false"
         defaultRealm: teehr
         realmsCsv: teehr
         oauthServerUri: http://keycloak-service:8080/realms/teehr/protocol/openid-connect/token
         oidcIssuerUri: http://keycloak-service:8080/realms/teehr
-      nfsServerDns: "fs-0cb715f5b7a76e862.efs.us-east-2.amazonaws.com"
       trino:
         host: trino
         port: "8080"
@@ -109,12 +96,10 @@ environments:
       # Gridded data (xpublish-api). Separate bucket from the Iceberg
       # warehouse; accessed directly rather than through Polaris.
       icechunk:
-        bucket: "dev-teehr-icechunk-warehouse"
         prefix: "icechunk-ingests"
       # Vector tiles (xpublish-api). PMTiles archives sit alongside the
       # icechunk stores.
       pmtiles:
-        bucket: "dev-teehr-icechunk-warehouse"
         prefix: "vector-tiles"
       allowedOrigins: "https://dashboards.${var.hostname},https://api.${var.hostname}"
 providers:
@@ -138,4 +123,4 @@ providers:
       namespace: ${project.name}
     context: ${var.remoteCluster.contextArn}
     buildMode: cluster-buildkit
-    defaultHostname: teehr.rtiamanzi.org
+    defaultHostname: ${var.hostname}

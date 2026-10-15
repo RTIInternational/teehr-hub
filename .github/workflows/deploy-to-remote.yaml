@@ -1,6 +1,14 @@
 name: Garden Deploy Remote
 on:
   workflow_dispatch:
+    inputs:
+      target:
+        description: Cluster to deploy to (a file in deploy-targets/)
+        type: choice
+        options:
+          - use2
+          - use1
+        default: use2
 
 permissions:
       id-token: write
@@ -9,6 +17,10 @@ permissions:
 jobs:
   garden-deploy-remote:
     runs-on: ubuntu-latest
+    env:
+      # Selects deploy-targets/<target>.yml as the remote environment's varfile.
+      DEPLOY_TARGET: ${{ inputs.target }}
+      TARGET_FILE: deploy-targets/${{ inputs.target }}.yml
     steps:
       - name: Git clone the repository
         uses: actions/checkout@v3
@@ -18,20 +30,17 @@ jobs:
       - name: Setup app secrets
         run: |
           echo "${{ secrets.REMOTE_SECRETS }}" > teehr-cloud-core/secrets/secrets.remote.yaml
-          echo "${{ secrets.REMOTE_DEPLOY }}" > teehr-cloud-core/configs/deploy.remote-aws-srvs.yaml
 
-      - name: Validate deployment contract
+      - name: Validate deploy target
         run: |
-          bash teehr-cloud-core/scripts/validate-deploy-contract.sh teehr-cloud-core/configs/deploy.remote-aws-srvs.yaml
+          bash teehr-cloud-core/scripts/validate-deploy-contract.sh ${TARGET_FILE}
 
       - name: Set deployment env. vars
-        id: extract_values
         run: |
-          echo "CLUSTER_ARN=$(yq eval '.clusterArn' teehr-cloud-core/configs/deploy.remote-aws-srvs.yaml)" >> $GITHUB_ENV
-          echo "CLUSTER_ROLE_ARN=$(yq eval '.clusterRoleArn' teehr-cloud-core/configs/deploy.remote-aws-srvs.yaml)" >> $GITHUB_ENV
-          echo "ACTION_ROLE_ARN=$(yq eval '.actionRoleArn' teehr-cloud-core/configs/deploy.remote-aws-srvs.yaml)" >> $GITHUB_ENV
-          echo "AWS_REGION=$(yq eval '.awsRegion' teehr-cloud-core/configs/deploy.remote-aws-srvs.yaml)" >> $GITHUB_ENV
-          echo "CLUSTER_NAME=$(yq eval '.clusterName' teehr-cloud-core/configs/deploy.remote-aws-srvs.yaml)" >> $GITHUB_ENV
+          echo "CLUSTER_ROLE_ARN=$(yq eval '.deploy.clusterRoleArn' ${TARGET_FILE})" >> $GITHUB_ENV
+          echo "ACTION_ROLE_ARN=$(yq eval '.deploy.actionRoleArn' ${TARGET_FILE})" >> $GITHUB_ENV
+          echo "AWS_REGION=$(yq eval '.aws.region' ${TARGET_FILE})" >> $GITHUB_ENV
+          echo "CLUSTER_NAME=$(yq eval '.deploy.clusterName' ${TARGET_FILE})" >> $GITHUB_ENV
 
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v4
