@@ -9,15 +9,18 @@ spec:
       containers:
       - name: deploy-prefect-workflows
         image: ${actions.build.teehr-prefect-image.outputs.deploymentImageId}
+        # Pauses every deployment afterwards when the deploy target turns
+        # schedules off (prefect.schedulesActive), e.g. a staging cluster.
         command:
-        # - pwd
-        - prefect
-        - --no-prompt
-        - deploy
-        - --all
-        - --prefect-file
-        - ${environment.name == "local" ? "/teehr/prefect-local.yaml" : "/teehr/prefect-remote.yaml"}
+        - sh
+        - -c
+        - >-
+          prefect --no-prompt deploy --all
+          --prefect-file ${environment.name == "local" ? "/teehr/prefect-local.yaml" : "/teehr/prefect-remote.yaml"}
+          && if [ "$PREFECT_SCHEDULES_ACTIVE" = "false" ]; then python /opt/teehr/pause_deployments.py; fi
         env:
+        - name: PREFECT_SCHEDULES_ACTIVE
+          value: "${var.prefect.schedulesActive}"
         - name: PREFECT_API_URL
           value: http://prefect-server:4200/api
         # Pass in envs that can then be passed to the job template/job.

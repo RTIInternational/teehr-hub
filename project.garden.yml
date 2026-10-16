@@ -11,6 +11,10 @@ variables:
     replyToDisplayName: TEEHR Support
     starttls: "true"
     ssl: "false"
+  # A deploy target sets this false to pause all Prefect deployments, e.g. on
+  # a staging cluster.
+  prefect:
+    schedulesActive: "true"
   # Set per cluster by the remote deploy target (deploy-targets/).
   remoteCluster:
     contextArn: ""

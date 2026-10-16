@@ -21,6 +21,10 @@ icechunk:
   bucket: teehr-icechunk-warehouse-use1
 pmtiles:
   bucket: teehr-icechunk-warehouse-use1
+# No scheduled ingests until cutover: the warehouse is migrated into this
+# cluster's catalog then, and runs before that would collide with it.
+prefect:
+  schedulesActive: "false"
 deploy:
   clusterName: teehr-hub-use1
   clusterRoleArn: arn:aws:iam::935462133478:role/teehr-hub-teehr-hub-admin
