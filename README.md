@@ -169,9 +169,27 @@ Or set a profile
 export AWS_PROFILE=ciroh_mdenno
 ```
 
-Run the following to connect to `teehr-hub` cluster.  If you have deployed to your own cluster you will need to adjust this command accordingly.
+Run the following to connect to a cluster. `deploy-targets/<target>.yml` has its `deploy.clusterName` and
+`aws.region`; this is the us-east-2 `teehr-hub` cluster.
 ```bash
 aws eks update-kubeconfig --name teehr-hub --region us-east-2 --role-arn arn:aws:iam::935462133478:role/teehr-hub-teehr-hub-admin
 kubectl config set-context $(kubectl config current-context) --namespace teehr-hub
 k9s
 ```
+
+### Deploy targets
+
+Remote deploys use the single `remote` Garden environment. Everything specific to a cluster (region, cluster,
+ECR, EFS, IAM roles, buckets, hostname) is in `deploy-targets/<target>.yml`, and `DEPLOY_TARGET` picks one
+(default `use2`). The **Garden Deploy Remote** workflow takes the target as an input. Locally:
+
+```bash
+DEPLOY_TARGET=use1 garden deploy --env remote
+```
+
+Before the first deploy to a new cluster, create its ECR image secret once:
+`CONTEXT=<kube-context> ./create-ecr-secret-helper.sh`.
+
+The file format is defined in `teehr-cloud-core/docs/platform-app-deployment-contract.md`. Don't give
+`project.garden.yml` project-level defaults for keys a target sets: templates in the environment's `variables`
+resolve against project variables before the target file is merged in.

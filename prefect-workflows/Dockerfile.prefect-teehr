@@ -84,6 +84,8 @@ COPY executor-pod-template.yaml /opt/teehr/executor-pod-template.yaml
 
 COPY update_job_template.py /opt/teehr/update_job_template.py
 
+COPY pause_deployments.py /opt/teehr/pause_deployments.py
+
 # The COPYs above land as root; hand /teehr back to the runtime user.
 RUN chown -R prefect:prefect /teehr /opt/teehr
 

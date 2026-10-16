@@ -1,0 +1,31 @@
+# us-east-1 cluster (teehr-hub-use1). Values from teehr-cloud-platform
+# Terraform outputs; keys documented in teehr-cloud-core
+# docs/platform-app-deployment-contract.md. IRSA roles as in use2.yml.
+aws:
+  region: us-east-1
+remoteCluster:
+  contextArn: arn:aws:eks:us-east-1:935462133478:cluster/teehr-hub-use1
+  ecrRegistry: 935462133478.dkr.ecr.us-east-1.amazonaws.com
+# Staging hostnames until cutover (teehr-hub#462).
+hostname: use1.teehr.rtiamanzi.org
+nfsServerDns: fs-088cf95ec74bdfc16.efs.us-east-1.amazonaws.com
+irsa:
+  jupyterRoleArn: arn:aws:iam::935462133478:role/teehr-hub-use1-iceberg-s3-warehouse-readonly-irsa
+  polarisRoleArn: arn:aws:iam::935462133478:role/teehr-hub-use1-polaris-irsa
+  prefectJobRoleArn: arn:aws:iam::935462133478:role/teehr-hub-use1-prefect-job-irsa
+  xpublishRoleArn: arn:aws:iam::935462133478:role/teehr-hub-use1-xpublish-api-irsa
+polaris:
+  catalogWarehouse: s3://teehr-iceberg-warehouse-use1/
+  catalogRoleArn: arn:aws:iam::935462133478:role/teehr-hub-use1-iceberg-s3-warehouse-access
+icechunk:
+  bucket: teehr-icechunk-warehouse-use1
+pmtiles:
+  bucket: teehr-icechunk-warehouse-use1
+# No scheduled ingests until cutover: the warehouse is migrated into this
+# cluster's catalog then, and runs before that would collide with it.
+prefect:
+  schedulesActive: "false"
+deploy:
+  clusterName: teehr-hub-use1
+  clusterRoleArn: arn:aws:iam::935462133478:role/teehr-hub-teehr-hub-admin
+  actionRoleArn: arn:aws:iam::935462133478:role/teehr-hub-github-actions-garden-deploy
