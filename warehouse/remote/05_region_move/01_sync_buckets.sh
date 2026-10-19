@@ -17,10 +17,12 @@ set -euo pipefail
 cd "$(dirname "$0")"
 LOG="sync-$(date -u +%Y%m%dT%H%M%SZ).log"
 
-# Test tables not carried over (decided on #465).
+# Test tables not carried over (decided on #465), and the staging folders that
+# 02_rewrite_table_paths writes inside each table (03 copies what's needed).
 EXCLUDES=(
   --exclude "teehr/nwmd_metrics_by_location_v2_test/*"
   --exclude "teehr/nwmd_metrics_by_location_v2_wy_string/*"
+  --exclude "*/_region_move/*"
 )
 
 sync_bucket() {
