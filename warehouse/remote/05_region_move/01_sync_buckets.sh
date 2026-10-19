@@ -29,11 +29,11 @@ sync_bucket() {
   echo "== s3://$src -> s3://$dst ($(date -u +%H:%M:%SZ))" | tee -a "$LOG"
   aws s3 sync "s3://$src" "s3://$dst" \
     --source-region us-east-2 --region us-east-1 \
-    --only-show-errors "${EXCLUDES[@]}" "$@" 2>&1 | tee -a "$LOG"
+    --only-show-errors "${EXCLUDES[@]}" ${@+"$@"} 2>&1 | tee -a "$LOG"
 }
 
-sync_bucket dev-teehr-iceberg-warehouse teehr-iceberg-warehouse-use1 "${@}"
-sync_bucket dev-teehr-icechunk-warehouse teehr-icechunk-warehouse-use1 "${@}"
+sync_bucket dev-teehr-iceberg-warehouse teehr-iceberg-warehouse-use1 ${@+"$@"}
+sync_bucket dev-teehr-icechunk-warehouse teehr-icechunk-warehouse-use1 ${@+"$@"}
 
 echo "== done ($(date -u +%H:%M:%SZ)). Object counts:" | tee -a "$LOG"
 for b in dev-teehr-iceberg-warehouse teehr-iceberg-warehouse-use1 dev-teehr-icechunk-warehouse teehr-icechunk-warehouse-use1; do
