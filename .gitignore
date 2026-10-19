@@ -11,3 +11,5 @@ secrets.remote.yaml:Zone.Identifier
 __pycache__/
 .python-version
 *.egg-info
+# Region-move bucket sync logs
+warehouse/remote/05_region_move/sync-*.log
