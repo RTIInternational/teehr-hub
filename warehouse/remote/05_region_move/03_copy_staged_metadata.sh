@@ -6,6 +6,10 @@ set -euo pipefail
 # the rewritten metadata references (the data files) is already there from
 # 01_sync_buckets.sh. Part of RTIInternational/teehr-hub#465.
 #
+# The rewritten files keep the original names, so they overwrite the old-path
+# copies that 01_sync_buckets.sh made. Don't re-run 01 after this: it would copy
+# the old-path originals back.
+#
 # Usage: AWS_PROFILE=ciroh_mdenno ./03_copy_staged_metadata.sh rewrite_manifest.json
 #
 # Get rewrite_manifest.json from /data/region_move/<run id>/ on the us-east-2
@@ -30,6 +34,7 @@ read_file_list() {
   fi
 }
 
+TARGET_PREFIX=$(jq -r '.target_prefix' "$MANIFEST")
 failures=0
 n_tables=$(jq '.tables | length' "$MANIFEST")
 echo "$n_tables tables in $MANIFEST"
@@ -46,12 +51,17 @@ for i in $(seq 0 $((n_tables - 1))); do
   grep -vF "$staging" "$WORK/list.csv" > "$WORK/data.csv" || true
   echo "   $(wc -l < "$WORK/staged.csv" | tr -d ' ') staged metadata files, $(wc -l < "$WORK/data.csv" | tr -d ' ') other files"
 
-  # Fast path: every staged file goes to <target>/metadata/<same name>.
-  if awk -F, -v t="$target/metadata/" '{n=split($1,p,"/"); if ($2 != t p[n]) bad=1} END {exit bad}' "$WORK/staged.csv"; then
-    aws s3 sync "$staging" "$target/metadata/" \
+  # rewrite_table_path stages each file under its path relative to the bucket
+  # (<staging>teehr/<table>/metadata/<file>). Fast path: every staged file goes
+  # to the same relative path under the target prefix, so mirror the staging
+  # folder onto the bucket. cp, not sync, so the old-path copies are always
+  # replaced.
+  if awk -F, -v s="$staging" -v t="$TARGET_PREFIX" \
+      '{if (substr($1, length(s)+1) != substr($2, length(t)+1)) bad=1} END {exit bad}' "$WORK/staged.csv"; then
+    aws s3 cp "$staging" "$TARGET_PREFIX" --recursive --exclude "file-list*" \
       --source-region "$SRC_REGION" --region "$DST_REGION" --only-show-errors
   else
-    echo "   staged files don't all map to metadata/; copying one by one"
+    echo "   staged files don't mirror the target layout; copying one by one"
     while IFS=, read -r src dst; do
       aws s3 cp "$src" "$dst" --source-region "$SRC_REGION" --region "$DST_REGION" --only-show-errors
     done < "$WORK/staged.csv"
@@ -67,8 +77,19 @@ for i in $(seq 0 $((n_tables - 1))); do
     echo "   FAIL: $missing referenced files missing in us-east-1, e.g.:"
     comm -23 "$WORK/needed.txt" "$WORK/present.txt" | head -3 | sed 's/^/     /'
     failures=$((failures + 1))
+    continue
+  fi
+
+  # The copied metadata must point at the new bucket, not just exist.
+  latest=$(jq -r ".tables[$i].latest_version" "$MANIFEST")
+  meta=$(aws s3 cp "$target/metadata/${latest##*/}" - --region "$DST_REGION")
+  location=$(echo "$meta" | jq -r '.location')
+  manifest_list=$(echo "$meta" | jq -r '(.snapshots // [])[-1]["manifest-list"] // ""')
+  if [[ "$location" != "$target" || ( -n "$manifest_list" && "$manifest_list" != "$TARGET_PREFIX"* ) ]]; then
+    echo "   FAIL: ${latest##*/} still points at $location / $manifest_list"
+    failures=$((failures + 1))
   else
-    echo "   ok: all referenced files present"
+    echo "   ok: all referenced files present; metadata points at $location"
   fi
 done
 
