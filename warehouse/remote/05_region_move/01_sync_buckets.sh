@@ -7,6 +7,9 @@ set -euo pipefail
 # one. Run it once ahead of cutover, then again at cutover after Prefect is
 # paused on us-east-2. Nothing is deleted on either side.
 #
+# Don't run it after 03_copy_staged_metadata.sh: the rewritten metadata keeps
+# the original file names, so this would copy the old-path originals back.
+#
 # The copy is server-side (S3 to S3), so local bandwidth doesn't matter.
 # Iceberg metadata in the copy still points at the old bucket until
 # 02_migrate_tables rewrites it and registers the tables.
