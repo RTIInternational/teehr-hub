@@ -1,0 +1,36 @@
+# us-east-2 cluster (teehr-hub). Values from teehr-cloud-platform Terraform
+# outputs; keys documented in teehr-cloud-core
+# docs/platform-app-deployment-contract.md.
+aws:
+  region: us-east-2
+remoteCluster:
+  contextArn: arn:aws:eks:us-east-2:935462133478:cluster/teehr-hub
+  ecrRegistry: 935462133478.dkr.ecr.us-east-2.amazonaws.com
+hostname: teehr.rtiamanzi.org
+nfsServerDns: fs-0cb715f5b7a76e862.efs.us-east-2.amazonaws.com
+irsa:
+  # Jupyter's role is scoped only to external, non-warehouse data
+  # (e.g. ciroh-rti-hefs-data) — its Iceberg warehouse access goes
+  # through Polaris-vended credentials like every other client.
+  jupyterRoleArn: arn:aws:iam::935462133478:role/teehr-hub-iceberg-s3-warehouse-readonly-irsa
+  # Polaris's own identity, used to assume the warehouse data-access
+  # role and vend scoped, short-lived S3 credentials to Trino, Spark,
+  # Prefect, and Jupyter.
+  polarisRoleArn: arn:aws:iam::935462133478:role/teehr-hub-polaris-irsa
+  # Prefect's role covers only non-catalog S3 work (icechunk); its
+  # Iceberg access still comes from Polaris via POLARIS_USE_STS.
+  prefectJobRoleArn: arn:aws:iam::935462133478:role/teehr-hub-prefect-job-irsa
+  # xpublish-api reads icechunk zarr stores, which Polaris cannot vend
+  # credentials for, so it holds a direct read-only role.
+  xpublishRoleArn: arn:aws:iam::935462133478:role/teehr-hub-xpublish-api-irsa
+polaris:
+  catalogWarehouse: s3://dev-teehr-iceberg-warehouse/
+  catalogRoleArn: arn:aws:iam::935462133478:role/teehr-hub-iceberg-s3-warehouse-access
+icechunk:
+  bucket: dev-teehr-icechunk-warehouse
+pmtiles:
+  bucket: dev-teehr-icechunk-warehouse
+deploy:
+  clusterName: teehr-hub
+  clusterRoleArn: arn:aws:iam::935462133478:role/teehr-hub-teehr-hub-admin
+  actionRoleArn: arn:aws:iam::935462133478:role/teehr-hub-github-actions-garden-deploy
