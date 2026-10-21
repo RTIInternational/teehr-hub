@@ -9,6 +9,10 @@ on:
           - use2
           - use1
         default: use2
+      force:
+        description: Redeploy every action, even ones Garden thinks are current (needed after changing a deploy-target value such as hostname)
+        type: boolean
+        default: false
 
 permissions:
       id-token: write
@@ -65,4 +69,4 @@ jobs:
         uses: garden-io/garden-action@v2
         with:
           garden-version: 0.14.20
-          command: deploy --force-build --env remote
+          command: deploy --force-build ${{ inputs.force && '--force' || '' }} --env remote
