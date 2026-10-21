@@ -170,9 +170,9 @@ export AWS_PROFILE=ciroh_mdenno
 ```
 
 Run the following to connect to a cluster. `deploy-targets/<target>.yml` has its `deploy.clusterName` and
-`aws.region`; this is the us-east-2 `teehr-hub` cluster.
+`aws.region`; this is the production `teehr-hub-use1` cluster (us-east-1).
 ```bash
-aws eks update-kubeconfig --name teehr-hub --region us-east-2 --role-arn arn:aws:iam::935462133478:role/teehr-hub-teehr-hub-admin
+aws eks update-kubeconfig --name teehr-hub-use1 --region us-east-1 --role-arn arn:aws:iam::935462133478:role/teehr-hub-teehr-hub-admin
 kubectl config set-context $(kubectl config current-context) --namespace teehr-hub
 k9s
 ```
@@ -181,10 +181,11 @@ k9s
 
 Remote deploys use the single `remote` Garden environment. Everything specific to a cluster (region, cluster,
 ECR, EFS, IAM roles, buckets, hostname) is in `deploy-targets/<target>.yml`, and `DEPLOY_TARGET` picks one
-(default `use2`). The **Garden Deploy Remote** workflow takes the target as an input. Locally:
+(default `use1`, the production cluster since 2026-10-21). The **Garden Deploy Remote** workflow takes the target
+as an input. Locally:
 
 ```bash
-DEPLOY_TARGET=use1 garden deploy --env remote
+DEPLOY_TARGET=use2 garden deploy --env remote
 ```
 
 Before the first deploy to a new cluster, create its ECR image secret once:

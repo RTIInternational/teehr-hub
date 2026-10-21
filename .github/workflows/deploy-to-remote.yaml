@@ -6,9 +6,9 @@ on:
         description: Cluster to deploy to (a file in deploy-targets/)
         type: choice
         options:
-          - use2
           - use1
-        default: use2
+          - use2
+        default: use1
       force:
         description: Redeploy every action, even ones Garden thinks are current (needed after changing a deploy-target value such as hostname)
         type: boolean
