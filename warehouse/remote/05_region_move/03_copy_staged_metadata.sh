@@ -68,10 +68,24 @@ for i in $(seq 0 $((n_tables - 1))); do
   fi
 
   # Everything the rewritten metadata references must now exist in us-east-1.
+  # Copy anything the bucket sync missed (e.g. a table stored in a folder the
+  # sync excluded) from its source path in the file list, then check again.
   bucket_root=$(echo "$target" | cut -d/ -f1-3)
-  aws s3 ls "$target/" --recursive --region "$DST_REGION" \
-    | awk -v b="$bucket_root" '{print b "/" $4}' | sort > "$WORK/present.txt"
+  list_present() {
+    aws s3 ls "$target/" --recursive --region "$DST_REGION" \
+      | awk -v b="$bucket_root" '{print b "/" $4}' | sort > "$WORK/present.txt"
+  }
+  list_present
   cut -d, -f2 "$WORK/list.csv" | sort > "$WORK/needed.txt"
+  comm -23 "$WORK/needed.txt" "$WORK/present.txt" > "$WORK/missing.txt"
+  if [[ -s "$WORK/missing.txt" ]]; then
+    echo "   copying $(wc -l < "$WORK/missing.txt" | tr -d ' ') referenced files missing in us-east-1"
+    awk -F, 'NR==FNR {want[$1]=1; next} ($2 in want) {print $1 "," $2}' "$WORK/missing.txt" "$WORK/list.csv" \
+      | while IFS=, read -r src dst; do
+          aws s3 cp "$src" "$dst" --source-region "$SRC_REGION" --region "$DST_REGION" --only-show-errors
+        done
+    list_present
+  fi
   missing=$(comm -23 "$WORK/needed.txt" "$WORK/present.txt" | wc -l | tr -d ' ')
   if [[ "$missing" -gt 0 ]]; then
     echo "   FAIL: $missing referenced files missing in us-east-1, e.g.:"
@@ -95,7 +109,8 @@ done
 
 if [[ "$failures" -gt 0 ]]; then
   echo ""
-  echo "$failures table(s) incomplete. Re-run 01_sync_buckets.sh, then this script."
+  echo "$failures table(s) incomplete; see the errors above. Don't re-run 01_sync_buckets.sh:"
+  echo "it would copy the old-path metadata back over what this script copied."
   exit 1
 fi
 echo ""

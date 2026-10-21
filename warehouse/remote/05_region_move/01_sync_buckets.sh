@@ -20,10 +20,15 @@ set -euo pipefail
 cd "$(dirname "$0")"
 LOG="sync-$(date -u +%Y%m%dT%H%M%SZ).log"
 
-# Test tables not carried over (decided on #465), and the staging folders that
-# 02_rewrite_table_paths writes inside each table (03 copies what's needed).
+# Folders not carried over, and the staging folders that 02_rewrite_table_paths
+# writes inside each table (03 copies what's needed).
+#
+# Exclude a folder only after checking no table lives in it: a table's folder
+# is its location, which can differ from its name (an Iceberg rename doesn't
+# move files). The live table teehr.nwmd_metrics_by_location_v2 is stored in
+# nwmd_metrics_by_location_v2_test/, so that folder must be copied. 02's
+# manifest lists every table's source_location.
 EXCLUDES=(
-  --exclude "teehr/nwmd_metrics_by_location_v2_test/*"
   --exclude "teehr/nwmd_metrics_by_location_v2_wy_string/*"
   --exclude "*/_region_move/*"
 )

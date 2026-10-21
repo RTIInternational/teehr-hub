@@ -70,7 +70,7 @@ environments:
     # hostname) come from deploy-targets/<target>.yml, chosen with DEPLOY_TARGET.
     # It overrides anything below. See teehr-cloud-core
     # docs/platform-app-deployment-contract.md.
-    varfile: deploy-targets/${local.env.DEPLOY_TARGET || "use2"}.yml
+    varfile: deploy-targets/${local.env.DEPLOY_TARGET || "use1"}.yml
     variables:
       certificateIssuerName: letsencrypt-prod
       # Maintenance status, served outside the cluster (teehr-cloud-platform)
