@@ -13,6 +13,10 @@ on:
         description: Redeploy every action, even ones Garden thinks are current (needed after changing a deploy-target value such as hostname)
         type: boolean
         default: false
+      actions:
+        description: Deploy only these actions (space-separated, e.g. "keycloak keycloak-realm-config"); empty deploys everything
+        type: string
+        default: ""
 
 permissions:
       id-token: write
@@ -69,4 +73,4 @@ jobs:
         uses: garden-io/garden-action@v2
         with:
           garden-version: 0.14.20
-          command: deploy --force-build ${{ inputs.force && '--force' || '' }} --env remote
+          command: deploy ${{ inputs.actions }} --force-build ${{ inputs.force && '--force' || '' }} --env remote
