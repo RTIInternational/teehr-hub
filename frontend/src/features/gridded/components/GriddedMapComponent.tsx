@@ -3,12 +3,9 @@ import { FetchSource, PMTiles, Protocol } from 'pmtiles';
 import { useEffect, useRef, useCallback, useState } from 'react';
 
 import 'maplibre-gl/dist/maplibre-gl.css';
-import {
-  buildGriddedTileUrl,
-  buildPmtilesUrl,
-  fetchGriddedEdrPoint,
-  GRIDDED_API_BASE_URL,
-} from '@/services/griddedApi';
+import { GRIDDED_API_BASE_URL } from '@/shared/api/gridded/client';
+import { fetchGriddedEdrPoint } from '@/shared/api/gridded/edr';
+import { buildGriddedTileUrl, buildPmtilesUrl } from '@/shared/api/gridded/tiles';
 import { ensureFreshToken } from '@/shared/auth/keycloak';
 import { usePolygonLayers, useTilesLegend } from '@/shared/queries/gridded/tiles';
 import { useTimesteps } from '@/shared/queries/gridded/timesteps';

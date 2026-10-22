@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 
-import { getGriddedVariables } from '../../../services/griddedApi';
+import { getGriddedVariables } from '@/shared/api/gridded/variables';
 
 const fetchVariables = async (datasetId?: string | null) => {
   if (!datasetId) {

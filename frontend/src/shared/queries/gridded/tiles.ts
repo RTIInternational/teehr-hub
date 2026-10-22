@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 
-import { discoverPolygonLayers, getTilesLegend } from '@/services/griddedApi';
+import { discoverPolygonLayers, getTilesLegend } from '@/shared/api/gridded/tiles';
 
 export const usePolygonLayers = () =>
   useQuery({

@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 
-import { getGriddedDatasets } from '../../../services/griddedApi';
+import { getGriddedDatasets } from '@/shared/api/gridded/datasets';
 
 export const useDatasets = () => {
   const query = useQuery({
