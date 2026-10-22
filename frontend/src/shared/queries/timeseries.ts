@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 
-import { apiService } from '@/services/api';
+import { getPrimaryTimeseries, getSecondaryTimeseries } from '@/shared/api/timeseries';
 import { ISO_TO_DURATION_NAME, isTimestepVariable } from '@/shared/utils/durationUtils';
 
 import type { Timeseries, TimeseriesRequestFilters } from '../types/timeseries';
@@ -23,14 +23,12 @@ const fetchPrimaryTimeseries = async (filters: TimeseriesRequestFilters): Promis
     ...(primaryDuration && { duration: primaryDuration }),
   };
 
-  return await apiService
-    .getPrimaryTimeseries(primary_location_id, primaryFilters)
-    .then((results) =>
-      results.map((series) => ({
-        ...series,
-        duration_token: primaryDuration ? ISO_TO_DURATION_NAME[primaryDuration] : null,
-      }))
-    );
+  return await getPrimaryTimeseries(primary_location_id, primaryFilters).then((results) =>
+    results.map((series) => ({
+      ...series,
+      duration_token: primaryDuration ? ISO_TO_DURATION_NAME[primaryDuration] : null,
+    }))
+  );
 };
 
 const fetchSecondaryTimeseries = async (filters: TimeseriesRequestFilters) => {
@@ -60,7 +58,7 @@ const fetchSecondaryTimeseries = async (filters: TimeseriesRequestFilters) => {
     configuration: configurations,
   };
 
-  return await apiService.getSecondaryTimeseries(primary_location_id, secondaryFilters);
+  return await getSecondaryTimeseries(primary_location_id, secondaryFilters);
 };
 
 export const usePrimaryTimeseries = (filters?: TimeseriesRequestFilters) =>

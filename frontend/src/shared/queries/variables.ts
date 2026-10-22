@@ -1,9 +1,9 @@
 import { useQuery } from '@tanstack/react-query';
 
-import { apiService } from '@/services/api';
+import { getVariables } from '@/shared/api/variables';
 
 export const useVariables = (table: string) =>
   useQuery({
     queryKey: ['variables', table],
-    queryFn: () => apiService.getVariables(table),
+    queryFn: () => getVariables(table),
   });

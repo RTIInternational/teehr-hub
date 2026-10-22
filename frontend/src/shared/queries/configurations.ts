@@ -1,9 +1,9 @@
 import { useQuery } from '@tanstack/react-query';
 
-import { apiService } from '@/services/api';
+import { getConfigurations } from '@/shared/api/configurations';
 
 export const useConfigurations = (table: string) =>
   useQuery({
     queryKey: ['configurations', table],
-    queryFn: () => apiService.getConfigurations(table),
+    queryFn: () => getConfigurations(table),
   });

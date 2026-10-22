@@ -1,6 +1,6 @@
 import { skipToken, useQuery } from '@tanstack/react-query';
 
-import { apiService } from '@/services/api';
+import { getMetrics } from '@/shared/api/metrics';
 import { extractFeatureProperties } from '@/shared/utils/ogcTransformers';
 
 import type { MetricsFilters } from '../types/metrics';
@@ -10,7 +10,7 @@ export const useMetricsByLocation = (primaryLocationId: string | null, table: st
     queryKey: ['locationMetrics', primaryLocationId, table],
     queryFn:
       primaryLocationId && table
-        ? () => apiService.getMetrics({ primary_location_id: primaryLocationId, table: table })
+        ? () => getMetrics({ primary_location_id: primaryLocationId, table: table })
         : skipToken,
     select: (data) => (data ? extractFeatureProperties(data) : []),
   });
@@ -18,6 +18,6 @@ export const useMetricsByLocation = (primaryLocationId: string | null, table: st
 export const useMetricLocations = (filters?: MetricsFilters) =>
   useQuery({
     queryKey: ['locations', filters],
-    queryFn: () => apiService.getMetrics(filters),
+    queryFn: () => getMetrics(filters),
     enabled: !!filters,
   });
