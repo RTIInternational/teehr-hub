@@ -1,8 +1,7 @@
 import { useEffect } from 'react';
 
 import { RETROSPECTIVE_DASHBOARD_DEFAULTS, selectDefault } from '@/config/dashboardDefaults';
-import { useConfigurations } from '@/shared/queries/configurations';
-import { useVariables } from '@/shared/queries/variables';
+import { useDistinctValues } from '@/shared/queries/distinctValues';
 import { combineLoadingStates } from '@/shared/utils/loading';
 
 import { ActionTypes, useDashboard } from '../DashboardContext';
@@ -15,8 +14,8 @@ import { ActionTypes, useDashboard } from '../DashboardContext';
 export const useInitialFilters = (table: string) => {
   const { dispatch } = useDashboard();
 
-  const configurations = useConfigurations(table);
-  const variables = useVariables(table);
+  const configurations = useDistinctValues(table, 'configuration_name');
+  const variables = useDistinctValues(table, 'variable_name');
 
   const defaultConfiguration = selectDefault(
     RETROSPECTIVE_DASHBOARD_DEFAULTS.preferredConfiguration,

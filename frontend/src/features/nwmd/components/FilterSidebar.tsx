@@ -2,7 +2,6 @@ import { useQueryClient } from '@tanstack/react-query';
 import { useMemo } from 'react';
 import { Form } from 'react-bootstrap';
 
-import { useConfigurations } from '@/shared/queries/configurations';
 import { useDistinctValues } from '@/shared/queries/distinctValues';
 import { useTableProperties } from '@/shared/queries/queryables';
 
@@ -39,7 +38,7 @@ export const FilterSidebar = ({ tables }: FilterSidebarProps) => {
   // Queryable values
   const waterYears = useDistinctValues(tables[0], 'water_year', configurationFilter);
   const quarters = useDistinctValues(tables[0], 'quarter', configurationFilter);
-  const configurations = useConfigurations(tables[0]);
+  const configurations = useDistinctValues(tables[0], 'configuration_name');
   const thresholds = useDistinctValues(tables[0], 'threshold', configurationFilter);
   const aggMethods = useDistinctValues(tables[0], 'window_agg', configurationFilter);
   const leadTimeBins = useDistinctValues(tables[0], 'forecast_lead_time_bin', configurationFilter);

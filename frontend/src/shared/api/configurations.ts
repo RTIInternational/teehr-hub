@@ -27,11 +27,6 @@ export type ConfigurationsSummaryItem = {
 
 export type ConfigurationsSummaryResponse = OgcResponse<ConfigurationsSummaryItem>;
 
-// Get configurations (distinct configuration_name values)
-export const getConfigurations = async (table = 'sim_metrics_by_location') => {
-  return apiCallJson<string[]>(`/collections/${table}/queryables/configuration_name/values`);
-};
-
 // Get configurations summary rows from iceberg.teehr.configurations_summary
 export const getConfigurationsTable = (limit = 1000, offset = 0) => {
   const params = new URLSearchParams();

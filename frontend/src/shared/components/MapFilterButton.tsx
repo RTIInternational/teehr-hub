@@ -1,9 +1,8 @@
 import { useState } from 'react';
 import { Dropdown, Form } from 'react-bootstrap';
 
-import { useConfigurations } from '@/shared/queries/configurations';
+import { useDistinctValues } from '@/shared/queries/distinctValues';
 import { useTableProperties } from '@/shared/queries/queryables';
-import { useVariables } from '@/shared/queries/variables';
 import type { MapFilters } from '@/shared/types/maps';
 import { isMapMetric } from '@/shared/utils/mapMetrics';
 
@@ -16,8 +15,8 @@ type MapFilterButtonProps = {
 const MapFilterButton = ({ tables, mapFilters, updateMapFilters }: MapFilterButtonProps) => {
   const [showDropdown, setShowDropdown] = useState(false);
 
-  const configurations = useConfigurations(tables[0]);
-  const variables = useVariables(tables[0]);
+  const configurations = useDistinctValues(tables[0], 'configuration_name');
+  const variables = useDistinctValues(tables[0], 'variable_name');
   const tableProperties = useTableProperties(tables);
 
   const handleMapFilterChange = <K extends keyof MapFilters>(
