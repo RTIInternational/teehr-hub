@@ -1,4 +1,4 @@
-import { ensureFreshToken, getKeycloak } from '@/features/auth';
+import { ensureFreshToken, getKeycloak } from '@/shared/auth';
 
 import { normalizeEndpoint, normalizeHeaders } from './utils';
 
