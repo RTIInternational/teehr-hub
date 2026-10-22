@@ -1,13 +1,14 @@
 import { skipToken, useQuery } from '@tanstack/react-query';
 
-import apiService from '@/services/api';
+import { getConfigurationsByLocationId, getConfigurationsTable } from '@/shared/api/configurations';
+import { getConfigurationLocationsGeojson } from '@/shared/api/locations';
 
 import type { ConfigurationsTableResponse } from '../types/configurations';
 
 export const useConfigurationsByLocationId = (locationId: string | null) =>
   useQuery({
     queryKey: ['configurationsByLocationId', locationId],
-    queryFn: locationId ? () => apiService.getConfigurationsByLocationId(locationId) : skipToken,
+    queryFn: locationId ? () => getConfigurationsByLocationId(locationId) : skipToken,
     select: (data: ConfigurationsTableResponse) => data.items,
   });
 
@@ -15,7 +16,7 @@ export const useConfigurationsLocationsGeoJson = (configuration?: string, variab
   useQuery({
     queryKey: ['configurationsLocationsGeoJson', configuration, variable],
     queryFn: () =>
-      apiService.getConfigurationLocationsGeojson({
+      getConfigurationLocationsGeojson({
         configuration_name: configuration,
         variable_name: variable,
       }),
@@ -25,6 +26,6 @@ export const useConfigurationsLocationsGeoJson = (configuration?: string, variab
 export const useConfigurationsTable = () =>
   useQuery({
     queryKey: ['configurationsTable'],
-    queryFn: () => apiService.getConfigurationsTable(),
+    queryFn: () => getConfigurationsTable(),
     select: (data: ConfigurationsTableResponse) => data.items,
   });

@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 
-import { apiService } from '@/services/api';
+import { getLocationAttributesByNames, getLocationIdNames } from '@/shared/api/locations';
 import type { LocationsResponse } from '@/shared/types/locations';
 
 import type {
@@ -23,10 +23,7 @@ export const useLocationRows = (attributes: string[] = []) =>
   useQuery({
     queryKey: ['locationRows', attributes],
     queryFn: () =>
-      Promise.all([
-        apiService.getLocationIdNames('usgs'),
-        apiService.getLocationAttributesByNames(attributes),
-      ]),
+      Promise.all([getLocationIdNames('usgs'), getLocationAttributesByNames(attributes)]),
     select: ([locationsData, attrsData]: [LocationsResponse, LocationAttributesResponse]) => {
       const locItems = locationsData?.items || [];
       const attrItems = attrsData?.items || [];

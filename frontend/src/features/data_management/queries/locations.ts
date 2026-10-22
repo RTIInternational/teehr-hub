@@ -1,13 +1,13 @@
 import { skipToken, useQuery } from '@tanstack/react-query';
 import type { FeatureCollection, Point } from 'geojson';
 
-import { apiService } from '@/services/api';
+import { getLocationById } from '@/shared/api/locations';
 import { isPointCollection, isPolygonCollection } from '@/shared/utils/geojson';
 
 export const usePointLocation = (locationId: string | null, name: string | null) =>
   useQuery({
     queryKey: ['location', locationId],
-    queryFn: locationId ? () => apiService.getLocationById(locationId) : skipToken,
+    queryFn: locationId ? () => getLocationById(locationId) : skipToken,
     select: (data) => {
       if (!isPointCollection(data)) {
         throw new Error('Expected point geometry for usePointLocation');
@@ -33,7 +33,7 @@ export const usePointLocation = (locationId: string | null, name: string | null)
 export const useBasinLocation = (locationId: string | null) =>
   useQuery({
     queryKey: ['location', locationId],
-    queryFn: locationId ? () => apiService.getLocationById(locationId) : skipToken,
+    queryFn: locationId ? () => getLocationById(locationId) : skipToken,
     select: (data) => {
       if (!isPolygonCollection(data)) {
         throw new Error('Expected polygon geometry for useBasinLocation');
