@@ -1,5 +1,5 @@
 import { apiCallJson } from '@/shared/api/client';
-import type { OgcResponse } from '@/shared/types/ogc';
+import type { OgcResponse } from '@/shared/api/ogc';
 
 export type AttributesItem = {
   name: string;

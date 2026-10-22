@@ -1,6 +1,6 @@
-import type { OgcResponse } from '../types/ogc';
 import { groupPrimaryTimeseriesItems, groupSecondaryTimeseriesItems } from '../utils/timeseries';
 import { apiCallJson } from './client';
+import type { OgcResponse } from './ogc';
 import { normalizeEndpoint } from './utils';
 
 export type PrimaryTimeseriesRequestFilters = {
@@ -16,6 +16,27 @@ export type SecondaryTimeseriesRequestFilters = PrimaryTimeseriesRequestFilters 
   reference_start_date?: string;
   reference_end_date?: string;
 };
+
+export type TimeseriesFilters = {
+  primary: {
+    variables: string[];
+    start_date: string;
+    end_date: string;
+    duration: string;
+  };
+  secondary: {
+    configurations: string[];
+    variables: string[];
+    start_date?: string;
+    end_date?: string;
+    reference_start_date?: string;
+    reference_end_date?: string;
+  };
+};
+
+export type TimeseriesRequestFilters = {
+  primary_location_id?: string;
+} & TimeseriesFilters;
 
 export type TimeseriesItem = {
   series_type: string;

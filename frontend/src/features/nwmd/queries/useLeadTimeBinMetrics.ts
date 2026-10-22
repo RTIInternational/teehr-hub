@@ -1,7 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 
-import { getMetrics } from '@/shared/api/metrics';
-import type { MetricsFilters } from '@/shared/types/metrics';
+import { getMetrics, type MetricsFilters } from '@/shared/api/metrics';
 
 type LeadTimeBinFilters = Partial<MetricsFilters> & {
   primary_location_id?: string | null;

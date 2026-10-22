@@ -35,10 +35,6 @@ type TimeseriesPoint = {
   value: number;
 };
 
-export type TimeseriesRequestFilters = {
-  primary_location_id?: string;
-} & TimeseriesFilters;
-
 export type TimeseriesResult = Timeseries[];
 
 export type TimeseriesState = {

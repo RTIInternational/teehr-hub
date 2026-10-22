@@ -3,9 +3,9 @@ import Plotly from 'plotly.js-dist-min';
 import { useState, useMemo, useRef, useEffect, useCallback } from 'react';
 import { Button, ButtonGroup } from 'react-bootstrap';
 
+import type { TableProperties } from '@/shared/api/utils';
 import MultiSelectDropdown from '@/shared/components/MultiSelectDropdown';
 import SharedDataTable from '@/shared/components/SharedDataTable';
-import type { TableProperties } from '@/shared/types/queryables';
 import { formatUnknownValueForDisplay } from '@/shared/utils/formatters';
 
 import './MetricsTable.css';

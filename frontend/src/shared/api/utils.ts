@@ -7,6 +7,13 @@ export const aliasMap: Record<string, string> = {
   variable: 'variable_name',
 };
 
+export type TableProperties = {
+  metrics: string[];
+  group_by: string[];
+  description: string;
+  allProperties: string[];
+};
+
 export const normalizeEndpoint = (endpoint: string) => {
   if (!endpoint) return endpoint;
   if (endpoint.startsWith('http://') || endpoint.startsWith('https://')) {

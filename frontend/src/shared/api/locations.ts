@@ -1,8 +1,16 @@
 import type { FeatureCollection, Point } from 'geojson';
 
 import { apiCallJson } from '@/shared/api/client';
-import type { LocationMetadataResponse, LocationsResponse } from '@/shared/types/locations';
-import type { OgcResponse } from '@/shared/types/ogc';
+import type { OgcResponse } from '@/shared/api/ogc';
+
+export type LocationMetadataResponse = FeatureCollection;
+
+export type LocationsItem = {
+  id: string;
+  name: string;
+};
+
+export type LocationsResponse = OgcResponse<LocationsItem>;
 
 export type LocationAttributesItem = {
   location_id: string;

@@ -1,9 +1,7 @@
 import { skipToken, useQuery } from '@tanstack/react-query';
 
-import { getMetrics } from '@/shared/api/metrics';
+import { getMetrics, type MetricsFilters } from '@/shared/api/metrics';
 import { extractFeatureProperties } from '@/shared/utils/ogcTransformers';
-
-import type { MetricsFilters } from '../types/metrics';
 
 export const useMetricsByLocation = (primaryLocationId: string | null, table: string | null) =>
   useQuery({

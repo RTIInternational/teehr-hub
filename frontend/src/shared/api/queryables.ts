@@ -1,6 +1,21 @@
 import { apiCallJson } from '@/shared/api/client';
 import { aliasMap } from '@/shared/api/utils';
-import type { QueryablesResponse } from '@/shared/types/queryables';
+
+export type Queryable = {
+  title: string;
+  type: string;
+  'x-teehr-role'?: string;
+  'x-ogc-role'?: string;
+};
+
+export type QueryablesResponse = {
+  type: string;
+  title: string;
+  description: string;
+  properties: { [key: string]: Queryable };
+  'x-teehr-group-by'?: string[];
+  'x-teehr-metrics'?: string[];
+};
 
 // Get queryables for a collection (OGC API - Features Part 3)
 // Returns schema with x-teehr-role extensions for group_by/metric fields

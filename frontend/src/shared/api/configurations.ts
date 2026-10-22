@@ -1,6 +1,5 @@
 import { apiCallJson } from '@/shared/api/client';
-import type { ConfigurationsSummaryResponse } from '@/shared/types/configurations';
-import type { OgcResponse } from '@/shared/types/ogc';
+import type { OgcResponse } from '@/shared/api/ogc';
 
 export type ConfigurationsTableItem = {
   [property: string]: unknown;
@@ -9,6 +8,24 @@ export type ConfigurationsTableItem = {
 };
 
 export type ConfigurationsTableResponse = OgcResponse<ConfigurationsTableItem>;
+
+export type ConfigurationsSummaryItem = {
+  configuration_name: string;
+  variable_name: string;
+  unit_name: string;
+  min_reference_time: string;
+  max_reference_time: string;
+  min_value_time: string;
+  max_value_time: string;
+  n_locations: number;
+  description: string;
+  timeseries_type: string;
+  location_id_prefix: string;
+  created_at: string;
+  updated_at: string;
+};
+
+export type ConfigurationsSummaryResponse = OgcResponse<ConfigurationsSummaryItem>;
 
 // Get configurations (distinct configuration_name values)
 export const getConfigurations = async (table = 'sim_metrics_by_location') => {

@@ -1,7 +1,11 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
-import { createApiKey, listApiKeys, revokeApiKey } from '@/shared/api/apiKeys';
-import type { CreateApiKeyInput } from '@/shared/types/apiKeys';
+import {
+  createApiKey,
+  listApiKeys,
+  revokeApiKey,
+  type CreateApiKeyInput,
+} from '@/shared/api/apiKeys';
 
 export const useApiKeys = () =>
   useQuery({

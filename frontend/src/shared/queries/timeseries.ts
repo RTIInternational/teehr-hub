@@ -1,9 +1,13 @@
 import { useQuery } from '@tanstack/react-query';
 
-import { getPrimaryTimeseries, getSecondaryTimeseries } from '@/shared/api/timeseries';
+import {
+  getPrimaryTimeseries,
+  getSecondaryTimeseries,
+  type TimeseriesRequestFilters,
+} from '@/shared/api/timeseries';
 import { ISO_TO_DURATION_NAME, isTimestepVariable } from '@/shared/utils/durationUtils';
 
-import type { Timeseries, TimeseriesRequestFilters } from '../types/timeseries';
+import type { Timeseries } from '../types/timeseries';
 
 const fetchPrimaryTimeseries = async (filters: TimeseriesRequestFilters): Promise<Timeseries[]> => {
   const { primary_location_id, primary } = filters;

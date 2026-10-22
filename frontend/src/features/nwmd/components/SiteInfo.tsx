@@ -1,7 +1,8 @@
 import { Card, Spinner, Row, Col, Badge, ListGroup } from 'react-bootstrap';
 
+import type { LocationMetadataResponse } from '@/shared/api/locations';
 import { useLocationMetadata } from '@/shared/queries/locations';
-import type { LocationMetadataResponse, MapLocation } from '@/shared/types/locations';
+import type { MapLocation } from '@/shared/types/locations';
 import { isPointCollection } from '@/shared/utils/geojson';
 
 const getUsTimezoneRegion = (timezone: string) => {

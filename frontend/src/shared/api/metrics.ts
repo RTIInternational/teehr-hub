@@ -1,8 +1,33 @@
 import type { FeatureCollection, Point } from 'geojson';
 
-import type { MetricsFilters } from '../types/metrics';
+import type { OgcLink } from '@/shared/api/ogc';
+
 import { apiCallJson } from './client';
 import { aliasMap } from './utils';
+
+export type MetricsFilters = {
+  [queryable: string]: string | null;
+  configuration: string;
+  table: string;
+  variable: string;
+};
+
+export type MetricsProperties = {
+  location_id: string;
+  [key: string]: unknown;
+};
+
+export type MetricsFeature = {
+  type: 'Feature';
+  geometry: Point;
+  properties: MetricsProperties;
+};
+
+export type MetricsResponse = {
+  type: string;
+  features: MetricsFeature[];
+  links: OgcLink[];
+};
 
 // API service object - OGC API compliant
 // Metrics tables written before teehr 0.9 use primary_location_id,
