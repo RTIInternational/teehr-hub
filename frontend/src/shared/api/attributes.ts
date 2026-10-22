@@ -1,5 +1,15 @@
-import type { AttributesResponse } from '@/features/data_management/types/attributes';
 import { apiCallJson } from '@/shared/api/client';
+import type { OgcResponse } from '@/shared/types/ogc';
+
+export type AttributesItem = {
+  name: string;
+  description: string;
+  type: string;
+  created_at: string;
+  updated_at: string;
+};
+
+export type AttributesResponse = OgcResponse<AttributesItem>;
 
 // Get attribute definitions (name, description, type, updated_at, etc.)
 export const getAttributes = (limit = 1000, offset = 0) => {

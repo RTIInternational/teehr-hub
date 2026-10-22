@@ -1,12 +1,9 @@
 import { useQuery } from '@tanstack/react-query';
 
 import { getLocationAttributesByNames, getLocationIdNames } from '@/shared/api/locations';
+import type { LocationAttributesItem, LocationAttributesResponse } from '@/shared/api/locations';
 import type { LocationsResponse } from '@/shared/types/locations';
 
-import type {
-  LocationAttributesItem,
-  LocationAttributesResponse,
-} from '../types/locationAttributes';
 import type { LocationRow } from '../types/locationRows';
 
 // Pivot EAV rows [{location_id, attribute_name, value}] into a map keyed by location_id

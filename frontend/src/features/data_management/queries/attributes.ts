@@ -1,8 +1,6 @@
 import { queryOptions, useQuery } from '@tanstack/react-query';
 
-import { getAttributes } from '@/shared/api/attributes';
-
-import type { AttributesResponse } from '../types/attributes';
+import { getAttributes, type AttributesResponse } from '@/shared/api/attributes';
 
 export const attributesOptions = queryOptions<AttributesResponse>({
   queryKey: ['attributes'],

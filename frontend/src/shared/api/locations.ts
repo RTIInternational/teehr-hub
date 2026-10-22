@@ -1,9 +1,19 @@
 import type { FeatureCollection, Point } from 'geojson';
 
-import type { LocationAttributesResponse } from '@/features/data_management/types/locationAttributes';
 import { apiCallJson } from '@/shared/api/client';
 import type { LocationMetadataResponse, LocationsResponse } from '@/shared/types/locations';
 import type { OgcResponse } from '@/shared/types/ogc';
+
+export type LocationAttributesItem = {
+  location_id: string;
+  attribute_name: string;
+  value: string;
+  created_at: string;
+  updated_at: string;
+  properties: { [key: string]: string };
+};
+
+export type LocationAttributesResponse = OgcResponse<LocationAttributesItem>;
 
 // Get all locations (OGC API - Features)
 export const getLocations = (limit = 1000, offset = 0) => {

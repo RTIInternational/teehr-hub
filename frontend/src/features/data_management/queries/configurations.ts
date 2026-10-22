@@ -1,9 +1,11 @@
 import { skipToken, useQuery } from '@tanstack/react-query';
 
-import { getConfigurationsByLocationId, getConfigurationsTable } from '@/shared/api/configurations';
+import {
+  getConfigurationsByLocationId,
+  getConfigurationsTable,
+  type ConfigurationsTableResponse,
+} from '@/shared/api/configurations';
 import { getConfigurationLocationsGeojson } from '@/shared/api/locations';
-
-import type { ConfigurationsTableResponse } from '../types/configurations';
 
 export const useConfigurationsByLocationId = (locationId: string | null) =>
   useQuery({

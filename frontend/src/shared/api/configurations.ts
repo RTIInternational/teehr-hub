@@ -1,6 +1,14 @@
-import type { ConfigurationsTableResponse } from '@/features/data_management/types/configurations';
 import { apiCallJson } from '@/shared/api/client';
 import type { ConfigurationsSummaryResponse } from '@/shared/types/configurations';
+import type { OgcResponse } from '@/shared/types/ogc';
+
+export type ConfigurationsTableItem = {
+  [property: string]: unknown;
+  configuration_name: string;
+  variable_name: string;
+};
+
+export type ConfigurationsTableResponse = OgcResponse<ConfigurationsTableItem>;
 
 // Get configurations (distinct configuration_name values)
 export const getConfigurations = async (table = 'sim_metrics_by_location') => {
