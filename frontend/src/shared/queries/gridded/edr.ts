@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 
-import { griddedApiService } from '@/services/griddedApi';
+import { fetchGriddedEdrTimeseries } from '@/services/griddedApi';
 import type { EdrTimeseriesFilters, TimeseriesData } from '@/shared/types/gridded/edr';
 
 const fetchEdrTimeseries = async (filters: EdrTimeseriesFilters) => {
@@ -8,7 +8,7 @@ const fetchEdrTimeseries = async (filters: EdrTimeseriesFilters) => {
     throw new Error('Missing required parameters: datasetId, variable, lon, and lat are required');
   }
 
-  return await griddedApiService.fetchGriddedEdrTimeseries(
+  return await fetchGriddedEdrTimeseries(
     filters.datasetId,
     filters.variable,
     filters.lon,

@@ -57,113 +57,111 @@ function parseTimeseriesCsv(csvText: string, variable: string) {
   return { times, values };
 }
 
-export const griddedApiService = {
-  getGriddedDatasets: () => griddedApiCall<DatasetsResponse>('/api/dataset-keys'),
+export const getGriddedDatasets = () => griddedApiCall<DatasetsResponse>('/api/dataset-keys');
 
-  discoverPolygonLayers: () => griddedApiCall<VectorTilesResponse>('/api/vector-tiles'),
+export const discoverPolygonLayers = () => griddedApiCall<VectorTilesResponse>('/api/vector-tiles');
 
-  // The archive is served by xpublish-api rather than object storage, so the
-  // bytes are covered by the same Keycloak token as every other call. Must be
-  // absolute: the pmtiles Protocol keys its registered sources by exact URL.
-  buildPmtilesUrl: (layerId: string) =>
-    `${GRIDDED_API_BASE_URL}/api/vector-tiles/${encodeURIComponent(layerId)}.pmtiles`,
+// The archive is served by xpublish-api rather than object storage, so the
+// bytes are covered by the same Keycloak token as every other call. Must be
+// absolute: the pmtiles Protocol keys its registered sources by exact URL.
+export const buildPmtilesUrl = (layerId: string) =>
+  `${GRIDDED_API_BASE_URL}/api/vector-tiles/${encodeURIComponent(layerId)}.pmtiles`;
 
-  getGriddedVariables: (datasetId: string) =>
-    griddedApiCall<VariablesResponse>(`/api/dataset-variables/${encodeURIComponent(datasetId)}`),
+export const getGriddedVariables = (datasetId: string) =>
+  griddedApiCall<VariablesResponse>(`/api/dataset-variables/${encodeURIComponent(datasetId)}`);
 
-  getGriddedTimesteps: (datasetId: string) =>
-    griddedApiCall<TimestepsResponse>(`/api/datasets/${encodeURIComponent(datasetId)}/coords/time`),
+export const getGriddedTimesteps = (datasetId: string) =>
+  griddedApiCall<TimestepsResponse>(`/api/datasets/${encodeURIComponent(datasetId)}/coords/time`);
 
-  getGriddedVariableAttrs: (datasetId: string) =>
-    griddedApiCall<VariableAttrsResponse>(
-      `/api/datasets/${encodeURIComponent(datasetId)}/variable-attrs`
-    ),
+export const getGriddedVariableAttrs = (datasetId: string) =>
+  griddedApiCall<VariableAttrsResponse>(
+    `/api/datasets/${encodeURIComponent(datasetId)}/variable-attrs`
+  );
 
-  getTilesLegend: (
-    datasetId: string,
-    variable: string,
-    colorRamp = 'raster/plasma',
-    min = 0,
-    max = 100
-  ) => {
-    const params = new URLSearchParams({
-      variables: variable,
-      style: colorRamp,
-      colorscalerange: `${min},${max}`,
-      belowmincolor: 'transparent',
-      f: 'application/json',
-    });
-    return griddedApiCall<TilesLegendResponse>(
-      `/api/datasets/${encodeURIComponent(datasetId)}/tiles/legend?${params.toString()}`
-    );
-  },
+export const getTilesLegend = (
+  datasetId: string,
+  variable: string,
+  colorRamp = 'raster/plasma',
+  min = 0,
+  max = 100
+) => {
+  const params = new URLSearchParams({
+    variables: variable,
+    style: colorRamp,
+    colorscalerange: `${min},${max}`,
+    belowmincolor: 'transparent',
+    f: 'application/json',
+  });
+  return griddedApiCall<TilesLegendResponse>(
+    `/api/datasets/${encodeURIComponent(datasetId)}/tiles/legend?${params.toString()}`
+  );
+};
 
-  // Note: {z}/{y}/{x} order (y before x) is required by TilesPlugin.
-  buildGriddedTileUrl: (
-    datasetId: string,
-    variable: string,
-    timestep: string,
-    colorRamp = 'raster/plasma',
-    min = 0,
-    max = 100
-  ) => {
-    const params = new URLSearchParams({
-      variables: variable,
-      style: colorRamp,
-      colorscalerange: `${min},${max}`,
-      belowmincolor: 'transparent',
-      width: '256',
-      height: '256',
-      f: 'image/png',
-      time: timestep,
-    });
-    return `${GRIDDED_API_BASE_URL}/api/datasets/${encodeURIComponent(datasetId)}/tiles/WebMercatorQuad/{z}/{y}/{x}?${params.toString()}`;
-  },
+// Note: {z}/{y}/{x} order (y before x) is required by TilesPlugin.
+export const buildGriddedTileUrl = (
+  datasetId: string,
+  variable: string,
+  timestep: string,
+  colorRamp = 'raster/plasma',
+  min = 0,
+  max = 100
+) => {
+  const params = new URLSearchParams({
+    variables: variable,
+    style: colorRamp,
+    colorscalerange: `${min},${max}`,
+    belowmincolor: 'transparent',
+    width: '256',
+    height: '256',
+    f: 'image/png',
+    time: timestep,
+  });
+  return `${GRIDDED_API_BASE_URL}/api/datasets/${encodeURIComponent(datasetId)}/tiles/WebMercatorQuad/{z}/{y}/{x}?${params.toString()}`;
+};
 
-  fetchGriddedEdrPoint: async (
-    datasetId: string,
-    variable: string,
-    timestep: string,
-    lon: number,
-    lat: number
-  ) => {
-    const params = new URLSearchParams({
-      coords: `POINT(${lon} ${lat})`,
-      'parameter-name': variable,
-      datetime: timestep,
-      f: 'geojson',
-    });
-    const path = `/api/datasets/${encodeURIComponent(datasetId + '_raw_data')}/edr/position?${params.toString()}`;
-    const data = await griddedApiCall<EdrPointResponse>(path);
-    try {
-      const properties = data?.features?.[0]?.properties ?? {};
-      const value =
-        properties[variable] ?? Object.values(properties).find((v) => typeof v === 'number');
-      return value !== undefined ? value : null;
-    } catch {
-      return null;
-    }
-  },
+export const fetchGriddedEdrPoint = async (
+  datasetId: string,
+  variable: string,
+  timestep: string,
+  lon: number,
+  lat: number
+) => {
+  const params = new URLSearchParams({
+    coords: `POINT(${lon} ${lat})`,
+    'parameter-name': variable,
+    datetime: timestep,
+    f: 'geojson',
+  });
+  const path = `/api/datasets/${encodeURIComponent(datasetId + '_raw_data')}/edr/position?${params.toString()}`;
+  const data = await griddedApiCall<EdrPointResponse>(path);
+  try {
+    const properties = data?.features?.[0]?.properties ?? {};
+    const value =
+      properties[variable] ?? Object.values(properties).find((v) => typeof v === 'number');
+    return value !== undefined ? value : null;
+  } catch {
+    return null;
+  }
+};
 
-  fetchGriddedEdrTimeseries: async (
-    datasetId: string,
-    variable: string,
-    lon: number,
-    lat: number,
-    timesteps: string[],
-    maxPoints = MAX_TIMESERIES_POINTS
-  ) => {
-    const slice = maxPoints > 0 ? timesteps.slice(0, maxPoints) : timesteps;
-    if (slice.length === 0) throw new Error('No timesteps available for timeseries query');
-    const datetimeRange = slice.length === 1 ? slice[0] : `${slice[0]}/${slice[slice.length - 1]}`;
-    const params = new URLSearchParams({
-      coords: `POINT(${lon} ${lat})`,
-      'parameter-name': variable,
-      datetime: datetimeRange,
-      f: 'csv',
-    });
-    const path = `/api/datasets/${encodeURIComponent(datasetId + '_raw_data')}/edr/position?${params.toString()}`;
-    const csvText = await griddedApiCall<EdrTimeseriesResponse>(path, { raw: true });
-    return parseTimeseriesCsv(csvText, variable);
-  },
+export const fetchGriddedEdrTimeseries = async (
+  datasetId: string,
+  variable: string,
+  lon: number,
+  lat: number,
+  timesteps: string[],
+  maxPoints = MAX_TIMESERIES_POINTS
+) => {
+  const slice = maxPoints > 0 ? timesteps.slice(0, maxPoints) : timesteps;
+  if (slice.length === 0) throw new Error('No timesteps available for timeseries query');
+  const datetimeRange = slice.length === 1 ? slice[0] : `${slice[0]}/${slice[slice.length - 1]}`;
+  const params = new URLSearchParams({
+    coords: `POINT(${lon} ${lat})`,
+    'parameter-name': variable,
+    datetime: datetimeRange,
+    f: 'csv',
+  });
+  const path = `/api/datasets/${encodeURIComponent(datasetId + '_raw_data')}/edr/position?${params.toString()}`;
+  const csvText = await griddedApiCall<EdrTimeseriesResponse>(path, { raw: true });
+  return parseTimeseriesCsv(csvText, variable);
 };

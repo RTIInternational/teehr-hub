@@ -1,11 +1,11 @@
 import { useQuery } from '@tanstack/react-query';
 
-import { griddedApiService } from '@/services/griddedApi';
+import { discoverPolygonLayers, getTilesLegend } from '@/services/griddedApi';
 
 export const usePolygonLayers = () =>
   useQuery({
     queryKey: ['polygons'],
-    queryFn: () => griddedApiService.discoverPolygonLayers(),
+    queryFn: () => discoverPolygonLayers(),
     select: (data) => data.items,
   });
 
@@ -20,7 +20,7 @@ const fetchTilesLegend = async (
     throw new Error('Dataset and variable required to retrieve the legend');
   }
 
-  return griddedApiService.getTilesLegend(datasetId, variable, colorRamp, min, max);
+  return getTilesLegend(datasetId, variable, colorRamp, min, max);
 };
 
 export const useTilesLegend = (
