@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 
-import { fetchGriddedEdrTimeseries } from '@/shared/api/gridded/edr';
-import type { EdrTimeseriesFilters, TimeseriesData } from '@/shared/types/gridded/edr';
+import { fetchGriddedEdrTimeseries, type EdrTimeseriesFilters } from '@/shared/api/gridded/edr';
+import type { TimeseriesData } from '@/shared/types/gridded/edr';
 
 const fetchEdrTimeseries = async (filters: EdrTimeseriesFilters) => {
   if (!filters.datasetId || !filters.variable || !filters.lon || !filters.lat) {

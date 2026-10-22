@@ -1,7 +1,7 @@
 // Fixed-size vertical color bar for the gridded layer, drawn from the tiles legend JSON so
 // its size and position never depend on the value range or label widths.
 
-import type { TilesLegendResponse } from '@/shared/types/gridded/tiles';
+import type { TilesLegendResponse } from '@/shared/api/gridded/tiles';
 
 type GriddedColorBarProps = {
   legend: TilesLegendResponse;

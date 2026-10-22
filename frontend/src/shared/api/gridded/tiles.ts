@@ -1,6 +1,21 @@
-import type { TilesLegendResponse, VectorTilesResponse } from '@/shared/types/gridded/tiles';
-
 import { GRIDDED_API_BASE_URL, griddedApiCall } from './client';
+
+export type VectorTile = {
+  id: string;
+  source_layer: string;
+};
+
+export type VectorTilesResponse = {
+  items: VectorTile[];
+};
+
+// Continuous color legend from the tiles legend endpoint (f=application/json)
+export type TilesLegendResponse = {
+  colorscalerange: [number, number];
+  stops: { value: number; color: string }[];
+  units?: string | null;
+  abovemaxcolor?: string | null;
+};
 
 export const discoverPolygonLayers = () => griddedApiCall<VectorTilesResponse>('/api/vector-tiles');
 
