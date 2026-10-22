@@ -1,3 +1,5 @@
+import { griddedApiCall } from './client';
+
 export type VariableAttrsResponse = {
   dataset_id: string;
   variables: VariableAttrs;
@@ -26,3 +28,8 @@ type VariableMetadata = {
   ['proj:wkt2']?: string;
   ['spatial:dimensions']?: string[];
 };
+
+export const getGriddedVariableAttrs = (datasetId: string) =>
+  griddedApiCall<VariableAttrsResponse>(
+    `/api/datasets/${encodeURIComponent(datasetId)}/variable-attrs`
+  );

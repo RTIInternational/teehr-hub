@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 
-import { apiService } from '@/services/api';
+import { getQueryables } from '@/shared/api/queryables';
 import { extractTableProperties } from '@/shared/utils/ogcTransformers';
 
 const fetchTableProperties = async (tables: string[]) => {
@@ -8,7 +8,7 @@ const fetchTableProperties = async (tables: string[]) => {
 
   const results = await Promise.all(
     tableArray.map(async (table) => {
-      const queryables = await apiService.getQueryables(table);
+      const queryables = await getQueryables(table);
       return { table, queryables };
     })
   );

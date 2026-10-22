@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 
+import type { MetricsFilters } from '@/shared/api/metrics';
 import { useMetricLocations } from '@/shared/queries/metrics';
-import type { MetricsFilters } from '@/shared/types/metrics';
 
 import type { NwmdMapFilters } from '../types/maps';
 import { applyAltHypothesisFilter } from '../utils/utils';

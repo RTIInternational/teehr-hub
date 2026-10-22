@@ -1,5 +1,5 @@
+import type { MetricsFilters } from '@/shared/api/metrics';
 import type { MapMetric } from '@/shared/types/maps';
-import type { MetricsFilters } from '@/shared/types/metrics';
 
 export type AltHypothesisOperator = '=0' | '!=0' | '>0' | '<0' | '>1' | '<1';
 

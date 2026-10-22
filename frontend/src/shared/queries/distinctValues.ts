@@ -1,6 +1,6 @@
 import { queryOptions, useQuery } from '@tanstack/react-query';
 
-import { apiService } from '@/services/api';
+import { getDistinctValues } from '@/shared/api/queryables';
 
 export const distinctValuesQuery = (
   table: string,
@@ -9,7 +9,7 @@ export const distinctValuesQuery = (
 ) =>
   queryOptions({
     queryKey: ['distinctValues', table, columnName, filters],
-    queryFn: () => apiService.getDistinctValues(table, columnName, filters),
+    queryFn: () => getDistinctValues(table, columnName, filters),
   });
 
 export const useDistinctValues = (

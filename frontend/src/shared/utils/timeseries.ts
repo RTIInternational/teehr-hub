@@ -1,4 +1,5 @@
-import type { Timeseries, TimeseriesItem } from '../types/timeseries';
+import type { TimeseriesItem } from '../api/timeseries';
+import type { Timeseries } from '../types/timeseries';
 
 export const groupSecondaryTimeseriesItems = (items: TimeseriesItem[] = []): Timeseries[] => {
   const grouped = new Map();

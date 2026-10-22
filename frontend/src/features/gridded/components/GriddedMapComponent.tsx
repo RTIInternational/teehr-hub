@@ -3,8 +3,10 @@ import { FetchSource, PMTiles, Protocol } from 'pmtiles';
 import { useEffect, useRef, useCallback, useState } from 'react';
 
 import 'maplibre-gl/dist/maplibre-gl.css';
-import { ensureFreshToken } from '@/features/auth/keycloak';
-import { griddedApiService, GRIDDED_API_BASE_URL } from '@/services/griddedApi';
+import { GRIDDED_API_BASE_URL } from '@/shared/api/gridded/client';
+import { fetchGriddedEdrPoint } from '@/shared/api/gridded/edr';
+import { buildGriddedTileUrl, buildPmtilesUrl } from '@/shared/api/gridded/tiles';
+import { ensureFreshToken } from '@/shared/auth/keycloak';
 import { usePolygonLayers, useTilesLegend } from '@/shared/queries/gridded/tiles';
 import { useTimesteps } from '@/shared/queries/gridded/timesteps';
 import type { PolygonFeatureProps, PolygonFeatures } from '@/shared/types/gridded/tiles';
@@ -226,7 +228,7 @@ const GriddedMapComponent = () => {
       );
     }
 
-    const tileUrl = griddedApiService.buildGriddedTileUrl(
+    const tileUrl = buildGriddedTileUrl(
       dataset,
       variable,
       currentTimestep,
@@ -367,7 +369,7 @@ const GriddedMapComponent = () => {
       // Register an authenticated source before adding it to the map: on a
       // cache miss the Protocol would otherwise build a plain unauthenticated
       // FetchSource for this URL and every range request would 401.
-      const archiveUrl = griddedApiService.buildPmtilesUrl(selectedLayer.id);
+      const archiveUrl = buildPmtilesUrl(selectedLayer.id);
       const headers = new Headers();
       if (tokenRef.current) headers.set('Authorization', `Bearer ${tokenRef.current}`);
       const fetchSource = new FetchSource(archiveUrl, headers);
@@ -489,13 +491,7 @@ const GriddedMapComponent = () => {
         .addTo(mapInstance);
 
       try {
-        const value = await griddedApiService.fetchGriddedEdrPoint(
-          dataset,
-          variable,
-          currentTimestep,
-          lng,
-          lat
-        );
+        const value = await fetchGriddedEdrPoint(dataset, variable, currentTimestep, lng, lat);
         popupInstance.setHTML(`
           <div style="padding:8px; font-size:0.85rem;">
             <div style="font-weight:600; margin-bottom:4px; color:#495057;">${escapeHtml(variable)}</div>
