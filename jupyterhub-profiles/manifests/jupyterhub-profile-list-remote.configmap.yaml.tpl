@@ -406,7 +406,7 @@ data:
                 "hefs-v0-3-0": {
                   "display_name": "HEFS-FEWS v0.3.x - XL (4 cores, 16 GB memory)",
                   "kubespawner_override": {
-                    "image": "935462133478.dkr.ecr.us-east-2.amazonaws.com/hefs-fews-hub:v0.3.1",
+                    "image": "${var.remoteCluster.ecrRegistry}/hefs-fews-hub:v0.3.1",
                     "mem_limit": "32G",
                     "mem_guarantee": "19G",
                     "cpu_limit": 4,
@@ -420,7 +420,7 @@ data:
                 "hefs-latest": {
                   "display_name": "HEFS-FEWS Bleeding Edge - XL (4 cores, 16 GB memory)",
                   "kubespawner_override": {
-                    "image": "935462133478.dkr.ecr.us-east-2.amazonaws.com/hefs-fews-hub:dev",
+                    "image": "${var.remoteCluster.ecrRegistry}/hefs-fews-hub:dev",
                     "mem_limit": "32G",
                     "mem_guarantee": "19G",
                     "cpu_limit": 4,
