@@ -1,7 +1,6 @@
 import { useEffect } from 'react';
 
 import { NWMD_DASHBOARD_DEFAULTS, selectDefault } from '@/config/dashboardDefaults';
-import { useConfigurations } from '@/shared/queries/configurations';
 import { useDistinctValues } from '@/shared/queries/distinctValues';
 import { combineLoadingStates } from '@/shared/utils/loading';
 
@@ -20,7 +19,7 @@ import {
 export const useInitialFilters = (table: string) => {
   const { state, dispatch } = useDashboard();
 
-  const configurations = useConfigurations(table);
+  const configurations = useDistinctValues(table, 'configuration_name');
 
   const defaultConfiguration = selectDefault(
     NWMD_DASHBOARD_DEFAULTS.preferredConfiguration,

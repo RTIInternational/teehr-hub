@@ -1,12 +1,12 @@
 import { useQuery } from '@tanstack/react-query';
 
-import { apiService } from '@/services/api';
-import type { LocationsResponse } from '@/shared/types/locations';
-
+import { getLocationAttributesByNames, getLocationIdNames } from '@/shared/api/locations';
 import type {
   LocationAttributesItem,
   LocationAttributesResponse,
-} from '../types/locationAttributes';
+  LocationsResponse,
+} from '@/shared/api/locations';
+
 import type { LocationRow } from '../types/locationRows';
 
 // Pivot EAV rows [{location_id, attribute_name, value}] into a map keyed by location_id
@@ -23,10 +23,7 @@ export const useLocationRows = (attributes: string[] = []) =>
   useQuery({
     queryKey: ['locationRows', attributes],
     queryFn: () =>
-      Promise.all([
-        apiService.getLocationIdNames('usgs'),
-        apiService.getLocationAttributesByNames(attributes),
-      ]),
+      Promise.all([getLocationIdNames('usgs'), getLocationAttributesByNames(attributes)]),
     select: ([locationsData, attrsData]: [LocationsResponse, LocationAttributesResponse]) => {
       const locItems = locationsData?.items || [];
       const attrItems = attrsData?.items || [];

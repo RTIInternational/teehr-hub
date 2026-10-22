@@ -1,13 +1,13 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 
 import { AuthContext } from './AuthContext';
 import {
-  initKeycloak,
-  getKeycloak,
-  parseRoles,
   ensureFreshToken,
+  getKeycloak,
+  initKeycloak,
   login,
   logout,
+  parseRoles,
   signup,
 } from './keycloak';
 

@@ -1,12 +1,16 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
-import { apiService } from '@/services/api';
-import type { CreateApiKeyInput } from '@/shared/types/apiKeys';
+import {
+  createApiKey,
+  listApiKeys,
+  revokeApiKey,
+  type CreateApiKeyInput,
+} from '@/shared/api/apiKeys';
 
 export const useApiKeys = () =>
   useQuery({
     queryKey: ['apiKeys'],
-    queryFn: () => apiService.listApiKeys(),
+    queryFn: () => listApiKeys(),
     select: (data) => data?.items || [],
   });
 
@@ -14,7 +18,7 @@ export const useCreateApiKey = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: ({ name, scopes }: CreateApiKeyInput) => apiService.createApiKey(name, scopes),
+    mutationFn: ({ name, scopes }: CreateApiKeyInput) => createApiKey(name, scopes),
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ['apiKeys'] });
     },
@@ -25,7 +29,7 @@ export const useRevokeApiKey = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (keyId: string) => apiService.revokeApiKey(keyId),
+    mutationFn: (keyId: string) => revokeApiKey(keyId),
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ['apiKeys'] });
     },

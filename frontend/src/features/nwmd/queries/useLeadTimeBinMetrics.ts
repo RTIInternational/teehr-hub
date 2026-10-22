@@ -1,7 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 
-import { apiService } from '@/services/api';
-import type { MetricsFilters } from '@/shared/types/metrics';
+import { getMetrics, type MetricsFilters } from '@/shared/api/metrics';
 
 type LeadTimeBinFilters = Partial<MetricsFilters> & {
   primary_location_id?: string | null;
@@ -24,7 +23,7 @@ const hasRequiredFilters = (filters: LeadTimeBinFilters) =>
 export const useLeadTimeBinMetrics = (filters?: LeadTimeBinFilters) =>
   useQuery({
     queryKey: ['leadTimeBinMetrics', filters],
-    queryFn: () => apiService.getMetrics(filters),
+    queryFn: () => getMetrics(filters),
     enabled: hasRequiredFilters(filters ?? {}),
     select: (metricsData) =>
       (metricsData?.features || []).map((feature) => feature?.properties || {}),

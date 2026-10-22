@@ -1,7 +1,7 @@
 import { Dropdown } from 'react-bootstrap';
 import { Link, useLocation } from 'react-router-dom';
 
-import { useAuth } from '@/features/auth';
+import { useAuth } from '@/shared/auth';
 
 const JUPYTERHUB_URL =
   import.meta.env.VITE_JUPYTERHUB_URL || 'https://hub.teehr.local.app.garden/hub/spawn';

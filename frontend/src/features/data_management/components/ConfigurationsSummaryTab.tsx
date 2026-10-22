@@ -17,8 +17,8 @@ import {
   useConfigurationsLocationsGeoJson,
   useConfigurationsTable,
 } from '@/features/data_management/queries/configurations';
-import type { ConfigurationsTableItem } from '@/features/data_management/types/configurations';
 import { fmt } from '@/features/data_management/utils/utils';
+import type { ConfigurationsTableItem } from '@/shared/api/configurations';
 import DashboardPanel from '@/shared/components/DashboardPanel';
 import SharedDataTable from '@/shared/components/SharedDataTable';
 import { useSortableTable, type SortValueGetter } from '@/shared/hooks/useSortableTable';

@@ -1,13 +1,13 @@
 import { useQuery } from '@tanstack/react-query';
 
-import { griddedApiService } from '../../../services/griddedApi';
+import { getGriddedTimesteps } from '@/shared/api/gridded/timesteps';
 
 const fetchTimesteps = async (datasetId?: string | null) => {
   if (!datasetId) {
     throw new Error('Dataset required to retrieve timesteps');
   }
 
-  return griddedApiService.getGriddedTimesteps(datasetId);
+  return getGriddedTimesteps(datasetId);
 };
 
 export const useTimesteps = (datasetId?: string | null) => {
