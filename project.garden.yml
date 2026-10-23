@@ -28,7 +28,7 @@ environments:
         region: us-east-2
       hostname: teehr.local.app.garden
       certificateIssuerName: letsencrypt-prod
-      devTeehrVersion: ee5f8268f33da5bacc59443fb422e12050250683
+      devTeehrVersion: 0333f73d0e41960abbbae7d5252aff0859dcf3d7
       stableTeehrVersion: place-holder # Needed for sync to work for some reason.
       previousTeehrVersion: place-holder
       polaris:
@@ -58,12 +58,21 @@ environments:
       icechunk:
         bucket: "warehouse"
         prefix: "icechunk-ingests"
+        accessRoleArn: "" # local S3 has no real STS; xpublish can't assume a role against it
+        storageStsUnavailable: "true"
       # Vector tiles (xpublish-api). PMTiles archives sit alongside the
       # icechunk stores.
       pmtiles:
         bucket: "warehouse"
         prefix: "vector-tiles"
       allowedOrigins: "https://dashboards.${var.hostname},https://api.${var.hostname}"
+      xpublish:
+        # default: roles that can read anything not listed below.
+        # Listed: only these roles; [] = nobody. See teehr-cloud-core/docs/icechunk-access-control.md
+        accessRules:
+          default: ["icechunk-read-only"]
+          repos:
+            authz_test_restricted: ["admin"] # for the xpublish-access-enforcement test
   - name: remote
     defaultNamespace: ${project.name}
     # Cluster-specific values (region, cluster, ECR, EFS, IRSA roles, buckets,
@@ -75,7 +84,7 @@ environments:
       certificateIssuerName: letsencrypt-prod
       # Maintenance status, served outside the cluster (teehr-cloud-platform)
       statusUrl: https://status.teehr.rtiamanzi.org/status.json
-      devTeehrVersion: ee5f8268f33da5bacc59443fb422e12050250683
+      devTeehrVersion: 0333f73d0e41960abbbae7d5252aff0859dcf3d7
       stableTeehrVersion: v0.7.0
       previousTeehrVersion: v0.6.6
       polaris:
@@ -99,13 +108,22 @@ environments:
         schema: teehr
       # Gridded data (xpublish-api). Separate bucket from the Iceberg
       # warehouse; accessed directly rather than through Polaris.
+      # Credential vending is off unless the deploy target sets an access
+      # role (deploy-targets/use1.yml).
       icechunk:
         prefix: "icechunk-ingests"
+        accessRoleArn: ""
+        storageStsUnavailable: "true"
       # Vector tiles (xpublish-api). PMTiles archives sit alongside the
       # icechunk stores.
       pmtiles:
         prefix: "vector-tiles"
       allowedOrigins: "https://dashboards.${var.hostname},https://api.${var.hostname}"
+      xpublish:
+        # default: roles that can read anything not listed below.
+        # Listed: only these roles; [] = nobody. See teehr-cloud-core/docs/icechunk-access-control.md
+        accessRules:
+          default: ["icechunk-read-only"]
 providers:
   # The name of the provider plugin to use.
   - name: local-kubernetes

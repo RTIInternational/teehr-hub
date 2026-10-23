@@ -18,6 +18,8 @@ polaris:
   catalogRoleArn: arn:aws:iam::935462133478:role/teehr-hub-use1-iceberg-s3-warehouse-access
 icechunk:
   bucket: teehr-icechunk-warehouse-use1
+  accessRoleArn: arn:aws:iam::935462133478:role/teehr-hub-use1-icechunk-s3-warehouse-access
+  storageStsUnavailable: "false"
 pmtiles:
   bucket: teehr-icechunk-warehouse-use1
 deploy:
