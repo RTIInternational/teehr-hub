@@ -1,7 +1,7 @@
 """Define arguments and defaults for the ingest_gridded_data Prefect flow."""
 import os
 from datetime import datetime
-from typing import Any, Optional, Union
+from typing import Any, Literal, Optional, Union
 from enum import Enum
 import numpy as np
 from pydantic import BaseModel, ConfigDict, Field, TypeAdapter, field_validator, model_validator
@@ -13,9 +13,6 @@ from workflows.models.gridded_sources import GriddedSourceType
 
 # Renames source variables and units to teehr's on ingest
 VARIABLE_AND_UNIT_MAPPER = NWM_VARIABLE_MAPPER
-
-# NWM CONUS Lambert Conformal Conic grid
-NWM_CONUS_CRS = "+proj=lcc +lat_0=40 +lon_0=-97 +lat_1=30 +lat_2=60 +x_0=0 +y_0=0 +R=6370000 +units=m +no_defs"
 
 PYRAMID_GROUP_PATH = "/pyramids"
 # Spatial chunk size of pyramid levels, about one 256 px map tile
@@ -93,6 +90,8 @@ class PackedEncoding(BaseModel):
             "scale_factor": self.scale_factor,
             "add_offset": self.add_offset,
             "_FillValue": self.fill_value,
+            # zarr's own fill must match, or chunks never written read as valid data (e.g. 0 mm/s)
+            "fill_value": self.fill_value,
         }
 
 
@@ -157,9 +156,12 @@ class BaseGriddedDataInput(BaseModel):
 class BuildPyramidsDataInput(BaseGriddedDataInput):
     """Input parameters for the build_geozarr_pyramids Prefect flow."""
 
-    source_crs: str = Field(
-        default=NWM_CONUS_CRS,
-        description="Source CRS of the input data"
+    fallback_source_crs: Optional[str] = Field(
+        default=None,
+        description=(
+            "CRS to apply only when a source file has none of its own; a CRS in the file always takes "
+            "precedence. If neither is present, the run fails."
+        )
     )
     target_crs: str = Field(
         default="EPSG:3857",
@@ -174,9 +176,12 @@ class BuildPyramidsDataInput(BaseGriddedDataInput):
         description="Aggregation method for pyramid downsampling ('mean', 'max', 'min', 'sum')"
     )
     time_batch_size: int = Field(
-        default=6,
+        default=30,
         gt=0,
-        description="Number of time steps reprojected and written per pyramid batch. Bounds memory use when many new time steps are pending."
+        description=(
+            "Number of time steps reprojected and written per pyramid batch; a multiple of the shard length "
+            "(time_chunk_size * num_shard_chunks), so each shard is written once. Bounds memory use."
+        )
     )
     pyramid_encoding: dict[str, PackedEncoding] = Field(
         default={"rainrate_hourly_mean": PackedEncoding(dtype="uint16", max_value=0.075, units="mm/s")},
@@ -187,11 +192,18 @@ class BuildPyramidsDataInput(BaseGriddedDataInput):
         )
     )
 
+    @model_validator(mode="after")
+    def _batch_whole_shards(self) -> "BuildPyramidsDataInput":
+        shard_steps = self.time_chunk_size * self.num_shard_chunks
+        if self.time_batch_size % shard_steps:
+            raise ValueError(f"time_batch_size ({self.time_batch_size}) must be a multiple of the shard length ({shard_steps}).")
+        return self
+
 
 class IngestGriddedDataInput(BuildPyramidsDataInput):
     """Input parameters for the ingest_gridded_data Prefect flow.
 
-    ``source`` selects the data source by its ``type``. Dataset fields (dims, CRS, kwargs, ...)
+    ``source`` selects the data source by its ``type``. Dataset fields (dims, kwargs, ...)
     default to NWM forcing's values; deployments for other sources override them. The
     repository name (``configuration_name``) and ``variable_names`` are derived from the source
     and hidden from the flow's parameters.
@@ -215,7 +227,14 @@ class IngestGriddedDataInput(BuildPyramidsDataInput):
     )
     num_lookback_days: Union[int, None] = Field(
         default=1,
-        description="Number of days before end_dt to use as start_dt. If None, start_dt is derived from the latest value in the store."
+        description="Number of days before end_dt to use as start_dt. Ignored when start_dt is given; one of the two is required."
+    )
+    write_mode: Literal["append", "upsert"] = Field(
+        default="append",
+        description=(
+            "'append' writes steps not yet in the repo. 'upsert' also rewrites steps whose source file is more "
+            "final (status) or newer (last modified) than what's stored."
+        )
     )
     write_materialized: bool = Field(
         default=True,
@@ -243,7 +262,7 @@ class IngestGriddedDataInput(BuildPyramidsDataInput):
 
     # --- Per-component extra kwargs ---
     obstore_kwargs: dict[str, Any] = Field(
-        default={"skip_signature": True},
+        default_factory=dict,
         description="Extra keyword arguments passed to obstore.store.from_url(url, **obstore_kwargs)"
     )
     xconcat_kwargs: dict[str, Any] = Field(

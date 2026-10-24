@@ -8,12 +8,11 @@ import obstore
 import xarray as xr
 from obstore.store import from_url
 from obspec_utils.registry import ObjectStoreRegistry
-from virtualizarr import open_virtual_dataset, open_virtual_mfdataset
+from virtualizarr import open_virtual_dataset
 from virtualizarr.manifests import ManifestArray
 from zarr.core.metadata import ArrayV3Metadata
 import virtualizarr as vz
 import icechunk as ic
-from icechunk.xarray import to_icechunk
 from pyproj import CRS as PyprojCRS
 import zarr
 import os
@@ -21,7 +20,6 @@ import os
 from prefect import task, get_run_logger
 from prefect.cache_policies import NO_CACHE
 from teehr.utils.concurrency import resolve_budget, run_concurrent_map
-
 
 # Store kwargs whose values are kept out of logs
 _SECRET_KWARGS = {"access_key_id", "secret_access_key", "session_token", "service_account_key", "bearer_token"}
@@ -64,7 +62,7 @@ def create_objectstore_registry(bucket: str, **kwargs) -> ObjectStoreRegistry:
 
 
 def build_icechunk_s3_storage(bucket: str, prefix: str, **kwargs) -> ic.storage.Storage:
-    """Build an IceChunk S3 storage object, injecting MinIO connection options from the environment when present.
+    """Build an IceChunk S3 storage object, injecting local S3 connection options from the environment when present.
 
     Parameters
     ----------
@@ -77,7 +75,7 @@ def build_icechunk_s3_storage(bucket: str, prefix: str, **kwargs) -> ic.storage.
         not provided and ``REMOTE_CATALOG_S3_ENDPOINT`` is set, that value is used along
         with ``allow_http=True`` and ``force_path_style=True``.
     """
-    # Inject MinIO endpoint from env when not explicitly provided
+    # Inject the local S3 endpoint from env when not explicitly provided
     endpoint = os.environ.get("REMOTE_CATALOG_S3_ENDPOINT")
     if "endpoint_url" not in kwargs and endpoint:
         kwargs.setdefault("endpoint_url", endpoint)
@@ -132,7 +130,7 @@ def configure_icechunk_s3_repo(
     Parameters
     ----------
     source_bucket : str
-        The source bucket or base URL for the virtual chunk container (e.g., "gs://national-water-model").
+        The source bucket or base URL for the virtual chunk container (e.g., "https://climate.arizona.edu").
     dest_bucket : str
         The destination S3 bucket for the IceChunk repository (e.g., "warehouse").
     prefix : str
@@ -309,14 +307,6 @@ def create_virtual_xarray_dataset(
         dim=concat_dim,
         **kwargs
     )
-    # # TODO: open_mfdataset()?
-    # virtual_ds = open_virtual_mfdataset(
-    #     file_list,
-    #     registry=registry,
-    #     parser=parser,
-    #     concat_dim=concat_dim,
-    #     **kwargs
-    # )
     return virtual_ds
 
 
@@ -348,9 +338,10 @@ def align_virtual_fill_values(virtual_ds: xr.Dataset) -> xr.Dataset:
 def assign_geotiff_coords(ds: xr.Dataset, fallback_crs: str | None = None) -> xr.Dataset:
     """Add x/y pixel-centre coords, the CRS, and units from the GeoTIFF tags VirtualTIFF keeps as attrs.
 
-    Assumes a north-up grid (no rotation) with a single tiepoint. ``fallback_crs`` is used when
-    the file's CRS has no EPSG code; without one, such a file raises.
+    Assumes a north-up grid (no rotation) with a single tiepoint. ``fallback_crs`` is used, with a
+    warning, when the file's CRS has no EPSG code; without one, such a file raises.
     """
+    logger = get_run_logger()
     attrs = next(ds[v].attrs for v in ds.data_vars if {"x", "y"} <= set(ds[v].dims))
     _, _, _, x0, y0, _ = attrs["model_tiepoint"]
     dx, dy, _ = attrs["model_pixel_scale"]
@@ -365,9 +356,14 @@ def assign_geotiff_coords(ds: xr.Dataset, fallback_crs: str | None = None) -> xr
     if epsg not in (None, _GEOTIFF_USER_DEFINED):
         ds = ds.rio.write_crs(f"EPSG:{epsg}")
     elif fallback_crs is not None:
+        logger.warning(
+            f"GeoTIFF CRS has no EPSG code ({attrs.get('citation')!r}); applying fallback_source_crs {fallback_crs}."
+        )
         ds = ds.rio.write_crs(fallback_crs)
     else:
-        raise ValueError(f"GeoTIFF CRS has no EPSG code ({attrs.get('citation')!r}); set source_crs.")
+        raise ValueError(
+            f"GeoTIFF CRS has no EPSG code ({attrs.get('citation')!r}) and no fallback_source_crs was provided."
+        )
     for var in ds.data_vars:
         if "UNITTYPE" in ds[var].attrs:
             ds[var].attrs.setdefault("units", ds[var].attrs["UNITTYPE"])
@@ -445,7 +441,7 @@ def reproject_dataset(
     target_crs: str,
     x_dim: str,
     y_dim: str,
-    source_crs: str | None = None
+    fallback_crs: str | None = None
 ) -> xr.Dataset:
     """Reproject an xarray dataset to a target CRS.
 
@@ -459,8 +455,8 @@ def reproject_dataset(
         The name of the x dimension.
     y_dim : str
         The name of the y dimension.
-    source_crs : str | None
-        The source CRS to use if the dataset does not have one defined.
+    fallback_crs : str | None
+        CRS applied, with a warning, only if the dataset has none. Without either, this raises.
     """
     logger = get_run_logger()
     logger.info(
@@ -468,8 +464,10 @@ def reproject_dataset(
     )
     dataset = dataset.rio.set_spatial_dims(x_dim=x_dim, y_dim=y_dim)
     if dataset.rio.crs is None:
-        logger.info(f"No CRS found in the source dataset. Assigning: {source_crs}.")
-        dataset = dataset.rio.write_crs(source_crs)
+        if fallback_crs is None:
+            raise ValueError("Dataset has no CRS and no fallback_source_crs was provided.")
+        logger.warning(f"No CRS found in the dataset; applying fallback_source_crs {fallback_crs}.")
+        dataset = dataset.rio.write_crs(fallback_crs)
     else:
         logger.info(f"Source dataset has a CRS defined: {dataset.rio.crs}.")
         dataset = dataset.rio.write_crs(dataset.rio.crs)
@@ -480,7 +478,7 @@ def reproject_dataset(
 
 def standardize_and_inject_geozarr(
     ds: xr.Dataset,
-    source_crs: str | None = None,
+    fallback_crs: str | None = None,
     x_dim: str | None = None,
     y_dim: str | None = None,
     variable_and_unit_mapper: dict | None = None
@@ -515,12 +513,10 @@ def standardize_and_inject_geozarr(
     # --- Resolve CRS ---
     crs_obj = ds.rio.crs
     if crs_obj is None:
-        if source_crs is None:
-            raise ValueError(
-                "Dataset has no CRS and no source_crs fallback was provided."
-            )
-        logger.info(f"No CRS found; applying fallback: {source_crs}.")
-        ds = ds.rio.write_crs(source_crs)
+        if fallback_crs is None:
+            raise ValueError("Dataset has no CRS and no fallback_source_crs was provided.")
+        logger.warning(f"No CRS found in the source data; applying fallback_source_crs {fallback_crs}.")
+        ds = ds.rio.write_crs(fallback_crs)
         crs_obj = ds.rio.crs
 
     wkt_string = crs_obj.to_wkt()
@@ -617,47 +613,6 @@ def restore_grid_mapping_attrs(ds: xr.Dataset) -> xr.Dataset:
     return ds
 
 
-def filter_for_new_data(
-    incoming_ds: xr.Dataset,
-    existing_ds: xr.Dataset,
-    append_dim: str,
-) -> xr.Dataset | None:
-    """Filter out duplicate time steps from an incoming dataset based on an existing dataset.
-
-    Parameters
-    ----------
-    incoming_ds : xr.Dataset
-        The incoming dataset to filter.
-    existing_ds : xr.Dataset
-        The existing dataset to compare against.
-    append_dim : str
-        The dimension used for appending (e.g. "time").
-
-    Returns
-    -------
-    xr.Dataset | None
-        A filtered dataset containing only new time steps, or None if no new data is found.
-    """
-    logger = get_run_logger()
-    if append_dim not in incoming_ds.dims:
-        raise ValueError(f"Append dimension '{append_dim}' not found in incoming dataset.")
-    if append_dim not in existing_ds.dims:
-        raise ValueError(f"Append dimension '{append_dim}' not found in existing dataset.")
-
-    incoming_steps = set(incoming_ds[append_dim].values)
-    existing_steps = set(existing_ds[append_dim].values)
-    new_steps = incoming_steps - existing_steps
-
-    if not new_steps:
-        logger.info("No new data steps found; all incoming steps already exist.")
-        return None
-
-    ds_filtered = incoming_ds.sel({append_dim: sorted(new_steps)})
-    logger.info(f"Filtered dataset to {len(ds_filtered[append_dim])} new steps along '{append_dim}'.")
-    return ds_filtered
-
-
-
 def group_contains_data(store: ic.IcechunkStore, group_path: str) -> bool:
     """Return True if the group at ``group_path`` (e.g. "/pyramids/0") exists and holds arrays."""
     try:
@@ -665,79 +620,6 @@ def group_contains_data(store: ic.IcechunkStore, group_path: str) -> bool:
     except (zarr.errors.GroupNotFoundError, FileNotFoundError):
         return False
     return any(True for _ in group.array_keys())
-
-
-def drop_existing_steps(
-    ds: xr.Dataset,
-    store: ic.IcechunkStore,
-    group_path: str,
-    append_dim: str,
-) -> xr.Dataset | None:
-    """Drop the steps of ``ds`` already in ``group_path``, keeping duplicates among the rest; None if nothing is new."""
-    if group_contains_data(store, group_path):
-        existing_values = xr.open_zarr(store, group=group_path, consolidated=False)[append_dim].values
-        ds = ds.isel({append_dim: ~np.isin(ds[append_dim].values, existing_values)})
-    return ds if ds.sizes[append_dim] else None
-
-
-def stored_steps(store: ic.IcechunkStore, group_path: str, append_dim: str) -> int:
-    """Number of steps along ``append_dim`` already in ``group_path`` (0 if it has none)."""
-    if not group_contains_data(store, group_path):
-        return 0
-    return xr.open_zarr(store, group=group_path, consolidated=False).sizes[append_dim]
-
-
-def batch_bounds(stored: int, num_steps: int, batch_size: int) -> list[tuple[int, int]]:
-    """(start, stop) of each batch of ``num_steps`` new steps, appended after ``stored`` existing ones.
-
-    Batches end on multiples of ``batch_size`` along the stored axis, so a batch size that is a
-    multiple of the shard length writes each shard once.
-    """
-    starts = [0, *range(batch_size - stored % batch_size, num_steps, batch_size)]
-    return list(zip(starts, [*starts[1:], num_steps]))
-
-
-def new_steps(
-    ds: xr.Dataset,
-    store: ic.IcechunkStore,
-    group_path: str,
-    append_dim: str,
-) -> xr.Dataset | None:
-    """Return the steps of ``ds`` not yet in ``group_path``: all of it for an empty group, None if nothing is new."""
-    if not group_contains_data(store, group_path):
-        return ds
-    existing = open_zarr_group(store=store, group_path=group_path)
-    return filter_for_new_data(incoming_ds=ds, existing_ds=existing, append_dim=append_dim)
-
-
-def write_group(
-    ds: xr.Dataset,
-    session: ic.session.Session,
-    group_path: str,
-    append_dim: str,
-    make_encoding: Callable[[xr.Dataset], dict] | None = None,
-    virtual: bool = False,
-) -> None:
-    """Create ``group_path`` from ``ds`` on the first write, append along ``append_dim`` after.
-
-    ``make_encoding`` builds the encoding for the first write; appends reuse the existing arrays.
-    ``virtual`` writes VirtualiZarr references instead of materialized data.
-    """
-    logger = get_run_logger()
-    exists = group_contains_data(session.store, group_path)
-    logger.info(f"{'Appending to' if exists else 'Creating'} {group_path} ({len(ds[append_dim])} step(s)).")
-    if virtual:
-        ds.vz.to_icechunk(session.store, group=group_path, append_dim=append_dim if exists else None)
-        return
-    to_icechunk(
-        ds.sortby(append_dim),
-        session,
-        group=group_path,
-        mode="a" if exists else "w",  # TODO: upsert?
-        append_dim=append_dim if exists else None,
-        encoding=None if exists or make_encoding is None else make_encoding(ds),
-        align_chunks=True,
-    )
 
 
 def open_zarr_group(

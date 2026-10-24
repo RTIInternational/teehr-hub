@@ -1,0 +1,1 @@
+DROP TABLE IF EXISTS grid_pixel_coverage_weights
