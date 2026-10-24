@@ -2,6 +2,7 @@ import DashboardPanel from '@/shared/components/DashboardPanel';
 import type { PolygonFeatureProps, PolygonFeatures } from '@/shared/types/gridded/tiles';
 
 import { useDashboard, ActionTypes } from '../DashboardContext';
+import { useCurrentTimestep } from '../hooks/useCurrentTimestep';
 
 // Attribute columns are driven by the pmtiles archive, so render whatever the
 // features carry rather than hard-coding a schema. `id` leads since it is the
@@ -18,6 +19,7 @@ const GriddedPolygonPanel = () => {
   const { polygonFeatures, polygonClickLngLat, selectedLocation, activePolygonLayer } = state;
 
   const selectedId = selectedLocation?.primary_location_id ?? null;
+  const currentTimestep = useCurrentTimestep();
 
   const selectFeature = (props: PolygonFeatureProps) => {
     dispatch({
@@ -131,9 +133,17 @@ const GriddedPolygonPanel = () => {
         <button
           type="button"
           className="btn btn-sm btn-primary text-nowrap"
-          disabled={!selectedLocation}
-          // TODO: wire to the iceberg warehouse via apiService.getPrimaryTimeseries
-          onClick={() => {}}
+          disabled={!selectedLocation || !currentTimestep}
+          onClick={() =>
+            dispatch({
+              type: ActionTypes.LOAD_POLYGON_TIMESERIES,
+              payload: {
+                location_id: selectedLocation!.primary_location_id,
+                name: selectedLocation!.name,
+                time: currentTimestep!,
+              },
+            })
+          }
         >
           Load Timeseries
         </button>

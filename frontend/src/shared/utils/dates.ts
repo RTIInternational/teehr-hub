@@ -221,3 +221,12 @@ export const getQuarterDateRange = (quarter: string) => {
 
   return { start_date, end_date };
 };
+
+// Milliseconds of a naive UTC time, as the gridded and warehouse APIs return them
+// ("YYYY-MM-DDTHH:MM:SS" or "YYYY-MM-DD HH:MM:SS"); times with a zone keep it
+export const parseUtcTime = (time: string) =>
+  Date.parse(/[zZ]|[+-]\d\d:\d\d$/.test(time) ? time : `${time.replace(' ', 'T')}Z`);
+
+// Shortest interval between consecutive times in milliseconds; Infinity for fewer than two
+export const shortestStep = (ms: number[]) =>
+  ms.reduce((min, t, i) => (i > 0 ? Math.min(min, t - ms[i - 1]) : min), Infinity);
