@@ -31,11 +31,12 @@ export const usePolygonTimeseries = ({
   const useDefaultSpan = !start_date && !end_date;
   // Default span: DEFAULT_SPAN_STEPS of the datasets' shortest step, as for point queries
   const timesteps = useQueries({
-    queries: datasets.map((ds) => ({ ...timestepsQueryOptions(ds), enabled: useDefaultSpan && !!ds })),
+    queries: datasets.map((ds) => ({
+      ...timestepsQueryOptions(ds),
+      enabled: useDefaultSpan && !!ds,
+    })),
   });
-  const step = Math.min(
-    ...timesteps.map((t) => shortestStep((t.data ?? []).map(parseUtcTime)))
-  );
+  const step = Math.min(...timesteps.map((t) => shortestStep((t.data ?? []).map(parseUtcTime))));
   const spanMs = Number.isFinite(step) ? DEFAULT_SPAN_STEPS * step : null;
   const start = useDefaultSpan ? anchor && spanMs !== null && msBefore(anchor, spanMs) : start_date;
   const end = useDefaultSpan ? anchor : end_date;
