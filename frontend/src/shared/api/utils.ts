@@ -1,10 +1,10 @@
 export const aliasMap: Record<string, string> = {
   waterYear: 'water_year',
   aggMethod: 'window_agg',
-  configuration: 'configuration_name',
+  configuration: 'secondary_configuration_name',
   leadTimeBin: 'forecast_lead_time_bin',
   primary_location_id: 'location_id',
-  variable: 'variable_name',
+  variable: 'secondary_variable_name',
 };
 
 export type TableProperties = {

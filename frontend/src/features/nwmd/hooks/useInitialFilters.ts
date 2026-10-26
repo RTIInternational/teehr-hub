@@ -19,7 +19,7 @@ import {
 export const useInitialFilters = (table: string) => {
   const { state, dispatch } = useDashboard();
 
-  const configurations = useDistinctValues(table, 'configuration_name');
+  const configurations = useDistinctValues(table, 'secondary_configuration_name');
 
   const defaultConfiguration = selectDefault(
     NWMD_DASHBOARD_DEFAULTS.preferredConfiguration,
@@ -27,7 +27,7 @@ export const useInitialFilters = (table: string) => {
   );
   const configurationFilter = getConfigurationFilter(defaultConfiguration ?? undefined);
 
-  const variables = useDistinctValues(table, 'variable_name', configurationFilter);
+  const variables = useDistinctValues(table, 'secondary_variable_name', configurationFilter);
   const waterYears = useDistinctValues(table, 'water_year', configurationFilter);
   const quarters = useDistinctValues(table, 'quarter', configurationFilter);
   const thresholds = useDistinctValues(table, 'threshold', configurationFilter);
