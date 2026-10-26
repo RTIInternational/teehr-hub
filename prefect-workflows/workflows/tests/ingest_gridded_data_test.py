@@ -186,8 +186,26 @@ def test_backfill_in_any_order_then_upsert(harness, nwm, write_materialized):
         assert list(g[k].status.values[70:80]) == [2] * 10
     assert abs(float(g["pyramids/0"].rainrate_hourly_mean.isel(time=71).max()) - rate(71, reissued=True)) < PACKED_TOL
 
+    assert "scale_factor" not in data.rainrate_hourly_mean.encoding and data.rainrate_hourly_mean.dtype == "float32"
     root = zarr.open_group(open_repo().readonly_session("main").store, mode="r", zarr_format=3).attrs
     assert {k: root[k] for k in ("append_dim", "time_origin", "time_step", "configuration_name", "timeseries_type", "data_group")} == {
         "append_dim": "time", "time_origin": ORIGIN.isoformat(), "time_step": pd.Timedelta("1h").isoformat(),
         "configuration_name": "nwm31_forcing_analysis_assim", "timeseries_type": "primary", "data_group": f"/{data_group}",
     }
+
+
+def test_unit_conversion_composes_with_source_packing():
+    units = {"rainrate_hourly_mean": "mm/s"}
+    conversions = {("mm/h", "mm/s"): {"scale_factor": 1 / 3600}}
+    ds = xr.Dataset({
+        "rainrate_hourly_mean": ("x", np.arange(3, dtype="int16"), {"units": "mm/h", "scale_factor": np.float32(0.1), "add_offset": np.float32(36)}),
+        "other": ("x", np.zeros(3, "float32"), {"units": "mm/h"}),
+    })
+    out = ing.gu.apply_unit_conversions(ds, units, conversions)
+    rate = out.rainrate_hourly_mean.attrs
+    assert (rate["units"], rate["source_units"]) == ("mm/s", "mm/h")
+    assert rate["scale_factor"] == pytest.approx(0.1 / 3600) and rate["add_offset"] == pytest.approx(0.01)
+    assert rate["scale_factor"].dtype == np.float32
+    assert out.other.attrs == {"units": "mm/h"}  # not in units
+    with pytest.raises(ValueError, match="No conversion"):
+        ing.gu.apply_unit_conversions(xr.Dataset({"rainrate_hourly_mean": ("x", [1.0], {"units": "in/h"})}), units, conversions)

@@ -13,6 +13,10 @@ from workflows.models.gridded_sources import GriddedSourceType
 
 # Renames source variables and units to teehr's on ingest
 VARIABLE_AND_UNIT_MAPPER = NWM_VARIABLE_MAPPER
+# Units each teehr variable is stored in; variables not listed keep their (mapped) source units
+VARIABLE_UNITS = {"rainrate_hourly_mean": "mm/s"}
+# Linear conversions into those units: value * scale_factor + add_offset
+UNIT_CONVERSIONS = {}
 
 PYRAMID_GROUP_PATH = "/pyramids"
 # Spatial chunk size of pyramid levels, about one 256 px map tile

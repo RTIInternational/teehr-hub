@@ -601,6 +601,34 @@ def standardize_and_inject_geozarr(
     return ds
 
 
+def apply_unit_conversions(ds: xr.Dataset, variable_units: dict, unit_conversions: dict) -> xr.Dataset:
+    """Set CF ``scale_factor``/``add_offset`` so each variable in ``variable_units`` decodes to its units.
+
+    Stored values are unchanged; any packing the source already has is composed with the conversion.
+    """
+    for var in ds.data_vars:
+        target, units = variable_units.get(var), ds[var].attrs.get("units")
+        if target is None or units == target:
+            continue
+        if (units, target) not in unit_conversions:
+            raise ValueError(f"No conversion for '{var}' from '{units}' to '{target}'.")
+        conversion = unit_conversions[(units, target)]
+        scale, offset = conversion.get("scale_factor", 1.0), conversion.get("add_offset", 0.0)
+        attrs = ds[var].attrs
+        # Match the source's packing type, or its float type; CF takes the decoded type from it
+        if "scale_factor" in attrs:
+            ftype = np.asarray(attrs["scale_factor"]).dtype
+        else:
+            ftype = ds[var].dtype if np.issubdtype(ds[var].dtype, np.floating) else np.dtype("float32")
+        new_offset = attrs.get("add_offset", 0.0) * scale + offset
+        attrs["scale_factor"] = ftype.type(attrs.get("scale_factor", 1.0) * scale)
+        if new_offset or "add_offset" in attrs:
+            attrs["add_offset"] = ftype.type(new_offset)
+        attrs.setdefault("source_units", units)
+        attrs["units"] = target
+    return ds
+
+
 def restore_grid_mapping_attrs(ds: xr.Dataset) -> xr.Dataset:
     """Move each variable's ``grid_mapping`` from encoding back to attrs.
 

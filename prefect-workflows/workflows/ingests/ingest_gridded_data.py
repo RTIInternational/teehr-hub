@@ -3,6 +3,7 @@ from prefect.cache_policies import NO_CACHE
 from datetime import datetime, timedelta
 from typing import Callable
 import icechunk as ic
+import numpy as np
 import pandas as pd
 import virtualizarr as vz
 from virtual_tiff import VirtualTIFF
@@ -17,7 +18,9 @@ from workflows.models.ingest_gridded_data_input import (
     ParserType,
     RAW_DATA_GROUP_PATH,
     REFERENCES_GROUP_PATH,
+    UNIT_CONVERSIONS,
     VARIABLE_AND_UNIT_MAPPER,
+    VARIABLE_UNITS,
 )
 from build_geozarr_pyramids import build_pyramids as build_pyramids_flow
 from workflows.utils.time_utils import to_naive_utc
@@ -105,14 +108,15 @@ def _preprocess(source: GriddedSource, args: IngestGriddedDataInput) -> Callable
 
 
 def _standardize_references(ds: xr.Dataset, args: IngestGriddedDataInput) -> xr.Dataset:
-    """Keep the ingested variables, under teehr's names and metadata."""
-    return gu.standardize_and_inject_geozarr(
+    """Keep the ingested variables, under teehr's names, units and metadata."""
+    ds = gu.standardize_and_inject_geozarr(
         ds[args.variable_names].sortby(args.append_dim),
         fallback_crs=args.fallback_source_crs,
         x_dim=args.x_dim,
         y_dim=args.y_dim,
         variable_and_unit_mapper=VARIABLE_AND_UNIT_MAPPER,
     )
+    return gu.apply_unit_conversions(ds, VARIABLE_UNITS, UNIT_CONVERSIONS)
 
 
 def _resolve_start_dt(args: IngestGriddedDataInput, end_dt: datetime) -> datetime:
@@ -189,6 +193,13 @@ def materialize_references(repo: ic.Repository, args: IngestGriddedDataInput) ->
     _, origin, time_step = tg.read_grid(store)
     refs = gu.restore_grid_mapping_attrs(gu.open_zarr_group(store=store, group_path=REFERENCES_GROUP_PATH))
     refs = refs.drop_vars([n for n in tg.STEP_COORDS if n in refs.variables])
+    # /raw_data stores the decoded values, already in teehr units, so drop the source packing. Scale factors
+    # read back from JSON attrs as float64 and upcast the decoded values; keep a float source's precision.
+    for var in refs.data_vars:
+        for key in ("scale_factor", "add_offset"):
+            refs[var].encoding.pop(key, None)
+        source_dtype = np.dtype(refs[var].encoding.pop("dtype", refs[var].dtype))
+        refs[var] = refs[var].astype(source_dtype if np.issubdtype(source_dtype, np.floating) else "float32")
     shard_steps = args.time_chunk_size * args.num_shard_chunks
     batches = tg.shard_batches(stale, refs_meta.index, shard_steps)
     logger.info(f"Materializing {len(stale)} step(s) in {len(batches)} shard batch(es).")
