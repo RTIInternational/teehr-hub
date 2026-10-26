@@ -13,7 +13,8 @@ from workflows.models.gridded_sources import GriddedSourceType
 
 # Renames source variables and units to teehr's on ingest
 VARIABLE_AND_UNIT_MAPPER = NWM_VARIABLE_MAPPER
-# Units each teehr variable is stored in; variables not listed keep their (mapped) source units
+# Units each teehr variable is stored in; variables not listed keep their (mapped) source units.
+# Float sources are converted in /raw_data; integer sources keep their integers with packing that decodes to these units.
 VARIABLE_UNITS = {"rainrate_hourly_mean": "mm/s"}
 # Linear conversions into those units: value * scale_factor + add_offset
 UNIT_CONVERSIONS = {}
@@ -258,6 +259,14 @@ class IngestGriddedDataInput(BuildPyramidsDataInput):
     parser_type: ParserType = Field(
         default=ParserType.hdf,
         description="Parser to use for reading raw data files"
+    )
+    raw_data_fill_values: dict[str, int] = Field(
+        default_factory=dict,
+        description=(
+            "Fill value per stored variable, for integer sources whose files declare none, e.g. {'snow_class': 255}; "
+            "use a value the data never takes. A source's own _FillValue takes precedence. Applies only when "
+            "/raw_data is first created."
+        )
     )
     build_pyramids_on_ingest: bool = Field(
         default=True,

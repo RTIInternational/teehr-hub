@@ -174,6 +174,31 @@ def write_references(
     logger.info(f"Committed {len(todo)} step(s) of virtual references: {snapshot_id}")
 
 
+def _raw_data_encoding(da: xr.DataArray, fill_value: int | None = None) -> dict:
+    """How ``/raw_data`` stores a decoded ``/references`` variable.
+
+    Float sources are stored as plain float32, already in teehr units. Integer sources keep their integers,
+    losslessly, packed so they decode to teehr units (the source's packing composed with any unit conversion);
+    ``fill_value`` marks missing values when the source declares none.
+    """
+    dtype = np.dtype(da.encoding.get("dtype", da.dtype))
+    if not np.issubdtype(dtype, np.integer):
+        return {"dtype": "float32"}
+    fill = da.encoding.get("_FillValue", fill_value)
+    if fill is None:
+        raise ValueError(
+            f"Integer variable '{da.name}' has no _FillValue; set raw_data_fill_values['{da.name}'] to a value it never uses."
+        )
+    info = np.iinfo(dtype)
+    if not info.min <= fill <= info.max:
+        raise ValueError(f"Fill value {fill} for '{da.name}' is outside the {dtype} range [{info.min}, {info.max}].")
+    # zarr's own fill must match, or unwritten chunks read as valid data (e.g. 0)
+    packing = {"dtype": dtype, "_FillValue": fill, "fill_value": fill}
+    # _Unsigned: netCDF-3 style unsigned data, stored signed (fills too) and decoded to the unsigned range
+    packing.update({k: da.encoding[k] for k in ("scale_factor", "add_offset", "_Unsigned") if k in da.encoding})
+    return packing
+
+
 # Retried because reading source chunks can drop connections. Each shard's worth of steps is committed
 # on its own, so a retry (or the next run) resumes after the last committed batch.
 @task(cache_policy=NO_CACHE, retries=3, retry_delay_seconds=30)
@@ -193,13 +218,6 @@ def materialize_references(repo: ic.Repository, args: IngestGriddedDataInput) ->
     _, origin, time_step = tg.read_grid(store)
     refs = gu.restore_grid_mapping_attrs(gu.open_zarr_group(store=store, group_path=REFERENCES_GROUP_PATH))
     refs = refs.drop_vars([n for n in tg.STEP_COORDS if n in refs.variables])
-    # /raw_data stores the decoded values, already in teehr units, so drop the source packing. Scale factors
-    # read back from JSON attrs as float64 and upcast the decoded values; keep a float source's precision.
-    for var in refs.data_vars:
-        for key in ("scale_factor", "add_offset"):
-            refs[var].encoding.pop(key, None)
-        source_dtype = np.dtype(refs[var].encoding.pop("dtype", refs[var].dtype))
-        refs[var] = refs[var].astype(source_dtype if np.issubdtype(source_dtype, np.floating) else "float32")
     shard_steps = args.time_chunk_size * args.num_shard_chunks
     batches = tg.shard_batches(stale, refs_meta.index, shard_steps)
     logger.info(f"Materializing {len(stale)} step(s) in {len(batches)} shard batch(es).")
@@ -214,6 +232,9 @@ def materialize_references(repo: ic.Repository, args: IngestGriddedDataInput) ->
                 num_shard_chunks=args.num_shard_chunks,
                 time_chunk_size=args.time_chunk_size,
             )
+            # Later region writes reuse the stored encoding
+            for var in refs.data_vars:
+                encoding[var].update(_raw_data_encoding(refs[var], args.raw_data_fill_values.get(var)))
             tg.create_group(session, RAW_DATA_GROUP_PATH, refs, origin, time_step, dim, refs_meta.index[-1], encoding=encoding)
             logger.info(f"Created {RAW_DATA_GROUP_PATH} on a {time_step} grid from {origin} to {refs_meta.index[-1]}.")
             raw_meta = tg.read_step_metadata(session.store, RAW_DATA_GROUP_PATH, dim)

@@ -39,20 +39,24 @@ def harness():
 
 @pytest.fixture
 def nwm(tmp_path, monkeypatch):
-    """NWM source and repo on local storage; returns publish(i, value, modified) and an opener."""
+    """NWM source and repo on local storage; returns publish(i, value, modified, ...) and an opener.
+
+    ``value`` is a scalar or a (40, 50) grid; ``encoding`` writes it packed, e.g. as int16.
+    """
     src = tmp_path / "src"
     src.mkdir()
     prefix = f"file://{src}/"
     published = {}
 
-    def publish(i, value, modified):
+    def publish(i, value, modified, units="mm s^-1", encoding=None):
         t = HOURS[i]
         name = f"nwm.{t:%Y%m%d}.t{t:%H}z.analysis_assim.forcing.tm00.conus.nc"
+        data = np.broadcast_to(np.asarray(value, "float32"), (40, 50))[None]
         # NWM's y increases northward
         xr.Dataset(
-            {"RAINRATE": (("time", "y", "x"), np.full((1, 40, 50), value, "float32"), {"units": "mm s^-1"})},
+            {"RAINRATE": (("time", "y", "x"), data, {"units": units})},
             coords={"time": [t], "y": np.arange(40) * 1000.0, "x": np.arange(50) * 1000.0 - 25000.0},
-        ).to_netcdf(src / name, engine="h5netcdf")
+        ).to_netcdf(src / name, engine="h5netcdf", encoding={"RAINRATE": encoding} if encoding else None)
         published[t] = {"time": t, "url": f"{prefix}{name}", "status": "stable", "last_modified": pd.Timestamp(modified)}
 
     def list_files(self, start_dt, end_dt):
@@ -77,11 +81,11 @@ def nwm(tmp_path, monkeypatch):
     return publish, open_repo
 
 
-def _run(start, end, mode="append", write_materialized=True):
+def _run(start, end, mode="append", write_materialized=True, **kwargs):
     ing.ingest_gridded_data(IngestGriddedDataInput(
         source={"type": "nwm"}, start_dt=start.isoformat(), end_dt=end.isoformat(), write_mode=mode,
         write_materialized=write_materialized, fallback_source_crs=NWM_CONUS_CRS,
-        factors=[1, 2], dest_bucket="unused", base_prefix="unused", ignore_unreadable_file=False,
+        factors=[1, 2], dest_bucket="unused", base_prefix="unused", ignore_unreadable_file=False, **kwargs,
     ))
 
 
@@ -192,6 +196,73 @@ def test_backfill_in_any_order_then_upsert(harness, nwm, write_materialized):
         "append_dim": "time", "time_origin": ORIGIN.isoformat(), "time_step": pd.Timedelta("1h").isoformat(),
         "configuration_name": "nwm31_forcing_analysis_assim", "timeseries_type": "primary", "data_group": f"/{data_group}",
     }
+
+
+@pytest.mark.parametrize("units, source_scale, stored_scale", [
+    ("mm s^-1", None, None),  # unpacked, already mm/s: stored as is
+    ("mm/h", None, 1 / 3600),  # unpacked mm/h: the conversion adds packing
+    ("mm/h", 0.1, 0.1 / 3600),  # packed mm/h: the conversion composes with the source packing
+])
+def test_integer_source_stored_losslessly(harness, nwm, monkeypatch, units, source_scale, stored_scale):
+    publish, open_repo = nwm
+    monkeypatch.setattr(ing, "UNIT_CONVERSIONS", {("mm/h", "mm/s"): {"scale_factor": 1 / 3600}})
+    rng = np.random.default_rng(0)
+    ints = rng.integers(0, 3000, (40, 50)).astype("float32")
+    ints[:4, :6] = np.nan
+    encoding = {"dtype": "int16", "_FillValue": -9999}
+    if source_scale:
+        encoding["scale_factor"] = source_scale
+    for i in (0, 2):  # hour 1 stays unwritten
+        publish(i, ints * (source_scale or 1), "2026-09-01", units=units, encoding=encoding)
+    _run(HOURS[0], HOURS[2])
+
+    store = open_repo().readonly_session("main").store
+    stored = xr.open_zarr(store, group="raw_data", consolidated=False, mask_and_scale=False).rainrate_hourly_mean
+    assert stored.dtype == "int16" and stored.attrs["_FillValue"] == -9999
+    assert stored.attrs.get("scale_factor") == (pytest.approx(stored_scale) if stored_scale else None)
+    assert "add_offset" not in stored.attrs
+    raw = xr.open_zarr(store, group="raw_data", consolidated=False).rainrate_hourly_mean
+    assert raw.attrs["units"] == "mm/s"
+    for i in (0, 2):
+        np.testing.assert_array_equal(stored.isel(time=i).values, np.where(np.isnan(ints), -9999, ints))
+        np.testing.assert_allclose(raw.isel(time=i).values, ints * (stored_scale or 1), rtol=1e-6)
+    assert np.isnan(raw.isel(time=1).values).all()  # unwritten slots are missing, not 0
+
+
+def test_integer_source_without_fill_value_needs_one(harness, nwm, monkeypatch):
+    publish, open_repo = nwm
+    monkeypatch.setattr(ing, "materialize_references", ing.materialize_references.with_options(retries=0))
+    ints = np.arange(40 * 50).reshape(40, 50) % 255  # 0-254, leaving 255 unused
+    for i in (0, 2):
+        publish(i, ints, "2026-09-01", encoding={"dtype": "uint8"})
+    with pytest.raises(ValueError, match="has no _FillValue"):
+        _run(HOURS[0], HOURS[2])
+    with pytest.raises(ValueError, match="outside the uint8 range"):
+        _run(HOURS[0], HOURS[2], raw_data_fill_values={"rainrate_hourly_mean": 300})
+
+    _run(HOURS[0], HOURS[2], raw_data_fill_values={"rainrate_hourly_mean": 255})
+    store = open_repo().readonly_session("main").store
+    stored = xr.open_zarr(store, group="raw_data", consolidated=False, mask_and_scale=False).rainrate_hourly_mean
+    assert stored.dtype == "uint8" and stored.attrs["_FillValue"] == 255
+    raw = xr.open_zarr(store, group="raw_data", consolidated=False).rainrate_hourly_mean
+    np.testing.assert_array_equal(raw.isel(time=0).values, ints)
+    assert np.isnan(raw.isel(time=1).values).all()  # the unwritten slot reads as the fill value, i.e. missing
+
+
+def test_unsigned_source_stored_as_signed_keeps_its_values(harness, nwm):
+    publish, open_repo = nwm
+    ints = (np.arange(40 * 50).reshape(40, 50) % 255).astype("float32")  # 0-254, above int8's range
+    ints[:4, :6] = np.nan
+    for i in (0, 2):
+        publish(i, ints, "2026-09-01", encoding={"dtype": "int8", "_Unsigned": "true", "_FillValue": np.int8(-1)})
+    _run(HOURS[0], HOURS[2])
+
+    store = open_repo().readonly_session("main").store
+    stored = xr.open_zarr(store, group="raw_data", consolidated=False, mask_and_scale=False).rainrate_hourly_mean
+    assert stored.dtype == "int8" and stored.attrs["_Unsigned"] == "true"
+    raw = xr.open_zarr(store, group="raw_data", consolidated=False).rainrate_hourly_mean
+    np.testing.assert_array_equal(raw.isel(time=0).values, ints)
+    assert np.isnan(raw.isel(time=1).values).all()
 
 
 def test_unit_conversion_composes_with_source_packing():
