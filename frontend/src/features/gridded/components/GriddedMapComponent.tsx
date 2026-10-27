@@ -8,10 +8,10 @@ import { fetchGriddedEdrPoint } from '@/shared/api/gridded/edr';
 import { buildGriddedTileUrl, buildPmtilesUrl } from '@/shared/api/gridded/tiles';
 import { ensureFreshToken } from '@/shared/auth/keycloak';
 import { usePolygonLayers, useTilesLegend } from '@/shared/queries/gridded/tiles';
-import { useTimesteps } from '@/shared/queries/gridded/timesteps';
 import type { PolygonFeatureProps, PolygonFeatures } from '@/shared/types/gridded/tiles';
 
 import { useDashboard, ActionTypes } from '../DashboardContext';
+import { useCurrentTimestep } from '../hooks/useCurrentTimestep';
 import { OVERLAY_LAYERS } from '../utils/overlayLayers';
 import GriddedColorBar from './GriddedColorBar';
 
@@ -76,10 +76,10 @@ const dedupePolygonFeatures = (features?: maplibregl.MapGeoJSONFeature[]) => {
 const GriddedMapComponent = () => {
   const { state, dispatch } = useDashboard();
   const { mapFilters, mapLoaded, activeOverlays, activePolygonLayer, selectedLocation } = state;
-  const { dataset, variable, timestepIndex, colorRamp, colorRampMin, colorRampMax } = mapFilters;
+  const { dataset, variable, colorRamp, colorRampMin, colorRampMax } = mapFilters;
 
   const polygonLayers = usePolygonLayers();
-  const timesteps = useTimesteps(dataset);
+  const currentTimestep = useCurrentTimestep();
 
   const mapContainer = useRef<HTMLDivElement | null>(null);
   const map = useRef<maplibregl.Map | null>(null);
@@ -95,8 +95,6 @@ const GriddedMapComponent = () => {
   const clickHandlerRef = useRef<((e: maplibregl.MapMouseEvent) => void | Promise<void>) | null>(
     null
   );
-
-  const currentTimestep = (timesteps.data[timestepIndex] as string | undefined) ?? null;
 
   // Prime the token so a polygon layer selected before the first tile load
   // still builds its FetchSource with an Authorization header.
@@ -483,7 +481,10 @@ const GriddedMapComponent = () => {
       // Otherwise, query the gridded data if available
       if (!dataset || !variable || !currentTimestep) return;
 
-      dispatch({ type: ActionTypes.SET_CLICKED_POINT, payload: { lon: lng, lat } });
+      dispatch({
+        type: ActionTypes.SET_CLICKED_POINT,
+        payload: { lon: lng, lat, time: currentTimestep },
+      });
 
       popupInstance
         .setLngLat([lng, lat])

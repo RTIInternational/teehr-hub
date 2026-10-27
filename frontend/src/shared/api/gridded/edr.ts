@@ -1,6 +1,6 @@
 import type { FeatureCollection, Point } from 'geojson';
 
-import { MAX_TIMESERIES_POINTS, griddedApiCall } from './client';
+import { griddedApiCall } from './client';
 
 export type EdrPointResponse = FeatureCollection<Point, EdrPointProps>;
 
@@ -80,12 +80,10 @@ export const fetchGriddedEdrTimeseries = async (
   variable: string,
   lon: number,
   lat: number,
-  timesteps: string[],
-  maxPoints = MAX_TIMESERIES_POINTS
+  start: string,
+  end: string
 ) => {
-  const slice = maxPoints > 0 ? timesteps.slice(0, maxPoints) : timesteps;
-  if (slice.length === 0) throw new Error('No timesteps available for timeseries query');
-  const datetimeRange = slice.length === 1 ? slice[0] : `${slice[0]}/${slice[slice.length - 1]}`;
+  const datetimeRange = start === end ? start : `${start}/${end}`;
   const params = new URLSearchParams({
     coords: `POINT(${lon} ${lat})`,
     'parameter-name': variable,

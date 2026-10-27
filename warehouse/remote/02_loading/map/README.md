@@ -1,4 +1,10 @@
 ## Mean Areal Precip (MAP) for NWM v3.0 Retrospective/USGS Basins
+
+> **Historical.** These notebooks use Sedona and the `grid_pixel_coverage_weights` schema from before migration
+> `0012`, which dropped that table. They're kept as the record of how the `nwm30_retrospective` MAP and MAT in the
+> warehouse were made. Gridded mean areal values now come from the Icechunk flows
+> (`prefect-workflows/workflows/ingests/pixel_coverage_weights.py`, `mean_areal_values.py`). To rerun these
+> notebooks, check out the hub commit before `0012`.
 ### Inputs
 - NWM v3.0 retrospective RAINRATE: https://noaa-nwm-retrospective-3-0-pds.s3.amazonaws.com/index.html#CONUS/netcdf/FORCING/
     - Hourly timestep

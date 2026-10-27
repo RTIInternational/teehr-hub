@@ -6,8 +6,10 @@ import { usePolygonLayers } from '@/shared/queries/gridded/tiles';
 import { useTimesteps } from '@/shared/queries/gridded/timesteps';
 import { useVariableAttrs } from '@/shared/queries/gridded/variableAttrs';
 import { useVariables } from '@/shared/queries/gridded/variables';
+import { parseUtcTime, shortestStep } from '@/shared/utils/dates';
 
 import { useDashboard, ActionTypes } from '../DashboardContext';
+import { useCurrentTimestep } from '../hooks/useCurrentTimestep';
 import { OVERLAY_LAYERS } from '../utils/overlayLayers';
 
 const COLOR_RAMPS = [
@@ -34,17 +36,11 @@ const GriddedControls = () => {
 
   const units = variable ? variableAttrs.data?.[variable]?.units : undefined;
 
-  const currentTimestep = timesteps.data[timestepIndex] ?? '';
+  const currentTimestep = useCurrentTimestep() ?? '';
   const canStepBack = timestepIndex > 0;
   const canStepForward = timestepIndex < timesteps.data.length - 1;
 
-  const [timestepInput, setTimestepInput] = useState(currentTimestep);
-  const [timestepEditing, setTimestepEditing] = useState(false);
-  const [timestepInputError, setTimestepInputError] = useState(false);
-
   const polygonLayers = usePolygonLayers();
-
-  const displayedTimestep = timestepEditing ? timestepInput : currentTimestep;
 
   // Auto-select variable when dataset is selected
   useEffect(() => {
@@ -60,35 +56,25 @@ const GriddedControls = () => {
     });
   }, [dataset, variable, variables.data, dispatch]);
 
-  const commitTimestepInput = () => {
-    const inputValue = timestepInput;
-    setTimestepEditing(false);
-    setTimestepInputError(false);
-    if (!inputValue || timesteps.data.length === 0) return;
-    const entered = new Date(inputValue);
-    if (isNaN(entered.getTime())) {
-      setTimestepInputError(true);
-      return;
-    }
+  // Daily or coarser data picks a date only; sub-daily data picks the hour too
+  const isDaily = shortestStep(timesteps.data.map(parseUtcTime)) >= 24 * 60 * 60 * 1000;
+  const pickerLength = isDaily ? 10 : 16;
+
+  // Jump to the timestep nearest the picked date; times are naive UTC
+  const selectTimestep = (value: string) => {
+    if (!value || timesteps.data.length === 0) return;
+    // A picked date takes the data's time of day, so steps at e.g. 23:00 match the same day
+    const picked = parseUtcTime(isDaily ? value + currentTimestep.slice(10) : value);
     let closestIdx = 0;
     let closestDiff = Infinity;
     timesteps.data.forEach((ts, i) => {
-      const diff = Math.abs(new Date(ts).getTime() - entered.getTime());
+      const diff = Math.abs(parseUtcTime(ts) - picked);
       if (diff < closestDiff) {
         closestDiff = diff;
         closestIdx = i;
       }
     });
-    setTimestepInputError(false);
     dispatch({ type: ActionTypes.UPDATE_MAP_FILTERS, payload: { timestepIndex: closestIdx } });
-  };
-
-  const handleTimestepKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter') commitTimestepInput();
-    if (e.key === 'Escape') {
-      setTimestepEditing(false);
-      setTimestepInputError(false);
-    }
   };
 
   const handleDatasetChange = async (e: React.ChangeEvent<HTMLSelectElement>) => {
@@ -183,7 +169,7 @@ const GriddedControls = () => {
 
           {/* Timestep pager */}
           <Col md={12}>
-            <Form.Label className="small fw-bold d-block">Time Step</Form.Label>
+            <Form.Label className="small fw-bold d-block">Time Step (UTC)</Form.Label>
             <InputGroup size="sm">
               <Button
                 variant="outline-secondary"
@@ -194,20 +180,15 @@ const GriddedControls = () => {
                 &#9664;
               </Button>
               <Form.Control
-                value={displayedTimestep}
-                placeholder={variable ? 'No timesteps' : '—'}
-                onChange={(e) => {
-                  setTimestepEditing(true);
-                  setTimestepInput(e.target.value);
-                  setTimestepInputError(false);
-                }}
-                onBlur={commitTimestepInput}
-                onKeyDown={handleTimestepKeyDown}
+                type={isDaily ? 'date' : 'datetime-local'}
+                value={currentTimestep.slice(0, pickerLength)}
+                min={timesteps.data[0]?.slice(0, pickerLength)}
+                max={timesteps.data[timesteps.data.length - 1]?.slice(0, pickerLength)}
+                onChange={(e) => selectTimestep(e.target.value)}
                 disabled={timesteps.data.length === 0}
-                isInvalid={timestepInputError}
                 className="text-center"
                 style={{ fontSize: '0.8rem' }}
-                title="Enter a datetime string or use arrows to step"
+                title="Pick a date or use the arrows to step"
               />
               <Button
                 variant="outline-secondary"
@@ -218,12 +199,7 @@ const GriddedControls = () => {
                 &#9654;
               </Button>
             </InputGroup>
-            {timestepInputError && (
-              <div style={{ fontSize: '0.7rem', color: '#dc3545', marginTop: '2px' }}>
-                Invalid datetime — try e.g. 2024-01-15T12:00:00
-              </div>
-            )}
-            {!timestepInputError && timesteps.data.length > 0 && (
+            {timesteps.data.length > 0 && (
               <div className="text-muted" style={{ fontSize: '0.75rem', marginTop: '2px' }}>
                 {timestepIndex + 1} / {timesteps.data.length}
               </div>
