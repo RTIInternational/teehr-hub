@@ -1,6 +1,5 @@
 import { useQueries } from '@tanstack/react-query';
 
-import { MAX_TIMESERIES_POINTS } from '@/shared/api/gridded/client';
 import { fetchGriddedEdrTimeseries } from '@/shared/api/gridded/edr';
 import type { DatasetTimeseries } from '@/shared/types/gridded/edr';
 import type { GriddedTimeseriesFilters } from '@/shared/types/gridded/timeseries';
@@ -8,8 +7,8 @@ import type { GriddedTimeseriesFilters } from '@/shared/types/gridded/timeseries
 import { timestepsQueryOptions } from './timesteps';
 import { variablesQueryOptions } from './variables';
 
-// Default span without dates, in steps: about 3 years of daily or 45 days of hourly data
-export const DEFAULT_SPAN_STEPS = 3 * 365;
+// Timesteps in the default span, and the most a chosen span may cover: 30 days of hourly data
+export const MAX_NUM_TIMESTEPS = 720;
 
 type EdrTimeseriesArgs = GriddedTimeseriesFilters & {
   preferredVariable: string | null;
@@ -47,7 +46,7 @@ const planSeries = (
       return { variable, skipped: `${datasetId}: no data on or before ${anchor}` };
     return {
       variable,
-      start: upTo[Math.max(0, upTo.length - DEFAULT_SPAN_STEPS)],
+      start: upTo[Math.max(0, upTo.length - MAX_NUM_TIMESTEPS)],
       end: upTo[upTo.length - 1],
     };
   }
@@ -56,10 +55,10 @@ const planSeries = (
   const end = endDate ? withSeconds(endDate) : last;
   const steps = timesteps.filter((t) => t >= start && t <= end).length;
   if (steps === 0) return { variable, skipped: `${datasetId}: no data in the selected span` };
-  if (steps > MAX_TIMESERIES_POINTS) {
+  if (steps > MAX_NUM_TIMESTEPS) {
     return {
       variable,
-      skipped: `${datasetId}: span covers ${steps.toLocaleString()} steps; max ${MAX_TIMESERIES_POINTS.toLocaleString()}`,
+      skipped: `${datasetId}: span covers ${steps.toLocaleString()} timesteps; max ${MAX_NUM_TIMESTEPS.toLocaleString()}`,
     };
   }
   return { variable, start, end };

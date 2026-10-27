@@ -3,8 +3,6 @@ import { ensureFreshToken } from '@/shared/auth/keycloak';
 export const GRIDDED_API_BASE_URL =
   import.meta.env.VITE_XPUBLISH_API_BASE_URL || 'http://127.0.0.1:8001';
 
-export const MAX_TIMESERIES_POINTS = 365;
-
 type GriddedApiCall = {
   (path: string, options?: { raw: true }): Promise<string>;
   <T>(path: string, options?: { raw?: false }): Promise<T>;

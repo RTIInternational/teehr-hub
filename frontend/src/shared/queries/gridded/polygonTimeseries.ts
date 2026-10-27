@@ -4,7 +4,7 @@ import { getPrimaryTimeseries } from '@/shared/api/timeseries';
 import type { GriddedTimeseriesFilters } from '@/shared/types/gridded/timeseries';
 import { parseUtcTime, shortestStep } from '@/shared/utils/dates';
 
-import { DEFAULT_SPAN_STEPS } from './edr';
+import { MAX_NUM_TIMESTEPS } from './edr';
 import { timestepsQueryOptions } from './timesteps';
 
 type PolygonTimeseriesArgs = GriddedTimeseriesFilters & {
@@ -29,7 +29,7 @@ export const usePolygonTimeseries = ({
   anchor,
 }: PolygonTimeseriesArgs) => {
   const useDefaultSpan = !start_date && !end_date;
-  // Default span: DEFAULT_SPAN_STEPS of the datasets' shortest step, as for point queries
+  // Default span: MAX_NUM_TIMESTEPS of the datasets' shortest step, as for point queries
   const timesteps = useQueries({
     queries: datasets.map((ds) => ({
       ...timestepsQueryOptions(ds),
@@ -37,7 +37,7 @@ export const usePolygonTimeseries = ({
     })),
   });
   const step = Math.min(...timesteps.map((t) => shortestStep((t.data ?? []).map(parseUtcTime))));
-  const spanMs = Number.isFinite(step) ? DEFAULT_SPAN_STEPS * step : null;
+  const spanMs = Number.isFinite(step) ? MAX_NUM_TIMESTEPS * step : null;
   const start = useDefaultSpan ? anchor && spanMs !== null && msBefore(anchor, spanMs) : start_date;
   const end = useDefaultSpan ? anchor : end_date;
 
