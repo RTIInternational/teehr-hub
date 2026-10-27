@@ -90,10 +90,14 @@ class NWMForcing(GriddedSource):
     ignore_missing_file: bool = True
     prioritize_analysis_value_time: bool = False
     drop_overlapping_assimilation_values: bool = False
+    bucket: Literal["gs://national-water-model", "s3://noaa-nwm-pds"] = Field(
+        default="gs://national-water-model",
+        description=(
+            "Bucket to read the files from; same layout in both. s3://noaa-nwm-pds (us-east-1, 2025-01-01 "
+            "onward) reads in-region with no NAT transfer cost; GCS has the full history."
+        ),
+    )
 
-    source_bucket: ClassVar[str] = "gs://national-water-model"
-    # The bucket is public
-    store_kwargs: ClassVar[dict] = {"retry_config": REMOTE_RETRY_CONFIG, "skip_signature": True}
     time_step: ClassVar[pd.Timedelta] = pd.Timedelta("1h")
     # First cycle of each version; v2.1 and v2.2 are one version in teehr
     version_start: ClassVar[dict[str, datetime]] = {
@@ -118,8 +122,22 @@ class NWMForcing(GriddedSource):
             raise ValueError(f"Unknown nwm_version '{self.nwm_version}'; one of {sorted(self.version_start)}.")
         return self
 
+    @property
+    def source_bucket(self) -> str:
+        return self.bucket
+
+    @property
+    def store_kwargs(self) -> dict:
+        # Both buckets are public
+        kwargs = {"retry_config": REMOTE_RETRY_CONFIG, "skip_signature": True}
+        return {**kwargs, "region": "us-east-1"} if self.bucket.startswith("s3://") else kwargs
+
+    @property
+    def virtual_store_kwargs(self) -> dict:
+        return {"region": "us-east-1"} if self.bucket.startswith("s3://") else {}
+
     def list_files(self, start_dt: datetime, end_dt: datetime) -> pd.DataFrame:
-        """One file per hour in the range, with its GCS last modified time from one listing per day."""
+        """One file per hour in the range, with its last modified time from one listing per day."""
         # Same planning path as teehr's nwm_grids_to_parquet: validation, GCS listing,
         # z-hour clipping by reference time, and the NWM version check
         plan = plan_nwm_grid_fetch(
@@ -134,7 +152,8 @@ class NWMForcing(GriddedSource):
             prioritize_analysis_value_time=self.prioritize_analysis_value_time,
             drop_overlapping_assimilation_values=self.drop_overlapping_assimilation_values,
         )
-        urls = [f.replace("gcs://", "gs://") for f in plan.component_paths]
+        # The planner lists GCS; the same keys exist in the AWS bucket
+        urls = [f"{self.source_bucket}/{f.split('://', 1)[1].split('/', 1)[1]}" for f in plan.component_paths]
         modified = self._last_modified(urls)
         rows = []
         for url in urls:
