@@ -1,5 +1,6 @@
 from prefect import flow, task, get_run_logger
 from prefect.cache_policies import NO_CACHE
+import time
 import icechunk as ic
 import numpy as np
 import pandas as pd
@@ -75,9 +76,15 @@ def build_pyramids(args: BuildPyramidsDataInput) -> None:
     # Batches of whole shards bound memory by the batch; each is committed, so a failed run resumes
     batches = tg.shard_batches(stale, data_meta.index, args.time_batch_size)
     logger.info(f"Building pyramids for {len(stale)} step(s) in {len(batches)} batch(es).")
+    started = time.perf_counter()
     for i, batch in enumerate(batches, start=1):
+        batch_started = time.perf_counter()
         _write_pyramid_batch(repo, data_ds.sel({dim: batch}), data_meta.loc[batch], args)
-        logger.info(f"Processed pyramid batch {i} of {len(batches)} ({len(batch)} step(s)).")
+        logger.info(
+            f"Processed pyramid batch {i} of {len(batches)} ({len(batch)} step(s)) "
+            f"in {time.perf_counter() - batch_started:.1f}s."
+        )
+    logger.info(f"Built pyramids for {len(stale)} step(s) in {time.perf_counter() - started:.1f}s.")
 
 
 def _check_packing_units(ds: xr.Dataset, pyramid_encoding: dict[str, PackedEncoding]) -> None:
