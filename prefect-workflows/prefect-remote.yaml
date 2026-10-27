@@ -524,12 +524,11 @@ deployments:
       collision_strategy: "CANCEL_NEW"
     description: >-
       Ingest NWM 3.1 forcing analysis/assimilation RAINRATE grids (CONUS) into an IceChunk S3
-      repository using VirtualiZarr, then build pyramids.
+      repository using VirtualiZarr, then materialize /raw_data and build pyramids.
     entrypoint: workflows/ingests/ingest_gridded_data.py:ingest_gridded_data
     parameters: {
       "args": {
         "source": {"type": "nwm", "nwm_configuration": "forcing_analysis_assim", "nwm_version": "nwm31"},
-        "write_materialized": false,
         "num_lookback_days": 1,
         # Upsert, so a re-issued file is re-referenced; a virtual reference to a changed file can't be read
         "write_mode": "upsert",
