@@ -15,8 +15,8 @@ type MapFilterButtonProps = {
 const MapFilterButton = ({ tables, mapFilters, updateMapFilters }: MapFilterButtonProps) => {
   const [showDropdown, setShowDropdown] = useState(false);
 
-  const configurations = useDistinctValues(tables[0], 'configuration_name');
-  const variables = useDistinctValues(tables[0], 'variable_name');
+  const configurations = useDistinctValues(tables[0], 'secondary_configuration_name');
+  const variables = useDistinctValues(tables[0], 'secondary_variable_name');
   const tableProperties = useTableProperties(tables);
 
   const handleMapFilterChange = <K extends keyof MapFilters>(

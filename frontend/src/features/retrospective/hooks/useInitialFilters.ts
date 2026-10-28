@@ -14,8 +14,8 @@ import { ActionTypes, useDashboard } from '../DashboardContext';
 export const useInitialFilters = (table: string) => {
   const { dispatch } = useDashboard();
 
-  const configurations = useDistinctValues(table, 'configuration_name');
-  const variables = useDistinctValues(table, 'variable_name');
+  const configurations = useDistinctValues(table, 'secondary_configuration_name');
+  const variables = useDistinctValues(table, 'secondary_variable_name');
 
   const defaultConfiguration = selectDefault(
     RETROSPECTIVE_DASHBOARD_DEFAULTS.preferredConfiguration,
