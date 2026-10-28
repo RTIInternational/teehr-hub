@@ -2,6 +2,7 @@
 import contextlib
 import functools
 import time
+from pathlib import Path
 
 import numpy as np
 import pandas as pd
@@ -25,8 +26,11 @@ from workflows.utils.common_utils import initialize_evaluation
 from workflows.models.ingest_gridded_data_input import VARIABLE_AND_UNIT_MAPPER
 from workflows.models.mean_areal_inputs import MeanArealValuesInput
 from pixel_coverage_weights import (
-    WEIGHTS_TABLE_NAME, get_readonly_repo_store, resolve_grid_name, write_dataframe_to_warehouse
+    WEIGHTS_TABLE_NAME, get_readonly_repo_store, resolve_grid_name
 )
+
+# TEMP (#468 cost benchmark): write mean areal values here instead of the warehouse; revert before merge
+BENCHMARK_OUTPUT_DIR = Path("/data/playground/slamont/icechunk/mean-areal-values")
 
 
 def _written_steps(da: xr.DataArray, args: MeanArealValuesInput) -> xr.DataArray:
@@ -212,16 +216,9 @@ def calculate_mean_areal_values(args: MeanArealValuesInput):
     unit_name = grid_da.attrs.get("units")
     if unit_name is None:
         raise ValueError(f"Grid variable '{args.grid_variable_name}' does not have a 'units' attribute.")
-    register_domain_values(
-        ev=ev,
-        args=args,
-        variable_long_name=grid_da.attrs.get("long_name", args.grid_variable_name),
-        unit_name=unit_name,
-    )
-
+    # TEMP (#468): register_domain_values and register_location_crosswalks skipped, so nothing is written to the warehouse
     weights_df["weight"] = _area_weights(weights_df, grid_da, args.y_dim)
     matrix, rows, cols, location_ids = build_weights_matrix(weights_df)
-    register_location_crosswalks(ev=ev, args=args, location_ids=location_ids)
     window = (int(rows.min()), int(rows.max()) + 1, int(cols.min()), int(cols.max()) + 1)
 
     # Shard-aligned batches, so each batch reads whole shards once
@@ -248,6 +245,9 @@ def calculate_mean_areal_values(args: MeanArealValuesInput):
         zarr.config.set({"async.concurrency": args.zarr_concurrency})
         if args.zarr_concurrency else contextlib.nullcontext()
     )
+    # TEMP (#468): one folder per run, e.g. A_20261028T150000
+    out_dir = BENCHMARK_OUTPUT_DIR / f"{args.base_prefix.rsplit('/', 1)[-1]}_{pd.Timestamp.now(tz='UTC'):%Y%m%dT%H%M%S}"
+    out_dir.mkdir(parents=True, exist_ok=True)
     pending = []
     with zarr_config:
         for start in range(0, len(batches), workers):
@@ -266,13 +266,6 @@ def calculate_mean_areal_values(args: MeanArealValuesInput):
             df["reference_time"] = None
             if args.timeseries_table_name != "primary_timeseries":
                 df["member"] = None
-            write_dataframe_to_warehouse(
-                ev=ev,
-                dataframe=df,
-                table_name=args.timeseries_table_name,
-                write_mode=args.write_mode,
-                catalog_name=args.catalog_name,
-                namespace_name=args.namespace_name,
-            )
-            logger.info(f"Committed mean areal values through {group[-1][-1]}.")
+            df.to_parquet(out_dir / f"{group[-1][-1]:%Y%m%dT%H}.parquet", index=False)
+            logger.info(f"Wrote mean areal values through {group[-1][-1]} to {out_dir}.")
     logger.info("Mean areal values calculation flow completed.")
