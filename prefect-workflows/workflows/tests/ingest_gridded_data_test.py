@@ -115,6 +115,13 @@ def test_nwm_listing_valid_times(monkeypatch, bucket):
         gs.NWMForcing(t_minus_hours=[0, 1]).list_files(pd.Timestamp("2026-09-22"), pd.Timestamp("2026-09-22T01:00"))
 
 
+def test_nwm_time_origin_covers_t_minus():
+    """The grid starts at the earliest valid time of the version's first cycle, so tm02 files stay on it."""
+    start = pd.Timestamp(gs.NWMForcing.version_start["nwm31"])
+    assert gs.NWMForcing(nwm_version="nwm31").time_origin() == start
+    assert gs.NWMForcing(nwm_version="nwm31", t_minus_hours=[2]).time_origin() == start - pd.Timedelta("2h")
+
+
 def test_nwm_aws_bucket_reads_in_region():
     """The AWS bucket's object store and virtual chunk container are in us-east-1; GCS needs no region."""
     aws, gcs = gs.NWMForcing(bucket="s3://noaa-nwm-pds"), gs.NWMForcing()

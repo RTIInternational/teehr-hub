@@ -335,7 +335,7 @@ deployments:
     entrypoint: workflows/ingests/ingest_gridded_data.py:ingest_gridded_data
     parameters: {
       "args": {
-        "source": {"type": "nwm", "nwm_configuration": "forcing_analysis_assim", "nwm_version": "nwm31", "bucket": "s3://noaa-nwm-pds"},
+        "source": {"type": "nwm", "nwm_configuration": "forcing_analysis_assim", "nwm_version": "nwm31", "bucket": "s3://noaa-nwm-pds", "t_minus_hours": [2]},
         "num_lookback_days": 1,
         # Upsert, so a re-issued file is re-referenced; a virtual reference to a changed file can't be read
         "write_mode": "upsert",

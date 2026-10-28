@@ -187,7 +187,8 @@ class NWMForcing(GriddedSource):
         return modified
 
     def time_origin(self) -> pd.Timestamp:
-        return pd.Timestamp(self.version_start[self.nwm_version])
+        # A tmXX file of the version's first cycle is valid XX hours before it
+        return pd.Timestamp(self.version_start[self.nwm_version]) - pd.Timedelta(hours=max(self.t_minus_hours or [0]))
 
     def repository_name(self) -> str:
         # The teehr configuration name, e.g. nwm31_forcing_analysis_assim
