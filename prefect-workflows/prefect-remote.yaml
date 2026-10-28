@@ -34,6 +34,8 @@ definitions:
       TEEHR_SPARK_IMAGE: "{{ $TEEHR_SPARK_IMAGE }}"
       TEEHR_NAMESPACE: "{{ $TEEHR_NAMESPACE }}"
       PREFECT_LOGGING_EXTRA_LOGGERS: teehr
+      # Concurrent chunk reads/writes per zarr call (default 10)
+      ZARR_ASYNC__CONCURRENCY: "128"
       # Start Local Only
       # AWS_ACCESS_KEY_ID: "{{ $AWS_ACCESS_KEY_ID }}"
       # AWS_SECRET_ACCESS_KEY: "{{ $AWS_SECRET_ACCESS_KEY }}"
@@ -112,8 +114,8 @@ definitions:
     node_selector:
       teehr-hub/nodegroup-name: spark-r5-4xlarge
   # Retained for flows with no measurement and no basis for inference. The
-  # nwm-forcing-* deployments previously sat here; they are disabled (too
-  # expensive to run) so they never appeared in the sample, but their driver
+  # removed nwm-forcing-* (Sedona MAP) deployments previously sat here; they
+  # were disabled (too expensive to run) so they never appeared in the sample, but their driver
   # shape can be inferred from the pattern every measured flow followed --
   # cluster-starters coordinate and stay tiny, local-mode flows do the work
   # in-process and are heavy. Re-measure them if they are ever re-enabled.
@@ -423,273 +425,6 @@ deployments:
       cron: "50 5,17 * * *"
       active: true
 
-  # NWM Forcing MAP Ingests
-  - name: ingest-nwm-forcing-analysis-assim
-    version:
-    tags: []
-    concurrency_limit:
-      limit: 1
-      collision_strategy: "CANCEL_NEW"
-    description: Calculate Mean Areal Precipitation from NWM forcing analysis assimilation grids (CONUS)
-    entrypoint: workflows/ingests/nwm_forcing_map.py:ingest_nwm_forcing_map
-    parameters: {
-      "temp_dir_path": *temp_dir_path,
-      "nwm_configuration": "forcing_analysis_assim",
-      "start_spark_cluster": false
-    }
-    work_pool: *work_pool_large
-    schedule:
-      cron: "0 1,13 * * *"
-      active: false
-
-  - name: ingest-nwm-forcing-analysis-assim-alaska
-    version:
-    tags: []
-    concurrency_limit:
-      limit: 1
-      collision_strategy: "CANCEL_NEW"
-    description: Calculate Mean Areal Precipitation from NWM forcing analysis assimilation grids (Alaska)
-    entrypoint: workflows/ingests/nwm_forcing_map.py:ingest_nwm_forcing_map
-    parameters: {
-      "temp_dir_path": *temp_dir_path,
-      "nwm_configuration": "forcing_analysis_assim_alaska",
-      "start_spark_cluster": false
-    }
-    work_pool: *work_pool_large
-    schedule:
-      cron: "10 1,13 * * *"
-      active: false
-
-  - name: ingest-nwm-forcing-analysis-assim-extend
-    version:
-    tags: []
-    concurrency_limit:
-      limit: 1
-      collision_strategy: "CANCEL_NEW"
-    description: Calculate Mean Areal Precipitation from NWM forcing analysis assimilation extend grids (CONUS)
-    entrypoint: workflows/ingests/nwm_forcing_map.py:ingest_nwm_forcing_map
-    parameters: {
-      "temp_dir_path": *temp_dir_path,
-      "nwm_configuration": "forcing_analysis_assim_extend",
-      "start_spark_cluster": false
-    }
-    work_pool: *work_pool_large
-    schedule:
-      cron: "20 1,13 * * *"
-      active: false
-
-  - name: ingest-nwm-forcing-analysis-assim-extend-alaska
-    version:
-    tags: []
-    concurrency_limit:
-      limit: 1
-      collision_strategy: "CANCEL_NEW"
-    description: Calculate Mean Areal Precipitation from NWM forcing analysis assimilation extend grids (Alaska)
-    entrypoint: workflows/ingests/nwm_forcing_map.py:ingest_nwm_forcing_map
-    parameters: {
-      "temp_dir_path": *temp_dir_path,
-      "nwm_configuration": "forcing_analysis_assim_extend_alaska",
-      "start_spark_cluster": false
-    }
-    work_pool: *work_pool_large
-    schedule:
-      cron: "30 1,13 * * *"
-      active: false
-
-  - name: ingest-nwm-forcing-analysis-assim-hawaii
-    version:
-    tags: []
-    concurrency_limit:
-      limit: 1
-      collision_strategy: "CANCEL_NEW"
-    description: Calculate Mean Areal Precipitation from NWM forcing analysis assimilation grids (Hawaii)
-    entrypoint: workflows/ingests/nwm_forcing_map.py:ingest_nwm_forcing_map
-    parameters: {
-      "temp_dir_path": *temp_dir_path,
-      "nwm_configuration": "forcing_analysis_assim_hawaii",
-      "start_spark_cluster": false
-    }
-    work_pool: *work_pool_large
-    schedule:
-      cron: "40 1,13 * * *"
-      active: false
-
-  - name: ingest-nwm-forcing-analysis-assim-puertorico
-    version:
-    tags: []
-    concurrency_limit:
-      limit: 1
-      collision_strategy: "CANCEL_NEW"
-    description: Calculate Mean Areal Precipitation from NWM forcing analysis assimilation grids (Puerto Rico)
-    entrypoint: workflows/ingests/nwm_forcing_map.py:ingest_nwm_forcing_map
-    parameters: {
-      "temp_dir_path": *temp_dir_path,
-      "nwm_configuration": "forcing_analysis_assim_puertorico",
-      "start_spark_cluster": false
-    }
-    work_pool: *work_pool_large
-    schedule:
-      cron: "50 1,13 * * *"
-      active: false
-
-  # NWM Forcing Short Range MAP Ingests
-  - name: ingest-nwm-forcing-short-range
-    version:
-    tags: []
-    concurrency_limit:
-      limit: 1
-      collision_strategy: "CANCEL_NEW"
-    description: Calculate Mean Areal Precipitation from NWM forcing short range
-    entrypoint: workflows/ingests/nwm_forcing_map.py:ingest_nwm_forcing_map
-    parameters: {
-      "temp_dir_path": *temp_dir_path,
-      "nwm_configuration": "forcing_short_range",
-      "start_spark_cluster": true,
-      "target_table_name": "secondary_timeseries",
-      "executor_instances": 8,
-      "shuffle_partitions": 200
-    }
-    work_pool: *work_pool_small
-    schedule:
-      cron: "0 2,14 * * *"
-      active: false
-
-  - name: ingest-nwm-forcing-short-range-alaska
-    version:
-    tags: []
-    concurrency_limit:
-      limit: 1
-      collision_strategy: "CANCEL_NEW"
-    description: Calculate Mean Areal Precipitation from NWM forcing short range Alaska
-    entrypoint: workflows/ingests/nwm_forcing_map.py:ingest_nwm_forcing_map
-    parameters: {
-      "temp_dir_path": *temp_dir_path,
-      "nwm_configuration": "forcing_short_range_alaska",
-      "start_spark_cluster": false,
-      "target_table_name": "secondary_timeseries"
-    }
-    work_pool: *work_pool_large
-    schedule:
-      cron: "10 2,14 * * *"
-      active: false
-
-  - name: ingest-nwm-forcing-short-range-hawaii
-    version:
-    tags: []
-    concurrency_limit:
-      limit: 1
-      collision_strategy: "CANCEL_NEW"
-    description: Calculate Mean Areal Precipitation from NWM forcing short range Hawaii
-    entrypoint: workflows/ingests/nwm_forcing_map.py:ingest_nwm_forcing_map
-    parameters: {
-      "temp_dir_path": *temp_dir_path,
-      "nwm_configuration": "forcing_short_range_hawaii",
-      "start_spark_cluster": false,
-      "target_table_name": "secondary_timeseries"
-    }
-    work_pool: *work_pool_large
-    schedule:
-      cron: "20 2,14 * * *"
-      active: false
-
-  - name: ingest-nwm-forcing-short-range-puertorico
-    version:
-    tags: []
-    concurrency_limit:
-      limit: 1
-      collision_strategy: "CANCEL_NEW"
-    description: Calculate Mean Areal Precipitation from NWM forcing short range Puerto Rico
-    entrypoint: workflows/ingests/nwm_forcing_map.py:ingest_nwm_forcing_map
-    parameters: {
-      "temp_dir_path": *temp_dir_path,
-      "nwm_configuration": "forcing_short_range_puertorico",
-      "start_spark_cluster": false,
-      "target_table_name": "secondary_timeseries"
-    }
-    work_pool: *work_pool_large
-    schedule:
-      cron: "30 2,14 * * *"
-      active: false
-
-  # NWM Forcing Medium Range MAP Ingests
-  - name: ingest-nwm-forcing-medium-range
-    version:
-    tags: []
-    concurrency_limit:
-      limit: 1
-      collision_strategy: "CANCEL_NEW"
-    description: Calculate Mean Areal Precipitation from NWM forcing medium range
-    entrypoint: workflows/ingests/nwm_forcing_map.py:ingest_nwm_forcing_map
-    parameters: {
-      "temp_dir_path": *temp_dir_path,
-      "nwm_configuration": "forcing_medium_range",
-      "start_spark_cluster": true,
-      "target_table_name": "secondary_timeseries",
-      "executor_instances": 12,
-      "shuffle_partitions": 200
-    }
-    work_pool: *work_pool_small
-    schedule:
-      cron: "0 3,15 * * *"
-      active: false
-
-  - name: ingest-nwm-forcing-medium-range-alaska
-    version:
-    tags: []
-    concurrency_limit:
-      limit: 1
-      collision_strategy: "CANCEL_NEW"
-    description: Calculate Mean Areal Precipitation from NWM forcing medium range Alaska
-    entrypoint: workflows/ingests/nwm_forcing_map.py:ingest_nwm_forcing_map
-    parameters: {
-      "temp_dir_path": *temp_dir_path,
-      "nwm_configuration": "forcing_medium_range_alaska",
-      "start_spark_cluster": false,
-      "target_table_name": "secondary_timeseries"
-    }
-    work_pool: *work_pool_large
-    schedule:
-      cron: "10 3,15 * * *"
-      active: false
-
-  - name: ingest-nwm-forcing-medium-range-blend
-    version:
-    tags: []
-    concurrency_limit:
-      limit: 1
-      collision_strategy: "CANCEL_NEW"
-    description: Calculate Mean Areal Precipitation from NWM forcing medium range Blend
-    entrypoint: workflows/ingests/nwm_forcing_map.py:ingest_nwm_forcing_map
-    parameters: {
-      "temp_dir_path": *temp_dir_path,
-      "nwm_configuration": "forcing_medium_range_blend",
-      "start_spark_cluster": false,
-      "target_table_name": "secondary_timeseries"
-    }
-    work_pool: *work_pool_large
-    schedule:
-      cron: "20 3,15 * * *"
-      active: false
-
-  - name: ingest-nwm-forcing-medium-range-blend-alaska
-    version:
-    tags: []
-    concurrency_limit:
-      limit: 1
-      collision_strategy: "CANCEL_NEW"
-    description: Calculate Mean Areal Precipitation from NWM forcing medium range Blend-Alaska
-    entrypoint: workflows/ingests/nwm_forcing_map.py:ingest_nwm_forcing_map
-    parameters: {
-      "temp_dir_path": *temp_dir_path,
-      "nwm_configuration": "forcing_medium_range_blend_alaska",
-      "start_spark_cluster": false,
-      "target_table_name": "secondary_timeseries"
-    }
-    work_pool: *work_pool_large
-    schedule:
-      cron: "30 3,15 * * *"
-      active: false
-
   # DataStream Ingests
   - name: ingest-datastream-short-range-cfe-forecasts
     version:
@@ -789,17 +524,17 @@ deployments:
       collision_strategy: "CANCEL_NEW"
     description: >-
       Ingest NWM 3.1 forcing analysis/assimilation RAINRATE grids (CONUS) into an IceChunk S3
-      repository using VirtualiZarr, then build pyramids.
+      repository using VirtualiZarr, then materialize /raw_data and build pyramids.
     entrypoint: workflows/ingests/ingest_gridded_data.py:ingest_gridded_data
     parameters: {
       "args": {
         "source": {"type": "nwm", "nwm_configuration": "forcing_analysis_assim", "nwm_version": "nwm31"},
-        "write_materialized": false,
         "num_lookback_days": 1,
+        # Upsert, so a re-issued file is re-referenced; a virtual reference to a changed file can't be read
+        "write_mode": "upsert",
         "x_dim": "x",
         "y_dim": "y",
-        "source_crs": "+proj=lcc +lat_0=40 +lon_0=-97 +lat_1=30 +lat_2=60 +x_0=0 +y_0=0 +R=6370000 +units=m +no_defs",
-        "obstore_kwargs": {"skip_signature": true},
+        "fallback_source_crs": "+proj=lcc +lat_0=40 +lon_0=-97 +lat_1=30 +lat_2=60 +x_0=0 +y_0=0 +R=6370000 +units=m +no_defs",
         "xconcat_kwargs": {
           "coords": "minimal",
           "data_vars": "minimal",
@@ -831,7 +566,7 @@ deployments:
         "configuration_name": "nwm31_forcing_analysis_assim",
         "x_dim": "x",
         "y_dim": "y",
-        "source_crs": "+proj=lcc +lat_0=40 +lon_0=-97 +lat_1=30 +lat_2=60 +x_0=0 +y_0=0 +R=6370000 +units=m +no_defs",
+        "fallback_source_crs": "+proj=lcc +lat_0=40 +lon_0=-97 +lat_1=30 +lat_2=60 +x_0=0 +y_0=0 +R=6370000 +units=m +no_defs",
         "factors": [1, 2, 4],
         "pyramid_encoding": {
           "rainrate_hourly_mean": {"dtype": "uint16", "max_value": 0.075, "units": "mm/s"}
@@ -869,8 +604,7 @@ deployments:
       Calculate pixel coverage weights for filtering the polygons from the locations table
       by location_id_prefix, and reading the grid variable from the Icechunk repo corresponding
       to the configuration name. By default, usgs basin polygons are used with NWM v3.1 forcing.
-      The rows include position_index, so they also serve the Sedona MAP flow. Run on demand;
-      write_mode "overwrite" replaces the whole table, including other domains.
+      Run on demand; write_mode "append" adds only missing (location, pixel, grid) rows.
     entrypoint: workflows/ingests/pixel_coverage_weights.py:calculate_pixel_coverage_weights
     parameters: {
       "args": {
@@ -878,7 +612,6 @@ deployments:
         "configuration_name": "nwm31_forcing_analysis_assim",
         "location_id_prefix": "usgsbasin",
         "grid_variable_name": "rainrate_hourly_mean",
-        "domain_name": "nwm30_conus_forcing",
         "write_mode": "append"
       }
     }
@@ -888,8 +621,9 @@ deployments:
     version:
     tags: []
     description: >-
-      Calculate usgsbasin mean areal RAINRATE from the NWM 3.1 forcing IceChunk repository.
-      Processes every timestep in the repository and appends, so reruns duplicate values.
+      Calculate usgsbasin mean areal RAINRATE from the NWM 3.1 forcing IceChunk repository into
+      primary_timeseries. Processes every written timestep unless start_dt/end_dt are given, and
+      upserts, so reruns replace values.
     entrypoint: workflows/ingests/mean_areal_values.py:calculate_mean_areal_values
     parameters: {
       "args": {
@@ -897,7 +631,7 @@ deployments:
         "configuration_name": "nwm31_forcing_analysis_assim",
         "location_id_prefix": "usgsbasin",
         "grid_variable_name": "rainrate_hourly_mean",
-        "domain_name": "nwm30_conus_forcing"
+        "timeseries_table_name": "primary_timeseries"
       }
     }
     work_pool: *work_pool_large

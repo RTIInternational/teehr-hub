@@ -610,10 +610,23 @@ fall outside the merge and be re-INSERTed, and therefore duplicated, on every up
 `DimensionSpec.nullable_partition_fields` reports the situation and the write site asserts
 on the genuinely unsafe combination.
 
-Partitioning is `["secondary_configuration_name", "water_year"]`. Both are low cardinality, appear
-in `group_by` (so they reach the MERGE `ON` clause and Iceberg can prune), and each run
-writes exactly one of each. `partition_by` is only honored by `create_or_replace`, so the
-first run fixes the layout.
+Partitioning is `["secondary_configuration_name", "water_year", "quarter"]`. All are low
+cardinality and appear in `group_by` (so they reach the MERGE `ON` clause and Iceberg can
+prune). `partition_by` is only honored by `create_or_replace`, so the first run fixes the
+layout.
+
+**Table layout** (carried over from the v2 rebuild in
+`04_maintenance/09_test_nwmd_metrics_layout.ipynb`). Like the partitioning, all of it is
+fixed when the empty table is created:
+
+- Every `double` metric column is written as `float` (about 29% smaller on v2). Iceberg can't
+  narrow `double` to `float` in place, and `INSERT OVERWRITE` would silently widen floats back
+  into an old `double` table, so the driver raises if an existing table's column types differ.
+  Drop the table and rebuild every configuration.
+- Write order is `window_agg, threshold, forecast_lead_time_bin, location_id`. The dashboard
+  filters on these and they aren't partition keys, so sorting lets Iceberg file stats skip
+  files. `write.distribution-mode=range` applies that order across tasks, and 8 MiB Parquet row
+  groups let Trino skip within a file. The row-group setting has no measured benefit yet.
 
 ## Cluster sizing, and the two failure modes we hit
 
@@ -752,9 +765,18 @@ barely move it. Three things are in place:
   shuffle to produce it, so caching it is trivial by comparison.
 
 On that 3x: it is **not** the write mode — an `INSERT OVERWRITE` plan shows the same three
-scans — and it is **not** teehr splitting metrics across passes, since
-`apply_aggregation_metrics` issues a single `gp.agg()`. The cause is still unidentified;
-materializing sidesteps it either way. `utils.profile_spark_sql_plan()` reports it.
+scans. It **is** teehr splitting metrics across passes: with `engine="auto"`, `aggregate()`
+runs Spark-native signatures, Spark-native deterministic metrics and the Python bootstrap
+UDFs as three separate groupBys and outer-joins them (`teehr/metrics/engine.py`), and each
+branch re-evaluates everything upstream. Persisting the result does not help, because the
+repeat is inside that one plan. The bin aggregation is therefore persisted too, so all three
+branches read it from cache. `utils.profile_spark_sql_plan()` reports the scan count.
+
+The persist removes the repeated upstream work, but not the two Spark-native branches
+themselves (~1,800 task-min and ~400 GB of the 577 GB shuffle on the medium-range run). So
+the final aggregate now defaults to `engine="python"` (`final_engine` in the config; see
+`DEFAULT_FINAL_ENGINE`), which runs every metric in one groupBy and computes each point
+estimate and its CI on the same rows (teehr#823).
 
 Two larger reductions remain unimplemented, both requiring an equivalence check against the
 previous table before being trusted:
