@@ -19,7 +19,7 @@ export type ConfigurationScopedOptions = {
 };
 
 export const getConfigurationFilter = (configuration?: string) =>
-  configuration ? { configuration_name: configuration } : undefined;
+  configuration ? { secondary_configuration_name: configuration } : undefined;
 
 const pickLatestValue = (values: NullableString[]) =>
   values.filter((value): value is string => !!value).sort((a, b) => b.localeCompare(a))[0] ?? null;
@@ -129,7 +129,7 @@ export const fetchFilterOptionsByConfig = async (
 
   const [variables, waterYears, quarters, thresholds, aggMethods, leadTimeBins] = await Promise.all(
     [
-      queryClient.fetchQuery(distinctValuesQuery(table, 'variable_name', filters)),
+      queryClient.fetchQuery(distinctValuesQuery(table, 'secondary_variable_name', filters)),
       queryClient.fetchQuery(distinctValuesQuery(table, 'water_year', filters)),
       queryClient.fetchQuery(distinctValuesQuery(table, 'quarter', filters)),
       queryClient.fetchQuery(distinctValuesQuery(table, 'threshold', filters)),

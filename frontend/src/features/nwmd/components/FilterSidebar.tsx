@@ -38,7 +38,7 @@ export const FilterSidebar = ({ tables }: FilterSidebarProps) => {
   // Queryable values
   const waterYears = useDistinctValues(tables[0], 'water_year', configurationFilter);
   const quarters = useDistinctValues(tables[0], 'quarter', configurationFilter);
-  const configurations = useDistinctValues(tables[0], 'configuration_name');
+  const configurations = useDistinctValues(tables[0], 'secondary_configuration_name');
   const thresholds = useDistinctValues(tables[0], 'threshold', configurationFilter);
   const aggMethods = useDistinctValues(tables[0], 'window_agg', configurationFilter);
   const leadTimeBins = useDistinctValues(tables[0], 'forecast_lead_time_bin', configurationFilter);
