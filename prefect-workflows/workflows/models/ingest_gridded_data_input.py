@@ -260,15 +260,6 @@ class IngestGriddedDataInput(BuildPyramidsDataInput):
         default=ParserType.hdf,
         description="Parser to use for reading raw data files"
     )
-    num_materialize_workers: Optional[int] = Field(
-        default=None,
-        gt=0,
-        description=(
-            "Shard batches materialized at once. Defaults to the available CPUs, capped by how many batches fit "
-            "in memory, so it's rarely needed; lower it if the pod runs out of memory, or set 1 to run batches "
-            "one at a time"
-        )
-    )
     raw_data_fill_values: dict[str, int] = Field(
         default_factory=dict,
         description=(

@@ -221,14 +221,8 @@ def with_step_metadata(
     })
 
 
-def region_write(
-    session: ic.Session, group: str, ds: xr.Dataset, dim: str, virtual: bool = False, data_only: bool = False
-) -> None:
-    """Write ``ds`` into the slots of its timestamps, one contiguous run of slots per write.
-
-    ``data_only`` skips the axis and per-step coordinates. One chunk holds them for many steps, so
-    concurrent writers of different steps write only their data, and one writer then writes the coordinates.
-    """
+def region_write(session: ic.Session, group: str, ds: xr.Dataset, dim: str, virtual: bool = False) -> None:
+    """Write ``ds`` into the slots of its timestamps, one contiguous run of slots per write."""
     stored = xr.open_zarr(session.store, group=group, consolidated=False, chunks=None)[dim].to_index()
     times = pd.DatetimeIndex(ds[dim].values)
     pos = stored.get_indexer(times)
@@ -242,9 +236,6 @@ def region_write(
         part = ds.isel({dim: run})
         if virtual:
             part.vz.to_icechunk(session.store, group=group, region={dim: "auto"})
-        elif data_only:
-            part = part.drop_vars([n for n in (dim, *STEP_COORDS) if n in part.variables])
-            to_icechunk(part, session, group=group, region={dim: slice(pos[run[0]], pos[run[-1]] + 1)})
         else:
             to_icechunk(part, session, group=group, region={dim: "auto"})
 
