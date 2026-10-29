@@ -94,27 +94,43 @@ def _groups(open_repo, groups):
     return {g: xr.open_zarr(store, group=g, consolidated=False) for g in groups}
 
 
-def test_nwm_listing_valid_times(monkeypatch):
-    """Valid time is the file's cycle hour minus its tm hour; duplicate valid times raise."""
-    bucket = gs.NWMForcing.source_bucket
-    urls = [
-        f"gcs://national-water-model/nwm.20260922/forcing_analysis_assim/nwm.t{h:02d}z.analysis_assim.forcing.tm00.conus.nc"
-        for h in (0, 1)
-    ]
-    plan = type("Plan", (), {"component_paths": urls})
+@pytest.mark.parametrize("bucket", ["gs://national-water-model", "s3://noaa-nwm-pds"])
+def test_nwm_listing_valid_times(monkeypatch, bucket):
+    """Valid time is the file's cycle hour minus its tm hour, in the chosen bucket; duplicate valid times raise."""
+    keys = [f"nwm.20260922/forcing_analysis_assim/nwm.t{h:02d}z.analysis_assim.forcing.tm00.conus.nc" for h in (0, 1)]
+    # The planner always lists GCS
+    plan = type("Plan", (), {"component_paths": [f"gcs://national-water-model/{key}" for key in keys]})
     monkeypatch.setattr(gs, "plan_nwm_grid_fetch", lambda **_: plan)
     modified = pd.Timestamp("2026-09-22T03:00")
     monkeypatch.setattr(gs.NWMForcing, "_last_modified", lambda self, u: {url: modified for url in u})
 
-    listing = gs.NWMForcing().list_files(pd.Timestamp("2026-09-22"), pd.Timestamp("2026-09-22T01:00"))
+    listing = gs.NWMForcing(bucket=bucket).list_files(pd.Timestamp("2026-09-22"), pd.Timestamp("2026-09-22T01:00"))
     assert list(listing.index) == [pd.Timestamp("2026-09-22T00:00"), pd.Timestamp("2026-09-22T01:00")]
-    assert listing["url"].str.startswith(f"{bucket}/").all()
+    assert list(listing["url"]) == [f"{bucket}/{key}" for key in keys]
     assert (listing["status"] == "stable").all() and (listing["last_modified"] == modified).all()
 
     # tm01 of the 01z cycle is the same valid time as tm00 of the 00z cycle
-    plan.component_paths = [urls[0], urls[1].replace("tm00", "tm01")]
+    plan.component_paths = [plan.component_paths[0], plan.component_paths[1].replace("tm00", "tm01")]
     with pytest.raises(ValueError, match="more than one file"):
         gs.NWMForcing(t_minus_hours=[0, 1]).list_files(pd.Timestamp("2026-09-22"), pd.Timestamp("2026-09-22T01:00"))
+
+
+def test_nwm_time_origin_covers_t_minus():
+    """The grid starts at the earliest valid time of the version's first cycle, so tm02 files stay on it."""
+    start = pd.Timestamp(gs.NWMForcing.version_start["nwm31"])
+    assert gs.NWMForcing(nwm_version="nwm31").time_origin() == start
+    assert gs.NWMForcing(nwm_version="nwm31", t_minus_hours=[2]).time_origin() == start - pd.Timedelta("2h")
+
+
+def test_nwm_aws_bucket_reads_in_region():
+    """The AWS bucket's object store and virtual chunk container are in us-east-1; GCS needs no region."""
+    aws, gcs = gs.NWMForcing(bucket="s3://noaa-nwm-pds"), gs.NWMForcing()
+    assert aws.source_bucket == "s3://noaa-nwm-pds" and gcs.source_bucket == "gs://national-water-model"
+    assert aws.store_kwargs["region"] == aws.virtual_store_kwargs["region"] == "us-east-1"
+    assert aws.store_kwargs["skip_signature"] and gcs.store_kwargs["skip_signature"]
+    assert "region" not in gcs.store_kwargs and gcs.virtual_store_kwargs == {}
+    with pytest.raises(ValueError):
+        gs.NWMForcing(bucket="s3://some-other-bucket")
 
 
 def test_grid_name_on_new_and_existing_repos(harness, nwm):

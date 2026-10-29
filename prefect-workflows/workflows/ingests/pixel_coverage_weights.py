@@ -162,6 +162,10 @@ def calculate_pixel_coverage_weights(args: PixelCoverageWeightsInput):
     ev = initialize_evaluation(
         temp_dir_path=args.temp_dir_path,
         start_spark_cluster=args.start_spark_cluster,
+        # Arrow converts the weights DataFrame to Spark ~10x faster
+        update_configs={
+            "spark.sql.execution.arrow.pyspark.enabled": "true"
+        }
     )
     # Read the polygon locations based on the location ID prefix
     polygons_gdf = ev.locations.filter(

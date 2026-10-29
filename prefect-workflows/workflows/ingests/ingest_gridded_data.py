@@ -1,6 +1,7 @@
 from prefect import flow, task, get_run_logger
 from prefect.cache_policies import NO_CACHE
 from datetime import datetime, timedelta
+import time
 from typing import Callable
 import icechunk as ic
 import numpy as np
@@ -76,6 +77,7 @@ def ingest_gridded_data(args: IngestGriddedDataInput) -> None:
     todo = tg.select_source_steps(listing, stored, args.write_mode)
     logger.info(f"{len(todo)} step(s) to write in '{args.write_mode}' mode.")
     if len(todo):
+        started = time.perf_counter()
         obstore_kwargs = {**source.store_kwargs, **credentials, **args.obstore_kwargs}
         if credentials:
             # An unsigned request ignores the credentials
@@ -92,6 +94,7 @@ def ingest_gridded_data(args: IngestGriddedDataInput) -> None:
         )
         virtual_ds = _standardize_references(gu.align_virtual_fill_values(virtual_ds), args)
         write_references(repo, virtual_ds, todo, origin, source.time_step, source.grid_name(), args)
+        logger.info(f"Parsed and wrote references for {len(todo)} step(s) in {time.perf_counter() - started:.1f}s.")
     if args.write_materialized:
         materialize_references(repo, args)
     if args.build_pyramids_on_ingest:
@@ -221,7 +224,9 @@ def materialize_references(repo: ic.Repository, args: IngestGriddedDataInput) ->
     shard_steps = args.time_chunk_size * args.num_shard_chunks
     batches = tg.shard_batches(stale, refs_meta.index, shard_steps)
     logger.info(f"Materializing {len(stale)} step(s) in {len(batches)} shard batch(es).")
+    started = time.perf_counter()
     for i, batch in enumerate(batches, start=1):
+        batch_started = time.perf_counter()
         session = repo.writable_session("main")
         raw_meta = tg.read_step_metadata(session.store, RAW_DATA_GROUP_PATH, dim)
         if raw_meta is None:
@@ -254,4 +259,8 @@ def materialize_references(repo: ic.Repository, args: IngestGriddedDataInput) ->
         )
         tg.region_write(session, RAW_DATA_GROUP_PATH, part, dim)
         snapshot_id = session.commit(f"Materialized {len(batch)} step(s) into {RAW_DATA_GROUP_PATH}")
-        logger.info(f"Committed materialized batch {i} of {len(batches)} ({len(batch)} step(s)): {snapshot_id}")
+        logger.info(
+            f"Committed materialized batch {i} of {len(batches)} ({len(batch)} step(s)) "
+            f"in {time.perf_counter() - batch_started:.1f}s: {snapshot_id}"
+        )
+    logger.info(f"Materialized {len(stale)} step(s) in {time.perf_counter() - started:.1f}s.")
