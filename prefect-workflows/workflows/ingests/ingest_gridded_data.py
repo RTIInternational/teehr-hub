@@ -31,7 +31,7 @@ _PARSER_MAP = {
     ParserType.hdf: vz.parsers.HDFParser,
     ParserType.zarr: vz.parsers.ZarrParser,
     # IFD 0 is full resolution; overviews are rebuilt as pyramids
-    ParserType.tiff: lambda: VirtualTIFF(ifd=0),
+    ParserType.tiff: lambda **kwargs: VirtualTIFF(ifd=0, **kwargs),
 }
 
 
@@ -86,7 +86,7 @@ def ingest_gridded_data(args: IngestGriddedDataInput) -> None:
         virtual_ds = gu.create_virtual_xarray_dataset(
             todo["url"].tolist(),
             registry=registry,
-            parser=_PARSER_MAP[args.parser_type](),
+            parser=_PARSER_MAP[args.parser_type](**source.parser_kwargs),
             concat_dim=args.append_dim,
             ignore_unreadable_file=args.ignore_unreadable_file,
             preprocess=_preprocess(source, args),

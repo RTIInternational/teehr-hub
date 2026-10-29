@@ -1,6 +1,6 @@
 import base64
-import contextvars
 import struct
+import time
 from typing import Callable
 
 import numpy as np
@@ -19,7 +19,8 @@ import os
 
 from prefect import task, get_run_logger
 from prefect.cache_policies import NO_CACHE
-from teehr.utils.concurrency import resolve_budget, run_concurrent_map
+from teehr.fetching.utils import REFERENCE_BUILD_MIN_ITEMS, REFERENCE_WORKER_MEMORY
+from teehr.utils.concurrency import map_blocking, resolve_budget, run_sync, use_process_pool
 
 # Store kwargs whose values are kept out of logs
 _SECRET_KWARGS = {"access_key_id", "secret_access_key", "session_token", "service_account_key", "bearer_token"}
@@ -234,24 +235,22 @@ def _open_virtual_safe(
     parser: vz.parsers,
     ignore_missing_file: bool,
     ignore_unreadable_file: bool = True,
-    preprocess: Callable[[xr.Dataset, str], xr.Dataset] | None = None,
-) -> xr.Dataset | None:
-    """Open a virtual dataset safely, handling missing or unreadable files."""
-    logger = get_run_logger()
+) -> tuple[xr.Dataset | None, str | None]:
+    """Open a virtual dataset, skipping a missing or unreadable file; returns it or the reason it was skipped.
+
+    Runs in worker processes, which have no Prefect logger, so the caller logs the reason.
+    """
     try:
-        ds = open_virtual_dataset(url, registry=registry, parser=parser)
+        return open_virtual_dataset(url, registry=registry, parser=parser), None
     except Exception as e:
         # Some parsers (e.g. VirtualTIFF) wrap a missing object in their own error, so ask the store
         if isinstance(e, FileNotFoundError) or _is_missing(registry, url):
             if not ignore_missing_file:
                 raise
-            logger.warning(f"Missing file skipped: {url}")
-            return None
+            return None, f"Missing file skipped: {url}"
         if not ignore_unreadable_file:
             raise
-        logger.warning(f"Corrupt or unreadable file skipped: {url} ({e})")
-        return None
-    return preprocess(ds, url) if preprocess else ds
+        return None, f"Corrupt or unreadable file skipped: {url} ({e})"
 
 
 @task(cache_policy=NO_CACHE)
@@ -288,17 +287,34 @@ def create_virtual_xarray_dataset(
         Additional keyword arguments to pass to xr.concat.
     """
     logger = get_run_logger()
-    # Opening is network-bound, so size the threads by the io budget; each carries the
-    # Prefect run context, which get_run_logger needs and worker threads don't inherit
-    ctx = contextvars.copy_context()
-    opened = run_concurrent_map(
-        lambda url: ctx.copy().run(
-            _open_virtual_safe, url, registry, parser, ignore_missing_file, ignore_unreadable_file, preprocess
-        ),
+    # HDF5 parsing holds a global lock, so threads parse one file at a time; big jobs use processes
+    budget = resolve_budget(memory_per_process=REFERENCE_WORKER_MEMORY)
+    processes = budget.processes if use_process_pool(len(file_list), budget.processes, REFERENCE_BUILD_MIN_ITEMS) else 0
+    logger.info(f"Parsing {len(file_list)} file(s) in {processes or budget.io} {'processes' if processes else 'threads'}.")
+    started = time.perf_counter()
+    done = 0
+
+    def on_complete(_: int, result: tuple[xr.Dataset | None, str | None]) -> None:
+        nonlocal done
+        done += 1
+        if result[1]:
+            logger.warning(result[1])
+        if done % max(1, len(file_list) // 10) == 0 or done == len(file_list):
+            elapsed = time.perf_counter() - started
+            logger.info(f"Parsed {done} of {len(file_list)} file(s) in {elapsed:.1f}s ({done / elapsed:.2f} files/s).")
+
+    opened = run_sync(map_blocking(
+        _open_virtual_safe,
         file_list,
-        max_workers=resolve_budget().io,
-    )
-    virtual_datasets = [ds for ds in opened if ds is not None]
+        workers=budget.io,
+        args=(registry, parser, ignore_missing_file, ignore_unreadable_file),
+        processes=processes,
+        on_complete=on_complete,
+    ))
+    # Preprocessing runs here, since a source's preprocess may not pickle
+    virtual_datasets = [
+        preprocess(ds, url) if preprocess else ds for (ds, _), url in zip(opened, file_list) if ds is not None
+    ]
     if len(virtual_datasets) == 0:
         raise ValueError("No virtual datasets were created. Check the file list and registry of the source data.")
     logger.info(f"Found {len(virtual_datasets)} virtual datasets from {len(file_list)} files.")
