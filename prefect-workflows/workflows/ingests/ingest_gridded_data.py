@@ -257,8 +257,9 @@ def materialize_references(repo: ic.Repository, args: IngestGriddedDataInput) ->
         )
         tg.region_write(session, RAW_DATA_GROUP_PATH, step_coords, dim)
         snapshot_id = session.commit(f"Materialized {len(steps)} step(s) into {RAW_DATA_GROUP_PATH}")
+        label = f"batch {first + 1}" if len(group) == 1 else f"batches {first + 1}-{first + len(group)}"
         logger.info(
-            f"Committed batches {first + 1}-{first + len(group)} of {len(batches)} ({len(steps)} step(s)) "
+            f"Committed {label} of {len(batches)} ({len(steps)} step(s)) "
             f"in {time.perf_counter() - group_started:.1f}s: {snapshot_id}"
         )
     logger.info(f"Materialized {len(stale)} step(s) in {time.perf_counter() - started:.1f}s.")
