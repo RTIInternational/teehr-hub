@@ -214,6 +214,29 @@ def test_backfill_in_any_order_then_upsert(harness, nwm, write_materialized):
     }
 
 
+def test_parse_in_processes_and_materialize_batches_concurrently(harness, nwm, monkeypatch):
+    """Files parse in worker processes, and shard batches materialize together in one commit, metadata intact."""
+    from teehr.utils import concurrency
+
+    publish, open_repo = nwm
+    for i in range(len(HOURS)):
+        publish(i, rate(i), "2026-09-01")
+    monkeypatch.setattr(ing.gu, "REFERENCE_BUILD_MIN_ITEMS", 2)
+    processes, fallbacks = [], []
+    map_blocking = ing.gu.map_blocking
+    monkeypatch.setattr(ing.gu, "map_blocking", lambda *a, **kw: processes.append(kw["processes"]) or map_blocking(*a, **kw))
+    monkeypatch.setattr(concurrency.logger, "warning", lambda msg, *_, **__: fallbacks.append(msg))
+    _run(HOURS[0], HOURS[-1], num_materialize_workers=3)  # three 30-step shard batches
+    assert processes[0] > 1 and not fallbacks  # worker processes ran, rather than falling back to threads
+
+    data = _groups(open_repo, ("raw_data",))["raw_data"]
+    assert (data.status.values == 2).all() and not np.isnat(data.created_at.values).any()
+    for i in range(len(HOURS)):
+        assert float(data.rainrate_hourly_mean.isel(time=i, y=3, x=4)) == rate(i)
+    messages = [s.message for s in open_repo().ancestry(branch="main")]
+    assert sum(m.startswith("Materialized") for m in messages) == 1
+
+
 @pytest.mark.parametrize("units, source_scale, stored_scale", [
     ("mm s^-1", None, None),  # unpacked, already mm/s: stored as is
     ("mm/h", None, 1 / 3600),  # unpacked mm/h: the conversion adds packing

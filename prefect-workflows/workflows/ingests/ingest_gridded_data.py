@@ -1,6 +1,7 @@
 from prefect import flow, task, get_run_logger
 from prefect.cache_policies import NO_CACHE
 from datetime import datetime, timedelta
+import functools
 import time
 from typing import Callable
 import icechunk as ic
@@ -9,6 +10,8 @@ import pandas as pd
 import virtualizarr as vz
 from virtual_tiff import VirtualTIFF
 import xarray as xr
+from teehr.fetching.utils import grid_window_memory
+from teehr.utils.concurrency import resolve_budget, resolve_cpu_workers, run_concurrent_map
 
 from utils import grid_utils as gu
 from utils import time_grid as tg
@@ -202,8 +205,8 @@ def _raw_data_encoding(da: xr.DataArray, fill_value: int | None = None) -> dict:
     return packing
 
 
-# Retried because reading source chunks can drop connections. Each shard's worth of steps is committed
-# on its own, so a retry (or the next run) resumes after the last committed batch.
+# Retried because reading source chunks can drop connections. Each group of batches is committed
+# on its own, so a retry (or the next run) resumes after the last committed group.
 @task(cache_policy=NO_CACHE, retries=3, retry_delay_seconds=30)
 def materialize_references(repo: ic.Repository, args: IngestGriddedDataInput) -> None:
     """Copy the referenced steps ``/raw_data`` lacks, or holds from an older reference, into their slots."""
@@ -221,35 +224,30 @@ def materialize_references(repo: ic.Repository, args: IngestGriddedDataInput) ->
     _, origin, time_step = tg.read_grid(store)
     refs = gu.restore_grid_mapping_attrs(gu.open_zarr_group(store=store, group_path=REFERENCES_GROUP_PATH))
     refs = refs.drop_vars([n for n in tg.STEP_COORDS if n in refs.variables])
-    shard_steps = args.time_chunk_size * args.num_shard_chunks
-    batches = tg.shard_batches(stale, refs_meta.index, shard_steps)
-    logger.info(f"Materializing {len(stale)} step(s) in {len(batches)} shard batch(es).")
+    batches = tg.shard_batches(stale, refs_meta.index, args.time_chunk_size * args.num_shard_chunks)
+    # Each batch writes whole shards, so batches run concurrently, as many as fit in memory
+    step_bytes = sum(grid_window_memory(*refs[var].isel({dim: 0}).shape) for var in refs.data_vars)
+    batch_bytes = max(len(batch) for batch in batches) * step_bytes
+    workers = resolve_budget(io=args.num_materialize_workers or resolve_cpu_workers(), memory_per_item=batch_bytes).io
+    logger.info(f"Materializing {len(stale)} step(s) in {len(batches)} shard batch(es), {workers} at a time.")
+
+    def write_batch(session: ic.Session, batch: pd.DatetimeIndex) -> None:
+        tg.region_write(session, RAW_DATA_GROUP_PATH, refs.sel({dim: batch}).load(), dim, data_only=True)
+
     started = time.perf_counter()
-    for i, batch in enumerate(batches, start=1):
-        batch_started = time.perf_counter()
+    raw_meta = None
+    for first in range(0, len(batches), workers):
+        group = batches[first:first + workers]
+        group_started = time.perf_counter()
         session = repo.writable_session("main")
-        raw_meta = tg.read_step_metadata(session.store, RAW_DATA_GROUP_PATH, dim)
         if raw_meta is None:
-            encoding = gu.create_encoding_config(
-                refs,
-                append_dim=dim,
-                chunk_size=args.chunk_size,
-                num_shard_chunks=args.num_shard_chunks,
-                time_chunk_size=args.time_chunk_size,
-            )
-            # Later region writes reuse the stored encoding
-            for var in refs.data_vars:
-                encoding[var].update(_raw_data_encoding(refs[var], args.raw_data_fill_values.get(var)))
-            tg.create_group(session, RAW_DATA_GROUP_PATH, refs, origin, time_step, dim, refs_meta.index[-1], encoding=encoding)
-            logger.info(f"Created {RAW_DATA_GROUP_PATH} on a {time_step} grid from {origin} to {refs_meta.index[-1]}.")
-            raw_meta = tg.read_step_metadata(session.store, RAW_DATA_GROUP_PATH, dim)
-        else:
-            added = tg.ensure_axis(session, RAW_DATA_GROUP_PATH, refs_meta.index[-1], time_step, dim)
-            if added:
-                logger.info(f"Extended {RAW_DATA_GROUP_PATH} by {added} slot(s) to {refs_meta.index[-1]}.")
-        meta = refs_meta.loc[batch]
-        part = tg.with_step_metadata(
-            refs.sel({dim: batch}).load(),
+            raw_meta = _prepare_raw_data(session, refs, refs_meta, origin, time_step, args)
+        run_concurrent_map(functools.partial(write_batch, session), group, max_workers=workers)
+        steps = group[0].append(group[1:])
+        meta = refs_meta.loc[steps]
+        # Written once per group: one chunk holds these coordinates for every step
+        step_coords = tg.with_step_metadata(
+            xr.Dataset(coords={dim: steps}),
             dim,
             status=meta[STATUS_COORD].to_numpy(),
             source_last_modified=meta["source_last_modified"].to_numpy(),
@@ -257,10 +255,43 @@ def materialize_references(repo: ic.Repository, args: IngestGriddedDataInput) ->
             updated_at=meta["updated_at"].to_numpy(),
             existing=raw_meta,
         )
-        tg.region_write(session, RAW_DATA_GROUP_PATH, part, dim)
-        snapshot_id = session.commit(f"Materialized {len(batch)} step(s) into {RAW_DATA_GROUP_PATH}")
+        tg.region_write(session, RAW_DATA_GROUP_PATH, step_coords, dim)
+        snapshot_id = session.commit(f"Materialized {len(steps)} step(s) into {RAW_DATA_GROUP_PATH}")
         logger.info(
-            f"Committed materialized batch {i} of {len(batches)} ({len(batch)} step(s)) "
-            f"in {time.perf_counter() - batch_started:.1f}s: {snapshot_id}"
+            f"Committed batches {first + 1}-{first + len(group)} of {len(batches)} ({len(steps)} step(s)) "
+            f"in {time.perf_counter() - group_started:.1f}s: {snapshot_id}"
         )
     logger.info(f"Materialized {len(stale)} step(s) in {time.perf_counter() - started:.1f}s.")
+
+
+def _prepare_raw_data(
+    session: ic.Session,
+    refs: xr.Dataset,
+    refs_meta: pd.DataFrame,
+    origin: pd.Timestamp,
+    time_step: pd.Timedelta,
+    args: IngestGriddedDataInput,
+) -> pd.DataFrame:
+    """Create ``/raw_data``, or extend its axis to the end of ``/references``; returns its step metadata."""
+    logger = get_run_logger()
+    dim = args.append_dim
+    end = refs_meta.index[-1]
+    raw_meta = tg.read_step_metadata(session.store, RAW_DATA_GROUP_PATH, dim)
+    if raw_meta is None:
+        encoding = gu.create_encoding_config(
+            refs,
+            append_dim=dim,
+            chunk_size=args.chunk_size,
+            num_shard_chunks=args.num_shard_chunks,
+            time_chunk_size=args.time_chunk_size,
+        )
+        # Later region writes reuse the stored encoding
+        for var in refs.data_vars:
+            encoding[var].update(_raw_data_encoding(refs[var], args.raw_data_fill_values.get(var)))
+        tg.create_group(session, RAW_DATA_GROUP_PATH, refs, origin, time_step, dim, end, encoding=encoding)
+        logger.info(f"Created {RAW_DATA_GROUP_PATH} on a {time_step} grid from {origin} to {end}.")
+        return tg.read_step_metadata(session.store, RAW_DATA_GROUP_PATH, dim)
+    added = tg.ensure_axis(session, RAW_DATA_GROUP_PATH, end, time_step, dim)
+    if added:
+        logger.info(f"Extended {RAW_DATA_GROUP_PATH} by {added} slot(s) to {end}.")
+    return raw_meta
