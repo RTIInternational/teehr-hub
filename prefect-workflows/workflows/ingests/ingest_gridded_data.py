@@ -231,8 +231,8 @@ def materialize_references(repo: ic.Repository, args: IngestGriddedDataInput) ->
     workers = resolve_budget(io=args.num_materialize_workers or resolve_cpu_workers(), memory_per_item=batch_bytes).io
     logger.info(f"Materializing {len(stale)} step(s) in {len(batches)} shard batch(es), {workers} at a time.")
 
-    def write_batch(session: ic.Session, batch: pd.DatetimeIndex) -> None:
-        tg.region_write(session, RAW_DATA_GROUP_PATH, refs.sel({dim: batch}).load(), dim, data_only=True)
+    def write_batch(session: ic.Session, positions: np.ndarray) -> None:
+        tg.region_write(session, RAW_DATA_GROUP_PATH, refs.isel({dim: positions}).load(), dim, data_only=True)
 
     started = time.perf_counter()
     raw_meta = None
@@ -242,7 +242,9 @@ def materialize_references(repo: ic.Repository, args: IngestGriddedDataInput) ->
         session = repo.writable_session("main")
         if raw_meta is None:
             raw_meta = _prepare_raw_data(session, refs, refs_meta, origin, time_step, args)
-        run_concurrent_map(functools.partial(write_batch, session), group, max_workers=workers)
+        # Positions are looked up here: a pandas index can fail when several threads first use it at once
+        positions = [refs.indexes[dim].get_indexer(batch) for batch in group]
+        run_concurrent_map(functools.partial(write_batch, session), positions, max_workers=workers)
         steps = group[0].append(group[1:])
         meta = refs_meta.loc[steps]
         # Written once per group: one chunk holds these coordinates for every step
