@@ -1,4 +1,4 @@
-"""End-to-end test of ingest_gridded_data (references -> raw_data -> pyramids) on local repos.
+"""End-to-end test of ingest_gridded_data (references -> data -> overviews) on local repos.
 
 Uses the NWM source pointed at local hourly netCDF files shaped like NWM forcing. Needs teehr and Prefect.
 """
@@ -14,7 +14,7 @@ pytest.importorskip("h5netcdf")
 icechunk = pytest.importorskip("icechunk")
 from prefect.testing.utilities import prefect_test_harness  # noqa: E402
 
-import build_geozarr_pyramids as bp  # noqa: E402
+import build_overviews as bo  # noqa: E402
 import ingest_gridded_data as ing  # noqa: E402
 from workflows.models import gridded_sources as gs  # noqa: E402
 from workflows.models.ingest_gridded_data_input import IngestGriddedDataInput  # noqa: E402
@@ -22,7 +22,7 @@ from workflows.models.ingest_gridded_data_input import IngestGriddedDataInput  #
 NWM_CONUS_CRS = "+proj=lcc +lat_0=40 +lon_0=-97 +lat_1=30 +lat_2=60 +x_0=0 +y_0=0 +R=6370000 +units=m +no_defs"
 ORIGIN = pd.Timestamp(gs.NWMForcing.version_start["nwm31"])
 HOURS = pd.date_range(ORIGIN, periods=90, freq="h")
-# Packed pyramid resolution for rainrate_hourly_mean (max_value 0.075 in uint16)
+# Packed overview resolution for rainrate_hourly_mean (max_value 0.075 in uint16)
 PACKED_TOL = 2 * 0.075 / 65535
 
 
@@ -76,8 +76,8 @@ def nwm(tmp_path, monkeypatch):
     monkeypatch.setattr(gs.NWMForcing, "store_kwargs", {})
     monkeypatch.setattr(gs.NWMForcing, "list_files", list_files)
     monkeypatch.setattr(ing.gu, "configure_icechunk_s3_repo", open_repo)
-    monkeypatch.setattr(bp.gu, "build_icechunk_s3_storage", lambda **_: storage)
-    monkeypatch.setattr(bp.gu, "open_repo_for_reading", open_repo)
+    monkeypatch.setattr(bo.gu, "build_icechunk_s3_storage", lambda **_: storage)
+    monkeypatch.setattr(bo.gu, "open_repo_for_reading", open_repo)
     return publish, open_repo
 
 
@@ -85,7 +85,7 @@ def _run(start, end, mode="append", write_materialized=True, **kwargs):
     ing.ingest_gridded_data(IngestGriddedDataInput(
         source={"type": "nwm"}, start_dt=start.isoformat(), end_dt=end.isoformat(), write_mode=mode,
         write_materialized=write_materialized, fallback_source_crs=NWM_CONUS_CRS,
-        factors=[1, 2], dest_bucket="unused", base_prefix="unused", ignore_unreadable_file=False, **kwargs,
+        overview_factors=[2], dest_bucket="unused", base_prefix="unused", ignore_unreadable_file=False, **kwargs,
     ))
 
 
@@ -151,8 +151,8 @@ def test_grid_name_on_new_and_existing_repos(harness, nwm):
 @pytest.mark.parametrize("write_materialized", [True, False], ids=["materialized", "virtual"])
 def test_backfill_in_any_order_then_upsert(harness, nwm, write_materialized):
     publish, open_repo = nwm
-    data_group = "raw_data" if write_materialized else "references"
-    groups = ("references", "raw_data", "pyramids/0", "pyramids/1") if write_materialized else ("references", "pyramids/0", "pyramids/1")
+    data_group = "data" if write_materialized else "references"
+    groups = ("references", "data", "overviews/2") if write_materialized else ("references", "overviews/2")
     for i in range(len(HOURS)):
         publish(i, rate(i), "2026-09-01")
 
@@ -171,8 +171,8 @@ def test_backfill_in_any_order_then_upsert(harness, nwm, write_materialized):
     data = g[data_group]
     for i in expected:
         assert float(data.rainrate_hourly_mean.isel(time=i, y=3, x=4)) == rate(i)
-    assert abs(float(g["pyramids/0"].rainrate_hourly_mean.isel(time=55).max()) - rate(55)) < PACKED_TOL
-    assert np.isnan(float(g["pyramids/0"].rainrate_hourly_mean.isel(time=30).max()))  # unwritten slots are missing, not 0
+    assert abs(float(g["overviews/2"].rainrate_hourly_mean.isel(time=55).max()) - rate(55)) < PACKED_TOL
+    assert np.isnan(float(g["overviews/2"].rainrate_hourly_mean.isel(time=30).max()))  # unwritten slots are missing, not 0
 
     before = {k: v.updated_at.values.copy() for k, v in g.items()}
     run(2, 59)  # fills the gap, leaves written hours alone
@@ -204,7 +204,15 @@ def test_backfill_in_any_order_then_upsert(harness, nwm, write_materialized):
     assert (data.updated_at.values[75:80] < data.updated_at.values[70]).all()  # untouched hours keep their write time
     for k in groups:
         assert list(g[k].status.values[70:80]) == [2] * 10
-    assert abs(float(g["pyramids/0"].rainrate_hourly_mean.isel(time=71).max()) - rate(71, reissued=True)) < PACKED_TOL
+    assert abs(float(g["overviews/2"].rainrate_hourly_mean.isel(time=71).max()) - rate(71, reissued=True)) < PACKED_TOL
+
+    # 2x2 blocks on the data's own grid, packed, with the transforms the tile server picks levels by
+    overview = g["overviews/2"]
+    assert (overview.sizes["y"], overview.sizes["x"]) == (20, 25)
+    store = open_repo().readonly_session("main").store
+    assert zarr.open_group(store, path=data_group, mode="r", zarr_format=3).attrs["spatial:transform"][0] == 1000.0
+    assert overview.attrs["spatial:transform"][0] == 2000.0 and "proj:wkt2" in overview.attrs
+    assert zarr.open_array(store, path="overviews/2/rainrate_hourly_mean", mode="r").dtype == "uint16"
 
     assert "scale_factor" not in data.rainrate_hourly_mean.encoding and data.rainrate_hourly_mean.dtype == "float32"
     root = zarr.open_group(open_repo().readonly_session("main").store, mode="r", zarr_format=3).attrs
@@ -229,7 +237,7 @@ def test_parse_in_processes(harness, nwm, monkeypatch):
     _run(HOURS[0], HOURS[-1])
     assert processes[0] > 1 and not fallbacks
 
-    data = _groups(open_repo, ("raw_data",))["raw_data"]
+    data = _groups(open_repo, ("data",))["data"]
     assert (data.status.values == 2).all()
     for i in range(len(HOURS)):
         assert float(data.rainrate_hourly_mean.isel(time=i, y=3, x=4)) == rate(i)
@@ -254,11 +262,11 @@ def test_integer_source_stored_losslessly(harness, nwm, monkeypatch, units, sour
     _run(HOURS[0], HOURS[2])
 
     store = open_repo().readonly_session("main").store
-    stored = xr.open_zarr(store, group="raw_data", consolidated=False, mask_and_scale=False).rainrate_hourly_mean
+    stored = xr.open_zarr(store, group="data", consolidated=False, mask_and_scale=False).rainrate_hourly_mean
     assert stored.dtype == "int16" and stored.attrs["_FillValue"] == -9999
     assert stored.attrs.get("scale_factor") == (pytest.approx(stored_scale) if stored_scale else None)
     assert "add_offset" not in stored.attrs
-    raw = xr.open_zarr(store, group="raw_data", consolidated=False).rainrate_hourly_mean
+    raw = xr.open_zarr(store, group="data", consolidated=False).rainrate_hourly_mean
     assert raw.attrs["units"] == "mm/s"
     for i in (0, 2):
         np.testing.assert_array_equal(stored.isel(time=i).values, np.where(np.isnan(ints), -9999, ints))
@@ -275,13 +283,13 @@ def test_integer_source_without_fill_value_needs_one(harness, nwm, monkeypatch):
     with pytest.raises(ValueError, match="has no _FillValue"):
         _run(HOURS[0], HOURS[2])
     with pytest.raises(ValueError, match="outside the uint8 range"):
-        _run(HOURS[0], HOURS[2], raw_data_fill_values={"rainrate_hourly_mean": 300})
+        _run(HOURS[0], HOURS[2], data_fill_values={"rainrate_hourly_mean": 300})
 
-    _run(HOURS[0], HOURS[2], raw_data_fill_values={"rainrate_hourly_mean": 255})
+    _run(HOURS[0], HOURS[2], data_fill_values={"rainrate_hourly_mean": 255})
     store = open_repo().readonly_session("main").store
-    stored = xr.open_zarr(store, group="raw_data", consolidated=False, mask_and_scale=False).rainrate_hourly_mean
+    stored = xr.open_zarr(store, group="data", consolidated=False, mask_and_scale=False).rainrate_hourly_mean
     assert stored.dtype == "uint8" and stored.attrs["_FillValue"] == 255
-    raw = xr.open_zarr(store, group="raw_data", consolidated=False).rainrate_hourly_mean
+    raw = xr.open_zarr(store, group="data", consolidated=False).rainrate_hourly_mean
     np.testing.assert_array_equal(raw.isel(time=0).values, ints)
     assert np.isnan(raw.isel(time=1).values).all()  # the unwritten slot reads as the fill value, i.e. missing
 
@@ -295,9 +303,9 @@ def test_unsigned_source_stored_as_signed_keeps_its_values(harness, nwm):
     _run(HOURS[0], HOURS[2])
 
     store = open_repo().readonly_session("main").store
-    stored = xr.open_zarr(store, group="raw_data", consolidated=False, mask_and_scale=False).rainrate_hourly_mean
+    stored = xr.open_zarr(store, group="data", consolidated=False, mask_and_scale=False).rainrate_hourly_mean
     assert stored.dtype == "int8" and stored.attrs["_Unsigned"] == "true"
-    raw = xr.open_zarr(store, group="raw_data", consolidated=False).rainrate_hourly_mean
+    raw = xr.open_zarr(store, group="data", consolidated=False).rainrate_hourly_mean
     np.testing.assert_array_equal(raw.isel(time=0).values, ints)
     assert np.isnan(raw.isel(time=1).values).all()
 

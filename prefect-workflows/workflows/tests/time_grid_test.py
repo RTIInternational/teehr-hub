@@ -137,29 +137,29 @@ def test_materialize_propagates_only_stale_steps_and_keeps_created_at(repo, sour
     def materialize():
         session = repo.writable_session("main")
         src = tg.read_step_metadata(session.store, "references", DIM)
-        dst = tg.read_step_metadata(session.store, "raw_data", DIM)
+        dst = tg.read_step_metadata(session.store, "data", DIM)
         stale = tg.stale_steps(src, dst)
         if len(stale) == 0:
             return stale
         if dst is None:
-            tg.create_group(session, "raw_data", refs, ORIGIN, STEP, DIM, src.index[-1],
+            tg.create_group(session, "data", refs, ORIGIN, STEP, DIM, src.index[-1],
                             encoding={"SWE": {"chunks": (1, 4, 4), "shards": (10, 4, 4)}})
-            dst = tg.read_step_metadata(session.store, "raw_data", DIM)
+            dst = tg.read_step_metadata(session.store, "data", DIM)
         for batch in tg.shard_batches(stale, src.index, 10):
             m = src.loc[batch]
             part = tg.with_step_metadata(refs.sel({DIM: batch}).load(), DIM, m.status.to_numpy(),
                                          m.source_last_modified.to_numpy(), m.updated_at.to_numpy(), dst)
-            tg.region_write(session, "raw_data", part, DIM)
+            tg.region_write(session, "data", part, DIM)
         session.commit("materialize")
         return stale
 
     assert len(materialize()) == 10
     assert len(materialize()) == 0
-    raw = xr.open_zarr(repo.readonly_session("main").store, group="raw_data", consolidated=False)
+    raw = xr.open_zarr(repo.readonly_session("main").store, group="data", consolidated=False)
     created = raw.created_at.values[45]
     _write_refs(repo, open_days(DAYS[45:46]), 2)
     assert list(materialize()) == [DAYS[45]]
-    raw = xr.open_zarr(repo.readonly_session("main").store, group="raw_data", consolidated=False)
+    raw = xr.open_zarr(repo.readonly_session("main").store, group="data", consolidated=False)
     assert raw.created_at.values[45] == created and raw.updated_at.values[45] > created
     assert refs_meta.index[0] == ORIGIN
 

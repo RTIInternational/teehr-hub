@@ -528,7 +528,8 @@ deployments:
       collision_strategy: "CANCEL_NEW"
     description: >-
       Ingest NWM 3.1 forcing analysis/assimilation RAINRATE grids (CONUS) into an IceChunk S3
-      repository using VirtualiZarr, then materialize /raw_data and build pyramids.
+      repository using VirtualiZarr, then build map overviews. Full resolution stays virtual
+      (/references, read from noaa-nwm-pds); nothing is materialized.
     entrypoint: workflows/ingests/ingest_gridded_data.py:ingest_gridded_data
     parameters: {
       "args": {
@@ -536,6 +537,8 @@ deployments:
         "num_lookback_days": 1,
         # Upsert, so a re-issued file is re-referenced; a virtual reference to a changed file can't be read
         "write_mode": "upsert",
+        # noaa-nwm-pds reads are free and in-region, so only the overviews are stored
+        "write_materialized": false,
         "x_dim": "x",
         "y_dim": "y",
         "fallback_source_crs": "+proj=lcc +lat_0=40 +lon_0=-97 +lat_1=30 +lat_2=60 +x_0=0 +y_0=0 +R=6370000 +units=m +no_defs",
@@ -546,7 +549,7 @@ deployments:
           "join": "override",
           "combine_attrs": "override"
         },
-        "pyramid_encoding": {
+        "overview_encoding": {
           "rainrate_hourly_mean": {"dtype": "uint16", "max_value": 0.075, "units": "mm/s"}
         }
       }
@@ -556,28 +559,25 @@ deployments:
       cron: "40 */6 * * *"
       active: false
 
-  # Gridded Pyramid Builds
-  - name: build-nwm31-forcing-analysis-assim-icechunk-pyramids
+  # Gridded Overview Builds (rebuilds, e.g. after changing overview_factors or overview_encoding)
+  - name: build-nwm31-forcing-analysis-assim-icechunk-overviews
     version:
     tags: []
     concurrency_limit:
       limit: 1
       collision_strategy: "CANCEL_NEW"
-    description: Build multiscale pyramids for the NWM 3.1 forcing analysis/assimilation IceChunk repository
-    entrypoint: workflows/ingests/build_geozarr_pyramids.py:build_pyramids
+    description: Build map overviews for the NWM 3.1 forcing analysis/assimilation IceChunk repository
+    entrypoint: workflows/ingests/build_overviews.py:build_overviews
     parameters: {
       "args": {
         "configuration_name": "nwm31_forcing_analysis_assim",
-        "x_dim": "x",
-        "y_dim": "y",
-        "fallback_source_crs": "+proj=lcc +lat_0=40 +lon_0=-97 +lat_1=30 +lat_2=60 +x_0=0 +y_0=0 +R=6370000 +units=m +no_defs",
-        "factors": [1, 2, 4],
-        "pyramid_encoding": {
+        "overview_factors": [2, 4, 8],
+        "overview_encoding": {
           "rainrate_hourly_mean": {"dtype": "uint16", "max_value": 0.075, "units": "mm/s"}
         }
       }
     }
-    work_pool: *work_pool_large
+    work_pool: *work_pool_medium
 
   # Create Vector Tiles
   - name: create-vector-tiles
