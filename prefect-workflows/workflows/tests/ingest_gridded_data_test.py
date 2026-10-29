@@ -243,6 +243,20 @@ def test_parse_in_processes(harness, nwm, monkeypatch):
         assert float(data.rainrate_hourly_mean.isel(time=i, y=3, x=4)) == rate(i)
 
 
+def test_switching_to_materialized_with_no_new_files(harness, nwm):
+    """A references-only repo rerun with write_materialized gets /data and readers switch to it."""
+    publish, open_repo = nwm
+    for i in range(5):
+        publish(i, rate(i), "2026-09-01")
+    _run(HOURS[0], HOURS[4], write_materialized=False)
+    root = lambda: zarr.open_group(open_repo().readonly_session("main").store, mode="r", zarr_format=3).attrs  # noqa: E731
+    assert root()["data_group"] == "/references"
+    _run(HOURS[0], HOURS[4], write_materialized=True)  # no new files
+    assert root()["data_group"] == "/data"
+    data = _groups(open_repo, ("data",))["data"]
+    assert float(data.rainrate_hourly_mean.isel(time=3, y=0, x=0)) == rate(3)
+
+
 @pytest.mark.parametrize("units, source_scale, stored_scale", [
     ("mm s^-1", None, None),  # unpacked, already mm/s: stored as is
     ("mm/h", None, 1 / 3600),  # unpacked mm/h: the conversion adds packing

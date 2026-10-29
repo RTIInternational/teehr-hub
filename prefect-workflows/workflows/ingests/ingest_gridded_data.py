@@ -97,6 +97,8 @@ def ingest_gridded_data(args: IngestGriddedDataInput) -> None:
         logger.info(f"Parsed and wrote references for {len(todo)} step(s) in {time.perf_counter() - started:.1f}s.")
     if args.write_materialized:
         materialize_references(repo, args)
+    # Readers switch only once the group is complete; a repo can also change mode with no new files
+    _record_data_group(repo, DATA_GROUP_PATH if args.write_materialized else REFERENCES_GROUP_PATH)
     if args.build_overviews_on_ingest:
         build_overviews_flow(args)
 
@@ -120,6 +122,14 @@ def _standardize_references(ds: xr.Dataset, args: IngestGriddedDataInput) -> xr.
         variable_and_unit_mapper=VARIABLE_AND_UNIT_MAPPER,
     )
     return gu.apply_unit_conversions(ds, VARIABLE_UNITS, UNIT_CONVERSIONS)
+
+
+def _record_data_group(repo: ic.Repository, group: str) -> None:
+    """Point readers (overviews, EDR, mean areal values) at ``group``."""
+    session = repo.writable_session("main")
+    if gu.write_data_group(session.store, group):
+        session.commit(f"Data group is now {group}")
+        get_run_logger().info(f"Recorded {group} as the data group.")
 
 
 def _resolve_start_dt(args: IngestGriddedDataInput, end_dt: datetime) -> datetime:
@@ -172,7 +182,6 @@ def write_references(
         existing=stored,
     )
     tg.region_write(session, REFERENCES_GROUP_PATH, ds, dim, virtual=True)
-    gu.write_data_group(session.store, DATA_GROUP_PATH if args.write_materialized else REFERENCES_GROUP_PATH)
     snapshot_id = session.commit(f"Wrote {len(todo)} step(s) of virtual references")
     logger.info(f"Committed {len(todo)} step(s) of virtual references: {snapshot_id}")
 
