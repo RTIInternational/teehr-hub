@@ -1,4 +1,4 @@
-FROM prefecthq/prefect:3.4.24-python3.12
+FROM prefecthq/prefect:3.9.0-python3.12
 
 ARG TEEHR_VERSION
 
@@ -55,6 +55,68 @@ RUN ARCH=$(uname -m) && \
         echo "Installing TEEHR normally for x86_64..." && \
         pip install --no-cache-dir "git+https://github.com/RTIInternational/teehr.git@${TEEHR_VERSION}"; \
     fi
+
+# Patch the jars bundled in the pyspark wheel, which carry most of the image's
+# fixable CVEs. Spark only runs in local mode here, against an Iceberg REST
+# catalog, so the Hive/metastore stack (Hive, Derby, Thrift, ZooKeeper, legacy
+# Jackson ASL), jline and the Scala Spark Connect REPL (connect-repl/) are unused
+# and are removed. hive-storage-api stays because ORC depends on it. Netty,
+# Jackson, Jersey, Bouncy Castle, aircompressor and snappy-java are swapped for
+# later patch releases on the same lines Spark ships, so they stay drop-in.
+# Not fixable here: CVEs shaded inside hadoop-client-runtime, spark-core and
+# parquet-jackson, which need Hadoop/Spark/Parquet upgrades.
+# Re-check these versions whenever pyspark is bumped.
+ARG NETTY_VERSION=4.1.139.Final
+ARG JACKSON_VERSION=2.18.12
+ARG JERSEY_VERSION=3.0.18
+ARG BCPROV_VERSION=1.86
+ARG AIRCOMPRESSOR_VERSION=2.0.3
+ARG SNAPPY_VERSION=1.1.10.12
+RUN set -eu; \
+    MVN=https://repo1.maven.org/maven2; \
+    cd "$(python -c 'import os, pyspark; print(os.path.join(pyspark.__path__[0], "jars"))')"; \
+    rm -rf connect-repl; \
+    find . -name '*.jar' \( -name 'hive-*' ! -name 'hive-storage-api-*' -o -name 'spark-hive*' \
+        -o -name 'derby*' -o -name 'libthrift-*' -o -name 'zookeeper*' -o -name 'jackson-*-asl-*' \
+        -o -name 'jline-*' \) -print -delete; \
+    old_netty=$(ls netty-common-*.jar | sed 's/^netty-common-\(.*\)\.jar$/\1/'); \
+    for f in netty-*-"$old_netty"*.jar; do \
+        artifact=${f%%-"$old_netty"*}; suffix=${f#"$artifact"-"$old_netty"}; \
+        curl -fsSL -o "$artifact-$NETTY_VERSION$suffix" \
+            "$MVN/io/netty/$artifact/$NETTY_VERSION/$artifact-$NETTY_VERSION$suffix"; \
+        rm "$f"; \
+    done; \
+    for f in jackson-*-2.*.jar; do \
+        artifact=${f%-2.*.jar}; \
+        case "$artifact" in \
+            jackson-core|jackson-databind|jackson-annotations) group=core ;; \
+            jackson-dataformat-*) group=dataformat ;; \
+            jackson-datatype-*) group=datatype ;; \
+            jackson-module-*) group=module ;; \
+            *) continue ;; \
+        esac; \
+        curl -fsSL -o "$artifact-$JACKSON_VERSION.jar" \
+            "$MVN/com/fasterxml/jackson/$group/$artifact/$JACKSON_VERSION/$artifact-$JACKSON_VERSION.jar"; \
+        rm "$f"; \
+    done; \
+    for f in jersey-*.jar; do \
+        artifact=${f%-[0-9]*.jar}; \
+        case "$artifact" in \
+            jersey-container-*) group=containers ;; \
+            jersey-hk2) group=inject ;; \
+            *) group=core ;; \
+        esac; \
+        curl -fsSL -o "$artifact-$JERSEY_VERSION.jar" \
+            "$MVN/org/glassfish/jersey/$group/$artifact/$JERSEY_VERSION/$artifact-$JERSEY_VERSION.jar"; \
+        rm "$f"; \
+    done; \
+    rm bcprov-jdk18on-*.jar aircompressor-*.jar snappy-java-*.jar; \
+    curl -fsSL -o "bcprov-jdk18on-$BCPROV_VERSION.jar" \
+        "$MVN/org/bouncycastle/bcprov-jdk18on/$BCPROV_VERSION/bcprov-jdk18on-$BCPROV_VERSION.jar"; \
+    curl -fsSL -o "aircompressor-$AIRCOMPRESSOR_VERSION.jar" \
+        "$MVN/io/airlift/aircompressor/$AIRCOMPRESSOR_VERSION/aircompressor-$AIRCOMPRESSOR_VERSION.jar"; \
+    curl -fsSL -o "snappy-java-$SNAPPY_VERSION.jar" \
+        "$MVN/org/xerial/snappy/snappy-java/$SNAPPY_VERSION/snappy-java-$SNAPPY_VERSION.jar"
 
 # Set JAVA_HOME statically based on build architecture
 ENV JAVA_HOME=/usr/lib/jvm/java-21-openjdk-${TARGETARCH}
