@@ -214,6 +214,27 @@ def test_backfill_in_any_order_then_upsert(harness, nwm, write_materialized):
     }
 
 
+def test_parse_in_processes(harness, nwm, monkeypatch):
+    """Files parse in worker processes, rather than falling back to threads, and every step is written."""
+    from teehr.utils import concurrency
+
+    publish, open_repo = nwm
+    for i in range(len(HOURS)):
+        publish(i, rate(i), "2026-09-01")
+    monkeypatch.setattr(ing.gu, "REFERENCE_BUILD_MIN_ITEMS", 2)
+    processes, fallbacks = [], []
+    map_blocking = ing.gu.map_blocking
+    monkeypatch.setattr(ing.gu, "map_blocking", lambda *a, **kw: processes.append(kw["processes"]) or map_blocking(*a, **kw))
+    monkeypatch.setattr(concurrency.logger, "warning", lambda msg, *_, **__: fallbacks.append(msg))
+    _run(HOURS[0], HOURS[-1])
+    assert processes[0] > 1 and not fallbacks
+
+    data = _groups(open_repo, ("raw_data",))["raw_data"]
+    assert (data.status.values == 2).all()
+    for i in range(len(HOURS)):
+        assert float(data.rainrate_hourly_mean.isel(time=i, y=3, x=4)) == rate(i)
+
+
 @pytest.mark.parametrize("units, source_scale, stored_scale", [
     ("mm s^-1", None, None),  # unpacked, already mm/s: stored as is
     ("mm/h", None, 1 / 3600),  # unpacked mm/h: the conversion adds packing

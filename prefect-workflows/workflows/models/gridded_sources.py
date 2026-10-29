@@ -2,11 +2,13 @@
 import re
 from abc import ABC, abstractmethod
 from datetime import datetime
+from functools import partial
 from typing import ClassVar, Literal, Optional
 
 import obstore
 import pandas as pd
 import xarray as xr
+from obspec_utils.readers import BlockStoreReader
 from obstore.store import from_url
 from pydantic import BaseModel, Field, model_validator
 from teehr.fetching.const import (
@@ -33,6 +35,8 @@ class GriddedSource(BaseModel, ABC):
     store_kwargs: ClassVar[dict] = {}
     # Options for the IceChunk virtual chunk container's object store, e.g. region
     virtual_store_kwargs: ClassVar[dict] = {}
+    # Source-specific kwargs for the reference parser, e.g. the HDF5 reader's block size
+    parser_kwargs: ClassVar[dict] = {}
     time_step: ClassVar[pd.Timedelta]
 
     @abstractmethod
@@ -99,6 +103,9 @@ class NWMForcing(GriddedSource):
     )
 
     time_step: ClassVar[pd.Timedelta] = pd.Timedelta("1h")
+    # The parser reads HDF5 metadata in blocks; NWM's is scattered in small pieces, so 64 KB blocks
+    # read 0.66 MB per file against 8.4 MB with the 1 MB default
+    parser_kwargs: ClassVar[dict] = {"reader_factory": partial(BlockStoreReader, block_size=64 * 1024)}
     # First cycle of each version; v2.1 and v2.2 are one version in teehr
     version_start: ClassVar[dict[str, datetime]] = {
         "nwm12": NWM12_START_DATE,
