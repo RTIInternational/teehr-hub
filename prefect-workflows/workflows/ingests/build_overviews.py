@@ -122,15 +122,45 @@ def _overview_encoding(ds: xr.Dataset, args: BuildOverviewsDataInput) -> dict:
     return encoding
 
 
-def _coarsen(ds: xr.Dataset, factor: int) -> xr.Dataset:
-    """Average ``factor`` x ``factor`` blocks of pixels, dropping a partial block at the far edges."""
+def _block_sum(values: np.ndarray, k: int) -> np.ndarray:
+    """Sum each k x k block of the last two axes, dropping a partial block at the far edges.
+
+    Adds the k*k interleaved slices; several times faster than xarray's coarsen or a reshape-and-sum.
+    """
+    y, x = values.shape[-2] // k * k, values.shape[-1] // k * k
+    return sum(values[..., i:y:k, j:x:k] for i in range(k) for j in range(k))
+
+
+def _overview_levels(ds: xr.Dataset, factors: list[int]) -> dict[int, xr.Dataset]:
+    """Average ``factor`` x ``factor`` blocks of pixels for each factor, skipping missing values.
+
+    Each level is summed from the previous one's block sums and valid-pixel counts, so its means match
+    averaging the full-resolution pixels directly.
+    """
     y_dim, x_dim = ds.attrs["spatial:dimensions"]
-    level = ds.coarsen({y_dim: factor, x_dim: factor}, boundary="trim").mean(keep_attrs=True)
-    # Encodings belong to the data group's arrays; each level gets its own when created
-    for name in level.variables:
-        level[name].encoding = {}
-    level.attrs["spatial:transform"] = gu.spatial_transform(level)
-    return level
+    dims, sums, counts = {}, {}, {}
+    for var in ds.data_vars:
+        da = ds[var].transpose(..., y_dim, x_dim)
+        valid = ~np.isnan(da.values)
+        dims[var], sums[var], counts[var] = da.dims, np.where(valid, da.values, 0), valid.astype(np.uint16)
+    y, x = ds[y_dim].values, ds[x_dim].values
+    coords = {n: c for n, c in ds.coords.items() if y_dim not in c.dims and x_dim not in c.dims}
+    levels, previous = {}, 1
+    for factor in factors:
+        k = factor // previous
+        sums = {var: _block_sum(total, k) for var, total in sums.items()}
+        counts = {var: _block_sum(count, k) for var, count in counts.items()}
+        y, x = y[: len(y) // k * k].reshape(-1, k).mean(axis=1), x[: len(x) // k * k].reshape(-1, k).mean(axis=1)
+        with np.errstate(invalid="ignore"):
+            data = {var: (dims[var], sums[var] / counts[var], ds[var].attrs) for var in sums}
+        level = xr.Dataset(
+            data,
+            coords={**coords, y_dim: (y_dim, y, ds[y_dim].attrs), x_dim: (x_dim, x, ds[x_dim].attrs)},
+            attrs=dict(ds.attrs),
+        )
+        level.attrs["spatial:transform"] = gu.spatial_transform(level)
+        levels[factor], previous = level, factor
+    return levels
 
 
 @task(cache_policy=NO_CACHE)
@@ -156,8 +186,8 @@ def _write_overview_batch(
         group_attrs["spatial:transform"] = gu.spatial_transform(ds_batch)
         logger.info(f"Recorded spatial:transform on {data_group}.")
 
-    for factor in args.overview_factors:
-        level_ds = _clip_to_packed_range(_coarsen(ds_batch, factor), args.overview_encoding)
+    for factor, level_ds in _overview_levels(ds_batch, args.overview_factors).items():
+        level_ds = _clip_to_packed_range(level_ds, args.overview_encoding)
         group = f"{OVERVIEW_GROUP_PATH}/{factor}"
         existing = tg.read_step_metadata(rw_session.store, group, dim)
         if existing is None:

@@ -3,6 +3,7 @@ import os
 from datetime import datetime
 from typing import Any, Literal, Optional, Union
 from enum import Enum
+from itertools import pairwise
 import numpy as np
 from pydantic import BaseModel, ConfigDict, Field, TypeAdapter, field_validator, model_validator
 from pydantic.json_schema import SkipJsonSchema
@@ -164,8 +165,9 @@ class BuildOverviewsDataInput(BaseGriddedDataInput):
     overview_factors: list[int] = Field(
         default=[2, 4, 8],
         description=(
-            "Block sizes averaged into each overview level, e.g. [2, 4, 8] for 2x2, 4x4 and 8x8 pixels. Choose "
-            "them so the coarsest level is about 500 pixels across. Applies only when the overviews are first created."
+            "Block sizes averaged into each overview level, e.g. [2, 4, 8] for 2x2, 4x4 and 8x8 pixels; each a "
+            "multiple of the one before. Choose them so the coarsest level is about 500 pixels across. Applies only "
+            "when the overviews are first created."
         )
     )
     time_batch_size: int = Field(
@@ -188,9 +190,10 @@ class BuildOverviewsDataInput(BaseGriddedDataInput):
 
     @field_validator("overview_factors")
     @classmethod
-    def _increasing_factors(cls, v: list[int]) -> list[int]:
-        if not v or any(f < 2 for f in v) or v != sorted(set(v)):
-            raise ValueError(f"overview_factors must be increasing integers of at least 2, got {v}")
+    def _nested_factors(cls, v: list[int]) -> list[int]:
+        # Each level is built from the one before, so each factor must be a multiple of the previous
+        if not v or any(f < 2 for f in v) or any(b <= a or b % a for a, b in pairwise(v)):
+            raise ValueError(f"overview_factors must be integers of at least 2, each a multiple of the one before; got {v}")
         return v
 
     @model_validator(mode="after")
