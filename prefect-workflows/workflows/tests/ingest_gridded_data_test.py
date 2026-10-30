@@ -134,6 +134,15 @@ def test_nwm_aws_bucket_reads_in_region():
         gs.NWMForcing(bucket="s3://some-other-bucket")
 
 
+def test_write_materialized_defaults_to_the_source():
+    """NWM from noaa-nwm-pds stays references-only; GCS is materialized, as its reads pay NAT; a run can override."""
+    def args(**kwargs):
+        return IngestGriddedDataInput(dest_bucket="unused", base_prefix="unused", **kwargs)
+    assert args(source={"type": "nwm", "bucket": "s3://noaa-nwm-pds"}).write_materialized is False
+    assert args(source={"type": "nwm", "bucket": "gs://national-water-model"}).write_materialized is True
+    assert args(source={"type": "nwm", "bucket": "s3://noaa-nwm-pds"}, write_materialized=True).write_materialized is True
+
+
 def test_grid_name_on_new_and_existing_repos(harness, nwm):
     publish, open_repo = nwm
     for i in range(10):

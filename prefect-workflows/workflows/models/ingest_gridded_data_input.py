@@ -248,11 +248,12 @@ class IngestGriddedDataInput(BuildOverviewsDataInput):
             "final (status) or newer (last modified) than what's stored."
         )
     )
-    write_materialized: bool = Field(
-        default=True,
+    write_materialized: Optional[bool] = Field(
+        default=None,
         description=(
             "If True, the references are materialized into /data, which readers use. If False, nothing "
-            "is copied and readers (overviews, EDR, mean areal values) read /references directly from the source"
+            "is copied and readers (overviews, EDR, mean areal values) read /references directly from the source. "
+            "Defaults to the source's choice: False for NWM from s3://noaa-nwm-pds, True otherwise"
         )
     )
     ignore_unreadable_file: bool = Field(
@@ -299,7 +300,7 @@ class IngestGriddedDataInput(BuildOverviewsDataInput):
     @model_validator(mode="before")
     @classmethod
     def _apply_source(cls, data: Any) -> Any:
-        """Derive the repository and variable names from the source."""
+        """Derive the repository and variable names, and write_materialized unless given, from the source."""
         if not isinstance(data, dict) or "source" not in data:
             return data
         source = _SOURCE_ADAPTER.validate_python(data["source"])
@@ -310,6 +311,8 @@ class IngestGriddedDataInput(BuildOverviewsDataInput):
         for field, value in derived.items():
             if data.get(field) not in (None, value):
                 raise ValueError(f"{field} is derived from the source as {value!r}; got {data[field]!r}.")
+        if data.get("write_materialized") is None:
+            data = {**data, "write_materialized": source.materialize_by_default}
         return {**data, **derived, "source": source}
 
 

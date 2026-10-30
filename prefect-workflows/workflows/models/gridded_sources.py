@@ -37,6 +37,8 @@ class GriddedSource(BaseModel, ABC):
     virtual_store_kwargs: ClassVar[dict] = {}
     # Source-specific kwargs for the reference parser, e.g. the HDF5 reader's block size
     parser_kwargs: ClassVar[dict] = {}
+    # Ingest's write_materialized when a run doesn't set it
+    materialize_by_default: ClassVar[bool] = True
     time_step: ClassVar[pd.Timedelta]
 
     @abstractmethod
@@ -148,6 +150,11 @@ class NWMForcing(GriddedSource):
     @property
     def virtual_store_kwargs(self) -> dict:
         return {"region": "us-east-1"} if self.bucket.startswith("s3://") else {}
+
+    @property
+    def materialize_by_default(self) -> bool:
+        # noaa-nwm-pds reads are free and in-region, so only overviews are stored; GCS reads pay NAT, so read once
+        return not self.bucket.startswith("s3://")
 
     def list_files(self, start_dt: datetime, end_dt: datetime) -> pd.DataFrame:
         """One file per hour in the range, with its last modified time from one listing per day."""

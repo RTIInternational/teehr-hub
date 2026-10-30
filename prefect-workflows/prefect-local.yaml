@@ -344,8 +344,6 @@ deployments:
         "num_lookback_days": 1,
         # Upsert, so a re-issued file is re-referenced; a virtual reference to a changed file can't be read
         "write_mode": "upsert",
-        # noaa-nwm-pds reads are free and in-region, so only the overviews are stored
-        "write_materialized": false,
         # If materialized: 256 x 256 chunks encode 3.4x faster than 128 x 128, with about the same point reads
         "chunk_size": 256,
         "x_dim": "x",
