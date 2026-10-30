@@ -3,6 +3,7 @@ import os
 from datetime import datetime
 from typing import Any, Literal, Optional, Union
 from enum import Enum
+from itertools import pairwise
 import numpy as np
 from pydantic import BaseModel, ConfigDict, Field, TypeAdapter, field_validator, model_validator
 from pydantic.json_schema import SkipJsonSchema
@@ -14,15 +15,15 @@ from workflows.models.gridded_sources import GriddedSourceType
 # Renames source variables and units to teehr's on ingest
 VARIABLE_AND_UNIT_MAPPER = NWM_VARIABLE_MAPPER
 # Units each teehr variable is stored in; variables not listed keep their (mapped) source units.
-# Float sources are converted in /raw_data; integer sources keep their integers with packing that decodes to these units.
+# Float sources are converted in /data; integer sources keep their integers with packing that decodes to these units.
 VARIABLE_UNITS = {"rainrate_hourly_mean": "mm/s"}
 # Linear conversions into those units: value * scale_factor + add_offset
 UNIT_CONVERSIONS = {}
 
-PYRAMID_GROUP_PATH = "/pyramids"
-# Spatial chunk size of pyramid levels, about one 256 px map tile
-PYRAMID_CHUNK_SIZE = 256
-RAW_DATA_GROUP_PATH = "/raw_data"
+OVERVIEW_GROUP_PATH = "/overviews"
+# Spatial chunk size of overview levels, about one 256 px map tile
+OVERVIEW_CHUNK_SIZE = 256
+DATA_GROUP_PATH = "/data"
 REFERENCES_GROUP_PATH = "/references"
 ICECHUNK_BUCKET = os.getenv("ICECHUNK_BUCKET")
 ICECHUNK_PREFIX = os.getenv("ICECHUNK_PREFIX")
@@ -35,7 +36,7 @@ class ParserType(str, Enum):
 
 
 class PackedEncoding(BaseModel):
-    """CF integer packing for a pyramid variable, derived from its plausible range.
+    """CF integer packing for an overview variable, derived from its plausible range.
 
     Maps ``min_value``-``max_value`` onto the dtype's integers, leaving one end for
     ``_FillValue``: uint16 gives 65534 steps of ``(max_value - min_value) / 65534``. A wider
@@ -126,24 +127,24 @@ class BaseGriddedDataInput(BaseModel):
     chunk_size: int = Field(
         default=128,
         description=(
-            "Inner chunk size along each spatial dimension of /raw_data. Smaller chunks cut the bytes a "
-            "time-series read fetches; pyramids use PYRAMID_CHUNK_SIZE"
+            "Inner chunk size along each spatial dimension of /data. Smaller chunks cut the bytes a "
+            "time-series read fetches; overviews use OVERVIEW_CHUNK_SIZE"
         )
     )
     num_shard_chunks: int = Field(
         default=30,
         description=(
             "Number of inner chunks along the append dimension to group into a single shard, so a shard "
-            "holds time_chunk_size * num_shard_chunks steps; pyramid shards hold as many 1-step chunks"
+            "holds time_chunk_size * num_shard_chunks steps; overview shards hold as many 1-step chunks"
         )
     )
     time_chunk_size: int = Field(
         default=1,
         gt=0,
         description=(
-            "Steps per inner chunk along the append dimension of /raw_data; pyramids always use 1. Larger "
+            "Steps per inner chunk along the append dimension of /data; overviews always use 1. Larger "
             "chunks speed time-series reads but slow single-step reads, and a small append rewrites a "
-            "partial chunk. Lower num_shard_chunks when raising this. Applies only when /raw_data is first created."
+            "partial chunk. Lower num_shard_chunks when raising this. Applies only when /data is first created."
         )
     )
 
@@ -158,54 +159,52 @@ class BaseGriddedDataInput(BaseModel):
     )
 
 
-class BuildPyramidsDataInput(BaseGriddedDataInput):
-    """Input parameters for the build_geozarr_pyramids Prefect flow."""
+class BuildOverviewsDataInput(BaseGriddedDataInput):
+    """Input parameters for the build_overviews Prefect flow."""
 
-    fallback_source_crs: Optional[str] = Field(
-        default=None,
+    overview_factors: list[int] = Field(
+        default=[2, 4, 8],
         description=(
-            "CRS to apply only when a source file has none of its own; a CRS in the file always takes "
-            "precedence. If neither is present, the run fails."
+            "Block sizes averaged into each overview level, e.g. [2, 4, 8] for 2x2, 4x4 and 8x8 pixels; each a "
+            "multiple of the one before. Choose them so the coarsest level is about 500 pixels across. Applies only "
+            "when the overviews are first created."
         )
-    )
-    target_crs: str = Field(
-        default="EPSG:3857",
-        description="Target CRS for reprojection prior to pyramid creation"
-    )
-    factors: list[int] = Field(
-        default=[1, 2, 4],
-        description="Downsampling factors for pyramid levels. Defaults are 1, 2, 4. The number of levels is determined by the length of this list."
-    )
-    pyramid_method: str = Field(
-        default="mean",
-        description="Aggregation method for pyramid downsampling ('mean', 'max', 'min', 'sum')"
     )
     time_batch_size: int = Field(
         default=30,
         gt=0,
         description=(
-            "Number of time steps reprojected and written per pyramid batch; a multiple of the shard length "
+            "Number of time steps read and written per overview batch; a multiple of the shard length "
             "(time_chunk_size * num_shard_chunks), so each shard is written once. Bounds memory use."
         )
     )
-    pyramid_encoding: dict[str, PackedEncoding] = Field(
+    overview_encoding: dict[str, PackedEncoding] = Field(
         default={"rainrate_hourly_mean": PackedEncoding(dtype="uint16", max_value=0.075, units="mm/s")},
         description=(
-            "Per-variable CF packing for pyramid levels, keyed by the stored variable name, "
+            "Per-variable CF packing for overview levels, keyed by the stored variable name, "
             "e.g. {'rainrate_hourly_mean': {'dtype': 'uint16', 'max_value': 0.075, 'units': 'mm/s'}}. "
-            "Values are clipped to [min_value, max_value]. Applies only when a pyramid level is first created."
+            "Values are clipped to [min_value, max_value]; variables not listed are stored as float32. "
+            "Applies only when an overview level is first created."
         )
     )
 
+    @field_validator("overview_factors")
+    @classmethod
+    def _nested_factors(cls, v: list[int]) -> list[int]:
+        # Each level is built from the one before, so each factor must be a multiple of the previous
+        if not v or any(f < 2 for f in v) or any(b <= a or b % a for a, b in pairwise(v)):
+            raise ValueError(f"overview_factors must be integers of at least 2, each a multiple of the one before; got {v}")
+        return v
+
     @model_validator(mode="after")
-    def _batch_whole_shards(self) -> "BuildPyramidsDataInput":
+    def _batch_whole_shards(self) -> "BuildOverviewsDataInput":
         shard_steps = self.time_chunk_size * self.num_shard_chunks
         if self.time_batch_size % shard_steps:
             raise ValueError(f"time_batch_size ({self.time_batch_size}) must be a multiple of the shard length ({shard_steps}).")
         return self
 
 
-class IngestGriddedDataInput(BuildPyramidsDataInput):
+class IngestGriddedDataInput(BuildOverviewsDataInput):
     """Input parameters for the ingest_gridded_data Prefect flow.
 
     ``source`` selects the data source by its ``type``. Dataset fields (dims, kwargs, ...)
@@ -220,6 +219,14 @@ class IngestGriddedDataInput(BuildPyramidsDataInput):
     )
     configuration_name: SkipJsonSchema[Optional[str]] = None
     variable_names: SkipJsonSchema[Optional[list[str]]] = None
+
+    fallback_source_crs: Optional[str] = Field(
+        default=None,
+        description=(
+            "CRS to apply only when a source file has none of its own; a CRS in the file always takes "
+            "precedence. If neither is present, the run fails."
+        )
+    )
 
     # --- Core required parameters ---
     start_dt: Union[str, datetime, None] = Field(
@@ -241,11 +248,12 @@ class IngestGriddedDataInput(BuildPyramidsDataInput):
             "final (status) or newer (last modified) than what's stored."
         )
     )
-    write_materialized: bool = Field(
-        default=True,
+    write_materialized: Optional[bool] = Field(
+        default=None,
         description=(
-            "If True, the references are materialized into /raw_data, which readers use. If False, nothing "
-            "is copied and readers (pyramids, EDR, mean areal values) read /references directly from the source"
+            "If True, the references are materialized into /data, which readers use. If False, nothing "
+            "is copied and readers (overviews, EDR, mean areal values) read /references directly from the source. "
+            "Defaults to the source's choice: False for NWM from s3://noaa-nwm-pds, True otherwise"
         )
     )
     ignore_unreadable_file: bool = Field(
@@ -260,17 +268,17 @@ class IngestGriddedDataInput(BuildPyramidsDataInput):
         default=ParserType.hdf,
         description="Parser to use for reading raw data files"
     )
-    raw_data_fill_values: dict[str, int] = Field(
+    data_fill_values: dict[str, int] = Field(
         default_factory=dict,
         description=(
             "Fill value per stored variable, for integer sources whose files declare none, e.g. {'snow_class': 255}; "
             "use a value the data never takes. A source's own _FillValue takes precedence. Applies only when "
-            "/raw_data is first created."
+            "/data is first created."
         )
     )
-    build_pyramids_on_ingest: bool = Field(
+    build_overviews_on_ingest: bool = Field(
         default=True,
-        description="If True, build and write multiscale pyramids after materializing data"
+        description="If True, build the map overviews of the data group after materializing data"
     )
 
     # --- Per-component extra kwargs ---
@@ -292,7 +300,7 @@ class IngestGriddedDataInput(BuildPyramidsDataInput):
     @model_validator(mode="before")
     @classmethod
     def _apply_source(cls, data: Any) -> Any:
-        """Derive the repository and variable names from the source."""
+        """Derive the repository and variable names, and write_materialized unless given, from the source."""
         if not isinstance(data, dict) or "source" not in data:
             return data
         source = _SOURCE_ADAPTER.validate_python(data["source"])
@@ -303,6 +311,8 @@ class IngestGriddedDataInput(BuildPyramidsDataInput):
         for field, value in derived.items():
             if data.get(field) not in (None, value):
                 raise ValueError(f"{field} is derived from the source as {value!r}; got {data[field]!r}.")
+        if data.get("write_materialized") is None:
+            data = {**data, "write_materialized": source.materialize_by_default}
         return {**data, **derived, "source": source}
 
 

@@ -63,7 +63,7 @@ export const fetchGriddedEdrPoint = async (
     datetime: timestep,
     f: 'geojson',
   });
-  const path = `/api/datasets/${encodeURIComponent(datasetId + '_raw_data')}/edr/position?${params.toString()}`;
+  const path = `/api/datasets/${encodeURIComponent(datasetId + '_data')}/edr/position?${params.toString()}`;
   const data = await griddedApiCall<EdrPointResponse>(path);
   try {
     const properties = data?.features?.[0]?.properties ?? {};
@@ -90,7 +90,7 @@ export const fetchGriddedEdrTimeseries = async (
     datetime: datetimeRange,
     f: 'csv',
   });
-  const path = `/api/datasets/${encodeURIComponent(datasetId + '_raw_data')}/edr/position?${params.toString()}`;
+  const path = `/api/datasets/${encodeURIComponent(datasetId + '_data')}/edr/position?${params.toString()}`;
   const csvText = await griddedApiCall<EdrTimeseriesResponse>(path, { raw: true });
   return parseTimeseriesCsv(csvText, variable);
 };
