@@ -20,7 +20,7 @@ from workflows.models import gridded_sources as gs  # noqa: E402
 from workflows.models.ingest_gridded_data_input import BuildOverviewsDataInput, IngestGriddedDataInput  # noqa: E402
 
 NWM_CONUS_CRS = "+proj=lcc +lat_0=40 +lon_0=-97 +lat_1=30 +lat_2=60 +x_0=0 +y_0=0 +R=6370000 +units=m +no_defs"
-ORIGIN = pd.Timestamp(gs.NWMForcing.version_start["nwm31"])
+ORIGIN = gs.NWMForcing().time_origin()  # tm02 by default, so 2 h before the first nwm31 cycle
 HOURS = pd.date_range(ORIGIN, periods=90, freq="h")
 # Packed overview resolution for rainrate_hourly_mean (max_value 0.075 in uint16)
 PACKED_TOL = 2 * 0.075 / 65535
@@ -118,7 +118,8 @@ def test_nwm_listing_valid_times(monkeypatch, bucket):
 def test_nwm_time_origin_covers_t_minus():
     """The grid starts at the earliest valid time of the version's first cycle, so tm02 files stay on it."""
     start = pd.Timestamp(gs.NWMForcing.version_start["nwm31"])
-    assert gs.NWMForcing(nwm_version="nwm31").time_origin() == start
+    assert gs.NWMForcing(nwm_version="nwm31", t_minus_hours=[0]).time_origin() == start
+    assert gs.NWMForcing(nwm_version="nwm31").t_minus_hours == [2]
     assert gs.NWMForcing(nwm_version="nwm31", t_minus_hours=[2]).time_origin() == start - pd.Timedelta("2h")
 
 

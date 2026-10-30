@@ -90,7 +90,13 @@ class NWMForcing(GriddedSource):
         default="nwm30_conus_forcing",
         description="Grid the configuration's files are on; keys the pixel coverage weights"
     )
-    t_minus_hours: Optional[list[int]] = [0]
+    t_minus_hours: Optional[list[int]] = Field(
+        default=[2],
+        description=(
+            "Analysis hours (tmXX) to ingest. tm02 is the most recent analysis for each valid hour and matches "
+            "the warehouse's existing NWM forcing rows."
+        ),
+    )
     ignore_missing_file: bool = True
     prioritize_analysis_value_time: bool = False
     drop_overlapping_assimilation_values: bool = False
