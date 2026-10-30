@@ -17,20 +17,20 @@ from workflows.models.gridded_sources import GriddedSource
 from workflows.models.ingest_gridded_data_input import (
     IngestGriddedDataInput,
     ParserType,
-    RAW_DATA_GROUP_PATH,
+    DATA_GROUP_PATH,
     REFERENCES_GROUP_PATH,
     UNIT_CONVERSIONS,
     VARIABLE_AND_UNIT_MAPPER,
     VARIABLE_UNITS,
 )
-from build_geozarr_pyramids import build_pyramids as build_pyramids_flow
+from build_overviews import build_overviews as build_overviews_flow
 from workflows.utils.time_utils import to_naive_utc
 
 
 _PARSER_MAP = {
     ParserType.hdf: vz.parsers.HDFParser,
     ParserType.zarr: vz.parsers.ZarrParser,
-    # IFD 0 is full resolution; overviews are rebuilt as pyramids
+    # IFD 0 is full resolution; the flow builds its own overviews
     ParserType.tiff: lambda **kwargs: VirtualTIFF(ifd=0, **kwargs),
 }
 
@@ -44,8 +44,8 @@ def ingest_gridded_data(args: IngestGriddedDataInput) -> None:
 
     Every step has a slot on the repo's time grid, so steps can be written in any order and
     rewritten. Up to three stages run: source files to ``/references`` (the steps ``write_mode``
-    selects), ``/references`` to ``/raw_data`` (unless ``write_materialized`` is False), and the data
-    group to the pyramids. Each later stage processes the steps its upstream group changed, so a
+    selects), ``/references`` to ``/data`` (unless ``write_materialized`` is False), and the data
+    group to the map overviews. Each later stage processes the steps its upstream group changed, so a
     run that failed part-way is completed by the next one.
 
     Parameters
@@ -97,8 +97,10 @@ def ingest_gridded_data(args: IngestGriddedDataInput) -> None:
         logger.info(f"Parsed and wrote references for {len(todo)} step(s) in {time.perf_counter() - started:.1f}s.")
     if args.write_materialized:
         materialize_references(repo, args)
-    if args.build_pyramids_on_ingest:
-        build_pyramids_flow(args)
+    # Readers switch only once the group is complete; a repo can also change mode with no new files
+    _record_data_group(repo, DATA_GROUP_PATH if args.write_materialized else REFERENCES_GROUP_PATH)
+    if args.build_overviews_on_ingest:
+        build_overviews_flow(args)
 
 
 def _preprocess(source: GriddedSource, args: IngestGriddedDataInput) -> Callable[[xr.Dataset, str], xr.Dataset]:
@@ -120,6 +122,14 @@ def _standardize_references(ds: xr.Dataset, args: IngestGriddedDataInput) -> xr.
         variable_and_unit_mapper=VARIABLE_AND_UNIT_MAPPER,
     )
     return gu.apply_unit_conversions(ds, VARIABLE_UNITS, UNIT_CONVERSIONS)
+
+
+def _record_data_group(repo: ic.Repository, group: str) -> None:
+    """Point readers (overviews, EDR, mean areal values) at ``group``."""
+    session = repo.writable_session("main")
+    if gu.write_data_group(session.store, group):
+        session.commit(f"Data group is now {group}")
+        get_run_logger().info(f"Recorded {group} as the data group.")
 
 
 def _resolve_start_dt(args: IngestGriddedDataInput, end_dt: datetime) -> datetime:
@@ -172,13 +182,12 @@ def write_references(
         existing=stored,
     )
     tg.region_write(session, REFERENCES_GROUP_PATH, ds, dim, virtual=True)
-    gu.write_data_group(session.store, RAW_DATA_GROUP_PATH if args.write_materialized else REFERENCES_GROUP_PATH)
     snapshot_id = session.commit(f"Wrote {len(todo)} step(s) of virtual references")
     logger.info(f"Committed {len(todo)} step(s) of virtual references: {snapshot_id}")
 
 
-def _raw_data_encoding(da: xr.DataArray, fill_value: int | None = None) -> dict:
-    """How ``/raw_data`` stores a decoded ``/references`` variable.
+def _data_encoding(da: xr.DataArray, fill_value: int | None = None) -> dict:
+    """How ``/data`` stores a decoded ``/references`` variable.
 
     Float sources are stored as plain float32, already in teehr units. Integer sources keep their integers,
     losslessly, packed so they decode to teehr units (the source's packing composed with any unit conversion);
@@ -190,7 +199,7 @@ def _raw_data_encoding(da: xr.DataArray, fill_value: int | None = None) -> dict:
     fill = da.encoding.get("_FillValue", fill_value)
     if fill is None:
         raise ValueError(
-            f"Integer variable '{da.name}' has no _FillValue; set raw_data_fill_values['{da.name}'] to a value it never uses."
+            f"Integer variable '{da.name}' has no _FillValue; set data_fill_values['{da.name}'] to a value it never uses."
         )
     info = np.iinfo(dtype)
     if not info.min <= fill <= info.max:
@@ -206,7 +215,7 @@ def _raw_data_encoding(da: xr.DataArray, fill_value: int | None = None) -> dict:
 # on its own, so a retry (or the next run) resumes after the last committed batch.
 @task(cache_policy=NO_CACHE, retries=3, retry_delay_seconds=30)
 def materialize_references(repo: ic.Repository, args: IngestGriddedDataInput) -> None:
-    """Copy the referenced steps ``/raw_data`` lacks, or holds from an older reference, into their slots."""
+    """Copy the referenced steps ``/data`` lacks, or holds from an older reference, into their slots."""
     logger = get_run_logger()
     dim = args.append_dim
     store = repo.readonly_session("main").store
@@ -214,9 +223,9 @@ def materialize_references(repo: ic.Repository, args: IngestGriddedDataInput) ->
     if refs_meta is None:
         logger.info(f"No {REFERENCES_GROUP_PATH} to materialize.")
         return
-    stale = tg.stale_steps(refs_meta, tg.read_step_metadata(store, RAW_DATA_GROUP_PATH, dim))
+    stale = tg.stale_steps(refs_meta, tg.read_step_metadata(store, DATA_GROUP_PATH, dim))
     if len(stale) == 0:
-        logger.info(f"{RAW_DATA_GROUP_PATH} is up to date.")
+        logger.info(f"{DATA_GROUP_PATH} is up to date.")
         return
     _, origin, time_step = tg.read_grid(store)
     refs = gu.restore_grid_mapping_attrs(gu.open_zarr_group(store=store, group_path=REFERENCES_GROUP_PATH))
@@ -228,8 +237,8 @@ def materialize_references(repo: ic.Repository, args: IngestGriddedDataInput) ->
     for i, batch in enumerate(batches, start=1):
         batch_started = time.perf_counter()
         session = repo.writable_session("main")
-        raw_meta = tg.read_step_metadata(session.store, RAW_DATA_GROUP_PATH, dim)
-        if raw_meta is None:
+        data_meta = tg.read_step_metadata(session.store, DATA_GROUP_PATH, dim)
+        if data_meta is None:
             encoding = gu.create_encoding_config(
                 refs,
                 append_dim=dim,
@@ -239,14 +248,14 @@ def materialize_references(repo: ic.Repository, args: IngestGriddedDataInput) ->
             )
             # Later region writes reuse the stored encoding
             for var in refs.data_vars:
-                encoding[var].update(_raw_data_encoding(refs[var], args.raw_data_fill_values.get(var)))
-            tg.create_group(session, RAW_DATA_GROUP_PATH, refs, origin, time_step, dim, refs_meta.index[-1], encoding=encoding)
-            logger.info(f"Created {RAW_DATA_GROUP_PATH} on a {time_step} grid from {origin} to {refs_meta.index[-1]}.")
-            raw_meta = tg.read_step_metadata(session.store, RAW_DATA_GROUP_PATH, dim)
+                encoding[var].update(_data_encoding(refs[var], args.data_fill_values.get(var)))
+            tg.create_group(session, DATA_GROUP_PATH, refs, origin, time_step, dim, refs_meta.index[-1], encoding=encoding)
+            logger.info(f"Created {DATA_GROUP_PATH} on a {time_step} grid from {origin} to {refs_meta.index[-1]}.")
+            data_meta = tg.read_step_metadata(session.store, DATA_GROUP_PATH, dim)
         else:
-            added = tg.ensure_axis(session, RAW_DATA_GROUP_PATH, refs_meta.index[-1], time_step, dim)
+            added = tg.ensure_axis(session, DATA_GROUP_PATH, refs_meta.index[-1], time_step, dim)
             if added:
-                logger.info(f"Extended {RAW_DATA_GROUP_PATH} by {added} slot(s) to {refs_meta.index[-1]}.")
+                logger.info(f"Extended {DATA_GROUP_PATH} by {added} slot(s) to {refs_meta.index[-1]}.")
         meta = refs_meta.loc[batch]
         part = tg.with_step_metadata(
             refs.sel({dim: batch}).load(),
@@ -255,10 +264,10 @@ def materialize_references(repo: ic.Repository, args: IngestGriddedDataInput) ->
             source_last_modified=meta["source_last_modified"].to_numpy(),
             # The upstream write time, so the step is current until /references changes again
             updated_at=meta["updated_at"].to_numpy(),
-            existing=raw_meta,
+            existing=data_meta,
         )
-        tg.region_write(session, RAW_DATA_GROUP_PATH, part, dim)
-        snapshot_id = session.commit(f"Materialized {len(batch)} step(s) into {RAW_DATA_GROUP_PATH}")
+        tg.region_write(session, DATA_GROUP_PATH, part, dim)
+        snapshot_id = session.commit(f"Materialized {len(batch)} step(s) into {DATA_GROUP_PATH}")
         logger.info(
             f"Committed materialized batch {i} of {len(batches)} ({len(batch)} step(s)) "
             f"in {time.perf_counter() - batch_started:.1f}s: {snapshot_id}"

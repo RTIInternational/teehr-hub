@@ -16,6 +16,7 @@ import icechunk as ic
 from pyproj import CRS as PyprojCRS
 import zarr
 import os
+import rioxarray  # noqa: F401 (rio accessor)
 
 from prefect import task, get_run_logger
 from prefect.cache_policies import NO_CACHE
@@ -36,7 +37,7 @@ _VIRTUAL_STORES = {
 
 # Root-group attribute naming the group that holds a repo's full-resolution data
 DATA_GROUP_ATTR = "data_group"
-_DEFAULT_DATA_GROUP = "/raw_data"
+_DEFAULT_DATA_GROUP = "/data"
 
 # GeoTIFF geokey value for a user-defined CRS, i.e. one without an EPSG code
 _GEOTIFF_USER_DEFINED = 32767
@@ -198,7 +199,7 @@ def write_data_group(store: ic.IcechunkStore, group_path: str) -> bool:
 
 
 def read_data_group(store: ic.IcechunkStore) -> str:
-    """The repo's data group: ``/references`` or ``/raw_data`` (repos built before it was recorded)."""
+    """The repo's data group: ``/references`` or ``/data`` (repos built before it was recorded)."""
     try:
         attrs = zarr.open_group(store, mode="r", zarr_format=3).attrs
     except (zarr.errors.GroupNotFoundError, FileNotFoundError):
@@ -452,44 +453,15 @@ def create_encoding_config(
     return encoding_config
 
 
-def reproject_dataset(
-    dataset: xr.Dataset,
-    target_crs: str,
-    x_dim: str,
-    y_dim: str,
-    fallback_crs: str | None = None
-) -> xr.Dataset:
-    """Reproject an xarray dataset to a target CRS.
+def spatial_transform(ds: xr.Dataset) -> list[float]:
+    """GeoZarr ``spatial:transform`` of a regular grid: pixel size and the outer corner of the first pixel.
 
-    Parameters
-    ----------
-    dataset : xr.Dataset
-        The dataset to reproject.
-    target_crs : str
-        The target CRS to reproject the dataset to.
-    x_dim : str
-        The name of the x dimension.
-    y_dim : str
-        The name of the y dimension.
-    fallback_crs : str | None
-        CRS applied, with a warning, only if the dataset has none. Without either, this raises.
+    Its dims come from the ``spatial:dimensions`` attr (``[y, x]``) that ingest writes.
     """
-    logger = get_run_logger()
-    logger.info(
-        f"Reprojecting dataset to target CRS: {target_crs} and setting spatial dims: x={x_dim}, y={y_dim}."
-    )
-    dataset = dataset.rio.set_spatial_dims(x_dim=x_dim, y_dim=y_dim)
-    if dataset.rio.crs is None:
-        if fallback_crs is None:
-            raise ValueError("Dataset has no CRS and no fallback_source_crs was provided.")
-        logger.warning(f"No CRS found in the dataset; applying fallback_source_crs {fallback_crs}.")
-        dataset = dataset.rio.write_crs(fallback_crs)
-    else:
-        logger.info(f"Source dataset has a CRS defined: {dataset.rio.crs}.")
-        dataset = dataset.rio.write_crs(dataset.rio.crs)
-    ds_mercator = dataset.rio.reproject(target_crs)
-    ds_mercator = ds_mercator.proj.assign_crs(spatial_ref=target_crs)
-    return ds_mercator
+    y_dim, x_dim = ds.attrs["spatial:dimensions"]
+    x, y = ds[x_dim].values, ds[y_dim].values
+    dx, dy = float(x[1] - x[0]), float(y[1] - y[0])
+    return [dx, 0.0, float(x[0]) - dx / 2, 0.0, dy, float(y[0]) - dy / 2]
 
 
 def standardize_and_inject_geozarr(
@@ -655,15 +627,6 @@ def restore_grid_mapping_attrs(ds: xr.Dataset) -> xr.Dataset:
         if "grid_mapping" in ds[var].encoding:
             ds[var].attrs["grid_mapping"] = ds[var].encoding.pop("grid_mapping")
     return ds
-
-
-def group_contains_data(store: ic.IcechunkStore, group_path: str) -> bool:
-    """Return True if the group at ``group_path`` (e.g. "/pyramids/0") exists and holds arrays."""
-    try:
-        group = zarr.open_group(store, path=group_path.strip("/"), mode="r", zarr_format=3)
-    except (zarr.errors.GroupNotFoundError, FileNotFoundError):
-        return False
-    return any(True for _ in group.array_keys())
 
 
 def open_zarr_group(
