@@ -64,8 +64,10 @@ def build_overviews(args: BuildOverviewsDataInput) -> None:
         return
     data_ds = gu.open_zarr_group(store=store, group_path=data_group)
     data_ds = data_ds.drop_vars([n for n in tg.STEP_COORDS if n in data_ds.variables])
-    # Scalars such as the grid mapping ride along as coords; only gridded variables are averaged
+    # Scalars such as the grid mapping ride along as coords; only gridded variables get overviews
     data_ds = data_ds.set_coords([v for v in data_ds.data_vars if data_ds[v].ndim == 0])
+    y_dim, x_dim = data_ds.attrs["spatial:dimensions"]
+    data_ds = data_ds[[v for v in data_ds.data_vars if {y_dim, x_dim} <= set(data_ds[v].dims)]]
     # Values are decoded, with NaN for missing, as in /data; a source's own fill marker (e.g. -9999
     # in /references) would otherwise reach coarsening as a value
     for var in data_ds.data_vars:
