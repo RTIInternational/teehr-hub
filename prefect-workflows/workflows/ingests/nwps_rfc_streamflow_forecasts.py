@@ -2,7 +2,6 @@ from pathlib import Path
 from datetime import datetime, UTC
 from typing import Union
 import logging
-import time
 
 from prefect import flow, get_run_logger
 from prefect.futures import wait
@@ -41,9 +40,7 @@ UNITS_MAPPING = {
     "streamflow_hourly_inst": "m^3/s",
     "streamflow_6hr_inst": "m^3/s"
 }
-TASK_RUNNER_MAX_WORKERS = 8
-SUBMISSION_BATCH_SIZE = 56
-SUBMISSION_GATE_SECONDS = 5
+TASK_RUNNER_MAX_WORKERS = 16
 FAILURE_RATE_THRESHOLD = 0.25
 
 
@@ -111,40 +108,26 @@ def ingest_nwps_rfc_forecasts(
         last_reference_times=last_reference_times
     )
 
-    # Submit task runs in bounded batches to balance throughput and stability.
+    # Submit all task runs immediately and let the task runner enforce
+    # concurrency with max_workers.
     logger.info(
-        f"Fetching {len(nwps_endpoints)} NWPS RFC forecasts in batches "
-        f"(batch_size={SUBMISSION_BATCH_SIZE}, max_workers={TASK_RUNNER_MAX_WORKERS}, "
-        f"gate_seconds={SUBMISSION_GATE_SECONDS})"
+        f"Fetching {len(nwps_endpoints)} NWPS RFC forecasts "
+        f"(max_workers={TASK_RUNNER_MAX_WORKERS})"
     )
 
     total = len(nwps_endpoints)
-    all_futures = []
-
-    for batch_start in range(0, total, SUBMISSION_BATCH_SIZE):
-        endpoint_batch = nwps_endpoints[batch_start:batch_start + SUBMISSION_BATCH_SIZE]
-        batch_index = (batch_start // SUBMISSION_BATCH_SIZE) + 1
-
-        for endpoint in endpoint_batch:
-            future = fetch_nwps_rfc_fcst_to_cache.submit(
-                endpoint=endpoint,
-                output_cache_dir=output_cache_dir,
-                field_mapping=FIELD_MAPPING,
-                units_mapping=UNITS_MAPPING,
-                variable_names=VARIABLE_NAMES,
-                configuration_name=CONFIGURATION_NAME,
-                location_id_prefix=LOCATION_ID_PREFIX,
-            )
-            all_futures.append(future)
-
-        logger.info(
-            f"NWPS batch {batch_index} submitted: "
-            f"processed={min(batch_start + SUBMISSION_BATCH_SIZE, total)}/{total}"
+    all_futures = [
+        fetch_nwps_rfc_fcst_to_cache.submit(
+            endpoint=endpoint,
+            output_cache_dir=output_cache_dir,
+            field_mapping=FIELD_MAPPING,
+            units_mapping=UNITS_MAPPING,
+            variable_names=VARIABLE_NAMES,
+            configuration_name=CONFIGURATION_NAME,
+            location_id_prefix=LOCATION_ID_PREFIX,
         )
-
-        # Time-gated submission: do not wait for batch completion before enqueuing next.
-        if batch_start + SUBMISSION_BATCH_SIZE < total:
-            time.sleep(SUBMISSION_GATE_SECONDS)
+        for endpoint in nwps_endpoints
+    ]
 
     done, not_done = wait(all_futures)
     if not_done:
