@@ -195,27 +195,31 @@ def _write_overview_batch(
     _, origin, time_step = tg.read_grid(rw_session.store)
     axis_end = xr.open_zarr(rw_session.store, group=spec.data_group, consolidated=False)[dim].to_index()[-1]
 
+    # The tile server reads the data group as the full-resolution level, so it needs the transform too
+    group_attrs = zarr.open_group(rw_session.store, path=spec.data_group.strip("/"), mode="a", zarr_format=3).attrs
+    if "spatial:transform" not in group_attrs:
+        group_attrs["spatial:transform"] = gu.spatial_transform(blocks[0][0])
+        logger.info(f"Recorded spatial:transform on {spec.data_group}.")
+
+    # Each level's group is set up and its step metadata read once per batch; blocks never share steps
+    existing_by_group: dict[str, pd.DataFrame] = {}
     for ds_block, block_meta in blocks:
         ds_block = ds_block.load()
-        # The tile server reads the data group as the full-resolution level, so it needs the transform too
-        group_attrs = zarr.open_group(rw_session.store, path=spec.data_group.strip("/"), mode="a", zarr_format=3).attrs
-        if "spatial:transform" not in group_attrs:
-            group_attrs["spatial:transform"] = gu.spatial_transform(ds_block)
-            logger.info(f"Recorded spatial:transform on {spec.data_group}.")
-
         for factor, level_ds in _overview_levels(ds_block, args.overview_factors).items():
             level_ds = _clip_to_packed_range(level_ds, args.overview_encoding)
             group = f"{OVERVIEW_GROUP_PATH}/{factor}"
-            existing = tg.read_step_metadata(rw_session.store, group, dim)
-            if existing is None:
-                tg.create_group(rw_session, group, level_ds, origin, time_step, dim, axis_end,
-                                encoding=_overview_encoding(level_ds, spec, args), fixed=fixed)
-                logger.info(f"Created {group} on a {time_step} grid from {origin} to {axis_end}.")
+            if group not in existing_by_group:
                 existing = tg.read_step_metadata(rw_session.store, group, dim)
-            else:
-                added = tg.ensure_axis(rw_session, group, axis_end, time_step, dim)
-                if added:
-                    logger.info(f"Extended {group} by {added} slot(s) to {axis_end}.")
+                if existing is None:
+                    tg.create_group(rw_session, group, level_ds, origin, time_step, dim, axis_end,
+                                    encoding=_overview_encoding(level_ds, spec, args), fixed=fixed)
+                    logger.info(f"Created {group} on a {time_step} grid from {origin} to {axis_end}.")
+                    existing = tg.read_step_metadata(rw_session.store, group, dim)
+                else:
+                    added = tg.ensure_axis(rw_session, group, axis_end, time_step, dim)
+                    if added:
+                        logger.info(f"Extended {group} by {added} slot(s) to {axis_end}.")
+                existing_by_group[group] = existing
             level_ds = tg.with_step_metadata(
                 level_ds,
                 dim,
@@ -223,7 +227,7 @@ def _write_overview_batch(
                 source_last_modified=block_meta["source_last_modified"].to_numpy(),
                 # The data group's write time, so the step is current until that group changes again
                 updated_at=block_meta["updated_at"].to_numpy(),
-                existing=existing,
+                existing=existing_by_group[group],
                 fixed_dims=spec.fixed_dims,
             )
             tg.region_write(rw_session, group, level_ds, dim, fixed_dims=spec.fixed_dims)

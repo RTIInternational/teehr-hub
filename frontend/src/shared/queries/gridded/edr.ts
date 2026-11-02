@@ -4,7 +4,7 @@ import { fetchGriddedEdrTimeseries } from '@/shared/api/gridded/edr';
 import type { DatasetTimeseries } from '@/shared/types/gridded/edr';
 import type { GriddedTimeseriesFilters } from '@/shared/types/gridded/timeseries';
 
-import { gridSpecQueryOptions } from './datasets';
+import { metadataQueryOptions } from './datasets';
 import { timestepsQueryOptions } from './timesteps';
 import { variablesQueryOptions } from './variables';
 
@@ -89,12 +89,12 @@ export const useEdrTimeseries = ({
 }: EdrTimeseriesArgs): DatasetTimeseries[] => {
   const variables = useQueries({ queries: datasets.map((ds) => variablesQueryOptions(ds)) });
   const timesteps = useQueries({ queries: datasets.map((ds) => timestepsQueryOptions(ds)) });
-  const gridSpecs = useQueries({ queries: datasets.map((ds) => gridSpecQueryOptions(ds)) });
+  const metadata = useQueries({ queries: datasets.map((ds) => metadataQueryOptions(ds)) });
   const plans = datasets.map((ds, i): SeriesPlan => {
-    const spec = gridSpecs[i].data;
-    // Wait for the spec, which says whether the dataset is a forecast
-    if (!spec) return { variable: null };
-    if (spec.fixed_dims.includes('member')) {
+    const datasetMetadata = metadata[i].data;
+    // Wait for the metadata, which says whether the dataset is a forecast
+    if (!datasetMetadata) return { variable: null };
+    if (datasetMetadata.fixed_dims.includes('member')) {
       return { variable: null, skipped: `${ds}: ensemble timeseries aren't shown yet` };
     }
     return planSeries(
@@ -105,7 +105,7 @@ export const useEdrTimeseries = ({
       start_date,
       end_date,
       anchor,
-      spec.fixed_dims.length > 0
+      datasetMetadata.fixed_dims.length > 0
     );
   });
 
@@ -124,13 +124,13 @@ export const useEdrTimeseries = ({
     datasetId,
     variable: plans[i].variable,
     data: series[i].data,
-    error: (variables[i].error ?? timesteps[i].error ?? gridSpecs[i].error ?? series[i].error)
+    error: (variables[i].error ?? timesteps[i].error ?? metadata[i].error ?? series[i].error)
       ?.message,
     skipped: plans[i].skipped,
     isLoading:
       variables[i].isLoading ||
       timesteps[i].isLoading ||
-      gridSpecs[i].isLoading ||
+      metadata[i].isLoading ||
       series[i].isLoading,
   }));
 };

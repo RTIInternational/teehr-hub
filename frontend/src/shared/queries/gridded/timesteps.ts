@@ -1,19 +1,23 @@
-import { queryOptions, useQuery } from '@tanstack/react-query';
+import { queryOptions, useQuery, type QueryClient } from '@tanstack/react-query';
 
-import { getGriddedCoordValues, getGriddedTimesteps } from '@/shared/api/gridded/timesteps';
+import { getGriddedCoordValues } from '@/shared/api/gridded/timesteps';
 
-const fetchTimesteps = async (datasetId?: string | null) => {
+import { metadataQueryOptions } from './datasets';
+
+// Steps along the dataset's append axis: valid times, or a forecast's cycles. The axis comes from
+// the dataset's metadata, through the query cache.
+const fetchTimesteps = async (client: QueryClient, datasetId?: string | null) => {
   if (!datasetId) {
     throw new Error('Dataset required to retrieve timesteps');
   }
-
-  return getGriddedTimesteps(datasetId);
+  const metadata = await client.ensureQueryData(metadataQueryOptions(datasetId));
+  return getGriddedCoordValues(datasetId, metadata.append_dim);
 };
 
 export const timestepsQueryOptions = (datasetId?: string | null) =>
   queryOptions({
     queryKey: ['gridded', datasetId, 'timesteps'],
-    queryFn: () => fetchTimesteps(datasetId),
+    queryFn: ({ client }) => fetchTimesteps(client, datasetId),
     enabled: !!datasetId,
     select: (data) => data.values,
   });

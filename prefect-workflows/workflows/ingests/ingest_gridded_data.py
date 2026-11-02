@@ -70,7 +70,6 @@ def ingest_gridded_data(args: IngestGriddedDataInput) -> None:
     """
     logger = get_run_logger()
     source = args.source
-    fixed = source.fixed_axes()
 
     credentials = source.credentials()
     repo = gu.configure_icechunk_s3_repo(

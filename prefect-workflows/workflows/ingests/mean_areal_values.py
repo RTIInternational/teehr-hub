@@ -103,13 +103,15 @@ def _mean_areal_batch(
     dim = args.append_dim
     blocks = tg.step_blocks(batch, fixed) if fixed else [batch]
     # Read the bounding window through xarray, so fill values decode to NaN
-    values = np.concatenate([
+    reads = [
         da.sel(tg.block_selection(block, dim))
         .isel({args.y_dim: slice(y0, y1), args.x_dim: slice(x0, x1)})
         .transpose(dim, *(fixed or {}), args.y_dim, args.x_dim)
         .values.reshape(-1, y1 - y0, x1 - x0)
         for block in blocks
-    ])
+    ]
+    # One block (always for analysis) is used as read; concatenating would copy the batch
+    values = reads[0] if len(reads) == 1 else np.concatenate(reads)
     steps = blocks[0].append(blocks[1:])
     means = weighted_average_from_matrix(matrix, values[:, rows - y0, cols - x0], args.min_valid_coverage)
     df = pd.DataFrame({

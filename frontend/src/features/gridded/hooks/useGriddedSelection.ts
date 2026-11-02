@@ -1,7 +1,7 @@
 import { useQueries } from '@tanstack/react-query';
 import { useMemo } from 'react';
 
-import { useGridSpec } from '@/shared/queries/gridded/datasets';
+import { useDatasetMetadata } from '@/shared/queries/gridded/datasets';
 import { coordValuesQueryOptions } from '@/shared/queries/gridded/timesteps';
 import { parseUtcTime } from '@/shared/utils/dates';
 
@@ -17,11 +17,11 @@ const NO_DIMS: string[] = [];
 export const useGriddedSelection = () => {
   const { state } = useDashboard();
   const { dataset, fixedSelections } = state.mapFilters;
-  const gridSpec = useGridSpec(dataset);
+  const metadata = useDatasetMetadata(dataset);
   const currentTimestep = useCurrentTimestep();
 
-  const appendDim = gridSpec.data?.append_dim ?? null;
-  const fixedDims = gridSpec.data?.fixed_dims ?? NO_DIMS;
+  const appendDim = metadata.data?.append_dim ?? null;
+  const fixedDims = metadata.data?.fixed_dims ?? NO_DIMS;
   const valueQueries = useQueries({
     queries: fixedDims.map((dim) => coordValuesQueryOptions(dataset, dim)),
   });

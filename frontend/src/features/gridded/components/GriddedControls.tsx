@@ -40,7 +40,7 @@ const GriddedControls = () => {
 
   const currentTimestep = useCurrentTimestep() ?? '';
   // Forecast datasets step through their cycles
-  const { appendDim } = useGriddedSelection();
+  const { fixedDims } = useGriddedSelection();
   const canStepBack = timestepIndex > 0;
   const canStepForward = timestepIndex < timesteps.data.length - 1;
 
@@ -174,7 +174,7 @@ const GriddedControls = () => {
           {/* Timestep pager */}
           <Col md={12}>
             <Form.Label className="small fw-bold d-block">
-              {appendDim === 'reference_time' ? 'Forecast Cycle (UTC)' : 'Time Step (UTC)'}
+              {fixedDims.length > 0 ? 'Forecast Cycle (UTC)' : 'Time Step (UTC)'}
             </Form.Label>
             <InputGroup size="sm">
               <Button
