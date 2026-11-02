@@ -10,7 +10,9 @@ import { parseUtcTime, shortestStep } from '@/shared/utils/dates';
 
 import { useDashboard, ActionTypes } from '../DashboardContext';
 import { useCurrentTimestep } from '../hooks/useCurrentTimestep';
+import { useGriddedSelection } from '../hooks/useGriddedSelection';
 import { OVERLAY_LAYERS } from '../utils/overlayLayers';
+import ForecastSelectors from './ForecastSelectors';
 
 const COLOR_RAMPS = [
   { label: 'Plasma', value: 'raster/plasma' },
@@ -37,6 +39,8 @@ const GriddedControls = () => {
   const units = variable ? variableAttrs.data?.[variable]?.units : undefined;
 
   const currentTimestep = useCurrentTimestep() ?? '';
+  // Forecast datasets step through their cycles
+  const { fixedDims } = useGriddedSelection();
   const canStepBack = timestepIndex > 0;
   const canStepForward = timestepIndex < timesteps.data.length - 1;
 
@@ -81,7 +85,7 @@ const GriddedControls = () => {
     const selected = e.target.value || null;
     dispatch({
       type: ActionTypes.UPDATE_MAP_FILTERS,
-      payload: { dataset: selected, timestepIndex: 0 },
+      payload: { dataset: selected, timestepIndex: 0, fixedSelections: {} },
     });
   };
 
@@ -169,7 +173,9 @@ const GriddedControls = () => {
 
           {/* Timestep pager */}
           <Col md={12}>
-            <Form.Label className="small fw-bold d-block">Time Step (UTC)</Form.Label>
+            <Form.Label className="small fw-bold d-block">
+              {fixedDims.length > 0 ? 'Forecast Cycle (UTC)' : 'Time Step (UTC)'}
+            </Form.Label>
             <InputGroup size="sm">
               <Button
                 variant="outline-secondary"
@@ -205,6 +211,8 @@ const GriddedControls = () => {
               </div>
             )}
           </Col>
+
+          <ForecastSelectors />
 
           {/* Polygon layers (exclusive selection) */}
           <Col md={12}>

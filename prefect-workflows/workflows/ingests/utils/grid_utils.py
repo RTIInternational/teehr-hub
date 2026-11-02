@@ -23,6 +23,8 @@ from prefect.cache_policies import NO_CACHE
 from teehr.fetching.utils import REFERENCE_BUILD_MIN_ITEMS, REFERENCE_WORKER_MEMORY
 from teehr.utils.concurrency import map_blocking, resolve_budget, run_sync, use_process_pool
 
+from workflows.utils.repo_const import DATA_GROUP_ATTR, DATA_GROUP_PATH
+
 # Store kwargs whose values are kept out of logs
 _SECRET_KWARGS = {"access_key_id", "secret_access_key", "session_token", "service_account_key", "bearer_token"}
 
@@ -34,10 +36,6 @@ _VIRTUAL_STORES = {
     "gs": ic.storage.gcs_store,
     "gcs": ic.storage.gcs_store,
 }
-
-# Root-group attribute naming the group that holds a repo's full-resolution data
-DATA_GROUP_ATTR = "data_group"
-_DEFAULT_DATA_GROUP = "/data"
 
 # GeoTIFF geokey value for a user-defined CRS, i.e. one without an EPSG code
 _GEOTIFF_USER_DEFINED = 32767
@@ -203,8 +201,8 @@ def read_data_group(store: ic.IcechunkStore) -> str:
     try:
         attrs = zarr.open_group(store, mode="r", zarr_format=3).attrs
     except (zarr.errors.GroupNotFoundError, FileNotFoundError):
-        return _DEFAULT_DATA_GROUP
-    return attrs.get(DATA_GROUP_ATTR, _DEFAULT_DATA_GROUP)
+        return DATA_GROUP_PATH
+    return attrs.get(DATA_GROUP_ATTR, DATA_GROUP_PATH)
 
 
 def open_repo_for_reading(storage: ic.storage.Storage, vc_credentials_kwargs: dict | None = None) -> ic.Repository:
@@ -254,38 +252,31 @@ def _open_virtual_safe(
         return None, f"Corrupt or unreadable file skipped: {url} ({e})"
 
 
-@task(cache_policy=NO_CACHE)
-def create_virtual_xarray_dataset(
+def open_virtual_datasets(
     file_list: list,
     registry: ObjectStoreRegistry,
     parser: vz.parsers,
-    concat_dim: str,
     ignore_missing_file: bool = True,
     ignore_unreadable_file: bool = True,
     preprocess: Callable[[xr.Dataset, str], xr.Dataset] | None = None,
-    **kwargs
-) -> xr.Dataset:
-    """Create a virtual xarray dataset from a list of files.
+) -> dict[str, xr.Dataset]:
+    """Each file's virtual dataset by URL; files skipped as missing or unreadable are left out.
 
     Parameters
     ----------
     file_list : list
-        A list of file paths to include in the dataset.
+        A list of file paths to open.
     registry : ObjectStoreRegistry
         The object store registry to use for accessing the files.
     parser : vz.parsers
         The parser to use for reading the files.
-    concat_dim : str
-        The dimension along which to concatenate the datasets.
     ignore_missing_file : bool, optional
         Whether to skip files that don't exist. Default is True.
     ignore_unreadable_file : bool, optional
         Whether to skip files that exist but can't be opened, including after a network error.
         Default is True; with False, such a file fails the run before anything is written.
     preprocess : Callable[[xr.Dataset, str], xr.Dataset], optional
-        Applied to each file's virtual dataset, with its URL, before concatenation.
-    **kwargs : dict
-        Additional keyword arguments to pass to xr.concat.
+        Applied to each file's virtual dataset, with its URL.
     """
     logger = get_run_logger()
     # HDF5 parsing holds a global lock, so threads parse one file at a time; big jobs use processes
@@ -313,18 +304,34 @@ def create_virtual_xarray_dataset(
         on_complete=on_complete,
     ))
     # Preprocessing runs here, since a source's preprocess may not pickle
-    virtual_datasets = [
-        preprocess(ds, url) if preprocess else ds for (ds, _), url in zip(opened, file_list) if ds is not None
-    ]
+    virtual_datasets = {
+        url: preprocess(ds, url) if preprocess else ds for (ds, _), url in zip(opened, file_list) if ds is not None
+    }
     if len(virtual_datasets) == 0:
         raise ValueError("No virtual datasets were created. Check the file list and registry of the source data.")
     logger.info(f"Found {len(virtual_datasets)} virtual datasets from {len(file_list)} files.")
-    virtual_ds = xr.concat(
-        virtual_datasets,
-        dim=concat_dim,
-        **kwargs
+    return virtual_datasets
+
+
+@task(cache_policy=NO_CACHE)
+def create_virtual_xarray_dataset(
+    file_list: list,
+    registry: ObjectStoreRegistry,
+    parser: vz.parsers,
+    concat_dim: str,
+    ignore_missing_file: bool = True,
+    ignore_unreadable_file: bool = True,
+    preprocess: Callable[[xr.Dataset, str], xr.Dataset] | None = None,
+    **kwargs
+) -> xr.Dataset:
+    """Create a virtual xarray dataset from a list of files, concatenated along ``concat_dim``.
+
+    See ``open_virtual_datasets`` for the parameters; ``**kwargs`` are passed to xr.concat.
+    """
+    virtual_datasets = open_virtual_datasets(
+        file_list, registry, parser, ignore_missing_file, ignore_unreadable_file, preprocess
     )
-    return virtual_ds
+    return xr.concat(list(virtual_datasets.values()), dim=concat_dim, **kwargs)
 
 
 def align_virtual_fill_values(virtual_ds: xr.Dataset) -> xr.Dataset:
@@ -396,6 +403,7 @@ def create_encoding_config(
     compression: str = "zstd",
     compression_level: int = 3,
     shuffle: str = "shuffle",
+    fixed_dims: tuple[str, ...] = (),
 ) -> dict:
     """Create an encoding configuration for writing a dataset to IceChunk.
 
@@ -415,24 +423,31 @@ def create_encoding_config(
         The dimension used for appending (e.g. "time").  Inner chunks along
         this dimension hold ``time_chunk_size`` steps; shards pack ``num_shard_chunks`` of them.
     chunk_size : int
-        Inner chunk size for all non-append (spatial) dimensions (default 512).
+        Inner chunk size for all spatial dimensions (default 512).
     num_shard_chunks : int
-        Number of inner chunks to group into a single shard along ``append_dim``
-        (default 30).
+        Number of inner chunks to group into a single shard along ``append_dim``, or along the
+        lead axis for forecasts (default 30).
     time_chunk_size : int
-        Steps per inner chunk along ``append_dim`` (default 1).
+        Steps per inner chunk along ``append_dim``, or leads per inner chunk for forecasts (default 1).
     compression : str
         Compression algorithm to use (default "zstd").
     compression_level : int
         Compression level (default 3).
     shuffle : str
         Whether to apply the byte-shuffle filter before compression (default "shuffle").
+    fixed_dims : tuple[str, ...]
+        A forecast's axes after ``append_dim``, e.g. ``("member", "lead_time")``. Each shard then
+        holds one cycle and member and a block of leads (the last fixed dim), so a cycle's writes
+        never touch another cycle's shards.
     """
+    # Steps are chunked and sharded along the append axis, or along the lead axis for forecasts
+    step_dim = fixed_dims[-1] if fixed_dims else append_dim
+    single = {append_dim, *fixed_dims} - {step_dim}
     encoding_config = {}
     for var in dataset.data_vars:
         dims = dataset[var].dims
-        chunks = tuple(time_chunk_size if d == append_dim else chunk_size for d in dims)
-        shards = tuple(time_chunk_size * num_shard_chunks if d == append_dim else chunk_size for d in dims)
+        chunks = tuple(time_chunk_size if d == step_dim else 1 if d in single else chunk_size for d in dims)
+        shards = tuple(time_chunk_size * num_shard_chunks if d == step_dim else 1 if d in single else chunk_size for d in dims)
         encoding_config[var] = {
             "chunks": chunks,
             "shards": shards,

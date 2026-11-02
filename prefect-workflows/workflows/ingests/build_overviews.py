@@ -9,12 +9,13 @@ import zarr
 
 from utils import grid_utils as gu
 from utils import time_grid as tg
+from utils.grid_spec import GridSpec, read_grid_spec
 from workflows.models.ingest_gridded_data_input import (
     BuildOverviewsDataInput,
     PackedEncoding,
-    OVERVIEW_GROUP_PATH,
     OVERVIEW_CHUNK_SIZE,
 )
+from workflows.utils.repo_const import OVERVIEW_GROUP_PATH, STATUS_COORD, VALUE_TIME
 
 
 @flow(
@@ -49,9 +50,10 @@ def build_overviews(args: BuildOverviewsDataInput) -> None:
         f"Icechunk repo opened at: {args.dest_bucket}/{args.base_prefix}/{args.configuration_name}."
     )
 
-    dim = args.append_dim
     store = repo.readonly_session("main").store
-    data_group = gu.read_data_group(store)
+    # The repo's own shape, so a standalone run needs no forecast settings
+    spec = read_grid_spec(store)
+    dim, data_group = spec.append_dim, spec.data_group
     data_meta = tg.read_step_metadata(store, data_group, dim)
     if data_meta is None:
         logger.info(f"No data found in {data_group}.")
@@ -63,7 +65,7 @@ def build_overviews(args: BuildOverviewsDataInput) -> None:
         logger.info(f"{OVERVIEW_GROUP_PATH} is up to date.")
         return
     data_ds = gu.open_zarr_group(store=store, group_path=data_group)
-    data_ds = data_ds.drop_vars([n for n in tg.STEP_COORDS if n in data_ds.variables])
+    data_ds = data_ds.drop_vars([n for n in (*tg.STEP_COORDS, VALUE_TIME) if n in data_ds.variables])
     # Scalars such as the grid mapping ride along as coords; only gridded variables get overviews
     data_ds = data_ds.set_coords([v for v in data_ds.data_vars if data_ds[v].ndim == 0])
     y_dim, x_dim = data_ds.attrs["spatial:dimensions"]
@@ -77,12 +79,21 @@ def build_overviews(args: BuildOverviewsDataInput) -> None:
     _check_packing_units(data_ds, args.overview_encoding)
 
     # Batches of whole shards bound memory by the batch; each is committed, so a failed run resumes
-    batches = tg.shard_batches(stale, data_meta.index, args.time_batch_size)
+    fixed = {d: data_ds[d].values for d in spec.fixed_dims}
+    if fixed:
+        batches = tg.step_batches(stale, fixed, args.num_shard_chunks * args.time_chunk_size, args.time_batch_size)
+    else:
+        batches = tg.shard_batches(stale, data_meta.index, args.time_batch_size)
     logger.info(f"Building overviews for {len(stale)} step(s) in {len(batches)} batch(es).")
     started = time.perf_counter()
     for i, batch in enumerate(batches, start=1):
         batch_started = time.perf_counter()
-        _write_overview_batch(repo, data_group, data_ds.sel({dim: batch}), data_meta.loc[batch], args)
+        # A forecast batch's stale leads need not be contiguous; each rectangle is written on its own
+        blocks = [
+            (data_ds.sel(tg.block_selection(block, dim)), data_meta.loc[block])
+            for block in (tg.step_blocks(batch, fixed) if fixed else [batch])
+        ]
+        _write_overview_batch(repo, spec, fixed, blocks, args)
         logger.info(
             f"Processed overview batch {i} of {len(batches)} ({len(batch)} step(s)) "
             f"in {time.perf_counter() - batch_started:.1f}s."
@@ -108,15 +119,16 @@ def _clip_to_packed_range(ds: xr.Dataset, overview_encoding: dict[str, PackedEnc
     return ds
 
 
-def _overview_encoding(ds: xr.Dataset, args: BuildOverviewsDataInput) -> dict:
+def _overview_encoding(ds: xr.Dataset, spec: GridSpec, args: BuildOverviewsDataInput) -> dict:
     """Chunk/shard encoding for a new overview level: packed where configured, float32 otherwise."""
     encoding = gu.create_encoding_config(
         ds,
-        append_dim=args.append_dim,
+        append_dim=spec.append_dim,
         chunk_size=OVERVIEW_CHUNK_SIZE,
-        # Tiles read one step at a time; shards span as many steps as /data's
+        # Tiles read one step (or lead) at a time; shards span as many steps as /data's
         num_shard_chunks=args.num_shard_chunks * args.time_chunk_size,
         time_chunk_size=1,
+        fixed_dims=spec.fixed_dims,
     )
     for var in ds.data_vars:
         packing = args.overview_encoding.get(var)
@@ -168,51 +180,61 @@ def _overview_levels(ds: xr.Dataset, factors: list[int]) -> dict[int, xr.Dataset
 @task(cache_policy=NO_CACHE)
 def _write_overview_batch(
     repo: ic.Repository,
-    data_group: str,
-    ds_batch: xr.Dataset,
-    batch_meta: pd.DataFrame,
+    spec: GridSpec,
+    fixed: dict,
+    blocks: list[tuple[xr.Dataset, pd.DataFrame]],
     args: BuildOverviewsDataInput,
 ) -> None:
-    """Average one batch of time steps into each overview level, and write them into their slots."""
-    logger = get_run_logger()
-    dim = args.append_dim
-    ds_batch = ds_batch.load()
+    """Average one batch into each overview level and write it into its slots, in one commit.
 
+    A batch is one or more blocks: a run of time steps, or a rectangle of forecast steps.
+    """
+    logger = get_run_logger()
+    dim = spec.append_dim
     rw_session = repo.writable_session("main")
     _, origin, time_step = tg.read_grid(rw_session.store)
-    axis_end = xr.open_zarr(rw_session.store, group=data_group, consolidated=False)[dim].to_index()[-1]
+    axis_end = xr.open_zarr(rw_session.store, group=spec.data_group, consolidated=False)[dim].to_index()[-1]
 
     # The tile server reads the data group as the full-resolution level, so it needs the transform too
-    group_attrs = zarr.open_group(rw_session.store, path=data_group.strip("/"), mode="a", zarr_format=3).attrs
+    group_attrs = zarr.open_group(rw_session.store, path=spec.data_group.strip("/"), mode="a", zarr_format=3).attrs
     if "spatial:transform" not in group_attrs:
-        group_attrs["spatial:transform"] = gu.spatial_transform(ds_batch)
-        logger.info(f"Recorded spatial:transform on {data_group}.")
+        group_attrs["spatial:transform"] = gu.spatial_transform(blocks[0][0])
+        logger.info(f"Recorded spatial:transform on {spec.data_group}.")
 
-    for factor, level_ds in _overview_levels(ds_batch, args.overview_factors).items():
-        level_ds = _clip_to_packed_range(level_ds, args.overview_encoding)
-        group = f"{OVERVIEW_GROUP_PATH}/{factor}"
-        existing = tg.read_step_metadata(rw_session.store, group, dim)
-        if existing is None:
-            tg.create_group(rw_session, group, level_ds, origin, time_step, dim, axis_end, encoding=_overview_encoding(level_ds, args))
-            logger.info(f"Created {group} on a {time_step} grid from {origin} to {axis_end}.")
-            existing = tg.read_step_metadata(rw_session.store, group, dim)
-        else:
-            added = tg.ensure_axis(rw_session, group, axis_end, time_step, dim)
-            if added:
-                logger.info(f"Extended {group} by {added} slot(s) to {axis_end}.")
-        level_ds = tg.with_step_metadata(
-            level_ds,
-            dim,
-            status=batch_meta["status"].to_numpy(),
-            source_last_modified=batch_meta["source_last_modified"].to_numpy(),
-            # The data group's write time, so the step is current until that group changes again
-            updated_at=batch_meta["updated_at"].to_numpy(),
-            existing=existing,
-        )
-        tg.region_write(rw_session, group, level_ds, dim)
+    # Each level's group is set up and its step metadata read once per batch; blocks never share steps
+    existing_by_group: dict[str, pd.DataFrame] = {}
+    for ds_block, block_meta in blocks:
+        ds_block = ds_block.load()
+        for factor, level_ds in _overview_levels(ds_block, args.overview_factors).items():
+            level_ds = _clip_to_packed_range(level_ds, args.overview_encoding)
+            group = f"{OVERVIEW_GROUP_PATH}/{factor}"
+            if group not in existing_by_group:
+                existing = tg.read_step_metadata(rw_session.store, group, dim)
+                if existing is None:
+                    tg.create_group(rw_session, group, level_ds, origin, time_step, dim, axis_end,
+                                    encoding=_overview_encoding(level_ds, spec, args), fixed=fixed)
+                    logger.info(f"Created {group} on a {time_step} grid from {origin} to {axis_end}.")
+                    existing = tg.read_step_metadata(rw_session.store, group, dim)
+                else:
+                    added = tg.ensure_axis(rw_session, group, axis_end, time_step, dim)
+                    if added:
+                        logger.info(f"Extended {group} by {added} slot(s) to {axis_end}.")
+                existing_by_group[group] = existing
+            level_ds = tg.with_step_metadata(
+                level_ds,
+                dim,
+                status=block_meta[STATUS_COORD].to_numpy(),
+                source_last_modified=block_meta["source_last_modified"].to_numpy(),
+                # The data group's write time, so the step is current until that group changes again
+                updated_at=block_meta["updated_at"].to_numpy(),
+                existing=existing_by_group[group],
+                fixed_dims=spec.fixed_dims,
+            )
+            tg.region_write(rw_session, group, level_ds, dim, fixed_dims=spec.fixed_dims)
 
+    n_steps = sum(len(meta) for _, meta in blocks)
     snapshot_id = rw_session.commit(
-        f"Committed {len(args.overview_factors)} overview levels ({len(batch_meta)} time step(s)) "
+        f"Committed {len(args.overview_factors)} overview levels ({n_steps} time step(s)) "
         f"to {args.dest_bucket}/{args.base_prefix}/{args.configuration_name}"
     )
     logger.info(f"Overviews committed with snapshot ID: {snapshot_id}.")

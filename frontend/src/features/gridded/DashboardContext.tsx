@@ -49,6 +49,7 @@ const initialState: DashboardState = {
     dataset: null,
     variable: null,
     timestepIndex: 0,
+    fixedSelections: {},
     colorRamp: 'raster/plasma',
     colorRampMin: 0,
     colorRampMax: 100,

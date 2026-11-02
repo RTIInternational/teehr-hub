@@ -4,6 +4,7 @@ import { getPrimaryTimeseries } from '@/shared/api/timeseries';
 import type { GriddedTimeseriesFilters } from '@/shared/types/gridded/timeseries';
 import { parseUtcTime, shortestStep } from '@/shared/utils/dates';
 
+import { metadataQueryOptions, isForecast } from './datasets';
 import { MAX_NUM_TIMESTEPS } from './edr';
 import { timestepsQueryOptions } from './timesteps';
 
@@ -19,15 +20,19 @@ const msBefore = (time: string, ms: number) =>
   new Date(parseUtcTime(time) - ms).toISOString().slice(0, 19);
 
 // Mean areal timeseries of a polygon from the warehouse, one series per dataset. Hub writes
-// analysis mean areal values to primary_timeseries.
+// analysis mean areal values to primary_timeseries; forecast datasets (secondary_timeseries)
+// aren't shown yet, so they're left out.
 export const usePolygonTimeseries = ({
   locationId,
-  datasets,
+  datasets: requested,
   variable,
   start_date,
   end_date,
   anchor,
 }: PolygonTimeseriesArgs) => {
+  const metadata = useQueries({ queries: requested.map((ds) => metadataQueryOptions(ds)) });
+  const metadataLoaded = metadata.every((query) => query.data !== undefined);
+  const datasets = requested.filter((_, i) => isForecast(metadata[i].data) === false);
   const useDefaultSpan = !start_date && !end_date;
   // Default span: MAX_NUM_TIMESTEPS of the datasets' shortest step, as for point queries
   const timesteps = useQueries({
@@ -44,7 +49,7 @@ export const usePolygonTimeseries = ({
   return useQuery({
     queryKey: ['gridded', 'polygonTimeseries', locationId, datasets, variable, start, end],
     queryFn:
-      locationId && variable && datasets.length > 0 && (!useDefaultSpan || start)
+      metadataLoaded && locationId && variable && datasets.length > 0 && (!useDefaultSpan || start)
         ? () =>
             getPrimaryTimeseries(locationId, {
               configuration: datasets,

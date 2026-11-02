@@ -4,6 +4,7 @@ import { fetchGriddedEdrTimeseries } from '@/shared/api/gridded/edr';
 import type { DatasetTimeseries } from '@/shared/types/gridded/edr';
 import type { GriddedTimeseriesFilters } from '@/shared/types/gridded/timeseries';
 
+import { metadataQueryOptions } from './datasets';
 import { timestepsQueryOptions } from './timesteps';
 import { variablesQueryOptions } from './variables';
 
@@ -30,13 +31,26 @@ const planSeries = (
   preferredVariable: string | null,
   startDate: string | null,
   endDate: string | null,
-  anchor: string | undefined
+  anchor: string | undefined,
+  forecast = false
 ): SeriesPlan => {
   const variable =
     preferredVariable && variables.includes(preferredVariable)
       ? preferredVariable
       : (variables[0] ?? null);
   if (timesteps.length === 0) return { variable };
+
+  // A forecast shows one cycle's whole run: the latest cycle on or before the span's end (or the
+  // map's date). Its timesteps are its cycles.
+  if (forecast) {
+    const until = endDate ? withSeconds(endDate) : anchor;
+    const cycles = until ? timesteps.filter((t) => t <= until) : timesteps;
+    if (cycles.length === 0) {
+      return { variable, skipped: `${datasetId}: no forecast cycle on or before ${until}` };
+    }
+    const cycle = cycles[cycles.length - 1];
+    return { variable, start: cycle, end: cycle };
+  }
 
   const first = timesteps[0];
   const last = timesteps[timesteps.length - 1];
@@ -75,17 +89,25 @@ export const useEdrTimeseries = ({
 }: EdrTimeseriesArgs): DatasetTimeseries[] => {
   const variables = useQueries({ queries: datasets.map((ds) => variablesQueryOptions(ds)) });
   const timesteps = useQueries({ queries: datasets.map((ds) => timestepsQueryOptions(ds)) });
-  const plans = datasets.map((ds, i) =>
-    planSeries(
+  const metadata = useQueries({ queries: datasets.map((ds) => metadataQueryOptions(ds)) });
+  const plans = datasets.map((ds, i): SeriesPlan => {
+    const datasetMetadata = metadata[i].data;
+    // Wait for the metadata, which says whether the dataset is a forecast
+    if (!datasetMetadata) return { variable: null };
+    if (datasetMetadata.fixed_dims.includes('member')) {
+      return { variable: null, skipped: `${ds}: ensemble timeseries aren't shown yet` };
+    }
+    return planSeries(
       ds,
       variables[i].data ?? [],
       timesteps[i].data ?? [],
       preferredVariable,
       start_date,
       end_date,
-      anchor
-    )
-  );
+      anchor,
+      datasetMetadata.fixed_dims.length > 0
+    );
+  });
 
   const series = useQueries({
     queries: datasets.map((ds, i) => {
@@ -102,8 +124,13 @@ export const useEdrTimeseries = ({
     datasetId,
     variable: plans[i].variable,
     data: series[i].data,
-    error: (variables[i].error ?? timesteps[i].error ?? series[i].error)?.message,
+    error: (variables[i].error ?? timesteps[i].error ?? metadata[i].error ?? series[i].error)
+      ?.message,
     skipped: plans[i].skipped,
-    isLoading: variables[i].isLoading || timesteps[i].isLoading || series[i].isLoading,
+    isLoading:
+      variables[i].isLoading ||
+      timesteps[i].isLoading ||
+      metadata[i].isLoading ||
+      series[i].isLoading,
   }));
 };

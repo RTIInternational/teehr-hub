@@ -13,6 +13,8 @@ export type MapFilters = {
   dataset: string | null;
   variable: string | null;
   timestepIndex: number;
+  // Values chosen on a forecast's axes after the cycle, e.g. { lead_time: '3' }
+  fixedSelections: Record<string, string>;
   colorRamp: string;
   colorRampMin: number;
   colorRampMax: number;

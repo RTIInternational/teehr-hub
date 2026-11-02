@@ -1,0 +1,1474 @@
+{
+ "data/SWE": {
+  "attrs": {
+   "_FillValue": "AAAAAAAA+H8=",
+   "coordinates": "created_at source_last_modified status updated_at"
+  },
+  "meta": {
+   "chunk_grid": {
+    "configuration": {
+     "chunk_shape": [
+      4,
+      4,
+      6
+     ]
+    },
+    "name": "regular"
+   },
+   "chunk_key_encoding": {
+    "configuration": {
+     "separator": "/"
+    },
+    "name": "default"
+   },
+   "codecs": [
+    {
+     "configuration": {
+      "chunk_shape": [
+       1,
+       4,
+       6
+      ],
+      "codecs": [
+       {
+        "configuration": {
+         "endian": "little"
+        },
+        "name": "bytes"
+       },
+       {
+        "configuration": {
+         "checksum": false,
+         "level": 0
+        },
+        "name": "zstd"
+       }
+      ],
+      "index_codecs": [
+       {
+        "configuration": {
+         "endian": "little"
+        },
+        "name": "bytes"
+       },
+       {
+        "name": "crc32c"
+       }
+      ],
+      "index_location": "end"
+     },
+     "name": "sharding_indexed"
+    }
+   ],
+   "data_type": "float32",
+   "dimension_names": [
+    "time",
+    "lat",
+    "lon"
+   ],
+   "fill_value": "NaN",
+   "node_type": "array",
+   "shape": [
+    9,
+    4,
+    6
+   ],
+   "storage_transformers": [],
+   "zarr_format": 3
+  },
+  "values": [
+   [
+    [
+     null,
+     null,
+     null,
+     null,
+     null,
+     null
+    ],
+    [
+     null,
+     null,
+     null,
+     null,
+     null,
+     null
+    ],
+    [
+     null,
+     null,
+     null,
+     null,
+     null,
+     null
+    ],
+    [
+     null,
+     null,
+     null,
+     null,
+     null,
+     null
+    ]
+   ],
+   [
+    [
+     275.0,
+     275.0,
+     275.0,
+     275.0,
+     275.0,
+     275.0
+    ],
+    [
+     275.0,
+     275.0,
+     275.0,
+     275.0,
+     275.0,
+     275.0
+    ],
+    [
+     275.0,
+     275.0,
+     275.0,
+     275.0,
+     275.0,
+     275.0
+    ],
+    [
+     275.0,
+     275.0,
+     275.0,
+     275.0,
+     275.0,
+     275.0
+    ]
+   ],
+   [
+    [
+     276.0,
+     276.0,
+     276.0,
+     276.0,
+     276.0,
+     276.0
+    ],
+    [
+     276.0,
+     276.0,
+     276.0,
+     276.0,
+     276.0,
+     276.0
+    ],
+    [
+     276.0,
+     276.0,
+     276.0,
+     276.0,
+     276.0,
+     276.0
+    ],
+    [
+     276.0,
+     276.0,
+     276.0,
+     276.0,
+     276.0,
+     276.0
+    ]
+   ],
+   [
+    [
+     null,
+     null,
+     null,
+     null,
+     null,
+     null
+    ],
+    [
+     null,
+     null,
+     null,
+     null,
+     null,
+     null
+    ],
+    [
+     null,
+     null,
+     null,
+     null,
+     null,
+     null
+    ],
+    [
+     null,
+     null,
+     null,
+     null,
+     null,
+     null
+    ]
+   ],
+   [
+    [
+     null,
+     null,
+     null,
+     null,
+     null,
+     null
+    ],
+    [
+     null,
+     null,
+     null,
+     null,
+     null,
+     null
+    ],
+    [
+     null,
+     null,
+     null,
+     null,
+     null,
+     null
+    ],
+    [
+     null,
+     null,
+     null,
+     null,
+     null,
+     null
+    ]
+   ],
+   [
+    [
+     null,
+     null,
+     null,
+     null,
+     null,
+     null
+    ],
+    [
+     null,
+     null,
+     null,
+     null,
+     null,
+     null
+    ],
+    [
+     null,
+     null,
+     null,
+     null,
+     null,
+     null
+    ],
+    [
+     null,
+     null,
+     null,
+     null,
+     null,
+     null
+    ]
+   ],
+   [
+    [
+     280.0,
+     280.0,
+     280.0,
+     280.0,
+     280.0,
+     280.0
+    ],
+    [
+     280.0,
+     280.0,
+     280.0,
+     280.0,
+     280.0,
+     280.0
+    ],
+    [
+     280.0,
+     280.0,
+     280.0,
+     280.0,
+     280.0,
+     280.0
+    ],
+    [
+     280.0,
+     280.0,
+     280.0,
+     280.0,
+     280.0,
+     280.0
+    ]
+   ],
+   [
+    [
+     281.0,
+     281.0,
+     281.0,
+     281.0,
+     281.0,
+     281.0
+    ],
+    [
+     281.0,
+     281.0,
+     281.0,
+     281.0,
+     281.0,
+     281.0
+    ],
+    [
+     281.0,
+     281.0,
+     281.0,
+     281.0,
+     281.0,
+     281.0
+    ],
+    [
+     281.0,
+     281.0,
+     281.0,
+     281.0,
+     281.0,
+     281.0
+    ]
+   ],
+   [
+    [
+     282.0,
+     282.0,
+     282.0,
+     282.0,
+     282.0,
+     282.0
+    ],
+    [
+     282.0,
+     282.0,
+     282.0,
+     282.0,
+     282.0,
+     282.0
+    ],
+    [
+     282.0,
+     282.0,
+     282.0,
+     282.0,
+     282.0,
+     282.0
+    ],
+    [
+     282.0,
+     282.0,
+     282.0,
+     282.0,
+     282.0,
+     282.0
+    ]
+   ]
+  ]
+ },
+ "data/attrs": {},
+ "data/created_at": {
+  "attrs": {
+   "_FillValue": -9223372036854775808,
+   "calendar": "proleptic_gregorian",
+   "units": "milliseconds since 1970-01-01"
+  },
+  "meta": {
+   "chunk_grid": {
+    "configuration": {
+     "chunk_shape": [
+      100000
+     ]
+    },
+    "name": "regular"
+   },
+   "chunk_key_encoding": {
+    "configuration": {
+     "separator": "/"
+    },
+    "name": "default"
+   },
+   "codecs": [
+    {
+     "configuration": {
+      "endian": "little"
+     },
+     "name": "bytes"
+    },
+    {
+     "configuration": {
+      "checksum": false,
+      "level": 0
+     },
+     "name": "zstd"
+    }
+   ],
+   "data_type": "int64",
+   "dimension_names": [
+    "time"
+   ],
+   "fill_value": 0,
+   "node_type": "array",
+   "shape": [
+    9
+   ],
+   "storage_transformers": [],
+   "zarr_format": 3
+  }
+ },
+ "data/lat": {
+  "attrs": {
+   "_FillValue": "AAAAAAAA+H8="
+  },
+  "meta": {
+   "chunk_grid": {
+    "configuration": {
+     "chunk_shape": [
+      4
+     ]
+    },
+    "name": "regular"
+   },
+   "chunk_key_encoding": {
+    "configuration": {
+     "separator": "/"
+    },
+    "name": "default"
+   },
+   "codecs": [
+    {
+     "configuration": {
+      "endian": "little"
+     },
+     "name": "bytes"
+    }
+   ],
+   "data_type": "float64",
+   "dimension_names": [
+    "lat"
+   ],
+   "fill_value": "NaN",
+   "node_type": "array",
+   "shape": [
+    4
+   ],
+   "storage_transformers": [],
+   "zarr_format": 3
+  },
+  "values": [
+   0.0,
+   1.0,
+   2.0,
+   3.0
+  ]
+ },
+ "data/lon": {
+  "attrs": {
+   "_FillValue": "AAAAAAAA+H8="
+  },
+  "meta": {
+   "chunk_grid": {
+    "configuration": {
+     "chunk_shape": [
+      6
+     ]
+    },
+    "name": "regular"
+   },
+   "chunk_key_encoding": {
+    "configuration": {
+     "separator": "/"
+    },
+    "name": "default"
+   },
+   "codecs": [
+    {
+     "configuration": {
+      "endian": "little"
+     },
+     "name": "bytes"
+    }
+   ],
+   "data_type": "float64",
+   "dimension_names": [
+    "lon"
+   ],
+   "fill_value": "NaN",
+   "node_type": "array",
+   "shape": [
+    6
+   ],
+   "storage_transformers": [],
+   "zarr_format": 3
+  },
+  "values": [
+   0.0,
+   1.0,
+   2.0,
+   3.0,
+   4.0,
+   5.0
+  ]
+ },
+ "data/source_last_modified": {
+  "attrs": {
+   "_FillValue": -9223372036854775808,
+   "calendar": "proleptic_gregorian",
+   "units": "milliseconds since 1970-01-01"
+  },
+  "meta": {
+   "chunk_grid": {
+    "configuration": {
+     "chunk_shape": [
+      100000
+     ]
+    },
+    "name": "regular"
+   },
+   "chunk_key_encoding": {
+    "configuration": {
+     "separator": "/"
+    },
+    "name": "default"
+   },
+   "codecs": [
+    {
+     "configuration": {
+      "endian": "little"
+     },
+     "name": "bytes"
+    },
+    {
+     "configuration": {
+      "checksum": false,
+      "level": 0
+     },
+     "name": "zstd"
+    }
+   ],
+   "data_type": "int64",
+   "dimension_names": [
+    "time"
+   ],
+   "fill_value": 0,
+   "node_type": "array",
+   "shape": [
+    9
+   ],
+   "storage_transformers": [],
+   "zarr_format": 3
+  }
+ },
+ "data/status": {
+  "attrs": {
+   "flag_meanings": "early provisional stable",
+   "flag_values": [
+    0,
+    1,
+    2
+   ],
+   "long_name": "data status",
+   "standard_name": "status_flag"
+  },
+  "meta": {
+   "chunk_grid": {
+    "configuration": {
+     "chunk_shape": [
+      100000
+     ]
+    },
+    "name": "regular"
+   },
+   "chunk_key_encoding": {
+    "configuration": {
+     "separator": "/"
+    },
+    "name": "default"
+   },
+   "codecs": [
+    {
+     "name": "bytes"
+    },
+    {
+     "configuration": {
+      "checksum": false,
+      "level": 0
+     },
+     "name": "zstd"
+    }
+   ],
+   "data_type": "int8",
+   "dimension_names": [
+    "time"
+   ],
+   "fill_value": 0,
+   "node_type": "array",
+   "shape": [
+    9
+   ],
+   "storage_transformers": [],
+   "zarr_format": 3
+  },
+  "values": [
+   -1,
+   2,
+   1,
+   -1,
+   -1,
+   -1,
+   2,
+   2,
+   2
+  ]
+ },
+ "data/time": {
+  "attrs": {
+   "axis": "T",
+   "calendar": "proleptic_gregorian",
+   "standard_name": "time",
+   "units": "days since 1981-10-01"
+  },
+  "meta": {
+   "chunk_grid": {
+    "configuration": {
+     "chunk_shape": [
+      100000
+     ]
+    },
+    "name": "regular"
+   },
+   "chunk_key_encoding": {
+    "configuration": {
+     "separator": "/"
+    },
+    "name": "default"
+   },
+   "codecs": [
+    {
+     "configuration": {
+      "endian": "little"
+     },
+     "name": "bytes"
+    },
+    {
+     "configuration": {
+      "checksum": false,
+      "level": 0
+     },
+     "name": "zstd"
+    }
+   ],
+   "data_type": "int64",
+   "dimension_names": [
+    "time"
+   ],
+   "fill_value": 0,
+   "node_type": "array",
+   "shape": [
+    9
+   ],
+   "storage_transformers": [],
+   "zarr_format": 3
+  },
+  "values": [
+   0,
+   1,
+   2,
+   3,
+   4,
+   5,
+   6,
+   7,
+   8
+  ]
+ },
+ "data/updated_at": {
+  "attrs": {
+   "_FillValue": -9223372036854775808,
+   "calendar": "proleptic_gregorian",
+   "units": "milliseconds since 1970-01-01"
+  },
+  "meta": {
+   "chunk_grid": {
+    "configuration": {
+     "chunk_shape": [
+      100000
+     ]
+    },
+    "name": "regular"
+   },
+   "chunk_key_encoding": {
+    "configuration": {
+     "separator": "/"
+    },
+    "name": "default"
+   },
+   "codecs": [
+    {
+     "configuration": {
+      "endian": "little"
+     },
+     "name": "bytes"
+    },
+    {
+     "configuration": {
+      "checksum": false,
+      "level": 0
+     },
+     "name": "zstd"
+    }
+   ],
+   "data_type": "int64",
+   "dimension_names": [
+    "time"
+   ],
+   "fill_value": 0,
+   "node_type": "array",
+   "shape": [
+    9
+   ],
+   "storage_transformers": [],
+   "zarr_format": 3
+  }
+ },
+ "references/SWE": {
+  "attrs": {
+   "_FillValue": "AAAAAAAA+H8="
+  },
+  "meta": {
+   "chunk_grid": {
+    "configuration": {
+     "chunk_shape": [
+      1,
+      4,
+      6
+     ]
+    },
+    "name": "regular"
+   },
+   "chunk_key_encoding": {
+    "configuration": {
+     "separator": "/"
+    },
+    "name": "default"
+   },
+   "codecs": [
+    {
+     "configuration": {
+      "endian": "little"
+     },
+     "name": "bytes"
+    }
+   ],
+   "data_type": "float32",
+   "dimension_names": [
+    "time",
+    "lat",
+    "lon"
+   ],
+   "fill_value": "NaN",
+   "node_type": "array",
+   "shape": [
+    9,
+    4,
+    6
+   ],
+   "storage_transformers": [],
+   "zarr_format": 3
+  },
+  "values": [
+   [
+    [
+     null,
+     null,
+     null,
+     null,
+     null,
+     null
+    ],
+    [
+     null,
+     null,
+     null,
+     null,
+     null,
+     null
+    ],
+    [
+     null,
+     null,
+     null,
+     null,
+     null,
+     null
+    ],
+    [
+     null,
+     null,
+     null,
+     null,
+     null,
+     null
+    ]
+   ],
+   [
+    [
+     275.0,
+     275.0,
+     275.0,
+     275.0,
+     275.0,
+     275.0
+    ],
+    [
+     275.0,
+     275.0,
+     275.0,
+     275.0,
+     275.0,
+     275.0
+    ],
+    [
+     275.0,
+     275.0,
+     275.0,
+     275.0,
+     275.0,
+     275.0
+    ],
+    [
+     275.0,
+     275.0,
+     275.0,
+     275.0,
+     275.0,
+     275.0
+    ]
+   ],
+   [
+    [
+     276.0,
+     276.0,
+     276.0,
+     276.0,
+     276.0,
+     276.0
+    ],
+    [
+     276.0,
+     276.0,
+     276.0,
+     276.0,
+     276.0,
+     276.0
+    ],
+    [
+     276.0,
+     276.0,
+     276.0,
+     276.0,
+     276.0,
+     276.0
+    ],
+    [
+     276.0,
+     276.0,
+     276.0,
+     276.0,
+     276.0,
+     276.0
+    ]
+   ],
+   [
+    [
+     null,
+     null,
+     null,
+     null,
+     null,
+     null
+    ],
+    [
+     null,
+     null,
+     null,
+     null,
+     null,
+     null
+    ],
+    [
+     null,
+     null,
+     null,
+     null,
+     null,
+     null
+    ],
+    [
+     null,
+     null,
+     null,
+     null,
+     null,
+     null
+    ]
+   ],
+   [
+    [
+     null,
+     null,
+     null,
+     null,
+     null,
+     null
+    ],
+    [
+     null,
+     null,
+     null,
+     null,
+     null,
+     null
+    ],
+    [
+     null,
+     null,
+     null,
+     null,
+     null,
+     null
+    ],
+    [
+     null,
+     null,
+     null,
+     null,
+     null,
+     null
+    ]
+   ],
+   [
+    [
+     null,
+     null,
+     null,
+     null,
+     null,
+     null
+    ],
+    [
+     null,
+     null,
+     null,
+     null,
+     null,
+     null
+    ],
+    [
+     null,
+     null,
+     null,
+     null,
+     null,
+     null
+    ],
+    [
+     null,
+     null,
+     null,
+     null,
+     null,
+     null
+    ]
+   ],
+   [
+    [
+     280.0,
+     280.0,
+     280.0,
+     280.0,
+     280.0,
+     280.0
+    ],
+    [
+     280.0,
+     280.0,
+     280.0,
+     280.0,
+     280.0,
+     280.0
+    ],
+    [
+     280.0,
+     280.0,
+     280.0,
+     280.0,
+     280.0,
+     280.0
+    ],
+    [
+     280.0,
+     280.0,
+     280.0,
+     280.0,
+     280.0,
+     280.0
+    ]
+   ],
+   [
+    [
+     281.0,
+     281.0,
+     281.0,
+     281.0,
+     281.0,
+     281.0
+    ],
+    [
+     281.0,
+     281.0,
+     281.0,
+     281.0,
+     281.0,
+     281.0
+    ],
+    [
+     281.0,
+     281.0,
+     281.0,
+     281.0,
+     281.0,
+     281.0
+    ],
+    [
+     281.0,
+     281.0,
+     281.0,
+     281.0,
+     281.0,
+     281.0
+    ]
+   ],
+   [
+    [
+     282.0,
+     282.0,
+     282.0,
+     282.0,
+     282.0,
+     282.0
+    ],
+    [
+     282.0,
+     282.0,
+     282.0,
+     282.0,
+     282.0,
+     282.0
+    ],
+    [
+     282.0,
+     282.0,
+     282.0,
+     282.0,
+     282.0,
+     282.0
+    ],
+    [
+     282.0,
+     282.0,
+     282.0,
+     282.0,
+     282.0,
+     282.0
+    ]
+   ]
+  ]
+ },
+ "references/attrs": {
+  "coordinates": "status created_at updated_at source_last_modified"
+ },
+ "references/created_at": {
+  "attrs": {
+   "_FillValue": -9223372036854775808,
+   "calendar": "proleptic_gregorian",
+   "units": "milliseconds since 1970-01-01"
+  },
+  "meta": {
+   "chunk_grid": {
+    "configuration": {
+     "chunk_shape": [
+      100000
+     ]
+    },
+    "name": "regular"
+   },
+   "chunk_key_encoding": {
+    "configuration": {
+     "separator": "/"
+    },
+    "name": "default"
+   },
+   "codecs": [
+    {
+     "configuration": {
+      "endian": "little"
+     },
+     "name": "bytes"
+    },
+    {
+     "configuration": {
+      "checksum": false,
+      "level": 0
+     },
+     "name": "zstd"
+    }
+   ],
+   "data_type": "int64",
+   "dimension_names": [
+    "time"
+   ],
+   "fill_value": 0,
+   "node_type": "array",
+   "shape": [
+    9
+   ],
+   "storage_transformers": [],
+   "zarr_format": 3
+  }
+ },
+ "references/lat": {
+  "attrs": {
+   "_FillValue": "AAAAAAAA+H8="
+  },
+  "meta": {
+   "chunk_grid": {
+    "configuration": {
+     "chunk_shape": [
+      4
+     ]
+    },
+    "name": "regular"
+   },
+   "chunk_key_encoding": {
+    "configuration": {
+     "separator": "/"
+    },
+    "name": "default"
+   },
+   "codecs": [
+    {
+     "configuration": {
+      "endian": "little"
+     },
+     "name": "bytes"
+    }
+   ],
+   "data_type": "float64",
+   "dimension_names": [
+    "lat"
+   ],
+   "fill_value": "NaN",
+   "node_type": "array",
+   "shape": [
+    4
+   ],
+   "storage_transformers": [],
+   "zarr_format": 3
+  },
+  "values": [
+   0.0,
+   1.0,
+   2.0,
+   3.0
+  ]
+ },
+ "references/lon": {
+  "attrs": {
+   "_FillValue": "AAAAAAAA+H8="
+  },
+  "meta": {
+   "chunk_grid": {
+    "configuration": {
+     "chunk_shape": [
+      6
+     ]
+    },
+    "name": "regular"
+   },
+   "chunk_key_encoding": {
+    "configuration": {
+     "separator": "/"
+    },
+    "name": "default"
+   },
+   "codecs": [
+    {
+     "configuration": {
+      "endian": "little"
+     },
+     "name": "bytes"
+    }
+   ],
+   "data_type": "float64",
+   "dimension_names": [
+    "lon"
+   ],
+   "fill_value": "NaN",
+   "node_type": "array",
+   "shape": [
+    6
+   ],
+   "storage_transformers": [],
+   "zarr_format": 3
+  },
+  "values": [
+   0.0,
+   1.0,
+   2.0,
+   3.0,
+   4.0,
+   5.0
+  ]
+ },
+ "references/source_last_modified": {
+  "attrs": {
+   "_FillValue": -9223372036854775808,
+   "calendar": "proleptic_gregorian",
+   "units": "milliseconds since 1970-01-01"
+  },
+  "meta": {
+   "chunk_grid": {
+    "configuration": {
+     "chunk_shape": [
+      100000
+     ]
+    },
+    "name": "regular"
+   },
+   "chunk_key_encoding": {
+    "configuration": {
+     "separator": "/"
+    },
+    "name": "default"
+   },
+   "codecs": [
+    {
+     "configuration": {
+      "endian": "little"
+     },
+     "name": "bytes"
+    },
+    {
+     "configuration": {
+      "checksum": false,
+      "level": 0
+     },
+     "name": "zstd"
+    }
+   ],
+   "data_type": "int64",
+   "dimension_names": [
+    "time"
+   ],
+   "fill_value": 0,
+   "node_type": "array",
+   "shape": [
+    9
+   ],
+   "storage_transformers": [],
+   "zarr_format": 3
+  }
+ },
+ "references/status": {
+  "attrs": {
+   "flag_meanings": "early provisional stable",
+   "flag_values": [
+    0,
+    1,
+    2
+   ],
+   "long_name": "data status",
+   "standard_name": "status_flag"
+  },
+  "meta": {
+   "chunk_grid": {
+    "configuration": {
+     "chunk_shape": [
+      100000
+     ]
+    },
+    "name": "regular"
+   },
+   "chunk_key_encoding": {
+    "configuration": {
+     "separator": "/"
+    },
+    "name": "default"
+   },
+   "codecs": [
+    {
+     "name": "bytes"
+    },
+    {
+     "configuration": {
+      "checksum": false,
+      "level": 0
+     },
+     "name": "zstd"
+    }
+   ],
+   "data_type": "int8",
+   "dimension_names": [
+    "time"
+   ],
+   "fill_value": 0,
+   "node_type": "array",
+   "shape": [
+    9
+   ],
+   "storage_transformers": [],
+   "zarr_format": 3
+  },
+  "values": [
+   -1,
+   2,
+   1,
+   -1,
+   -1,
+   -1,
+   2,
+   2,
+   2
+  ]
+ },
+ "references/time": {
+  "attrs": {
+   "axis": "T",
+   "calendar": "proleptic_gregorian",
+   "standard_name": "time",
+   "units": "days since 1981-10-01"
+  },
+  "meta": {
+   "chunk_grid": {
+    "configuration": {
+     "chunk_shape": [
+      100000
+     ]
+    },
+    "name": "regular"
+   },
+   "chunk_key_encoding": {
+    "configuration": {
+     "separator": "/"
+    },
+    "name": "default"
+   },
+   "codecs": [
+    {
+     "configuration": {
+      "endian": "little"
+     },
+     "name": "bytes"
+    },
+    {
+     "configuration": {
+      "checksum": false,
+      "level": 0
+     },
+     "name": "zstd"
+    }
+   ],
+   "data_type": "int64",
+   "dimension_names": [
+    "time"
+   ],
+   "fill_value": 0,
+   "node_type": "array",
+   "shape": [
+    9
+   ],
+   "storage_transformers": [],
+   "zarr_format": 3
+  },
+  "values": [
+   0,
+   1,
+   2,
+   3,
+   4,
+   5,
+   6,
+   7,
+   8
+  ]
+ },
+ "references/updated_at": {
+  "attrs": {
+   "_FillValue": -9223372036854775808,
+   "calendar": "proleptic_gregorian",
+   "units": "milliseconds since 1970-01-01"
+  },
+  "meta": {
+   "chunk_grid": {
+    "configuration": {
+     "chunk_shape": [
+      100000
+     ]
+    },
+    "name": "regular"
+   },
+   "chunk_key_encoding": {
+    "configuration": {
+     "separator": "/"
+    },
+    "name": "default"
+   },
+   "codecs": [
+    {
+     "configuration": {
+      "endian": "little"
+     },
+     "name": "bytes"
+    },
+    {
+     "configuration": {
+      "checksum": false,
+      "level": 0
+     },
+     "name": "zstd"
+    }
+   ],
+   "data_type": "int64",
+   "dimension_names": [
+    "time"
+   ],
+   "fill_value": 0,
+   "node_type": "array",
+   "shape": [
+    9
+   ],
+   "storage_transformers": [],
+   "zarr_format": 3
+  }
+ }
+}
