@@ -85,8 +85,8 @@ environments:
       # Maintenance status, served outside the cluster (teehr-cloud-platform)
       statusUrl: https://status.teehr.rtiamanzi.org/status.json
       devTeehrVersion: 991900deeda31ab60f02aebb45edbd67c9180386
-      stableTeehrVersion: v0.7.0
-      previousTeehrVersion: v0.6.6
+      stableTeehrVersion: v0.8.0
+      previousTeehrVersion: v0.7.0
       polaris:
         inCluster: "true"
         catalogS3PathStyleAccess: "false"
