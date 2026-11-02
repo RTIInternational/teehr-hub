@@ -176,6 +176,8 @@ def test_forecast_ingest_writes_steps_and_fills_partial_cycles(harness, nwm):
     assert np.allclose(rain[1, :6], [rate(1, lead) for lead in LEADS[:6]]) and np.isnan(rain[1, 6:]).all()
     assert (refs["status"].values[1, 6:] == rc.UNWRITTEN).all()
     assert (refs["value_time"].values[1] == CYCLES[1] + pd.to_timedelta(LEADS, unit="h")).all()
+    # Still a coordinate after region writes of blocks built from source files, which lack it
+    assert "value_time" in refs.coords and "value_time" not in refs.data_vars
 
     # The rest of cycle 1 arrives and cycle 3 is published with one lead missing; append fills them in
     for lead in LEADS[6:]:

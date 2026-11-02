@@ -333,7 +333,9 @@ def with_step_metadata(
     """Attach per-step metadata to ``ds`` for a region write; ``created_at`` is kept where already set.
 
     With ``fixed_dims``, ``ds`` is a block of steps and the arrays hold one value per step, in the
-    block's (``dim``, *``fixed_dims``) order.
+    block's (``dim``, *``fixed_dims``) order. A forecast block also gets its ``value_time``: a virtual
+    region write records the group's coordinates from the block, so a block without it would turn
+    ``value_time`` into a data variable.
     """
     step_dims = (dim, *fixed_dims)
     shape = tuple(ds.sizes[d] for d in step_dims)
@@ -343,12 +345,17 @@ def with_step_metadata(
         created = existing["created_at"].reindex(steps).to_numpy("datetime64[ms]")
     now = utc_now()
     created = np.where(np.isnat(created), now, created).astype("datetime64[ms]")
-    return ds.assign_coords({
+    coords = {
         STATUS_COORD: (step_dims, np.asarray(status, "int8").reshape(shape), FORECAST_STATUS_ATTRS if fixed_dims else STATUS_ATTRS),
         "created_at": (step_dims, created.reshape(shape)),
         "updated_at": (step_dims, np.broadcast_to(np.asarray(updated_at, "datetime64[ms]"), len(steps)).reshape(shape).copy()),
         "source_last_modified": (step_dims, np.asarray(source_last_modified, "datetime64[ms]").reshape(shape)),
-    })
+    }
+    if LEAD_TIME in fixed_dims:
+        coords[VALUE_TIME] = (
+            (dim, LEAD_TIME), value_times(ds[dim].values, ds[LEAD_TIME].values), FORECAST_COORD_ATTRS[VALUE_TIME]
+        )
+    return ds.assign_coords(coords)
 
 
 def region_write(
