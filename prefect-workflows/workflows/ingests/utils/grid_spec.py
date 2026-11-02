@@ -17,14 +17,16 @@ from workflows.utils.repo_const import (
     DATA_GROUP_ATTR,
     FIXED_DIMS_ATTR,
     FORECAST_COORD_ATTRS,
+    FORECAST_LAYOUT_VERSION,
     GRID_NAME_ATTR,
     LAYOUT_VERSION_ATTR,
     LEAD_TIME,
     VALUE_TIME,
 )
 
-# Newest on-disk layout these readers understand
-SUPPORTED_LAYOUT_VERSION = 2
+# On-disk layouts these readers understand: 1 is the analysis time grid (also when the attribute is
+# missing), 2 adds forecast axes. Any other value is refused rather than guessed at.
+KNOWN_LAYOUT_VERSIONS = (1, FORECAST_LAYOUT_VERSION)
 
 
 @dataclass(frozen=True)
@@ -42,9 +44,9 @@ class GridSpec:
 def read_grid_spec(store: ic.IcechunkStore, override: dict | None = None) -> GridSpec:
     """The repo's grid spec from its root attributes, with ``override`` taking precedence."""
     attrs = {**tg.read_root_attrs(store), **(override or {})}
-    version = int(attrs.get(LAYOUT_VERSION_ATTR, 1))
-    if version > SUPPORTED_LAYOUT_VERSION:
-        raise ValueError(f"The repo has layout_version {version}; this code reads up to {SUPPORTED_LAYOUT_VERSION}.")
+    version = attrs.get(LAYOUT_VERSION_ATTR, 1)
+    if version not in KNOWN_LAYOUT_VERSIONS:
+        raise ValueError(f"Unknown layout_version {version!r}; this code reads {list(KNOWN_LAYOUT_VERSIONS)}.")
     return GridSpec(
         append_dim=attrs.get(APPEND_DIM_ATTR, "time"),
         fixed_dims=tuple(attrs.get(FIXED_DIMS_ATTR, ())),

@@ -320,11 +320,12 @@ def test_forecast_repo_spec_and_dataset(forecast):
     assert ds["lead_time"].dtype == np.int32 and (ds["value_time"].values == tg.value_times(REFS[:2], LEADS)).all()
 
 
-def test_newer_layout_is_refused(tmp_path):
+@pytest.mark.parametrize("version", [3, 0, -1, "two"])
+def test_unknown_layout_is_refused(tmp_path, version):
     repo = icechunk.Repository.create(icechunk.local_filesystem_storage(str(tmp_path)))
     session = repo.writable_session("main")
-    tg.write_grid_attrs(session.store, {"append_dim": DIM, rc.LAYOUT_VERSION_ATTR: gs.SUPPORTED_LAYOUT_VERSION + 1})
-    with pytest.raises(ValueError, match="layout_version"):
+    tg.write_grid_attrs(session.store, {"append_dim": DIM, rc.LAYOUT_VERSION_ATTR: version})
+    with pytest.raises(ValueError, match="Unknown layout_version"):
         gs.read_grid_spec(session.store)
 
 
