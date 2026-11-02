@@ -132,16 +132,19 @@ class BaseGriddedDataInput(BaseModel):
         default=30,
         description=(
             "Number of inner chunks along the append dimension to group into a single shard, so a shard "
-            "holds time_chunk_size * num_shard_chunks steps; overview shards hold as many 1-step chunks"
+            "holds time_chunk_size * num_shard_chunks steps; overview shards hold as many 1-step chunks. "
+            "For forecasts the same applies along the lead axis: a shard is one cycle (and member) and "
+            "that many leads, so a cycle's writes never touch another cycle's shards"
         )
     )
     time_chunk_size: int = Field(
         default=1,
         gt=0,
         description=(
-            "Steps per inner chunk along the append dimension of /data; overviews always use 1. Larger "
-            "chunks speed time-series reads but slow single-step reads, and a small append rewrites a "
-            "partial chunk. Lower num_shard_chunks when raising this. Applies only when /data is first created."
+            "Steps per inner chunk along the append dimension of /data, or leads per inner chunk for "
+            "forecasts; overviews always use 1. Larger chunks speed time-series reads but slow single-step "
+            "reads, and a small append rewrites a partial chunk. Lower num_shard_chunks when raising this. "
+            "Applies only when /data is first created."
         )
     )
 
@@ -171,8 +174,9 @@ class BuildOverviewsDataInput(BaseGriddedDataInput):
         default=30,
         gt=0,
         description=(
-            "Number of time steps read and written per overview batch; a multiple of the shard length "
-            "(time_chunk_size * num_shard_chunks), so each shard is written once. Bounds memory use."
+            "Number of steps (maps: one per valid time, or per forecast cycle and lead) read and written per "
+            "overview batch; a multiple of the shard length (time_chunk_size * num_shard_chunks), so each shard "
+            "is written once. Bounds memory use. Forecast batches hold whole shards, at least one."
         )
     )
     overview_encoding: dict[str, PackedEncoding] = Field(

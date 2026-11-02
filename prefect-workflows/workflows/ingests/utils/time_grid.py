@@ -414,3 +414,32 @@ def shard_batches(times: pd.DatetimeIndex, axis: pd.DatetimeIndex, shard_steps: 
     """Group ``times`` by the shard holding their slot, so each batch writes whole shards once."""
     shard = axis.get_indexer(times) // shard_steps
     return [times[shard == s] for s in np.unique(shard)]
+
+
+def step_batches(steps: pd.MultiIndex, fixed: dict, shard_leads: int, max_steps: int) -> list[pd.MultiIndex]:
+    """Group forecast steps by the shard holding them, and whole shards into batches.
+
+    A shard is one cycle and member and a block of ``shard_leads`` leads on the repo's lead axis.
+    Batches hold up to ``max_steps`` steps (at least one shard), so memory is bounded by the batch
+    whatever the cycle's length, and each batch writes its shards once.
+    """
+    dim, *fixed_dims = steps.names
+    lead_dim = fixed_dims[-1]
+    lead_pos = pd.Index(fixed[lead_dim]).get_indexer(steps.get_level_values(lead_dim))
+    shards = pd.MultiIndex.from_arrays([*(steps.get_level_values(d) for d in (dim, *fixed_dims[:-1])), lead_pos // shard_leads])
+    batches, current = [], []
+    for _, positions in pd.Series(np.arange(len(steps)), index=shards).groupby(level=list(range(shards.nlevels))):
+        if current and sum(map(len, current)) + len(positions) > max_steps:
+            batches.append(steps[np.concatenate(current)])
+            current = []
+        current.append(positions.to_numpy())
+    if current:
+        batches.append(steps[np.concatenate(current)])
+    return batches
+
+
+def block_selection(block: pd.Index, dim: str) -> dict:
+    """``.sel`` arguments for a block of steps (one value list per dim)."""
+    if isinstance(block, pd.MultiIndex):
+        return {name: block.get_level_values(name).unique() for name in block.names}
+    return {dim: block}

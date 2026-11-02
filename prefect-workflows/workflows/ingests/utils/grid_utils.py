@@ -403,6 +403,7 @@ def create_encoding_config(
     compression: str = "zstd",
     compression_level: int = 3,
     shuffle: str = "shuffle",
+    fixed_dims: tuple[str, ...] = (),
 ) -> dict:
     """Create an encoding configuration for writing a dataset to IceChunk.
 
@@ -422,24 +423,31 @@ def create_encoding_config(
         The dimension used for appending (e.g. "time").  Inner chunks along
         this dimension hold ``time_chunk_size`` steps; shards pack ``num_shard_chunks`` of them.
     chunk_size : int
-        Inner chunk size for all non-append (spatial) dimensions (default 512).
+        Inner chunk size for all spatial dimensions (default 512).
     num_shard_chunks : int
-        Number of inner chunks to group into a single shard along ``append_dim``
-        (default 30).
+        Number of inner chunks to group into a single shard along ``append_dim``, or along the
+        lead axis for forecasts (default 30).
     time_chunk_size : int
-        Steps per inner chunk along ``append_dim`` (default 1).
+        Steps per inner chunk along ``append_dim``, or leads per inner chunk for forecasts (default 1).
     compression : str
         Compression algorithm to use (default "zstd").
     compression_level : int
         Compression level (default 3).
     shuffle : str
         Whether to apply the byte-shuffle filter before compression (default "shuffle").
+    fixed_dims : tuple[str, ...]
+        A forecast's axes after ``append_dim``, e.g. ``("member", "lead_time")``. Each shard then
+        holds one cycle and member and a block of leads (the last fixed dim), so a cycle's writes
+        never touch another cycle's shards.
     """
+    # Steps are chunked and sharded along the append axis, or along the lead axis for forecasts
+    step_dim = fixed_dims[-1] if fixed_dims else append_dim
+    single = {append_dim, *fixed_dims} - {step_dim}
     encoding_config = {}
     for var in dataset.data_vars:
         dims = dataset[var].dims
-        chunks = tuple(time_chunk_size if d == append_dim else chunk_size for d in dims)
-        shards = tuple(time_chunk_size * num_shard_chunks if d == append_dim else chunk_size for d in dims)
+        chunks = tuple(time_chunk_size if d == step_dim else 1 if d in single else chunk_size for d in dims)
+        shards = tuple(time_chunk_size * num_shard_chunks if d == step_dim else 1 if d in single else chunk_size for d in dims)
         encoding_config[var] = {
             "chunks": chunks,
             "shards": shards,

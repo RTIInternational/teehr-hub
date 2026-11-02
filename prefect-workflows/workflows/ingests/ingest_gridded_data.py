@@ -12,6 +12,7 @@ import xarray as xr
 
 from utils import grid_utils as gu
 from utils import time_grid as tg
+from utils.grid_spec import read_grid_spec
 from workflows.utils.repo_const import (
     APPEND_DIM_ATTR,
     CONFIGURATION_NAME_ATTR,
@@ -26,6 +27,7 @@ from workflows.utils.repo_const import (
     TIME_ORIGIN_ATTR,
     TIME_STEP_ATTR,
     TIMESERIES_TYPE_ATTR,
+    VALUE_TIME,
 )
 from workflows.models.gridded_sources import GriddedSource
 from workflows.models.ingest_gridded_data_input import (
@@ -69,11 +71,6 @@ def ingest_gridded_data(args: IngestGriddedDataInput) -> None:
     logger = get_run_logger()
     source = args.source
     fixed = source.fixed_axes()
-    if fixed and (args.write_materialized or args.build_overviews_on_ingest):
-        raise ValueError(
-            "Forecast repos can't be materialized or get overviews yet; set write_materialized and "
-            "build_overviews_on_ingest to false."
-        )
 
     credentials = source.credentials()
     repo = gu.configure_icechunk_s3_repo(
@@ -301,10 +298,16 @@ def materialize_references(repo: ic.Repository, args: IngestGriddedDataInput) ->
         logger.info(f"{DATA_GROUP_PATH} is up to date.")
         return
     _, origin, time_step = tg.read_grid(store)
+    fixed_dims = read_grid_spec(store).fixed_dims
     refs = gu.restore_grid_mapping_attrs(gu.open_zarr_group(store=store, group_path=REFERENCES_GROUP_PATH))
-    refs = refs.drop_vars([n for n in tg.STEP_COORDS if n in refs.variables])
+    refs = refs.drop_vars([n for n in (*tg.STEP_COORDS, VALUE_TIME) if n in refs.variables])
+    fixed = {d: refs[d].values for d in fixed_dims}
+    end = refs_meta.index.get_level_values(dim)[-1]
     shard_steps = args.time_chunk_size * args.num_shard_chunks
-    batches = tg.shard_batches(stale, refs_meta.index, shard_steps)
+    if fixed:
+        batches = tg.step_batches(stale, fixed, shard_steps, shard_steps)
+    else:
+        batches = tg.shard_batches(stale, refs_meta.index, shard_steps)
     logger.info(f"Materializing {len(stale)} step(s) in {len(batches)} shard batch(es).")
     started = time.perf_counter()
     for i, batch in enumerate(batches, start=1):
@@ -318,28 +321,32 @@ def materialize_references(repo: ic.Repository, args: IngestGriddedDataInput) ->
                 chunk_size=args.chunk_size,
                 num_shard_chunks=args.num_shard_chunks,
                 time_chunk_size=args.time_chunk_size,
+                fixed_dims=fixed_dims,
             )
             # Later region writes reuse the stored encoding
             for var in refs.data_vars:
                 encoding[var].update(_data_encoding(refs[var], args.data_fill_values.get(var)))
-            tg.create_group(session, DATA_GROUP_PATH, refs, origin, time_step, dim, refs_meta.index[-1], encoding=encoding)
-            logger.info(f"Created {DATA_GROUP_PATH} on a {time_step} grid from {origin} to {refs_meta.index[-1]}.")
+            tg.create_group(session, DATA_GROUP_PATH, refs, origin, time_step, dim, end, encoding=encoding, fixed=fixed)
+            logger.info(f"Created {DATA_GROUP_PATH} on a {time_step} grid from {origin} to {end}.")
             data_meta = tg.read_step_metadata(session.store, DATA_GROUP_PATH, dim)
         else:
-            added = tg.ensure_axis(session, DATA_GROUP_PATH, refs_meta.index[-1], time_step, dim)
+            added = tg.ensure_axis(session, DATA_GROUP_PATH, end, time_step, dim)
             if added:
-                logger.info(f"Extended {DATA_GROUP_PATH} by {added} slot(s) to {refs_meta.index[-1]}.")
-        meta = refs_meta.loc[batch]
-        part = tg.with_step_metadata(
-            refs.sel({dim: batch}).load(),
-            dim,
-            status=meta[STATUS_COORD].to_numpy(),
-            source_last_modified=meta["source_last_modified"].to_numpy(),
-            # The upstream write time, so the step is current until /references changes again
-            updated_at=meta["updated_at"].to_numpy(),
-            existing=data_meta,
-        )
-        tg.region_write(session, DATA_GROUP_PATH, part, dim)
+                logger.info(f"Extended {DATA_GROUP_PATH} by {added} slot(s) to {end}.")
+        # A forecast batch's stale leads need not be contiguous; each rectangle is written on its own
+        for block in tg.step_blocks(batch, fixed) if fixed else [batch]:
+            meta = refs_meta.loc[block]
+            part = tg.with_step_metadata(
+                refs.sel(tg.block_selection(block, dim)).load(),
+                dim,
+                status=meta[STATUS_COORD].to_numpy(),
+                source_last_modified=meta["source_last_modified"].to_numpy(),
+                # The upstream write time, so the step is current until /references changes again
+                updated_at=meta["updated_at"].to_numpy(),
+                existing=data_meta,
+                fixed_dims=fixed_dims,
+            )
+            tg.region_write(session, DATA_GROUP_PATH, part, dim, fixed_dims=fixed_dims)
         snapshot_id = session.commit(f"Materialized {len(batch)} step(s) into {DATA_GROUP_PATH}")
         logger.info(
             f"Committed materialized batch {i} of {len(batches)} ({len(batch)} step(s)) "

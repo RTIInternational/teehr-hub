@@ -140,6 +140,8 @@ def nwm(tmp_path, monkeypatch):
     monkeypatch.setattr(gs.NWMForcing, "store_kwargs", {})
     monkeypatch.setattr(gs.NWMForcing, "list_files", list_files)
     monkeypatch.setattr(ing.gu, "configure_icechunk_s3_repo", open_repo)
+    monkeypatch.setattr(ing.gu, "build_icechunk_s3_storage", lambda **_: storage)
+    monkeypatch.setattr(ing.gu, "open_repo_for_reading", open_repo)
     return publish, open_repo
 
 
@@ -205,6 +207,62 @@ def test_forecast_upsert_rewrites_reissued_steps(harness, nwm):
     assert refs["updated_at"].values[0, 0] == untouched
 
 
-def test_forecast_ingest_needs_references_only_for_now(harness, nwm):
-    with pytest.raises(ValueError, match="materialized"):
-        _run(write_materialized=True)
+# --- Materialized data and overviews ---
+
+def _group(open_repo, group):
+    return xr.open_zarr(open_repo().readonly_session("main").store, group=group, consolidated=False, chunks=None)
+
+
+def _array(open_repo, path):
+    return zarr.open_array(open_repo().readonly_session("main").store, path=path, mode="r", zarr_format=3)
+
+
+def test_forecast_data_and_overviews_follow_references(harness, nwm):
+    publish, open_repo = nwm
+    for lead in LEADS:
+        publish(0, lead)
+    for lead in LEADS[:6] + LEADS[9:12]:
+        publish(1, lead)
+    _run(write_materialized=True, build_overviews_on_ingest=True, overview_factors=[2], num_shard_chunks=8, time_batch_size=16)
+    refs, data, level = (_group(open_repo, g) for g in ("references", "data", "overviews/2"))
+    rain, refs_rain = data["rainrate_hourly_mean"].isel(y=0, x=0).values, refs["rainrate_hourly_mean"].isel(y=0, x=0).values
+    assert np.allclose(rain, refs_rain, equal_nan=True) and np.isnan(rain[1, 6:9]).all()
+    assert (data["status"].values == refs["status"].values).all()
+    assert (data["value_time"].values == refs["value_time"].values).all()
+    # Each shard is one cycle and a block of leads; each overview chunk one step and tile
+    assert _array(open_repo, "data/rainrate_hourly_mean").shards[:2] == (1, 8)
+    assert _array(open_repo, "data/rainrate_hourly_mean").chunks[:2] == (1, 1)
+    assert _array(open_repo, "overviews/2/rainrate_hourly_mean").chunks[:2] == (1, 1)
+    assert level.sizes == {rc.REFERENCE_TIME: 2, rc.LEAD_TIME: 18, "y": 4, "x": 5}
+    assert np.allclose(level["rainrate_hourly_mean"].isel(y=0, x=0).values, rain, atol=2 * 0.075 / 65535, equal_nan=True)
+    assert (level["status"].values == data["status"].values).all()
+
+    # Filling cycle 1's gap materializes and coarsens only the new steps
+    updated = data["updated_at"].values.copy()
+    for lead in LEADS[6:9] + LEADS[12:]:
+        publish(1, lead)
+    _run(write_materialized=True, build_overviews_on_ingest=True, overview_factors=[2], num_shard_chunks=8, time_batch_size=16)
+    data, level = _group(open_repo, "data"), _group(open_repo, "overviews/2")
+    assert np.allclose(data["rainrate_hourly_mean"].isel(y=0, x=0).values[1], [rate(1, lead) for lead in LEADS])
+    assert (data["updated_at"].values[0] == updated[0]).all() and (data["updated_at"].values[1, :6] == updated[1, :6]).all()
+    assert not np.isnan(level["rainrate_hourly_mean"].isel(y=0, x=0).values[1]).any()
+
+
+def test_step_batches_hold_whole_shards():
+    steps = _steps([(c, lead) for c in CYCLES[:2] for lead in LEADS])
+    # 18 leads in shards of 8: shards of 8, 8 and 2 steps per cycle, packed whole into batches of up to 16
+    batches = tg.step_batches(steps, {rc.LEAD_TIME: LEADS}, shard_leads=8, max_steps=16)
+    assert [len(b) for b in batches] == [16, 10, 10]
+    assert batches[1].equals(_steps([(CYCLES[0], 17), (CYCLES[0], 18), *((CYCLES[1], lead) for lead in LEADS[:8])]))
+    # A shard larger than the budget is still one batch
+    assert [len(b) for b in tg.step_batches(steps, {rc.LEAD_TIME: LEADS}, shard_leads=18, max_steps=4)] == [18, 18]
+
+
+def test_forecast_encoding_shards_by_cycle():
+    ds = xr.Dataset({"v": ((rc.REFERENCE_TIME, rc.MEMBER, rc.LEAD_TIME, "y", "x"), np.zeros((2, 3, 18, 4, 4)))})
+    enc = ing.gu.create_encoding_config(ds, rc.REFERENCE_TIME, chunk_size=256, num_shard_chunks=30, time_chunk_size=2,
+                                        fixed_dims=(rc.MEMBER, rc.LEAD_TIME))
+    assert enc["v"]["chunks"] == (1, 1, 2, 256, 256) and enc["v"]["shards"] == (1, 1, 60, 256, 256)
+    analysis = xr.Dataset({"v": (("time", "y", "x"), np.zeros((2, 4, 4)))})
+    enc = ing.gu.create_encoding_config(analysis, "time", chunk_size=256, num_shard_chunks=30, time_chunk_size=2)
+    assert enc["v"]["chunks"] == (2, 256, 256) and enc["v"]["shards"] == (60, 256, 256)
