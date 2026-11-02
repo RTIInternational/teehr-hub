@@ -559,6 +559,45 @@ deployments:
       cron: "40 */6 * * *"
       active: false
 
+  - name: ingest-nwm31-forcing-short-range-icechunk
+    version:
+    tags: []
+    concurrency_limit:
+      limit: 1
+      collision_strategy: "CANCEL_NEW"
+    description: >-
+      Ingest NWM 3.1 forcing short range RAINRATE forecasts (CONUS, hourly cycles, leads 1-18) into an
+      IceChunk S3 repository, one step per (cycle, lead), then build map overviews. Full resolution stays
+      virtual (/references, read from noaa-nwm-pds); nothing is materialized.
+    entrypoint: workflows/ingests/ingest_gridded_data.py:ingest_gridded_data
+    parameters: {
+      "args": {
+        "source": {"type": "nwm", "nwm_configuration": "forcing_short_range", "nwm_version": "nwm31", "bucket": "s3://noaa-nwm-pds"},
+        # Every hourly cycle since the last run, and those still publishing their leads
+        "num_lookback_days": 1,
+        # Upsert, so a re-issued file is re-referenced; a virtual reference to a changed file can't be read
+        "write_mode": "upsert",
+        "chunk_size": 256,
+        "x_dim": "x",
+        "y_dim": "y",
+        "fallback_source_crs": "+proj=lcc +lat_0=40 +lon_0=-97 +lat_1=30 +lat_2=60 +x_0=0 +y_0=0 +R=6370000 +units=m +no_defs",
+        "xconcat_kwargs": {
+          "coords": "minimal",
+          "data_vars": "minimal",
+          "compat": "override",
+          "join": "override",
+          "combine_attrs": "override"
+        },
+        "overview_encoding": {
+          "rainrate_hourly_mean": {"dtype": "uint16", "max_value": 0.075, "units": "mm/s"}
+        }
+      }
+    }
+    work_pool: *work_pool_large
+    schedule:
+      cron: "50 */6 * * *"
+      active: false
+
   # Gridded Overview Builds (rebuilds, e.g. after changing overview_factors or overview_encoding)
   - name: build-nwm31-forcing-analysis-assim-icechunk-overviews
     version:
@@ -636,6 +675,25 @@ deployments:
         "location_id_prefix": "usgsbasin",
         "grid_variable_name": "rainrate_hourly_mean",
         "timeseries_table_name": "primary_timeseries"
+      }
+    }
+    work_pool: *work_pool_large
+
+  - name: calculate-nwm31-forcing-short-range-icechunk-mean-areal-values
+    version:
+    tags: []
+    description: >-
+      Calculate usgsbasin mean areal RAINRATE from the NWM 3.1 forcing short range IceChunk repository
+      into secondary_timeseries, one row per (cycle, lead, location) with reference_time set. Uses the
+      nwm30_conus_forcing weights shared with the analysis repo. Processes every written cycle unless
+      start_dt/end_dt (cycle times) are given, and upserts, so reruns replace values.
+    entrypoint: workflows/ingests/mean_areal_values.py:calculate_mean_areal_values
+    parameters: {
+      "args": {
+        "temp_dir_path": *temp_dir_path,
+        "configuration_name": "nwm31_forcing_short_range",
+        "location_id_prefix": "usgsbasin",
+        "grid_variable_name": "rainrate_hourly_mean"
       }
     }
     work_pool: *work_pool_large
