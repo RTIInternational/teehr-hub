@@ -21,8 +21,9 @@ TASK_TIMEOUT_SECONDS = 180
 def query_last_reference_times(
     stripped_ids: List[str],
     ev: object,
+    configuration_name: str,
 ) -> dict:
-    """Query the most recent reference time for all gages at once."""
+    """Query the most recent reference time of the configuration's forecasts for all gages at once."""
     logger = get_run_logger()
 
     # reformat stripped_ids for query
@@ -32,9 +33,10 @@ def query_last_reference_times(
     id_list = ','.join([f"'{id}'" for id in formatted_ids])
     filter_condition = f"location_id IN ({id_list})"
 
-    # Query once for all locations
+    # Query once for all locations. The table is partitioned by configuration_name, so filtering on it
+    # reads only this configuration's files rather than every forecast in the table.
     result_df = ev.secondary_timeseries.to_sdf().filter(
-        filter_condition
+        f"configuration_name = '{configuration_name}' AND {filter_condition}"
     ).groupby("location_id").agg(
         {"reference_time": "max"}
     ).withColumnRenamed(

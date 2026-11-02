@@ -2,7 +2,7 @@ import pytest
 
 pytest.importorskip("teehr")
 
-import ingests.nwps_rfc_streamflow_forecasts as nwps
+import nwps_rfc_streamflow_forecasts as nwps  # noqa: E402
 
 
 class _FakeCrosswalks:

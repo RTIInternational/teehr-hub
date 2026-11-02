@@ -98,7 +98,8 @@ def ingest_nwps_rfc_forecasts(
     # query last reference times for all gages at once
     last_reference_times = query_last_reference_times(
         stripped_ids=stripped_ids,
-        ev=ev
+        ev=ev,
+        configuration_name=CONFIGURATION_NAME,
     )
 
     # assemble API endpoints
