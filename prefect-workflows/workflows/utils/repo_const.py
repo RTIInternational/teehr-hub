@@ -3,6 +3,7 @@
 This is the repos' on-disk contract. Changing a value breaks existing repos and their readers:
 these flows, teehr-cloud-core's xpublish provider (which keeps its own copies) and outside users.
 Add new names here; change an existing one only together with a migration of existing repos.
+Described for other developers in teehr-cloud-core's docs/gridded-repo-contract.md.
 """
 import numpy as np
 
