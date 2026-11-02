@@ -12,6 +12,7 @@ import type { PolygonFeatureProps, PolygonFeatures } from '@/shared/types/gridde
 
 import { useDashboard, ActionTypes } from '../DashboardContext';
 import { useCurrentTimestep } from '../hooks/useCurrentTimestep';
+import { useGriddedSelection } from '../hooks/useGriddedSelection';
 import { OVERLAY_LAYERS } from '../utils/overlayLayers';
 import GriddedColorBar from './GriddedColorBar';
 
@@ -80,6 +81,7 @@ const GriddedMapComponent = () => {
 
   const polygonLayers = usePolygonLayers();
   const currentTimestep = useCurrentTimestep();
+  const { selectors } = useGriddedSelection();
 
   const mapContainer = useRef<HTMLDivElement | null>(null);
   const map = useRef<maplibregl.Map | null>(null);
@@ -214,7 +216,7 @@ const GriddedMapComponent = () => {
     if (mapInstance.getLayer('gridded-layer')) mapInstance.removeLayer('gridded-layer');
     if (mapInstance.getSource('gridded-tiles')) mapInstance.removeSource('gridded-tiles');
 
-    if (!dataset || !variable || !currentTimestep) return;
+    if (!dataset || !variable || !selectors) return;
 
     // Refresh the token before issuing tile requests so transformRequest has a current value.
     tokenRef.current = await ensureFreshToken();
@@ -229,7 +231,7 @@ const GriddedMapComponent = () => {
     const tileUrl = buildGriddedTileUrl(
       dataset,
       variable,
-      currentTimestep,
+      selectors,
       colorRamp,
       colorRampMin,
       colorRampMax
@@ -247,7 +249,7 @@ const GriddedMapComponent = () => {
       source: 'gridded-tiles',
       paint: { 'raster-opacity': 0.8 },
     });
-  }, [mapLoaded, dataset, variable, currentTimestep, colorRamp, colorRampMin, colorRampMax]);
+  }, [mapLoaded, dataset, variable, selectors, colorRamp, colorRampMin, colorRampMax]);
 
   useEffect(() => {
     void updateTileLayer();

@@ -1,6 +1,6 @@
 import { queryOptions, useQuery } from '@tanstack/react-query';
 
-import { getGriddedTimesteps } from '@/shared/api/gridded/timesteps';
+import { getGriddedCoordValues, getGriddedTimesteps } from '@/shared/api/gridded/timesteps';
 
 const fetchTimesteps = async (datasetId?: string | null) => {
   if (!datasetId) {
@@ -22,3 +22,11 @@ export const useTimesteps = (datasetId?: string | null) => {
   const query = useQuery(timestepsQueryOptions(datasetId));
   return { ...query, data: query.data ?? [] };
 };
+
+export const coordValuesQueryOptions = (datasetId: string | null | undefined, coordName: string) =>
+  queryOptions({
+    queryKey: ['gridded', datasetId, 'coords', coordName],
+    queryFn: () => getGriddedCoordValues(datasetId!, coordName),
+    enabled: !!datasetId,
+    select: (data) => data.values,
+  });

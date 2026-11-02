@@ -1,6 +1,6 @@
-import { useQuery } from '@tanstack/react-query';
+import { queryOptions, useQuery } from '@tanstack/react-query';
 
-import { getGriddedDatasets } from '@/shared/api/gridded/datasets';
+import { getGriddedDatasets, getGriddedGridSpec } from '@/shared/api/gridded/datasets';
 
 export const useDatasets = () => {
   const query = useQuery({
@@ -11,3 +11,16 @@ export const useDatasets = () => {
 
   return { ...query, data: query.data ?? [] };
 };
+
+export const gridSpecQueryOptions = (datasetId?: string | null) =>
+  queryOptions({
+    queryKey: ['gridded', datasetId, 'gridSpec'],
+    queryFn: () => getGriddedGridSpec(datasetId!),
+    enabled: !!datasetId,
+  });
+
+export const useGridSpec = (datasetId?: string | null) => useQuery(gridSpecQueryOptions(datasetId));
+
+// Whether a dataset is a forecast (has axes after its cycles); undefined until its spec loads
+export const isForecast = (spec?: { fixed_dims: string[] }) =>
+  spec === undefined ? undefined : spec.fixed_dims.length > 0;

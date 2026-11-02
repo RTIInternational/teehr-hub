@@ -4,6 +4,7 @@ import { fetchGriddedEdrTimeseries } from '@/shared/api/gridded/edr';
 import type { DatasetTimeseries } from '@/shared/types/gridded/edr';
 import type { GriddedTimeseriesFilters } from '@/shared/types/gridded/timeseries';
 
+import { gridSpecQueryOptions, isForecast } from './datasets';
 import { timestepsQueryOptions } from './timesteps';
 import { variablesQueryOptions } from './variables';
 
@@ -75,8 +76,17 @@ export const useEdrTimeseries = ({
 }: EdrTimeseriesArgs): DatasetTimeseries[] => {
   const variables = useQueries({ queries: datasets.map((ds) => variablesQueryOptions(ds)) });
   const timesteps = useQueries({ queries: datasets.map((ds) => timestepsQueryOptions(ds)) });
-  const plans = datasets.map((ds, i) =>
-    planSeries(
+  const gridSpecs = useQueries({ queries: datasets.map((ds) => gridSpecQueryOptions(ds)) });
+  const plans = datasets.map((ds, i): SeriesPlan => {
+    const forecast = isForecast(gridSpecs[i].data);
+    // A forecast point series (per cycle and lead) isn't drawn yet; wait for the spec to know
+    if (forecast !== false) {
+      return {
+        variable: null,
+        skipped: forecast ? `${ds}: forecast timeseries aren't shown yet` : undefined,
+      };
+    }
+    return planSeries(
       ds,
       variables[i].data ?? [],
       timesteps[i].data ?? [],
@@ -84,8 +94,8 @@ export const useEdrTimeseries = ({
       start_date,
       end_date,
       anchor
-    )
-  );
+    );
+  });
 
   const series = useQueries({
     queries: datasets.map((ds, i) => {
@@ -102,8 +112,13 @@ export const useEdrTimeseries = ({
     datasetId,
     variable: plans[i].variable,
     data: series[i].data,
-    error: (variables[i].error ?? timesteps[i].error ?? series[i].error)?.message,
+    error: (variables[i].error ?? timesteps[i].error ?? gridSpecs[i].error ?? series[i].error)
+      ?.message,
     skipped: plans[i].skipped,
-    isLoading: variables[i].isLoading || timesteps[i].isLoading || series[i].isLoading,
+    isLoading:
+      variables[i].isLoading ||
+      timesteps[i].isLoading ||
+      gridSpecs[i].isLoading ||
+      series[i].isLoading,
   }));
 };

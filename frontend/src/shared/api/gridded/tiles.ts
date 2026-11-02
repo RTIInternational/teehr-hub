@@ -44,11 +44,12 @@ export const getTilesLegend = (
   );
 };
 
-// Note: {z}/{y}/{x} order (y before x) is required by TilesPlugin.
+// Note: {z}/{y}/{x} order (y before x) is required by TilesPlugin. ``selectors`` pick the map by
+// dimension: { time } for analysis datasets, { reference_time, lead_time, member? } for forecasts.
 export const buildGriddedTileUrl = (
   datasetId: string,
   variable: string,
-  timestep: string,
+  selectors: Record<string, string>,
   colorRamp = 'raster/plasma',
   min = 0,
   max = 100
@@ -61,7 +62,7 @@ export const buildGriddedTileUrl = (
     width: '256',
     height: '256',
     f: 'image/png',
-    time: timestep,
+    ...selectors,
   });
   return `${GRIDDED_API_BASE_URL}/api/datasets/${encodeURIComponent(datasetId)}/tiles/WebMercatorQuad/{z}/{y}/{x}?${params.toString()}`;
 };
