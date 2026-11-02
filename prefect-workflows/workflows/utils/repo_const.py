@@ -1,4 +1,4 @@
-"""Names and values our gridded IceChunk repos store, which everything reading them relies on.
+"""Names and values our gridded Icechunk repos store, which everything reading them relies on.
 
 This is the repos' on-disk contract. Changing a value breaks existing repos and their readers:
 these flows, teehr-cloud-core's xpublish provider (which keeps its own copies) and outside users.
@@ -19,6 +19,11 @@ DATA_GROUP_ATTR = "data_group"
 # The teehr configuration the repo holds, and its timeseries table ("primary" or "secondary")
 CONFIGURATION_NAME_ATTR = "configuration_name"
 TIMESERIES_TYPE_ATTR = "timeseries_type"
+# Dims after the append dim, in order, e.g. ["member", "lead_time"]; missing means none (analysis)
+FIXED_DIMS_ATTR = "fixed_dims"
+# On-disk layout: 1 is the analysis time grid, 2 adds fixed axes (forecasts); missing means 1.
+# Bump it for a change existing readers can't handle.
+LAYOUT_VERSION_ATTR = "layout_version"
 
 # --- Groups ---
 # Virtual references to the source files; always written
@@ -40,6 +45,22 @@ STATUS_ATTRS = {
 }
 # Status of a time-grid slot not yet written
 UNWRITTEN = -1
+# Status of a forecast cell the source never publishes, e.g. leads past a member's horizon
+NOT_EXPECTED = -2
 # When each slot was first written, last written, and its source file's last modified time
 AUDIT_COORDS = ("created_at", "updated_at", "source_last_modified")
 STEP_COORDS = (STATUS_COORD, *AUDIT_COORDS)
+
+# --- Forecast coordinates ---
+# Forecast repos append along reference_time; member (ensembles only) and lead_time are fixed axes
+LEAD_TIME = "lead_time"
+# Reference time plus lead time, a 2-D coordinate on (reference_time, lead_time)
+VALUE_TIME = "value_time"
+# CF meaning of the forecast coordinates; variable names stay teehr's. In CF the T axis is valid
+# time, so reference_time gets no axis.
+FORECAST_COORD_ATTRS = {
+    "reference_time": {"standard_name": "forecast_reference_time", "long_name": "forecast reference time"},
+    "member": {"standard_name": "realization", "long_name": "ensemble member", "units": "1"},
+    LEAD_TIME: {"standard_name": "forecast_period", "long_name": "forecast lead time", "units": "hours"},
+    VALUE_TIME: {"standard_name": "time", "long_name": "valid time"},
+}
