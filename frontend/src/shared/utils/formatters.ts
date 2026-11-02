@@ -158,3 +158,9 @@ export const formatUnknownValueForDisplay = (
 
   return unserializableText;
 };
+
+// A number to `digits` significant digits, in exponent form when very small so it never shows as 0
+export const formatSignificant = (value: number, digits = 3): string =>
+  value !== 0 && Math.abs(value) < 1e-3
+    ? value.toExponential(digits - 1)
+    : Number(value.toPrecision(digits)).toString();

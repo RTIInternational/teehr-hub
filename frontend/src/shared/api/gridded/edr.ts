@@ -31,7 +31,8 @@ function parseTimeseriesCsv(csvText: string, variable: string) {
   if (lines.length < 2) return { times: [], values: [] };
   const headers = lines[0].split(',').map((h) => h.trim().replace(/^["']|["']$/g, ''));
   let timeColIdx = -1;
-  for (const name of ['datetime', 'time', 'date']) {
+  // A forecast's rows are its leads, plotted at their valid time
+  for (const name of ['value_time', 'datetime', 'time', 'date']) {
     timeColIdx = headers.findIndex((h) => h.toLowerCase() === name);
     if (timeColIdx !== -1) break;
   }
@@ -50,18 +51,21 @@ function parseTimeseriesCsv(csvText: string, variable: string) {
   return { times, values };
 }
 
+// `selectors` pick a forecast's step within the cycle (`timestep`), e.g. { lead_time: '3' }
 export const fetchGriddedEdrPoint = async (
   datasetId: string,
   variable: string,
   timestep: string,
   lon: number,
-  lat: number
+  lat: number,
+  selectors: Record<string, string> = {}
 ) => {
   const params = new URLSearchParams({
     coords: `POINT(${lon} ${lat})`,
     'parameter-name': variable,
     datetime: timestep,
     f: 'geojson',
+    ...selectors,
   });
   const path = `/api/datasets/${encodeURIComponent(datasetId + '_data')}/edr/position?${params.toString()}`;
   const data = await griddedApiCall<EdrPointResponse>(path);

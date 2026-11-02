@@ -9,6 +9,7 @@ import { buildGriddedTileUrl, buildPmtilesUrl } from '@/shared/api/gridded/tiles
 import { ensureFreshToken } from '@/shared/auth/keycloak';
 import { usePolygonLayers, useTilesLegend } from '@/shared/queries/gridded/tiles';
 import type { PolygonFeatureProps, PolygonFeatures } from '@/shared/types/gridded/tiles';
+import { formatSignificant } from '@/shared/utils/formatters';
 
 import { useDashboard, ActionTypes } from '../DashboardContext';
 import { useCurrentTimestep } from '../hooks/useCurrentTimestep';
@@ -81,7 +82,7 @@ const GriddedMapComponent = () => {
 
   const polygonLayers = usePolygonLayers();
   const currentTimestep = useCurrentTimestep();
-  const { selectors } = useGriddedSelection();
+  const { appendDim, selectors, validTime } = useGriddedSelection();
 
   const mapContainer = useRef<HTMLDivElement | null>(null);
   const map = useRef<maplibregl.Map | null>(null);
@@ -481,7 +482,16 @@ const GriddedMapComponent = () => {
       }
 
       // Otherwise, query the gridded data if available
-      if (!dataset || !variable || !currentTimestep) return;
+      if (!dataset || !variable || !currentTimestep || !selectors) return;
+      // A forecast's lead (and member) within the cycle; the cycle goes as the EDR datetime
+      const stepSelectors = Object.fromEntries(
+        Object.entries(selectors).filter(([dim]) => dim !== appendDim)
+      );
+      const lead = stepSelectors.lead_time;
+      const when =
+        lead !== undefined
+          ? `Cycle ${escapeHtml(currentTimestep)}, lead ${escapeHtml(lead)} h<br>Valid ${escapeHtml(validTime ?? '')}`
+          : escapeHtml(currentTimestep);
 
       dispatch({
         type: ActionTypes.SET_CLICKED_POINT,
@@ -494,14 +504,21 @@ const GriddedMapComponent = () => {
         .addTo(mapInstance);
 
       try {
-        const value = await fetchGriddedEdrPoint(dataset, variable, currentTimestep, lng, lat);
+        const value = await fetchGriddedEdrPoint(
+          dataset,
+          variable,
+          currentTimestep,
+          lng,
+          lat,
+          stepSelectors
+        );
         popupInstance.setHTML(`
           <div style="padding:8px; font-size:0.85rem;">
             <div style="font-weight:600; margin-bottom:4px; color:#495057;">${escapeHtml(variable)}</div>
-            <div><strong>Value:</strong> ${value !== null && value !== undefined ? (typeof value === 'number' ? value.toFixed(2) : escapeHtml(value)) : 'N/A'}</div>
+            <div><strong>Value:</strong> ${value !== null && value !== undefined ? (typeof value === 'number' ? formatSignificant(value, 4) : escapeHtml(value)) : 'N/A'}</div>
             <div><strong>Lat:</strong> ${lat.toFixed(4)}</div>
             <div><strong>Lon:</strong> ${lng.toFixed(4)}</div>
-            <div style="margin-top:4px; font-size:0.75rem; color:#6c757d;">${escapeHtml(currentTimestep)}</div>
+            <div style="margin-top:4px; font-size:0.75rem; color:#6c757d;">${when}</div>
           </div>
         `);
       } catch (err) {
@@ -520,7 +537,17 @@ const GriddedMapComponent = () => {
         mapInstance.off('click', clickHandlerRef.current);
       }
     };
-  }, [mapLoaded, dataset, variable, currentTimestep, activePolygonLayer, dispatch]);
+  }, [
+    mapLoaded,
+    dataset,
+    variable,
+    currentTimestep,
+    appendDim,
+    selectors,
+    validTime,
+    activePolygonLayer,
+    dispatch,
+  ]);
 
   const colorLegend = mapLoaded && dataset && variable ? (tilesLegend.data ?? null) : null;
 

@@ -4,7 +4,7 @@ import { fetchGriddedEdrTimeseries } from '@/shared/api/gridded/edr';
 import type { DatasetTimeseries } from '@/shared/types/gridded/edr';
 import type { GriddedTimeseriesFilters } from '@/shared/types/gridded/timeseries';
 
-import { gridSpecQueryOptions, isForecast } from './datasets';
+import { gridSpecQueryOptions } from './datasets';
 import { timestepsQueryOptions } from './timesteps';
 import { variablesQueryOptions } from './variables';
 
@@ -31,13 +31,26 @@ const planSeries = (
   preferredVariable: string | null,
   startDate: string | null,
   endDate: string | null,
-  anchor: string | undefined
+  anchor: string | undefined,
+  forecast = false
 ): SeriesPlan => {
   const variable =
     preferredVariable && variables.includes(preferredVariable)
       ? preferredVariable
       : (variables[0] ?? null);
   if (timesteps.length === 0) return { variable };
+
+  // A forecast shows one cycle's whole run: the latest cycle on or before the span's end (or the
+  // map's date). Its timesteps are its cycles.
+  if (forecast) {
+    const until = endDate ? withSeconds(endDate) : anchor;
+    const cycles = until ? timesteps.filter((t) => t <= until) : timesteps;
+    if (cycles.length === 0) {
+      return { variable, skipped: `${datasetId}: no forecast cycle on or before ${until}` };
+    }
+    const cycle = cycles[cycles.length - 1];
+    return { variable, start: cycle, end: cycle };
+  }
 
   const first = timesteps[0];
   const last = timesteps[timesteps.length - 1];
@@ -78,13 +91,11 @@ export const useEdrTimeseries = ({
   const timesteps = useQueries({ queries: datasets.map((ds) => timestepsQueryOptions(ds)) });
   const gridSpecs = useQueries({ queries: datasets.map((ds) => gridSpecQueryOptions(ds)) });
   const plans = datasets.map((ds, i): SeriesPlan => {
-    const forecast = isForecast(gridSpecs[i].data);
-    // A forecast point series (per cycle and lead) isn't drawn yet; wait for the spec to know
-    if (forecast !== false) {
-      return {
-        variable: null,
-        skipped: forecast ? `${ds}: forecast timeseries aren't shown yet` : undefined,
-      };
+    const spec = gridSpecs[i].data;
+    // Wait for the spec, which says whether the dataset is a forecast
+    if (!spec) return { variable: null };
+    if (spec.fixed_dims.includes('member')) {
+      return { variable: null, skipped: `${ds}: ensemble timeseries aren't shown yet` };
     }
     return planSeries(
       ds,
@@ -93,7 +104,8 @@ export const useEdrTimeseries = ({
       preferredVariable,
       start_date,
       end_date,
-      anchor
+      anchor,
+      spec.fixed_dims.length > 0
     );
   });
 

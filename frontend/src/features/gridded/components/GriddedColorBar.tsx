@@ -2,6 +2,7 @@
 // its size and position never depend on the value range or label widths.
 
 import type { TilesLegendResponse } from '@/shared/api/gridded/tiles';
+import { formatSignificant } from '@/shared/utils/formatters';
 
 type GriddedColorBarProps = {
   legend: TilesLegendResponse;
@@ -14,10 +15,7 @@ const TICK_COUNT = 5;
 const GRADIENT_STOPS = 32;
 
 // Exponent form keeps very small values to a fixed label width
-const formatTick = (value: number): string =>
-  value !== 0 && Math.abs(value) < 1e-3
-    ? value.toExponential(2)
-    : Number(value.toPrecision(3)).toString();
+const formatTick = (value: number): string => formatSignificant(value, 3);
 
 const GriddedColorBar = ({ legend }: GriddedColorBarProps) => {
   const [min, max] = legend.colorscalerange;
