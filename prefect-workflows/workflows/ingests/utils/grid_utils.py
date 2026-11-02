@@ -252,38 +252,31 @@ def _open_virtual_safe(
         return None, f"Corrupt or unreadable file skipped: {url} ({e})"
 
 
-@task(cache_policy=NO_CACHE)
-def create_virtual_xarray_dataset(
+def open_virtual_datasets(
     file_list: list,
     registry: ObjectStoreRegistry,
     parser: vz.parsers,
-    concat_dim: str,
     ignore_missing_file: bool = True,
     ignore_unreadable_file: bool = True,
     preprocess: Callable[[xr.Dataset, str], xr.Dataset] | None = None,
-    **kwargs
-) -> xr.Dataset:
-    """Create a virtual xarray dataset from a list of files.
+) -> dict[str, xr.Dataset]:
+    """Each file's virtual dataset by URL; files skipped as missing or unreadable are left out.
 
     Parameters
     ----------
     file_list : list
-        A list of file paths to include in the dataset.
+        A list of file paths to open.
     registry : ObjectStoreRegistry
         The object store registry to use for accessing the files.
     parser : vz.parsers
         The parser to use for reading the files.
-    concat_dim : str
-        The dimension along which to concatenate the datasets.
     ignore_missing_file : bool, optional
         Whether to skip files that don't exist. Default is True.
     ignore_unreadable_file : bool, optional
         Whether to skip files that exist but can't be opened, including after a network error.
         Default is True; with False, such a file fails the run before anything is written.
     preprocess : Callable[[xr.Dataset, str], xr.Dataset], optional
-        Applied to each file's virtual dataset, with its URL, before concatenation.
-    **kwargs : dict
-        Additional keyword arguments to pass to xr.concat.
+        Applied to each file's virtual dataset, with its URL.
     """
     logger = get_run_logger()
     # HDF5 parsing holds a global lock, so threads parse one file at a time; big jobs use processes
@@ -311,18 +304,34 @@ def create_virtual_xarray_dataset(
         on_complete=on_complete,
     ))
     # Preprocessing runs here, since a source's preprocess may not pickle
-    virtual_datasets = [
-        preprocess(ds, url) if preprocess else ds for (ds, _), url in zip(opened, file_list) if ds is not None
-    ]
+    virtual_datasets = {
+        url: preprocess(ds, url) if preprocess else ds for (ds, _), url in zip(opened, file_list) if ds is not None
+    }
     if len(virtual_datasets) == 0:
         raise ValueError("No virtual datasets were created. Check the file list and registry of the source data.")
     logger.info(f"Found {len(virtual_datasets)} virtual datasets from {len(file_list)} files.")
-    virtual_ds = xr.concat(
-        virtual_datasets,
-        dim=concat_dim,
-        **kwargs
+    return virtual_datasets
+
+
+@task(cache_policy=NO_CACHE)
+def create_virtual_xarray_dataset(
+    file_list: list,
+    registry: ObjectStoreRegistry,
+    parser: vz.parsers,
+    concat_dim: str,
+    ignore_missing_file: bool = True,
+    ignore_unreadable_file: bool = True,
+    preprocess: Callable[[xr.Dataset, str], xr.Dataset] | None = None,
+    **kwargs
+) -> xr.Dataset:
+    """Create a virtual xarray dataset from a list of files, concatenated along ``concat_dim``.
+
+    See ``open_virtual_datasets`` for the parameters; ``**kwargs`` are passed to xr.concat.
+    """
+    virtual_datasets = open_virtual_datasets(
+        file_list, registry, parser, ignore_missing_file, ignore_unreadable_file, preprocess
     )
-    return virtual_ds
+    return xr.concat(list(virtual_datasets.values()), dim=concat_dim, **kwargs)
 
 
 def align_virtual_fill_values(virtual_ds: xr.Dataset) -> xr.Dataset:

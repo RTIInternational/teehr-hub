@@ -206,8 +206,8 @@ class IngestGriddedDataInput(BuildOverviewsDataInput):
 
     ``source`` selects the data source by its ``type``. Dataset fields (dims, kwargs, ...)
     default to NWM forcing's values; deployments for other sources override them. The
-    repository name (``configuration_name``) and ``variable_names`` are derived from the source
-    and hidden from the flow's parameters.
+    repository name (``configuration_name``), ``variable_names`` and ``append_dim`` are derived
+    from the source and hidden from the flow's parameters.
     """
 
     source: GriddedSourceType = Field(
@@ -216,6 +216,7 @@ class IngestGriddedDataInput(BuildOverviewsDataInput):
     )
     configuration_name: SkipJsonSchema[Optional[str]] = None
     variable_names: SkipJsonSchema[Optional[list[str]]] = None
+    append_dim: SkipJsonSchema[Optional[str]] = None
 
     fallback_source_crs: Optional[str] = Field(
         default=None,
@@ -297,13 +298,14 @@ class IngestGriddedDataInput(BuildOverviewsDataInput):
     @model_validator(mode="before")
     @classmethod
     def _apply_source(cls, data: Any) -> Any:
-        """Derive the repository and variable names, and write_materialized unless given, from the source."""
+        """Derive the repository and variable names, the append axis, and write_materialized unless given, from the source."""
         if not isinstance(data, dict) or "source" not in data:
             return data
         source = _SOURCE_ADAPTER.validate_python(data["source"])
         derived = {
             "configuration_name": source.repository_name(),
             "variable_names": source.ingest_variables(),
+            "append_dim": source.append_dim(),
         }
         for field, value in derived.items():
             if data.get(field) not in (None, value):

@@ -24,6 +24,7 @@ FIXED_DIMS_ATTR = "fixed_dims"
 # On-disk layout: 1 is the analysis time grid, 2 adds fixed axes (forecasts); missing means 1.
 # Bump it for a change existing readers can't handle.
 LAYOUT_VERSION_ATTR = "layout_version"
+FORECAST_LAYOUT_VERSION = 2
 
 # --- Groups ---
 # Virtual references to the source files; always written
@@ -47,20 +48,28 @@ STATUS_ATTRS = {
 UNWRITTEN = -1
 # Status of a forecast cell the source never publishes, e.g. leads past a member's horizon
 NOT_EXPECTED = -2
+# Forecast repos also name the slot states in the flags, so outside readers can interpret them
+FORECAST_STATUS_ATTRS = {
+    **STATUS_ATTRS,
+    "flag_values": np.arange(NOT_EXPECTED, len(STATUS_MEANINGS), dtype="int8"),
+    "flag_meanings": " ".join(["not_expected", "unwritten", *STATUS_MEANINGS]),
+}
 # When each slot was first written, last written, and its source file's last modified time
 AUDIT_COORDS = ("created_at", "updated_at", "source_last_modified")
 STEP_COORDS = (STATUS_COORD, *AUDIT_COORDS)
 
 # --- Forecast coordinates ---
 # Forecast repos append along reference_time; member (ensembles only) and lead_time are fixed axes
+REFERENCE_TIME = "reference_time"
+MEMBER = "member"
 LEAD_TIME = "lead_time"
 # Reference time plus lead time, a 2-D coordinate on (reference_time, lead_time)
 VALUE_TIME = "value_time"
 # CF meaning of the forecast coordinates; variable names stay teehr's. In CF the T axis is valid
 # time, so reference_time gets no axis.
 FORECAST_COORD_ATTRS = {
-    "reference_time": {"standard_name": "forecast_reference_time", "long_name": "forecast reference time"},
-    "member": {"standard_name": "realization", "long_name": "ensemble member", "units": "1"},
+    REFERENCE_TIME: {"standard_name": "forecast_reference_time", "long_name": "forecast reference time"},
+    MEMBER: {"standard_name": "realization", "long_name": "ensemble member", "units": "1"},
     LEAD_TIME: {"standard_name": "forecast_period", "long_name": "forecast lead time", "units": "hours"},
     VALUE_TIME: {"standard_name": "time", "long_name": "valid time"},
 }

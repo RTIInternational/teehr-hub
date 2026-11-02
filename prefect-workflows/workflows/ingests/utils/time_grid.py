@@ -25,6 +25,8 @@ from workflows.utils.repo_const import (
     GRID_ATTRS,
     GRID_NAME_ATTR,
     LEAD_TIME,
+    REFERENCE_TIME,
+    FORECAST_STATUS_ATTRS,
     STATUS_ATTRS,
     STATUS_COORD,
     STATUS_MEANINGS,
@@ -86,7 +88,7 @@ def empty_step_metadata(times: pd.DatetimeIndex, dim: str, fixed: dict | None = 
     shape = (len(times), *(len(values) for values in (fixed or {}).values()))
     nat = np.full(shape, np.datetime64("NaT", "ms"), "datetime64[ms]")
     return {
-        STATUS_COORD: (dims, np.full(shape, UNWRITTEN, "int8"), STATUS_ATTRS),
+        STATUS_COORD: (dims, np.full(shape, UNWRITTEN, "int8"), FORECAST_STATUS_ATTRS if fixed else STATUS_ATTRS),
         **{name: (dims, nat) for name in AUDIT_COORDS},
     }
 
@@ -102,7 +104,7 @@ def append_dim_attrs(template_attrs: dict, forecast: bool) -> dict:
     attrs = {k: v for k, v in template_attrs.items() if k not in ("units", "calendar")}
     if forecast:
         attrs = {k: v for k, v in attrs.items() if k not in ("standard_name", "axis")}
-        return {**attrs, **FORECAST_COORD_ATTRS["reference_time"]}
+        return {**attrs, **FORECAST_COORD_ATTRS[REFERENCE_TIME]}
     return {"standard_name": "time", "axis": "T", **attrs}
 
 
@@ -288,6 +290,37 @@ def create_group(
     ensure_axis(session, group, end, time_step, dim)
 
 
+def block_cells(ds: xr.Dataset, dim: str, fixed_dims: tuple[str, ...] = ()) -> pd.Index:
+    """The steps of ``ds``, or with ``fixed_dims`` its cells (``dim``, *``fixed_dims``) in C order."""
+    if not fixed_dims:
+        return pd.DatetimeIndex(ds[dim].values, name=dim)
+    step_dims = (dim, *fixed_dims)
+    return pd.MultiIndex.from_product([ds[d].to_index() for d in step_dims], names=step_dims)
+
+
+def cell_blocks(cells: pd.MultiIndex, fixed: dict) -> list[pd.MultiIndex]:
+    """Group forecast cells into rectangular blocks for region writes.
+
+    A block is the cycles that share one member (if any) and one contiguous run of leads on the
+    repo's lead axis, so complete cycles fall into one block whatever their number.
+    """
+    dim, *fixed_dims = cells.names
+    lead_dim = fixed_dims[-1]
+    member_dims = fixed_dims[:-1]
+    lead_pos = {lead: i for i, lead in enumerate(fixed[lead_dim])}
+    runs: dict[tuple, list] = {}
+    for key, group in pd.Series(0, index=cells).groupby(level=[dim, *member_dims] if member_dims else dim):
+        cycle, members = (key[0], tuple(key[1:])) if member_dims else (key, ())
+        leads = sorted(group.index.get_level_values(lead_dim), key=lead_pos.__getitem__)
+        pos = [lead_pos[lead] for lead in leads]
+        for run in np.split(np.arange(len(leads)), np.flatnonzero(np.diff(pos) != 1) + 1):
+            runs.setdefault((members, tuple(leads[i] for i in run)), []).append(cycle)
+    return [
+        pd.MultiIndex.from_product([cycles, *([m] for m in members), list(leads)], names=cells.names)
+        for (members, leads), cycles in runs.items()
+    ]
+
+
 def with_step_metadata(
     ds: xr.Dataset,
     dim: str,
@@ -304,17 +337,14 @@ def with_step_metadata(
     """
     step_dims = (dim, *fixed_dims)
     shape = tuple(ds.sizes[d] for d in step_dims)
-    if fixed_dims:
-        cells = pd.MultiIndex.from_product([ds[d].to_index() for d in step_dims], names=step_dims)
-    else:
-        cells = pd.DatetimeIndex(ds[dim].values)
+    cells = block_cells(ds, dim, fixed_dims)
     created = np.full(len(cells), np.datetime64("NaT", "ms"), "datetime64[ms]")
     if existing is not None:
         created = existing["created_at"].reindex(cells).to_numpy("datetime64[ms]")
     now = utc_now()
     created = np.where(np.isnat(created), now, created).astype("datetime64[ms]")
     return ds.assign_coords({
-        STATUS_COORD: (step_dims, np.asarray(status, "int8").reshape(shape), STATUS_ATTRS),
+        STATUS_COORD: (step_dims, np.asarray(status, "int8").reshape(shape), FORECAST_STATUS_ATTRS if fixed_dims else STATUS_ATTRS),
         "created_at": (step_dims, created.reshape(shape)),
         "updated_at": (step_dims, np.broadcast_to(np.asarray(updated_at, "datetime64[ms]"), len(cells)).reshape(shape).copy()),
         "source_last_modified": (step_dims, np.asarray(source_last_modified, "datetime64[ms]").reshape(shape)),
