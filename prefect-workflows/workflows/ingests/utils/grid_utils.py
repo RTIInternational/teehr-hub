@@ -23,6 +23,8 @@ from prefect.cache_policies import NO_CACHE
 from teehr.fetching.utils import REFERENCE_BUILD_MIN_ITEMS, REFERENCE_WORKER_MEMORY
 from teehr.utils.concurrency import map_blocking, resolve_budget, run_sync, use_process_pool
 
+from workflows.utils.repo_const import DATA_GROUP_ATTR, DATA_GROUP_PATH
+
 # Store kwargs whose values are kept out of logs
 _SECRET_KWARGS = {"access_key_id", "secret_access_key", "session_token", "service_account_key", "bearer_token"}
 
@@ -34,10 +36,6 @@ _VIRTUAL_STORES = {
     "gs": ic.storage.gcs_store,
     "gcs": ic.storage.gcs_store,
 }
-
-# Root-group attribute naming the group that holds a repo's full-resolution data
-DATA_GROUP_ATTR = "data_group"
-_DEFAULT_DATA_GROUP = "/data"
 
 # GeoTIFF geokey value for a user-defined CRS, i.e. one without an EPSG code
 _GEOTIFF_USER_DEFINED = 32767
@@ -203,8 +201,8 @@ def read_data_group(store: ic.IcechunkStore) -> str:
     try:
         attrs = zarr.open_group(store, mode="r", zarr_format=3).attrs
     except (zarr.errors.GroupNotFoundError, FileNotFoundError):
-        return _DEFAULT_DATA_GROUP
-    return attrs.get(DATA_GROUP_ATTR, _DEFAULT_DATA_GROUP)
+        return DATA_GROUP_PATH
+    return attrs.get(DATA_GROUP_ATTR, DATA_GROUP_PATH)
 
 
 def open_repo_for_reading(storage: ic.storage.Storage, vc_credentials_kwargs: dict | None = None) -> ic.Repository:

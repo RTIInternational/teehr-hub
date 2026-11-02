@@ -14,14 +14,20 @@ import zarr
 from icechunk.xarray import to_icechunk
 from virtualizarr.manifests import ChunkManifest, ManifestArray
 
-from workflows.utils.data_status import STATUS_ATTRS, STATUS_COORD, STATUS_MEANINGS
+from workflows.utils.repo_const import (
+    APPEND_DIM_ATTR,
+    AUDIT_COORDS,
+    GRID_ATTRS,
+    GRID_NAME_ATTR,
+    STATUS_ATTRS,
+    STATUS_COORD,
+    STATUS_MEANINGS,
+    STEP_COORDS,
+    TIME_ORIGIN_ATTR,
+    TIME_STEP_ATTR,
+    UNWRITTEN,
+)
 
-UNWRITTEN = -1
-AUDIT_COORDS = ("created_at", "updated_at", "source_last_modified")
-STEP_COORDS = (STATUS_COORD, *AUDIT_COORDS)
-GRID_ATTRS = ("append_dim", "time_origin", "time_step")
-# Repos with the same grid_name are pixel-aligned; it keys the pixel coverage weights
-GRID_NAME_ATTR = "grid_name"
 # 1-D step coordinates are small; one chunk covers decades of daily or hourly steps
 _STEP_COORD_CHUNK = 100_000
 _NAT_INT = np.iinfo("int64").min
@@ -82,7 +88,7 @@ def read_grid(store: ic.IcechunkStore) -> tuple[str, pd.Timestamp, pd.Timedelta]
     attrs = _root_attrs(store)
     if not all(name in attrs for name in GRID_ATTRS):
         return None
-    return attrs["append_dim"], pd.Timestamp(attrs["time_origin"]), pd.Timedelta(attrs["time_step"])
+    return attrs[APPEND_DIM_ATTR], pd.Timestamp(attrs[TIME_ORIGIN_ATTR]), pd.Timedelta(attrs[TIME_STEP_ATTR])
 
 
 def read_grid_name(store: ic.IcechunkStore) -> str | None:

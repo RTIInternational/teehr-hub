@@ -21,7 +21,8 @@ from teehr.fetching.const import (
 from teehr.fetching.nwm.nwm_grids import plan_nwm_grid_fetch
 from teehr.fetching.utils import REMOTE_RETRY_CONFIG, format_nwm_configuration_metadata
 
-from workflows.utils.data_status import STATUS_COORD, with_status
+from workflows.utils.data_status import with_status
+from workflows.utils.repo_const import STATUS_COORD
 
 # Columns of a source listing, indexed by each file's timestamp
 LISTING_COLUMNS = ["url", STATUS_COORD, "last_modified"]

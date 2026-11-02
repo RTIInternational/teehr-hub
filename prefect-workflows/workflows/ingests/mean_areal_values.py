@@ -19,7 +19,7 @@ from teehr.utils.concurrency import resolve_budget, resolve_cpu_workers, run_con
 
 from utils import grid_utils as gu
 from utils import time_grid as tg
-from workflows.utils.data_status import STATUS_COORD
+from workflows.utils.repo_const import STATUS_COORD
 from workflows.utils.time_utils import to_naive_utc
 from workflows.utils.common_utils import initialize_evaluation
 from workflows.models.ingest_gridded_data_input import VARIABLE_AND_UNIT_MAPPER

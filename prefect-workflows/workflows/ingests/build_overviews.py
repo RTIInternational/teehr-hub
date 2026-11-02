@@ -12,9 +12,9 @@ from utils import time_grid as tg
 from workflows.models.ingest_gridded_data_input import (
     BuildOverviewsDataInput,
     PackedEncoding,
-    OVERVIEW_GROUP_PATH,
     OVERVIEW_CHUNK_SIZE,
 )
+from workflows.utils.repo_const import OVERVIEW_GROUP_PATH
 
 
 @flow(

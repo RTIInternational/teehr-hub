@@ -12,13 +12,21 @@ import xarray as xr
 
 from utils import grid_utils as gu
 from utils import time_grid as tg
-from workflows.utils.data_status import STATUS_COORD, STATUS_MEANINGS
+from workflows.utils.repo_const import (
+    APPEND_DIM_ATTR,
+    CONFIGURATION_NAME_ATTR,
+    DATA_GROUP_PATH,
+    REFERENCES_GROUP_PATH,
+    STATUS_COORD,
+    STATUS_MEANINGS,
+    TIME_ORIGIN_ATTR,
+    TIME_STEP_ATTR,
+    TIMESERIES_TYPE_ATTR,
+)
 from workflows.models.gridded_sources import GriddedSource
 from workflows.models.ingest_gridded_data_input import (
     IngestGriddedDataInput,
     ParserType,
-    DATA_GROUP_PATH,
-    REFERENCES_GROUP_PATH,
     UNIT_CONVERSIONS,
     VARIABLE_AND_UNIT_MAPPER,
     VARIABLE_UNITS,
@@ -161,8 +169,8 @@ def write_references(
     stored = tg.read_step_metadata(session.store, REFERENCES_GROUP_PATH, dim)
     if stored is None:
         tg.write_grid_attrs(session.store, {
-            "append_dim": dim, "time_origin": origin.isoformat(), "time_step": pd.Timedelta(time_step).isoformat(),
-            "configuration_name": args.configuration_name, "timeseries_type": "primary",
+            APPEND_DIM_ATTR: dim, TIME_ORIGIN_ATTR: origin.isoformat(), TIME_STEP_ATTR: pd.Timedelta(time_step).isoformat(),
+            CONFIGURATION_NAME_ATTR: args.configuration_name, TIMESERIES_TYPE_ATTR: "primary",
         })
         tg.create_group(session, REFERENCES_GROUP_PATH, virtual_ds, origin, time_step, dim, end, virtual=True)
         logger.info(f"Created {REFERENCES_GROUP_PATH} on a {time_step} grid from {origin} to {end}.")

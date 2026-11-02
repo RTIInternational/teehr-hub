@@ -20,11 +20,8 @@ VARIABLE_UNITS = {"rainrate_hourly_mean": "mm/s"}
 # Linear conversions into those units: value * scale_factor + add_offset
 UNIT_CONVERSIONS = {}
 
-OVERVIEW_GROUP_PATH = "/overviews"
 # Spatial chunk size of overview levels, about one 256 px map tile
 OVERVIEW_CHUNK_SIZE = 256
-DATA_GROUP_PATH = "/data"
-REFERENCES_GROUP_PATH = "/references"
 ICECHUNK_BUCKET = os.getenv("ICECHUNK_BUCKET")
 ICECHUNK_PREFIX = os.getenv("ICECHUNK_PREFIX")
 

@@ -2,16 +2,7 @@
 import numpy as np
 import xarray as xr
 
-STATUS_COORD = "status"
-# Ordered worst to best, so a higher flag value is a more final version
-STATUS_MEANINGS = ["early", "provisional", "stable"]
-# -1 marks a time-grid slot not yet written
-STATUS_ATTRS = {
-    "standard_name": "status_flag",
-    "long_name": "data status",
-    "flag_values": np.arange(len(STATUS_MEANINGS), dtype="int8"),
-    "flag_meanings": " ".join(STATUS_MEANINGS),
-}
+from workflows.utils.repo_const import STATUS_ATTRS, STATUS_COORD, STATUS_MEANINGS
 
 
 def with_status(ds: xr.Dataset, status: str, dim: str = "time") -> xr.Dataset:
