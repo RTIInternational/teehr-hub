@@ -46,7 +46,7 @@ STATUS_ATTRS = {
 }
 # Status of a time-grid slot not yet written
 UNWRITTEN = -1
-# Status of a forecast cell the source never publishes, e.g. leads past a member's horizon
+# Status of a forecast step the source never publishes, e.g. leads past a member's horizon
 NOT_EXPECTED = -2
 # Forecast repos also name the slot states in the flags, so outside readers can interpret them
 FORECAST_STATUS_ATTRS = {

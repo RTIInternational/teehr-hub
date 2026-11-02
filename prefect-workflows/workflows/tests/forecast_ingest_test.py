@@ -1,4 +1,4 @@
-"""Forecast ingest: NWM forecast listings, cell blocks, and ingest_gridded_data writing forecast /references."""
+"""Forecast ingest: NWM forecast listings, step blocks, and ingest_gridded_data writing forecast /references."""
 import numpy as np
 import pandas as pd
 import pytest
@@ -51,7 +51,7 @@ def test_nwm_unsupported_configurations(configuration):
         gs.NWMForcing(nwm_configuration=configuration)
 
 
-def test_nwm_forecast_listing_is_by_cell(monkeypatch):
+def test_nwm_forecast_listing_is_by_step(monkeypatch):
     keys = [f"nwm.20260922/forcing_short_range/nwm.t{h:02d}z.short_range.forcing.f{lead:03d}.conus.nc"
             for h in (0, 1) for lead in (1, 2)]
     plan = type("Plan", (), {"component_paths": [f"gcs://national-water-model/{key}" for key in keys]})
@@ -69,26 +69,26 @@ def test_nwm_forecast_listing_is_by_cell(monkeypatch):
 
 # --- Blocks ---
 
-def _cells(rows, names=(rc.REFERENCE_TIME, rc.LEAD_TIME)):
+def _steps(rows, names=(rc.REFERENCE_TIME, rc.LEAD_TIME)):
     return pd.MultiIndex.from_tuples(rows, names=list(names))
 
 
 def test_complete_cycles_are_one_block():
-    cells = _cells([(c, lead) for c in CYCLES for lead in LEADS])
-    blocks = tg.cell_blocks(cells, {rc.LEAD_TIME: LEADS})
-    assert len(blocks) == 1 and blocks[0].equals(cells)
+    steps = _steps([(c, lead) for c in CYCLES for lead in LEADS])
+    blocks = tg.step_blocks(steps, {rc.LEAD_TIME: LEADS})
+    assert len(blocks) == 1 and blocks[0].equals(steps)
 
 
 def test_partial_cycles_split_into_lead_runs():
     rows = [(CYCLES[0], lead) for lead in (1, 2, 5, 6)] + [(CYCLES[1], lead) for lead in (1, 2)]
-    blocks = tg.cell_blocks(_cells(rows), {rc.LEAD_TIME: LEADS})
+    blocks = tg.step_blocks(_steps(rows), {rc.LEAD_TIME: LEADS})
     assert sorted((list(b.get_level_values(0).unique()), list(b.get_level_values(1).unique())) for b in blocks) == [
         ([CYCLES[0]], [5, 6]), ([CYCLES[0], CYCLES[1]], [1, 2])]
 
 
 def test_members_get_their_own_blocks():
     rows = [(c, m, lead) for c in CYCLES[:2] for m in (0, 1) for lead in (1, 2, 3)]
-    blocks = tg.cell_blocks(_cells(rows, (rc.REFERENCE_TIME, rc.MEMBER, rc.LEAD_TIME)), {rc.MEMBER: [0, 1], rc.LEAD_TIME: [1, 2, 3]})
+    blocks = tg.step_blocks(_steps(rows, (rc.REFERENCE_TIME, rc.MEMBER, rc.LEAD_TIME)), {rc.MEMBER: [0, 1], rc.LEAD_TIME: [1, 2, 3]})
     assert len(blocks) == 2 and all(len(b) == 6 for b in blocks)
 
 
@@ -156,7 +156,7 @@ def _refs(open_repo):
     return xr.open_zarr(store, group="references", consolidated=False, chunks=None), zarr.open_group(store, mode="r").attrs
 
 
-def test_forecast_ingest_writes_cells_and_fills_partial_cycles(harness, nwm):
+def test_forecast_ingest_writes_steps_and_fills_partial_cycles(harness, nwm):
     publish, open_repo = nwm
     for lead in LEADS:
         publish(0, lead)
@@ -188,7 +188,7 @@ def test_forecast_ingest_writes_cells_and_fills_partial_cycles(harness, nwm):
     assert (refs["status"].values[2] == rc.UNWRITTEN).all()
 
 
-def test_forecast_upsert_rewrites_reissued_cells(harness, nwm):
+def test_forecast_upsert_rewrites_reissued_steps(harness, nwm):
     publish, open_repo = nwm
     for lead in LEADS:
         publish(0, lead)
@@ -201,7 +201,7 @@ def test_forecast_upsert_rewrites_reissued_cells(harness, nwm):
     assert np.isclose(float(refs["rainrate_hourly_mean"].isel({rc.REFERENCE_TIME: 0, "y": 0, "x": 0}).sel(lead_time=5)),
                       rate(0, 5, reissued=True))
     assert refs["created_at"].values[0, 4] == created and refs["updated_at"].values[0, 4] > created
-    # Untouched cells keep their write
+    # Untouched steps keep their write
     assert refs["updated_at"].values[0, 0] == untouched
 
 

@@ -5,7 +5,7 @@ their slots (region writes), so steps can be written in any order and rewritten 
 not yet written hold no chunks. Per-step metadata coordinates record each slot's state.
 
 Forecast repos add fixed axes after the append axis (``reference_time``), e.g. ``member`` and
-``lead_time``, set when the repo is created and never appended. Each (cycle, member, lead) cell is
+``lead_time``, set when the repo is created and never appended. Each (cycle, member, lead) step is
 a slot with its own metadata, and ``value_time`` (reference + lead) is a 2-D coordinate.
 """
 from typing import Literal
@@ -60,7 +60,7 @@ def step_metadata_encoding(time_origin: pd.Timestamp, time_step: pd.Timedelta, d
 
     Explicit units and fill values, or xarray infers units from the first data (e.g. days,
     truncating milliseconds) and stores NaT without a fill. With ``fixed`` axes (name -> values),
-    each chunk of per-step coordinates holds whole cycles and about as many cells as an analysis chunk.
+    each chunk of per-step coordinates holds whole cycles and about as many steps as an analysis chunk.
     """
     sizes = tuple(len(values) for values in (fixed or {}).values())
     chunks = {"chunks": (max(1, _STEP_COORD_CHUNK // int(np.prod(sizes))), *sizes)}
@@ -83,7 +83,7 @@ def step_metadata_encoding(time_origin: pd.Timestamp, time_step: pd.Timedelta, d
 
 
 def empty_step_metadata(times: pd.DatetimeIndex, dim: str, fixed: dict | None = None) -> dict:
-    """Per-step coordinates for slots not yet written; one per cell with ``fixed`` axes."""
+    """Per-step coordinates for slots not yet written; one per step with ``fixed`` axes."""
     dims = (dim, *(fixed or {}))
     shape = (len(times), *(len(values) for values in (fixed or {}).values()))
     nat = np.full(shape, np.datetime64("NaT", "ms"), "datetime64[ms]")
@@ -164,7 +164,7 @@ def check_fixed_axes(store: ic.IcechunkStore, group: str, fixed: dict) -> None:
 def read_step_metadata(store: ic.IcechunkStore, group: str, dim: str) -> pd.DataFrame | None:
     """Per-step metadata of ``group``, or None if the group doesn't exist.
 
-    Indexed by the time axis, or for forecast groups by (time axis, *fixed axes), one row per cell.
+    Indexed by the time axis, or for forecast groups by (time axis, *fixed axes), one row per step.
     """
     try:
         ds = xr.open_zarr(store, group=group, consolidated=False, chunks=None, decode_coords="all")
@@ -217,7 +217,7 @@ def _encode_value_times(g: zarr.Group, reference_times: pd.DatetimeIndex) -> np.
 
 
 def _grow_fixed_axes(session: ic.Session, group: str, fixed: dict, reference_times: pd.DatetimeIndex) -> None:
-    """Resize a one-cell group's fixed axes to their full values; data arrays only change shape."""
+    """Resize a one-step group's fixed axes to their full values; data arrays only change shape."""
     g = zarr.open_group(session.store, path=group.strip("/"), mode="a", zarr_format=3)
     for _, arr in g.arrays():
         dims = arr.metadata.dimension_names or ()
@@ -256,7 +256,7 @@ def create_group(
     ``template`` supplies variables, attrs and (for materialized groups) dtypes; one step of it is
     written at the origin with every value missing, so xarray or VirtualiZarr set up the arrays,
     then the axis is grown to ``end``. ``fixed`` (name -> values, e.g. ``{"lead_time": [1, 2]}``)
-    adds forecast axes after ``dim``: one cell is written, then they're resized to their full values.
+    adds forecast axes after ``dim``: one step is written, then they're resized to their full values.
     """
     fixed = fixed or {}
     first = {name: np.asarray(values)[:1] for name, values in fixed.items()}
@@ -290,33 +290,33 @@ def create_group(
     ensure_axis(session, group, end, time_step, dim)
 
 
-def block_cells(ds: xr.Dataset, dim: str, fixed_dims: tuple[str, ...] = ()) -> pd.Index:
-    """The steps of ``ds``, or with ``fixed_dims`` its cells (``dim``, *``fixed_dims``) in C order."""
+def block_steps(ds: xr.Dataset, dim: str, fixed_dims: tuple[str, ...] = ()) -> pd.Index:
+    """The steps of ``ds``: its times, or with ``fixed_dims`` its (``dim``, *``fixed_dims``) steps in C order."""
     if not fixed_dims:
         return pd.DatetimeIndex(ds[dim].values, name=dim)
     step_dims = (dim, *fixed_dims)
     return pd.MultiIndex.from_product([ds[d].to_index() for d in step_dims], names=step_dims)
 
 
-def cell_blocks(cells: pd.MultiIndex, fixed: dict) -> list[pd.MultiIndex]:
-    """Group forecast cells into rectangular blocks for region writes.
+def step_blocks(steps: pd.MultiIndex, fixed: dict) -> list[pd.MultiIndex]:
+    """Group forecast steps into rectangular blocks for region writes.
 
     A block is the cycles that share one member (if any) and one contiguous run of leads on the
     repo's lead axis, so complete cycles fall into one block whatever their number.
     """
-    dim, *fixed_dims = cells.names
+    dim, *fixed_dims = steps.names
     lead_dim = fixed_dims[-1]
     member_dims = fixed_dims[:-1]
     lead_pos = {lead: i for i, lead in enumerate(fixed[lead_dim])}
     runs: dict[tuple, list] = {}
-    for key, group in pd.Series(0, index=cells).groupby(level=[dim, *member_dims] if member_dims else dim):
+    for key, group in pd.Series(0, index=steps).groupby(level=[dim, *member_dims] if member_dims else dim):
         cycle, members = (key[0], tuple(key[1:])) if member_dims else (key, ())
         leads = sorted(group.index.get_level_values(lead_dim), key=lead_pos.__getitem__)
         pos = [lead_pos[lead] for lead in leads]
         for run in np.split(np.arange(len(leads)), np.flatnonzero(np.diff(pos) != 1) + 1):
             runs.setdefault((members, tuple(leads[i] for i in run)), []).append(cycle)
     return [
-        pd.MultiIndex.from_product([cycles, *([m] for m in members), list(leads)], names=cells.names)
+        pd.MultiIndex.from_product([cycles, *([m] for m in members), list(leads)], names=steps.names)
         for (members, leads), cycles in runs.items()
     ]
 
@@ -332,21 +332,21 @@ def with_step_metadata(
 ) -> xr.Dataset:
     """Attach per-step metadata to ``ds`` for a region write; ``created_at`` is kept where already set.
 
-    With ``fixed_dims``, ``ds`` is a block of cells and the arrays hold one value per cell, in the
+    With ``fixed_dims``, ``ds`` is a block of steps and the arrays hold one value per step, in the
     block's (``dim``, *``fixed_dims``) order.
     """
     step_dims = (dim, *fixed_dims)
     shape = tuple(ds.sizes[d] for d in step_dims)
-    cells = block_cells(ds, dim, fixed_dims)
-    created = np.full(len(cells), np.datetime64("NaT", "ms"), "datetime64[ms]")
+    steps = block_steps(ds, dim, fixed_dims)
+    created = np.full(len(steps), np.datetime64("NaT", "ms"), "datetime64[ms]")
     if existing is not None:
-        created = existing["created_at"].reindex(cells).to_numpy("datetime64[ms]")
+        created = existing["created_at"].reindex(steps).to_numpy("datetime64[ms]")
     now = utc_now()
     created = np.where(np.isnat(created), now, created).astype("datetime64[ms]")
     return ds.assign_coords({
         STATUS_COORD: (step_dims, np.asarray(status, "int8").reshape(shape), FORECAST_STATUS_ATTRS if fixed_dims else STATUS_ATTRS),
         "created_at": (step_dims, created.reshape(shape)),
-        "updated_at": (step_dims, np.broadcast_to(np.asarray(updated_at, "datetime64[ms]"), len(cells)).reshape(shape).copy()),
+        "updated_at": (step_dims, np.broadcast_to(np.asarray(updated_at, "datetime64[ms]"), len(steps)).reshape(shape).copy()),
         "source_last_modified": (step_dims, np.asarray(source_last_modified, "datetime64[ms]").reshape(shape)),
     })
 
@@ -356,7 +356,7 @@ def region_write(
 ) -> None:
     """Write ``ds`` into the slots of its timestamps, one contiguous run of slots per write.
 
-    With ``fixed_dims``, ``ds`` is a block of cells: its values along each fixed axis must be a
+    With ``fixed_dims``, ``ds`` is a block of steps: its values along each fixed axis must be a
     contiguous run of the stored ones (e.g. leads 3-6 of a cycle).
     """
     stored = xr.open_zarr(session.store, group=group, consolidated=False, chunks=None)
@@ -383,7 +383,7 @@ def region_write(
 
 
 def select_source_steps(listing: pd.DataFrame, stored: pd.DataFrame | None, mode: WriteMode) -> pd.DataFrame:
-    """Rows of ``listing`` (indexed like ``stored``: by time, or by cell; ``status``, ``last_modified``) to write.
+    """Rows of ``listing`` (indexed like ``stored``: by time, or by forecast step; ``status``, ``last_modified``) to write.
 
     ``append`` takes steps not yet written. ``upsert`` also takes steps whose source status is more
     final, or whose source file is newer, than what's stored.
@@ -391,7 +391,7 @@ def select_source_steps(listing: pd.DataFrame, stored: pd.DataFrame | None, mode
     if stored is None:
         return listing
     st = stored.reindex(listing.index)
-    # A not-expected cell that the source does publish is written like an unwritten one
+    # A not-expected step that the source does publish is written like an unwritten one
     unwritten = st[STATUS_COORD].isna() | (st[STATUS_COORD] < 0)
     if mode == "append":
         return listing[unwritten.to_numpy()]
@@ -402,7 +402,7 @@ def select_source_steps(listing: pd.DataFrame, stored: pd.DataFrame | None, mode
 
 
 def stale_steps(source: pd.DataFrame, dest: pd.DataFrame | None) -> pd.Index:
-    """Steps (or cells) written in ``source`` that ``dest`` lacks or holds from an older ``source`` write."""
+    """Steps written in ``source`` that ``dest`` lacks or holds from an older ``source`` write."""
     written = source[source[STATUS_COORD] >= 0]
     if dest is None:
         return written.index

@@ -55,7 +55,7 @@ def ingest_gridded_data(args: IngestGriddedDataInput) -> None:
     """Ingest gridded data from a source over a date range into an IceChunk S3 repository.
 
     The source decides the repo's shape: analysis sources have one step per valid time, forecast
-    sources one cell per (cycle, [member], lead). Every step or cell has a slot on the repo's time
+    sources one step per (cycle, [member], lead). Every step has a slot on the repo's time
     grid, so they can be written in any order and rewritten. Up to three stages run: source files to ``/references`` (the steps ``write_mode``
     selects), ``/references`` to ``/data`` (unless ``write_materialized`` is False), and the data
     group to the map overviews. Each later stage processes the steps its upstream group changed, so a
@@ -94,13 +94,12 @@ def ingest_gridded_data(args: IngestGriddedDataInput) -> None:
 
     stored = tg.read_step_metadata(repo.readonly_session("main").store, REFERENCES_GROUP_PATH, args.append_dim)
     todo = tg.select_source_steps(listing, stored, args.write_mode)
-    unit = "cell(s)" if fixed else "step(s)"
-    logger.info(f"{len(todo)} {unit} to write in '{args.write_mode}' mode.")
+    logger.info(f"{len(todo)} step(s) to write in '{args.write_mode}' mode.")
     if len(todo):
         started = time.perf_counter()
         blocks = _virtual_blocks(todo, source, credentials, args)
         write_references(repo, blocks, todo, origin, source, args)
-        logger.info(f"Parsed and wrote references for {len(todo)} {unit} in {time.perf_counter() - started:.1f}s.")
+        logger.info(f"Parsed and wrote references for {len(todo)} step(s) in {time.perf_counter() - started:.1f}s.")
     if args.write_materialized:
         materialize_references(repo, args)
     # Readers switch only once the group is complete; a repo can also change mode with no new files
@@ -112,7 +111,7 @@ def ingest_gridded_data(args: IngestGriddedDataInput) -> None:
 def _virtual_blocks(
     todo: pd.DataFrame, source: GriddedSource, credentials: dict, args: IngestGriddedDataInput
 ) -> list[xr.Dataset]:
-    """Virtual references to the files in ``todo``: one dataset for an analysis source, or forecast blocks of cells."""
+    """Virtual references to the files in ``todo``: one dataset for an analysis source, or forecast blocks of steps."""
     obstore_kwargs = {**source.store_kwargs, **credentials, **args.obstore_kwargs}
     if credentials:
         # An unsigned request ignores the credentials
@@ -182,7 +181,7 @@ def create_forecast_blocks(
     preprocess: Callable[[xr.Dataset, str], xr.Dataset],
     args: IngestGriddedDataInput,
 ) -> list[xr.Dataset]:
-    """Virtual datasets of the forecast files to write, one per rectangular block of cells.
+    """Virtual datasets of the forecast files to write, one per rectangular block of steps.
 
     Blocks are built from the files that opened, so a missing or unreadable file only splits a block.
     """
@@ -191,8 +190,8 @@ def create_forecast_blocks(
     )
     present = todo.index[todo["url"].isin(list(datasets))]
     blocks = []
-    for cells in tg.cell_blocks(present, fixed):
-        urls = todo.loc[cells, "url"]
+    for steps in tg.step_blocks(present, fixed):
+        urls = todo.loc[steps, "url"]
         cycles = [
             xr.concat([datasets[url] for url in cycle_urls], dim=LEAD_TIME, **args.xconcat_kwargs)
             for _, cycle_urls in urls.groupby(level=args.append_dim, sort=True)
@@ -212,14 +211,14 @@ def write_references(
 ) -> None:
     """Write virtual references into their slots, with their status and source file's last modified time.
 
-    ``blocks`` is one dataset for analysis sources, or forecast blocks of cells; one commit covers them all.
+    ``blocks`` is one dataset for analysis sources, or forecast blocks of steps; one commit covers them all.
     """
     logger = get_run_logger()
     dim, time_step = args.append_dim, source.time_step
     fixed = source.fixed_axes()
-    cells = [tg.block_cells(block, dim, tuple(fixed)) for block in blocks]
+    steps = [tg.block_steps(block, dim, tuple(fixed)) for block in blocks]
     # Files skipped as missing or unreadable aren't in any block
-    todo = todo.loc[cells[0].append(cells[1:])]
+    todo = todo.loc[steps[0].append(steps[1:])]
     session = repo.writable_session("main")
     end = todo.index.get_level_values(dim).max()
     stored = tg.read_step_metadata(session.store, REFERENCES_GROUP_PATH, dim)
@@ -244,8 +243,8 @@ def write_references(
     if tg.ensure_grid_name(session.store, grid_name):
         logger.info(f"Recorded grid_name '{grid_name}' on the repo.")
     updated_at = tg.utc_now()
-    for block, block_cells in zip(blocks, cells):
-        meta = todo.loc[block_cells]
+    for block, block_steps in zip(blocks, steps):
+        meta = todo.loc[block_steps]
         ds = tg.with_step_metadata(
             block,
             dim,

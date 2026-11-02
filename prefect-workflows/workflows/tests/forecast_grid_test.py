@@ -123,11 +123,11 @@ FC_STEP = pd.Timedelta("6h")
 MEMBERS, LEADS = [0, 1], [1, 2, 3, 6]
 ENSEMBLE = {"member": MEMBERS, "lead_time": LEADS}
 DETERMINISTIC = {"lead_time": LEADS}
-CELL_COORDS = [DIM, "member", "lead_time", "y", "x"]
+FILE_DIMS = [DIM, "member", "lead_time", "y", "x"]
 
 
 def _value(r, m, lead):
-    """Each cell's value identifies it: 100 * cycle index + 10 * member + lead."""
+    """Each step's value identifies it: 100 * cycle index + 10 * member + lead."""
     return 100 * r + 10 * m + lead
 
 
@@ -136,7 +136,7 @@ def forecast(tmp_path):
     """One file per (cycle, member, lead), and a builder of virtual blocks of them."""
     files = {
         f"c{r}_m{m}_l{lead}.nc": xr.Dataset(
-            {"RAINRATE": (CELL_COORDS, np.full((1, 1, 1, 3, 4), _value(r, m, lead), "float32"))},
+            {"RAINRATE": (FILE_DIMS, np.full((1, 1, 1, 3, 4), _value(r, m, lead), "float32"))},
             coords={DIM: [ref], "member": np.array([m], "int32"), "lead_time": np.array([lead], "int32"),
                     "y": np.arange(3.0), "x": np.arange(4.0)},
         )
@@ -149,7 +149,7 @@ def forecast(tmp_path):
         out = []
         for r in cycles:
             per_member = [
-                xr.concat([open_file(f"c{r}_m{m}_l{lead}.nc", CELL_COORDS) for lead in leads], dim="lead_time", **kw)
+                xr.concat([open_file(f"c{r}_m{m}_l{lead}.nc", FILE_DIMS) for lead in leads], dim="lead_time", **kw)
                 for m in members
             ]
             ds = xr.concat(per_member, dim="member", **kw)
@@ -160,7 +160,7 @@ def forecast(tmp_path):
 
 
 def _write(repo, ds, fixed, status=2, group="references", virtual=True):
-    """Write a block of cells into ``group``, creating it on the first call."""
+    """Write a block of steps into ``group``, creating it on the first call."""
     session = repo.writable_session("main")
     stored = tg.read_step_metadata(session.store, group, DIM)
     if stored is None:
@@ -198,7 +198,7 @@ def test_forecast_group_layout(forecast):
     assert rain[1].tolist() == [[_value(1, m, lead) for lead in LEADS] for m in MEMBERS]
 
 
-def test_partial_cycles_fill_in_and_select_by_cell(forecast):
+def test_partial_cycles_fill_in_and_select_by_step(forecast):
     repo, block = forecast
     _write(repo, block([2], members=[0], leads=[1, 2]), ENSEMBLE, status=1)
     _write(repo, block([2], members=[0], leads=[3, 6]), ENSEMBLE)
@@ -210,12 +210,12 @@ def test_partial_cycles_fill_in_and_select_by_cell(forecast):
 
     stored = tg.read_step_metadata(repo.readonly_session("main").store, "references", DIM)
     assert stored.index.names == [DIM, "member", "lead_time"] and len(stored) == 3 * 2 * 4
-    cells = pd.MultiIndex.from_tuples([(REFS[2], 0, 1), (REFS[2], 0, 3), (REFS[2], 1, 6)], names=stored.index.names)
+    steps = pd.MultiIndex.from_tuples([(REFS[2], 0, 1), (REFS[2], 0, 3), (REFS[2], 1, 6)], names=stored.index.names)
     listing = pd.DataFrame({"status": ["stable", "stable", "stable"],
-                            "last_modified": pd.to_datetime(["2026-01-01", "2026-06-01", "2026-01-01"])}, index=cells)
-    assert list(tg.select_source_steps(listing, stored, "append").index) == [cells[2]]
+                            "last_modified": pd.to_datetime(["2026-01-01", "2026-06-01", "2026-01-01"])}, index=steps)
+    assert list(tg.select_source_steps(listing, stored, "append").index) == [steps[2]]
     # (0, 1) became more final, (0, 3) was re-issued, (1, 6) is new
-    assert list(tg.select_source_steps(listing, stored, "upsert").index) == list(cells)
+    assert list(tg.select_source_steps(listing, stored, "upsert").index) == list(steps)
 
 
 def test_new_cycles_get_value_times(forecast):
@@ -238,7 +238,7 @@ def test_deterministic_forecast_has_no_member(forecast):
     assert stored.index.names == [DIM, "lead_time"]
 
 
-def test_not_expected_cells_are_skipped_by_readers_but_writable(forecast):
+def test_not_expected_steps_are_skipped_by_readers_but_writable(forecast):
     repo, block = forecast
     _write(repo, block([1], members=[0, 1], leads=[1, 2, 3]), ENSEMBLE)
     # Mark member 1's lead 6 as never published: metadata only, no data
@@ -253,7 +253,7 @@ def test_not_expected_cells_are_skipped_by_readers_but_writable(forecast):
     assert len(tg.select_source_steps(listing, stored, "append")) == 1
 
 
-def test_materialized_copy_of_stale_cells(forecast):
+def test_materialized_copy_of_stale_steps(forecast):
     repo, block = forecast
     _write(repo, block([1]), ENSEMBLE)
     _write(repo, block([2], members=[0], leads=[1, 2]), ENSEMBLE)

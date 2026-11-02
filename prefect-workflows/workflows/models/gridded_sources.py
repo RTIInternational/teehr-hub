@@ -25,7 +25,7 @@ from teehr.fetching.utils import REMOTE_RETRY_CONFIG, format_nwm_configuration_m
 from workflows.utils.data_status import with_status
 from workflows.utils.repo_const import LEAD_TIME, MEMBER, REFERENCE_TIME, STATUS_COORD
 
-# Columns of a source listing, indexed by each file's timestamp (or forecast cell)
+# Columns of a source listing, indexed by each file's timestamp (or forecast step)
 LISTING_COLUMNS = ["url", STATUS_COORD, "last_modified"]
 
 
@@ -47,7 +47,7 @@ class GriddedSource(BaseModel, ABC):
     def list_files(self, start_dt: datetime, end_dt: datetime) -> pd.DataFrame:
         """Files published for the range, one per step: ``LISTING_COLUMNS`` indexed by time.
 
-        Forecast sources index by cell, (``reference_time``, [``member``], ``lead_time``), selecting
+        Forecast sources index by step, (``reference_time``, [``member``], ``lead_time``), selecting
         cycles by reference time.
         """
 
@@ -229,7 +229,7 @@ class NWMForcing(GriddedSource):
                 raise ValueError(f"Unexpected NWM file name: {url}")
             day, hour, offset = match.groups()
             cycle = pd.Timestamp(day) + pd.Timedelta(hours=int(hour))
-            # A forecast file is a (cycle, lead) cell; an analysis file is valid tm hours before its cycle
+            # A forecast file is a (cycle, lead) step; an analysis file is valid tm hours before its cycle
             key = {REFERENCE_TIME: cycle, LEAD_TIME: int(offset)} if self._is_forecast else {"time": cycle - pd.Timedelta(hours=int(offset))}
             rows.append({
                 **key,
@@ -280,14 +280,14 @@ class NWMForcing(GriddedSource):
     def preprocess(self, ds: xr.Dataset, url: str) -> xr.Dataset:
         if not self._is_forecast:
             return with_status(ds, "stable")
-        # A forecast file becomes one (cycle, lead) cell, both from its name. Its own reference_time
+        # A forecast file becomes one (cycle, lead) step, both from its name. Its own reference_time
         # and valid time are dropped (an analysis file's reference_time is its valid time).
         day, hour, lead = self.forecast_path_pattern.search(url).groups()
-        cell = {REFERENCE_TIME: [pd.Timestamp(day) + pd.Timedelta(hours=int(hour))], LEAD_TIME: np.array([int(lead)], "int32")}
+        step = {REFERENCE_TIME: [pd.Timestamp(day) + pd.Timedelta(hours=int(hour))], LEAD_TIME: np.array([int(lead)], "int32")}
         timed = [name for name in ds.data_vars if "time" in ds[name].dims]
         ds = ds.drop_vars([name for name in (REFERENCE_TIME, "time") if name in ds.variables]).isel(time=0)
-        # Only the gridded variables take the cell dims; scalars such as the grid mapping stay scalar
-        ds = ds.assign({name: ds[name].expand_dims(cell) for name in timed})
+        # Only the gridded variables take the step dims; scalars such as the grid mapping stay scalar
+        ds = ds.assign({name: ds[name].expand_dims(step) for name in timed})
         return with_status(ds, "stable", dim=REFERENCE_TIME)
 
 
