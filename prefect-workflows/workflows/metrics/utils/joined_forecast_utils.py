@@ -402,10 +402,11 @@ def plan_incremental_batches(
                 MIN(value_time) AS min_value_time,
                 MAX(value_time) AS max_value_time
             FROM iceberg.teehr.primary_timeseries
-            WHERE
-                created_at >= TIMESTAMP '{changed_since_literal}'
-                OR updated_at >= TIMESTAMP '{changed_since_literal}'
-                AND configuration_name = '{PRIMARY_CONFIGURATION_NAME}'
+            WHERE configuration_name = '{PRIMARY_CONFIGURATION_NAME}'
+                AND (
+                    created_at >= TIMESTAMP '{changed_since_literal}'
+                    OR updated_at >= TIMESTAMP '{changed_since_literal}'
+                )
         ),
         impacted_by_primary AS (
             SELECT
