@@ -226,6 +226,7 @@ def ingest_nwm_streamflow_forecasts(
     - Files are grouped into chunks and each chunk is fetched by its own task,
       so chunks run concurrently, retry independently, and report separately.
     """
+    ev = None
     try:
         logger = get_run_logger()
 
@@ -388,4 +389,5 @@ def ingest_nwm_streamflow_forecasts(
         )
         logger.info("Successfully loaded NWM streamflow forecasts into the warehouse")
     finally:
-        ev.spark.stop()
+        if ev is not None:
+            ev.spark.stop()

@@ -65,6 +65,17 @@ RUN sh /tmp/patch-spark-jars.sh \
 ENV JAVA_HOME=/usr/lib/jvm/java-21-openjdk-${TARGETARCH}
 ENV PATH=$PATH:/usr/lib/jvm/java-21-openjdk-${TARGETARCH}/bin
 
+# Download teehr's Spark packages into the image so jobs never fetch them from
+# Maven Central, which rate-limits per IP. teehr reads SPARK_JARS_IVY. Ivy keeps
+# a copy of each jar in cache/ and jars/; hardlink stores them once. Owned by
+# uid 1000 (the prefect user, created below) because Ivy writes to it at runtime.
+ENV SPARK_JARS_IVY=/opt/ivy
+COPY warm-spark-ivy-cache.py /tmp/warm-spark-ivy-cache.py
+RUN python /tmp/warm-spark-ivy-cache.py \
+    && rm /tmp/warm-spark-ivy-cache.py \
+    && hardlink /opt/ivy \
+    && chown -R 1000:1000 /opt/ivy
+
 # Create a user for UID 1000 so Java/Spark can resolve a home directory,
 # and actually run as it. Everything that writes to the shared /data drive
 # (JupyterHub singleuser, Spark executors, Prefect jobs) runs as uid 1000, so
