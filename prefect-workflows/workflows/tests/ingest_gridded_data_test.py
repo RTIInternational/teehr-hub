@@ -124,12 +124,17 @@ def test_nwm_time_origin_covers_t_minus():
 
 
 def test_nwm_aws_bucket_reads_in_region():
-    """The AWS bucket's object store and virtual chunk container are in us-east-1; GCS needs no region."""
+    """The AWS bucket's stores are in us-east-1; GCS stores keep DNS order so they stay on IPv6."""
     aws, gcs = gs.NWMForcing(bucket="s3://noaa-nwm-pds"), gs.NWMForcing()
     assert aws.source_bucket == "s3://noaa-nwm-pds" and gcs.source_bucket == "gs://national-water-model"
     assert aws.store_kwargs["region"] == aws.virtual_store_kwargs["region"] == "us-east-1"
     assert aws.store_kwargs["skip_signature"] and gcs.store_kwargs["skip_signature"]
-    assert "region" not in gcs.store_kwargs and gcs.virtual_store_kwargs == {}
+    assert "region" not in gcs.store_kwargs and "client_options" not in aws.store_kwargs
+    assert gcs.store_kwargs["client_options"] == {"randomize_addresses": False}
+    assert gcs.virtual_store_kwargs == {"opts": {"randomize_addresses": "false"}}
+    # The stores accept the options
+    gs.from_url(f"{gcs.source_bucket}/", **gcs.store_kwargs)
+    ing.gu._virtual_chunk_store(f"{gcs.source_bucket}/", **gcs.virtual_store_kwargs)
     with pytest.raises(ValueError):
         gs.NWMForcing(bucket="s3://some-other-bucket")
 
