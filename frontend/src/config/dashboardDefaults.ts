@@ -27,7 +27,7 @@ export const RETROSPECTIVE_DASHBOARD_DEFAULTS = {
 
 export const FORECAST_DASHBOARD_DEFAULTS = {
   // Preferred default configuration for forecasts
-  preferredConfiguration: 'nwm30_medium_range',
+  preferredConfiguration: 'nwm31_medium_range',
 
   // Preferred default variable
   preferredVariable: 'streamflow_hourly_inst',
