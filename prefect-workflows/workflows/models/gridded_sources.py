@@ -192,11 +192,18 @@ class NWMForcing(GriddedSource):
     def store_kwargs(self) -> dict:
         # Both buckets are public
         kwargs = {"retry_config": REMOTE_RETRY_CONFIG, "skip_signature": True}
-        return {**kwargs, "region": "us-east-1"} if self.bucket.startswith("s3://") else kwargs
+        if self.bucket.startswith("s3://"):
+            return {**kwargs, "region": "us-east-1"}
+        # Keep GCS on IPv6, which skips the NAT gateway: object_store shuffles DNS answers by default,
+        # undoing the IPv6-first order from /etc/gai.conf (teehr-cloud-platform #36)
+        return {**kwargs, "client_options": {"randomize_addresses": False}}
 
     @property
     def virtual_store_kwargs(self) -> dict:
-        return {"region": "us-east-1"} if self.bucket.startswith("s3://") else {}
+        if self.bucket.startswith("s3://"):
+            return {"region": "us-east-1"}
+        # IPv6 for GCS, as in store_kwargs
+        return {"opts": {"randomize_addresses": "false"}}
 
     @property
     def materialize_by_default(self) -> bool:
