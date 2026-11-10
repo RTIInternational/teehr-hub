@@ -758,6 +758,7 @@ deployments:
         "location_id_prefix": "usgsbasin",
         "grid_variable_name": "precipitation_surface",
         "stac_collection_url": "https://stac.dynamical.org/noaa-gefs-forecast-35-day/collection.json",
+        "endpoint_url": "https://s3.dualstack.us-west-2.amazonaws.com",
         "grid_name": "gefs_0p25_global"
       }
     }
@@ -771,10 +772,10 @@ deployments:
       collision_strategy: "CANCEL_NEW"
     description: >-
       Calculate mean areal GEFS 35-day 0.25 degree precipitation of a location layer, every member and
-      lead, into secondary_timeseries, reading dynamical.org's Icechunk repo in place (us-west-2). The
-      schedule replaces the last 2 days of cycles, which also fills partly ingested ones. Written under
-      the source variable name until the teehr name is decided (3-hour means to 240 h, then 6-hour).
-      Set endpoint_url to the S3 dual-stack endpoint once IPv6 egress is available.
+      lead, into secondary_timeseries, reading dynamical.org's Icechunk repo in place (us-west-2) over
+      the S3 dual-stack endpoint, so reads use IPv6 egress instead of the NAT gateway. The schedule
+      replaces the last 2 days of cycles, which also fills partly ingested ones. Written under the
+      source variable name until the teehr name is decided (3-hour means to 240 h, then 6-hour).
     entrypoint: workflows/ingests/dynamical_mean_areal_values.py:calculate_dynamical_mean_areal_values
     parameters: {
       "args": {
@@ -784,6 +785,7 @@ deployments:
         "grid_variable_name": "precipitation_surface",
         "unit_name": "mm/s",
         "stac_collection_url": "https://stac.dynamical.org/noaa-gefs-forecast-35-day/collection.json",
+        "endpoint_url": "https://s3.dualstack.us-west-2.amazonaws.com",
         "grid_name": "gefs_0p25_global",
         "num_lookback_days": 2
       }

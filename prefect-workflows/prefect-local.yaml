@@ -560,7 +560,6 @@ deployments:
       lead, into secondary_timeseries, reading dynamical.org's Icechunk repo in place (us-west-2). The
       schedule replaces the last 2 days of cycles, which also fills partly ingested ones. Written under
       the source variable name until the teehr name is decided (3-hour means to 240 h, then 6-hour).
-      Set endpoint_url to the S3 dual-stack endpoint once IPv6 egress is available.
     entrypoint: workflows/ingests/dynamical_mean_areal_values.py:calculate_dynamical_mean_areal_values
     parameters: {
       "args": {
