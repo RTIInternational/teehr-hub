@@ -15,6 +15,10 @@ RUN apt-get update && apt-get install -y \
     curl \
     && rm -rf /var/lib/apt/lists/*
 
+# Prefer IPv6 for sources that offer it, so their traffic skips the NAT gateway
+# (see gai.conf).
+COPY gai.conf /etc/gai.conf
+
 # Install GDAL libraries for ARM64 (needed for rasterio compilation)
 RUN ARCH=$(uname -m) && \
     if [ "$ARCH" = "aarch64" ]; then \
