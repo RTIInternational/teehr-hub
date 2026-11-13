@@ -1,5 +1,5 @@
 """Inputs of the mean areal and weights flows for grids read in place from outside sources (hub only)."""
-from typing import Literal, Optional
+from typing import Optional
 
 from pydantic import Field
 
@@ -22,7 +22,6 @@ class AORCMeanArealInput(MeanArealValuesInput):
     x_dim: str = "longitude"
     y_dim: str = "latitude"
     timeseries_table_name: str = "primary_timeseries"
-    write_mode: Literal["insert", "append", "upsert", "replace_where"] = "replace_where"
     template_year: int = Field(2020, description="Year whose store is the weights template (all years share the grid)")
 
 
@@ -59,4 +58,3 @@ class DynamicalMeanArealInput(MeanArealValuesInput):
     x_dim: str = "longitude"
     y_dim: str = "latitude"
     timeseries_table_name: str = "secondary_timeseries"
-    write_mode: Literal["insert", "append", "upsert", "replace_where"] = "replace_where"

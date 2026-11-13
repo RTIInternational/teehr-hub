@@ -4,7 +4,7 @@ The flow splits the grid into chunk-aligned blocks of steps and runs ``mean_area
 Prefect pod or on Spark executors. Memory is bounded by reading the block's window in bands of grid rows and
 averaging in slices of steps.
 
-Spark executors don't have our workflow code, so the Spark backend sends this module's code with each task.
+Spark executors don't have our workflow code, so the mean areal flow sends this module's code with each task.
 Keep its imports to libraries the executor image has (no Prefect or ``workflows`` imports).
 """
 from dataclasses import dataclass

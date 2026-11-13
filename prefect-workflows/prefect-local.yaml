@@ -514,7 +514,7 @@ deployments:
       NOAA's yearly Zarr stores in place, one year at a time. APCP_surface is written as
       rainrate_hourly_mean (mm/s); other variables need variable_name, unit_name and value_scale.
       Set start_dt/end_dt; replace_where makes reruns of a range idempotent. For CONUS-wide layers over
-      long records use backend "spark" with start_spark_cluster.
+      long records set start_spark_cluster.
     entrypoint: workflows/ingests/aorc_mean_areal_values.py:calculate_aorc_mean_areal_values
     parameters: {
       "args": {

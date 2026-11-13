@@ -93,33 +93,25 @@ class MeanArealValuesInput(PixelCoverageWeightsInput):
         default=None,
         description="Namespace of the timeseries table. Defaults to the evaluation's namespace"
     )
-    write_mode: Literal["insert", "append", "upsert", "replace_where"] = Field(
-        "upsert",
+    write_mode: Literal["replace_where", "upsert"] = Field(
+        "replace_where",
         description=(
-            "Write mode for the timeseries table, passed to ev._write.to_warehouse(). 'upsert' replaces "
-            "values for steps the grid has rewritten (e.g. provisional to stable). 'replace_where' replaces each "
+            "Write mode for the timeseries table, passed to ev._write.to_warehouse(). 'replace_where' replaces each "
             "write's slice (configuration, variable, location layer, time or cycle range) without a MERGE, so "
-            "reruns are idempotent and rows a rerun no longer produces are removed"
-        )
-    )
-    backend: Literal["local", "spark"] = Field(
-        "local",
-        description=(
-            "'local' computes batches on the Prefect pod and writes from pandas. 'spark' runs them as Spark "
-            "mapInArrow tasks that write straight to the warehouse: on executors with start_spark_cluster, else "
-            "in Spark local mode"
+            "reruns are idempotent and rows a rerun no longer produces are removed; it commits twice (insert, then "
+            "delete), so readers can briefly see both. 'upsert' merges in one commit and never deletes"
         )
     )
     task_memory_gb: float = Field(
         2.0,
         gt=0,
         description=(
-            "Memory one batch may use while reading and averaging; with the grid's chunking it sets the batch "
-            "size and the row bands the window is read in"
+            "Memory one Spark task may use while reading and averaging; with the grid's chunking it sets the "
+            "batch size and the row bands the window is read in"
         )
     )
     executor_instances: int = Field(
-        4, gt=0, description="Spark executors, with backend 'spark' and start_spark_cluster"
+        4, gt=0, description="Spark executors, with start_spark_cluster"
     )
     executor_cores: int = Field(4, gt=0, description="Cores per Spark executor")
     executor_memory: str = Field("8g", description="JVM memory per Spark executor; Python workers get their own")
@@ -130,24 +122,6 @@ class MeanArealValuesInput(PixelCoverageWeightsInput):
     end_dt: Union[str, datetime, None] = Field(
         default=None,
         description="Last grid step to compute. Defaults to the last written step."
-    )
-    max_read_memory_gb: Optional[float] = Field(
-        default=None,
-        gt=0,
-        description=(
-            "Memory for grid batches read at once; caps the number of concurrent batches. Defaults to "
-            "the memory teehr finds available"
-        )
-    )
-    batch_workers: Optional[int] = Field(
-        default=None,
-        gt=0,
-        description="Concurrent grid batches before the memory cap. Defaults to the available CPUs"
-    )
-    zarr_concurrency: Optional[int] = Field(
-        default=None,
-        gt=0,
-        description="Concurrent chunk reads per batch (zarr async.concurrency). Defaults to the environment's"
     )
     max_rows_per_write: int = Field(
         5_000_000,

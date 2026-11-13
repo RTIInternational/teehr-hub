@@ -3,11 +3,10 @@
 ``calculate_mean_areal_values`` reads one of our Icechunk repos. ``mean_areal_for_grid`` does the work for any
 lazily opened grid, so flows for outside sources (e.g. AORC, dynamical.org) open theirs and call it.
 
-Batches follow the grid's storage chunks (``plan_reads``) and are computed with ``utils.mean_areal_kernel``,
-either on the Prefect pod or as Spark ``mapInArrow`` tasks that write straight to the warehouse.
+Batches follow the grid's storage chunks (``plan_reads``) and are computed with ``utils.mean_areal_kernel`` as Spark
+``mapInArrow`` tasks that write straight to the warehouse: on executors with ``start_spark_cluster``, else in Spark
+local mode on the Prefect pod.
 """
-import contextlib
-import functools
 import math
 import time
 from dataclasses import dataclass
@@ -16,19 +15,16 @@ import numpy as np
 import pandas as pd
 import rioxarray  # noqa: F401
 import xarray as xr
-import zarr
 from prefect import flow, task, get_run_logger
 from prefect.cache_policies import NO_CACHE
-from scipy import sparse
 from teehr import Configuration, Evaluation, Unit, Variable
 from teehr.fetching.const import UNIT_NAME
 from teehr.fetching.nwm.grid_utils import build_weights_matrix
-from teehr.utils.concurrency import resolve_budget, resolve_cpu_workers, run_concurrent_map
 
 from utils import time_grid as tg
 from utils.grid_spec import GridSpec, open_grid_dataset, read_grid_spec
 from utils import mean_areal_kernel
-from utils.mean_areal_kernel import BlockTask, GridWeights, arrow_task_runner, run_block_task
+from utils.mean_areal_kernel import BlockTask, GridWeights, arrow_task_runner
 from workflows.utils.repo_const import MEMBER, STATUS_COORD
 from workflows.utils.time_utils import to_naive_utc
 from workflows.utils.common_utils import initialize_evaluation
@@ -232,55 +228,11 @@ def _block_tasks(batch: pd.Index, da: xr.DataArray, dim: str, fixed: dict) -> li
 
 
 def _kernel_kwargs(args: MeanArealValuesInput, band_edges: list[int], **extra) -> dict:
-    """``mean_areal_block`` settings shared by both backends."""
+    """``mean_areal_block`` settings."""
     return dict(
         y_dim=args.y_dim, x_dim=args.x_dim, band_edges=band_edges, max_slice_steps=MAX_SLICE_STEPS,
         min_coverage=args.min_valid_coverage, scale=args.value_scale, offset=args.value_offset, **extra,
     )
-
-
-def _mean_areal_batch(
-    batch: pd.Index,
-    da: xr.DataArray,
-    args: MeanArealValuesInput,
-    window: tuple[int, int, int, int],
-    rows: np.ndarray,
-    cols: np.ndarray,
-    matrix: sparse.csr_matrix,
-    location_ids: np.ndarray,
-    fixed: dict | None = None,
-    band_edges: list[int] | None = None,
-) -> pd.DataFrame:
-    """Mean areal values of one batch of steps, as long rows without NaN values.
-
-    The window is read in ``band_edges`` row bands, by default one band of the window's rows.
-    """
-    fixed = fixed or {}
-    dim = args.append_dim
-    da = da.transpose(dim, *fixed, args.y_dim, args.x_dim)
-    weights = GridWeights(matrix, rows, cols, location_ids)
-    kwargs = _kernel_kwargs(args, band_edges or list(window[:2]))
-    return pd.concat(
-        [run_block_task(block, da, weights, **kwargs).to_pandas() for block in _block_tasks(batch, da, dim, fixed)],
-        ignore_index=True,
-    )
-
-
-@task(cache_policy=NO_CACHE, timeout_seconds=60 * 30, retries=2)
-def compute_batch_group(batches: list[pd.Index], workers: int, batch_kwargs: dict) -> pd.DataFrame:
-    """Mean areal values of a group of batches, read concurrently."""
-    logger = get_run_logger()
-    started = time.perf_counter()
-    frames = run_concurrent_map(
-        functools.partial(_mean_areal_batch, **batch_kwargs), batches, max_workers=workers
-    )
-    df = pd.concat(frames, ignore_index=True)
-    n_steps = sum(len(batch) for batch in batches)
-    logger.info(
-        f"Computed {n_steps} step(s) through {batches[-1][-1]} in {time.perf_counter() - started:.1f}s "
-        f"({len(df)} rows)."
-    )
-    return df
 
 
 def _write_groups(batches: list[pd.Index], args: MeanArealValuesInput, n_zones: int, forecast: bool) -> list[list]:
@@ -419,15 +371,14 @@ def register_location_crosswalks(ev: Evaluation, args: MeanArealValuesInput, loc
 
 
 def mean_areal_evaluation(args: MeanArealValuesInput) -> Evaluation:
-    """An evaluation whose Spark session suits the chosen backend."""
-    configs = dict(ARROW_CONFIGS)
-    if args.backend == "spark":
-        configs.update({
-            # Python workers hold the grid batches; give each its task budget plus room for Arrow buffers
-            "spark.executor.pyspark.memory": f"{math.ceil(1.5 * args.task_memory_gb * args.executor_cores)}g",
-            # A duplicate task attempt would only re-read the grid
-            "spark.speculation": "false",
-        })
+    """An evaluation whose Spark session suits the mean areal tasks."""
+    configs = {
+        **ARROW_CONFIGS,
+        # Python workers hold the grid batches; give each its task budget plus room for Arrow buffers
+        "spark.executor.pyspark.memory": f"{math.ceil(1.5 * args.task_memory_gb * args.executor_cores)}g",
+        # A duplicate task attempt would only re-read the grid
+        "spark.speculation": "false",
+    }
     return initialize_evaluation(
         temp_dir_path=args.temp_dir_path,
         start_spark_cluster=args.start_spark_cluster,
@@ -451,40 +402,6 @@ def _write(ev: Evaluation, data, args: MeanArealValuesInput, variable_name: str,
             replace_condition(args, variable_name, steps) if args.write_mode == "replace_where" else None
         ),
     )
-
-
-def _compute_locally(ev, da, args, plan, groups, weights: GridWeights, fixed: dict, constants: dict):
-    """Batches computed concurrently on the Prefect pod, written group by group from pandas."""
-    logger = get_run_logger()
-    # Zarr already reads each batch's chunks concurrently; more batches mostly add decode CPU
-    workers = resolve_budget(io=args.batch_workers or resolve_cpu_workers(), memory_per_item=plan.batch_bytes).io
-    if args.max_read_memory_gb is not None:
-        workers = max(1, min(workers, int(args.max_read_memory_gb * 1e9 // plan.batch_bytes)))
-    logger.info(f"Computing {len(plan.batches)} batch(es) on the Prefect pod, {workers} at a time.")
-    window = (
-        int(weights.rows.min()), int(weights.rows.max()) + 1, int(weights.cols.min()), int(weights.cols.max()) + 1
-    )
-    batch_kwargs = dict(
-        da=da, args=args, window=window, rows=weights.rows, cols=weights.cols, matrix=weights.matrix,
-        location_ids=weights.location_ids, fixed=fixed, band_edges=plan.band_edges,
-    )
-    for group in groups:
-        frames = [
-            compute_batch_group(batches=group[s:s + workers], workers=workers, batch_kwargs=batch_kwargs)
-            for s in range(0, len(group), workers)
-        ]
-        df = pd.concat(frames, ignore_index=True)
-        if df.empty:
-            continue
-        for name, value in constants.items():
-            df[name] = value
-        # Forecast batches fill these per step
-        if "reference_time" not in df:
-            df["reference_time"] = None
-        if args.timeseries_table_name != "primary_timeseries" and "member" not in df:
-            df["member"] = None
-        logger.info(f"Writing {len(df)} rows; values {df['value'].min():.6g} to {df['value'].max():.6g}.")
-        _write(ev, df, args, constants["variable_name"], group[0].append(group[1:]))
 
 
 def _compute_on_spark(ev, da, args, plan, groups, weights: GridWeights, fixed: dict, constants: dict):
@@ -583,20 +500,14 @@ def mean_areal_for_grid(ev: Evaluation, grid_da: xr.DataArray, spec: GridSpec, a
     groups = _write_groups(plan.batches, args, weights.location_ids.size, forecast=bool(fixed))
     logger.info(
         f"Computing {len(written)} step(s) for {weights.location_ids.size} location(s) from {weights.rows.size} "
-        f"pixel(s) in {len(groups)} write(s), backend '{args.backend}'."
+        f"pixel(s) in {len(groups)} write(s)."
     )
     constants = {
         "configuration_name": args.configuration_name,
         "variable_name": target.variable_name,
         "unit_name": target.unit_name,
     }
-    compute = _compute_on_spark if args.backend == "spark" else _compute_locally
-    zarr_config = (
-        zarr.config.set({"async.concurrency": args.zarr_concurrency})
-        if args.zarr_concurrency else contextlib.nullcontext()
-    )
-    with zarr_config:
-        compute(ev, grid_da, args, plan, groups, weights, fixed, constants)
+    _compute_on_spark(ev, grid_da, args, plan, groups, weights, fixed, constants)
 
 
 @flow(

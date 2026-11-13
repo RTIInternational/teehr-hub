@@ -129,7 +129,7 @@ def test_block_rejects_misaligned_step_columns(lazy_grid):
 
 
 def test_arrow_task_runner_runs_where_workflows_is_not_importable(lazy_grid, tmp_path):
-    """The mapInArrow function, pickled as the Spark backend ships it, runs in a process that can't import our code."""
+    """The mapInArrow function, pickled as the mean areal flow ships it, runs in a process that can't import our code."""
     pytest.importorskip("pyspark")
     from pyspark import cloudpickle
 
@@ -143,7 +143,7 @@ def test_arrow_task_runner_runs_where_workflows_is_not_importable(lazy_grid, tmp
         for m in range(2) for t in (0, 3)
     ]
     runner = arrow_task_runner(tasks, da, weights, y_dim="y", x_dim="x", min_coverage=0.5)
-    # As the Spark backend does
+    # As the mean areal flow does
     cloudpickle.register_pickle_by_value(mean_areal_kernel)
     (tmp_path / "runner.pkl").write_bytes(cloudpickle.dumps(runner))
 
