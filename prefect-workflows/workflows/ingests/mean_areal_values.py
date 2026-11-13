@@ -3,7 +3,7 @@
 ``calculate_mean_areal_values`` reads one of our Icechunk repos. ``mean_areal_for_grid`` does the work for any
 lazily opened grid, so flows for outside sources (e.g. AORC, dynamical.org) open theirs and call it.
 
-Batches follow the grid's storage chunks (``plan_reads``) and are computed with teehr's ``mean_areal_block``,
+Batches follow the grid's storage chunks (``plan_reads``) and are computed with ``utils.mean_areal_kernel``,
 either on the Prefect pod or as Spark ``mapInArrow`` tasks that write straight to the warehouse.
 """
 import contextlib
@@ -23,11 +23,12 @@ from scipy import sparse
 from teehr import Configuration, Evaluation, Unit, Variable
 from teehr.fetching.const import UNIT_NAME
 from teehr.fetching.nwm.grid_utils import build_weights_matrix
-from teehr.utilities.mean_areal import BlockTask, GridWeights, arrow_task_runner, run_block_task
 from teehr.utils.concurrency import resolve_budget, resolve_cpu_workers, run_concurrent_map
 
 from utils import time_grid as tg
 from utils.grid_spec import GridSpec, open_grid_dataset, read_grid_spec
+from utils import mean_areal_kernel
+from utils.mean_areal_kernel import BlockTask, GridWeights, arrow_task_runner, run_block_task
 from workflows.utils.repo_const import MEMBER, STATUS_COORD
 from workflows.utils.time_utils import to_naive_utc
 from workflows.utils.common_utils import initialize_evaluation
@@ -488,6 +489,7 @@ def _compute_locally(ev, da, args, plan, groups, weights: GridWeights, fixed: di
 
 def _compute_on_spark(ev, da, args, plan, groups, weights: GridWeights, fixed: dict, constants: dict):
     """Batches run as Spark mapInArrow tasks, one Spark job and warehouse write per group."""
+    from pyspark import cloudpickle
     from pyspark.sql import Observation
     from pyspark.sql import functions as F
     from pyspark.sql.pandas.types import to_arrow_schema
@@ -500,6 +502,8 @@ def _compute_on_spark(ev, da, args, plan, groups, weights: GridWeights, fixed: d
     schema = StructType([field for field in table_schema if field.name not in AUDIT_COLUMNS])
     dim = args.append_dim
     da = da.transpose(dim, *fixed, args.y_dim, args.x_dim)
+    # Executors don't have our workflow code, so send the kernel's code with each task
+    cloudpickle.register_pickle_by_value(mean_areal_kernel)
     for i, group in enumerate(groups, start=1):
         tasks = [block for batch in group for block in _block_tasks(batch, da, dim, fixed)]
         run = arrow_task_runner(
