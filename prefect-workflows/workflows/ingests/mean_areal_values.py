@@ -310,11 +310,12 @@ def read_weights_from_warehouse(
 
 
 @task(cache_policy=NO_CACHE, timeout_seconds=60 * 10)
-def check_locations(ev: Evaluation, location_ids: np.ndarray, location_id_prefix: str):
-    """Every weighted location must exist, since timeseries writes skip foreign-key validation."""
+def check_locations(ev: Evaluation, args: MeanArealValuesInput, location_ids: np.ndarray):
+    """Every weighted location must exist where we write, since timeseries writes skip foreign-key validation."""
+    locations = ev.table("locations", namespace_name=args.namespace_name, catalog_name=args.catalog_name)
     known = {
-        row["id"] for row in ev.locations.filter(
-            filters=[{"column": "id", "operator": "like", "value": like_prefix(location_id_prefix)}]
+        row["id"] for row in locations.filter(
+            filters=[{"column": "id", "operator": "like", "value": like_prefix(args.location_id_prefix)}]
         ).to_sdf().select("id").collect()
     }
     missing = set(location_ids) - known
@@ -372,10 +373,13 @@ def register_location_crosswalks(ev: Evaluation, args: MeanArealValuesInput, loc
 
 def mean_areal_evaluation(args: MeanArealValuesInput) -> Evaluation:
     """An evaluation whose Spark session suits the mean areal tasks."""
+    python_gb = math.ceil(1.5 * args.task_memory_gb * args.executor_cores)
     configs = {
         **ARROW_CONFIGS,
-        # Python workers hold the grid batches; give each its task budget plus room for Arrow buffers
-        "spark.executor.pyspark.memory": f"{math.ceil(1.5 * args.task_memory_gb * args.executor_cores)}g",
+        # Executor pod memory beyond the JVM heap: each Python worker's task budget plus room for Arrow buffers, and
+        # 1 GB for the JVM's own overhead. Not spark.executor.pyspark.memory, which caps each worker's virtual
+        # memory, and zarr's and Icechunk's threads reserve far more of that than they use
+        "spark.executor.memoryOverhead": f"{python_gb + 1}g",
         # A duplicate task attempt would only re-read the grid
         "spark.speculation": "false",
     }
@@ -405,7 +409,7 @@ def _write(ev: Evaluation, data, args: MeanArealValuesInput, variable_name: str,
 
 
 def _compute_on_spark(ev, da, args, plan, groups, weights: GridWeights, fixed: dict, constants: dict):
-    """Batches run as Spark mapInArrow tasks, one Spark job and warehouse write per group."""
+    """Batches run as Spark mapInArrow tasks, computed once per group and written to the warehouse."""
     from pyspark import cloudpickle
     from pyspark.sql import Observation
     from pyspark.sql import functions as F
@@ -433,10 +437,16 @@ def _compute_on_spark(ev, da, args, plan, groups, weights: GridWeights, fixed: d
             .repartition(len(tasks))
             .mapInArrow(run, schema)
             .observe(stats, F.count(F.lit(1)).alias("rows"), F.min("value").alias("min"), F.max("value").alias("max"))
+            # The write reads its input more than once (sampling for the table's sort order, upsert's MERGE), so
+            # keep the rows rather than recompute the grid each time
+            .persist()
         )
         steps = group[0].append(group[1:])
         started = time.perf_counter()
-        _write(ev, sdf, args, constants["variable_name"], steps)
+        try:
+            _write(ev, sdf, args, constants["variable_name"], steps)
+        finally:
+            sdf.unpersist()
         logger.info(
             f"Group {i}/{len(groups)}: {len(tasks)} task(s), {len(steps)} step(s) through {steps[-1]} in "
             f"{time.perf_counter() - started:.1f}s; {stats.get}."
@@ -471,8 +481,10 @@ def prepare_mean_areal(ev: Evaluation, grid_da: xr.DataArray, args: MeanArealVal
     )
     weights_df = read_weights_from_warehouse(ev=ev, location_id_prefix=args.location_id_prefix, grid_name=grid_name)
     weights_df["weight"] = _area_weights(weights_df, grid_da, args.y_dim)
-    weights = GridWeights(*build_weights_matrix(weights_df))
-    check_locations(ev=ev, location_ids=weights.location_ids, location_id_prefix=args.location_id_prefix)
+    matrix, rows, cols, location_ids = build_weights_matrix(weights_df)
+    # Column-sliced per row band by every task, so convert once
+    weights = GridWeights(matrix.tocsc(), rows, cols, location_ids)
+    check_locations(ev=ev, args=args, location_ids=weights.location_ids)
     register_location_crosswalks(ev=ev, args=args, location_ids=weights.location_ids)
     return MeanArealTarget(weights, variable_name, unit_name)
 

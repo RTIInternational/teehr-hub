@@ -23,9 +23,10 @@ class GridWeights:
     """Zone-by-pixel weights, as returned by teehr's ``build_weights_matrix``.
 
     ``rows``/``cols`` give each matrix column's pixel in the full grid, and ``location_ids`` each matrix row's zone.
+    A CSC ``matrix`` saves ``mean_areal_block`` converting it for every block.
     """
 
-    matrix: sparse.csr_matrix
+    matrix: sparse.spmatrix
     rows: np.ndarray
     cols: np.ndarray
     location_ids: np.ndarray
