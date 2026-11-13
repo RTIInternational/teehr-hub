@@ -647,15 +647,14 @@ deployments:
       Calculate pixel coverage weights for filtering the polygons from the locations table
       by location_id_prefix, and reading the grid variable from the Icechunk repo corresponding
       to the configuration name. By default, usgs basin polygons are used with NWM v3.1 forcing.
-      Run on demand; write_mode "append" adds only missing (location, pixel, grid) rows.
+      Run on demand; a rerun replaces the layer's weights on the grid.
     entrypoint: workflows/ingests/pixel_coverage_weights.py:calculate_pixel_coverage_weights
     parameters: {
       "args": {
         "temp_dir_path": *temp_dir_path,
         "configuration_name": "nwm31_forcing_analysis_assim",
         "location_id_prefix": "usgsbasin",
-        "grid_variable_name": "rainrate_hourly_mean",
-        "write_mode": "append"
+        "grid_variable_name": "rainrate_hourly_mean"
       }
     }
     work_pool: *work_pool_large

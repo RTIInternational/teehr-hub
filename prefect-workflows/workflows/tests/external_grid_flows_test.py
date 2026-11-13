@@ -52,10 +52,20 @@ def test_aorc_year_decodes_lazily_to_float32_with_crs(aorc_year):
 
 
 def test_aorc_known_variable_gets_teehr_names_unless_set():
+    teehr_names = ("rainrate_hourly_mean", "mm/s", 1 / 3600)
     args = aorc.with_teehr_names(AORCMeanArealInput(**COMMON))
-    assert (args.variable_name, args.unit_name, args.value_scale) == ("rainrate_hourly_mean", "mm/s", 1 / 3600)
-    kept = aorc.with_teehr_names(AORCMeanArealInput(**COMMON, unit_name="mm/hr", value_scale=1.0))
+    assert (args.variable_name, args.unit_name, args.value_scale) == teehr_names
+    # As Prefect's run form sends them: every field, defaults included
+    form = aorc.with_teehr_names(AORCMeanArealInput(**COMMON, variable_name=None, unit_name=None, value_scale=1.0))
+    assert (form.variable_name, form.unit_name, form.value_scale) == teehr_names
+    kept = aorc.with_teehr_names(
+        AORCMeanArealInput(**COMMON, variable_name="rainrate_hourly_mean", unit_name="mm/hr", value_scale=1.0)
+    )
     assert (kept.unit_name, kept.value_scale) == ("mm/hr", 1.0)
+    with pytest.raises(ValueError, match="unit_name"):
+        aorc.with_teehr_names(AORCMeanArealInput(**COMMON, variable_name="rainrate_hourly_mean"))
+    with pytest.raises(ValueError, match="variable_name"):
+        aorc.with_teehr_names(AORCMeanArealInput(**COMMON, unit_name="mm/hr"))
     with pytest.raises(ValueError, match="variable_name"):
         aorc.with_teehr_names(AORCMeanArealInput(**COMMON, grid_variable_name="TMP_2maboveground"))
 

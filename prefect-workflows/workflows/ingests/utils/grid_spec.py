@@ -60,11 +60,6 @@ def read_grid_spec(store: ic.IcechunkStore, override: dict | None = None) -> Gri
 def open_grid_dataset(store: ic.IcechunkStore, spec: GridSpec) -> xr.Dataset:
     """The repo's data group with canonical forecast dims, integer-hour ``lead_time`` and a ``value_time``."""
     ds = xr.open_zarr(store, group=spec.data_group, consolidated=False, chunks=None, decode_coords="all")
-    return normalize_grid_dataset(ds, spec)
-
-
-def normalize_grid_dataset(ds: xr.Dataset, spec: GridSpec) -> xr.Dataset:
-    """``ds`` with canonical forecast dims, integer-hour ``lead_time`` and a ``value_time``."""
     ds = ds.rename({k: v for k, v in spec.renames.items() if k in ds.variables})
     lead = LEAD_TIME
     if lead in ds.coords and np.issubdtype(ds[lead].dtype, np.timedelta64):

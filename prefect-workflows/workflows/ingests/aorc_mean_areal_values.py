@@ -66,15 +66,21 @@ def available_years(start_year: int, end_year: int) -> list[int]:
 
 
 def with_teehr_names(args: AORCMeanArealInput) -> AORCMeanArealInput:
-    """The args with the variable's teehr name, unit and scale filled in from TEEHR_VARIABLES where unset."""
+    """The args with the variable's teehr name, unit and scale from TEEHR_VARIABLES, unless variable_name is set.
+
+    Goes by values, not by which fields were passed: Prefect's run form sends every field, defaults included.
+    """
+    if args.variable_name is not None:
+        if args.unit_name is None:
+            raise ValueError("Set unit_name (and value_scale) with variable_name.")
+        return args
+    if args.unit_name is not None:
+        raise ValueError("Set variable_name (and value_scale) with unit_name.")
     known = TEEHR_VARIABLES.get(args.grid_variable_name)
     if known is None:
-        if args.variable_name is None or args.unit_name is None:
-            raise ValueError(f"Set variable_name and unit_name for AORC variable '{args.grid_variable_name}'.")
-        return args
+        raise ValueError(f"Set variable_name, unit_name and value_scale for AORC variable '{args.grid_variable_name}'.")
     variable_name, unit_name, scale = known
-    update = {"variable_name": variable_name, "unit_name": unit_name, "value_scale": scale}
-    return args.model_copy(update={k: v for k, v in update.items() if k not in args.model_fields_set})
+    return args.model_copy(update={"variable_name": variable_name, "unit_name": unit_name, "value_scale": scale})
 
 
 @flow(
@@ -117,5 +123,4 @@ def calculate_aorc_pixel_coverage_weights(args: AORCMeanArealInput):
         configuration_name=args.configuration_name,
         grid_name=args.grid_name,
     )
-    # MERGE: weights of other layers on the grid are kept
-    write_weights(ev, weights_df, write_mode="upsert")
+    write_weights(ev, weights_df, args.write_mode, args.location_id_prefix, args.grid_name)

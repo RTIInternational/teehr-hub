@@ -18,8 +18,10 @@ import xarray as xr
 from prefect import flow, task, get_run_logger
 from prefect.cache_policies import NO_CACHE
 from teehr import Configuration, Evaluation, Unit, Variable
+from teehr.evaluation.write import AUDIT_COLUMNS
 from teehr.fetching.const import UNIT_NAME
 from teehr.fetching.nwm.grid_utils import build_weights_matrix
+from teehr.utils.concurrency import resolve_budget, resolve_cpu_workers
 
 from utils import time_grid as tg
 from utils.grid_spec import GridSpec, open_grid_dataset, read_grid_spec
@@ -31,7 +33,7 @@ from workflows.utils.common_utils import initialize_evaluation
 from workflows.models.ingest_gridded_data_input import VARIABLE_AND_UNIT_MAPPER
 from workflows.models.mean_areal_inputs import MeanArealValuesInput
 from pixel_coverage_weights import (
-    ARROW_CONFIGS, WEIGHTS_TABLE_NAME, get_readonly_repo_store, like_prefix, resolve_grid_name,
+    ARROW_CONFIGS, WEIGHTS_TABLE_NAME, get_readonly_repo_store, like_prefix, resolve_grid_name, sql_literal,
     write_dataframe_to_warehouse,
 )
 
@@ -40,8 +42,8 @@ from pixel_coverage_weights import (
 AVERAGING_BYTES_PER_PIXEL = 25
 # Steps averaged at once, which caps those copies whatever the batch size
 MAX_SLICE_STEPS = 256
-# Filled by the warehouse writer, not the mean areal tasks
-AUDIT_COLUMNS = ("created_at", "updated_at")
+# Attempts per Spark task in local mode, which otherwise never retries a failed task (e.g. a transient S3 error)
+LOCAL_TASK_ATTEMPTS = 3
 
 
 def _written_steps(da: xr.DataArray, args: MeanArealValuesInput) -> xr.DataArray:
@@ -102,11 +104,10 @@ def _area_weights(weights_df: pd.DataFrame, da: xr.DataArray, y_dim: str) -> pd.
 
 @dataclass(frozen=True)
 class ReadPlan:
-    """Batches of steps, the row bands their window is read in, and the memory one batch needs."""
+    """Batches of steps, and the row bands their window is read in."""
 
     batches: list[pd.Index]
     band_edges: list[int]
-    batch_bytes: int
 
 
 def _chunk_layout(da: xr.DataArray) -> dict[str, tuple[int, int]]:
@@ -139,8 +140,7 @@ def plan_reads(
 
     A batch holds whole inner chunks along the append axis (forecasts: the lead axis), so no chunk is decoded
     twice, and whole shards when they fit; members stored in one chunk are read together. The window is read in
-    bands of whole chunk rows, sized so one chunk's worth of steps fits the budget. Explicit
-    ``time_chunk_size``/``num_shard_chunks`` give fixed batches of that many steps in one band, as before.
+    bands of whole chunk rows, sized so one chunk's worth of steps fits the budget.
     """
     logger = get_run_logger()
     dim = args.append_dim
@@ -149,8 +149,7 @@ def plan_reads(
     lead_dim = list(fixed)[-1] if fixed else dim
     members_together = MEMBER in fixed and layout.get(MEMBER, (1, 1))[0] >= len(fixed[MEMBER])
     members = len(fixed[MEMBER]) if members_together else 1
-    legacy = bool({"time_chunk_size", "num_shard_chunks"} & args.model_fields_set)
-    unit, shard = (args.time_chunk_size * args.num_shard_chunks,) * 2 if legacy else layout.get(lead_dim, (1, 1))
+    unit, shard = layout.get(lead_dim, (1, 1))
     chunk_rows, chunk_cols = layout.get(args.y_dim, (y1 - y0, 0))[0], layout.get(args.x_dim, (x1 - x0, 0))[0]
     budget = args.task_memory_gb * 1e9
 
@@ -161,16 +160,16 @@ def plan_reads(
 
     unit_steps = unit * members
     band_rows = y1 - y0
-    while not legacy and band_rows > chunk_rows and batch_bytes(unit_steps, band_rows) > budget:
+    while band_rows > chunk_rows and batch_bytes(unit_steps, band_rows) > budget:
         band_rows = max(chunk_rows, band_rows // 2 // chunk_rows * chunk_rows)
     if batch_bytes(unit_steps, band_rows) > budget:
         logger.warning(
             f"One read unit ({unit_steps} steps x {band_rows} rows) needs "
             f"{batch_bytes(unit_steps, band_rows) / 1e9:.1f} GB, over task_memory_gb={args.task_memory_gb}."
         )
-    units = 1 if legacy else max(1, int(budget // batch_bytes(unit_steps, band_rows)))
+    units = max(1, int(budget // batch_bytes(unit_steps, band_rows)))
     lead_steps = unit * units
-    if not legacy and lead_steps >= shard:
+    if lead_steps >= shard:
         lead_steps = lead_steps // shard * shard
     if band_rows >= y1 - y0:
         band_edges = [y0, y1]
@@ -180,7 +179,7 @@ def plan_reads(
 
     if not fixed:
         batches = tg.shard_batches(written, da[dim].to_index(), lead_steps)
-    elif members_together and not legacy:
+    elif members_together:
         batches = _cycle_batches(written, fixed, lead_steps)
     else:
         batches = tg.step_batches(written, fixed, lead_steps, lead_steps)
@@ -190,10 +189,9 @@ def plan_reads(
         logger.info(f"The window touches {touched} spatial chunk(s); {used} hold weighted pixels.")
     steps_per_batch = max(len(batch) for batch in batches)
     logger.info(
-        f"Read plan: {len(batches)} batch(es) of up to {steps_per_batch} step(s), {len(band_edges) - 1} row band(s)"
-        f"{' (fixed by time_chunk_size/num_shard_chunks)' if legacy else ''}."
+        f"Read plan: {len(batches)} batch(es) of up to {steps_per_batch} step(s), {len(band_edges) - 1} row band(s)."
     )
-    return ReadPlan(batches, band_edges, batch_bytes(steps_per_batch, band_rows))
+    return ReadPlan(batches, band_edges)
 
 
 def _positions(coord: xr.DataArray, values) -> slice | np.ndarray:
@@ -256,13 +254,6 @@ def _write_groups(batches: list[pd.Index], args: MeanArealValuesInput, n_zones: 
     return groups
 
 
-def _sql_literal(value) -> str:
-    """A Spark SQL literal for a string or a naive timestamp."""
-    if isinstance(value, (pd.Timestamp, np.datetime64)):
-        return f"TIMESTAMP_NTZ '{pd.Timestamp(value).isoformat(sep=' ')}'"
-    return "'" + str(value).replace("'", "''") + "'"
-
-
 def replace_condition(args: MeanArealValuesInput, variable_name: str, steps: pd.Index) -> str:
     """The rows one write replaces: this configuration, variable and location layer, over the write's steps.
 
@@ -270,15 +261,15 @@ def replace_condition(args: MeanArealValuesInput, variable_name: str, steps: pd.
     rows written in an earlier unit, or for members it no longer produces.
     """
     parts = [
-        f"configuration_name = {_sql_literal(args.configuration_name)}",
-        f"variable_name = {_sql_literal(variable_name)}",
-        f"startswith(location_id, {_sql_literal(args.location_id_prefix + '-')})",
+        f"configuration_name = {sql_literal(args.configuration_name)}",
+        f"variable_name = {sql_literal(variable_name)}",
+        f"startswith(location_id, {sql_literal(args.location_id_prefix + '-')})",
     ]
     if isinstance(steps, pd.MultiIndex):
         cycles = steps.get_level_values(args.append_dim)
-        parts.append(f"reference_time BETWEEN {_sql_literal(cycles.min())} AND {_sql_literal(cycles.max())}")
+        parts.append(f"reference_time BETWEEN {sql_literal(cycles.min())} AND {sql_literal(cycles.max())}")
     else:
-        parts.append(f"value_time BETWEEN {_sql_literal(steps.min())} AND {_sql_literal(steps.max())}")
+        parts.append(f"value_time BETWEEN {sql_literal(steps.min())} AND {sql_literal(steps.max())}")
     return " AND ".join(parts)
 
 
@@ -373,7 +364,9 @@ def register_location_crosswalks(ev: Evaluation, args: MeanArealValuesInput, loc
 
 def mean_areal_evaluation(args: MeanArealValuesInput) -> Evaluation:
     """An evaluation whose Spark session suits the mean areal tasks."""
-    python_gb = math.ceil(1.5 * args.task_memory_gb * args.executor_cores)
+    # A task's Python worker: its task budget plus room for Arrow buffers
+    task_bytes = 1.5 * args.task_memory_gb * 1e9
+    python_gb = math.ceil(task_bytes * args.executor_cores / 1e9)
     configs = {
         **ARROW_CONFIGS,
         # Executor pod memory beyond the JVM heap: each Python worker's task budget plus room for Arrow buffers, and
@@ -383,6 +376,11 @@ def mean_areal_evaluation(args: MeanArealValuesInput) -> Evaluation:
         # A duplicate task attempt would only re-read the grid
         "spark.speculation": "false",
     }
+    if not args.start_spark_cluster:
+        # Local mode on the Prefect pod: as many tasks at once as fit in its memory, not one per core
+        workers = resolve_budget(io=resolve_cpu_workers(), memory_per_item=int(task_bytes)).io
+        configs["spark.master"] = f"local[{workers},{LOCAL_TASK_ATTEMPTS}]"
+        get_run_logger().info(f"Spark local mode with {workers} task(s) at once.")
     return initialize_evaluation(
         temp_dir_path=args.temp_dir_path,
         start_spark_cluster=args.start_spark_cluster,
@@ -433,8 +431,9 @@ def _compute_on_spark(ev, da, args, plan, groups, weights: GridWeights, fixed: d
         )
         stats = Observation(f"mean_areal_{i}")
         sdf = (
-            ev.spark.createDataFrame([(t,) for t in range(len(tasks))], "task int")
-            .repartition(len(tasks))
+            # One task per partition, so tasks spread evenly over the workers
+            ev.spark.range(len(tasks), numPartitions=len(tasks))
+            .selectExpr("CAST(id AS INT) AS task")
             .mapInArrow(run, schema)
             .observe(stats, F.count(F.lit(1)).alias("rows"), F.min("value").alias("min"), F.max("value").alias("max"))
             # The write reads its input more than once (sampling for the table's sort order, upsert's MERGE), so
@@ -472,6 +471,15 @@ def prepare_mean_areal(ev: Evaluation, grid_da: xr.DataArray, args: MeanArealVal
     unit_name = args.unit_name or grid_da.attrs.get("units")
     if unit_name is None:
         raise ValueError(f"Grid variable '{args.grid_variable_name}' has no 'units' attribute; set unit_name.")
+    if MEMBER in grid_da.dims and args.timeseries_table_name == "primary_timeseries":
+        raise ValueError("Ensemble members have no column in primary_timeseries; write them to secondary_timeseries.")
+    weights_df = read_weights_from_warehouse(ev=ev, location_id_prefix=args.location_id_prefix, grid_name=grid_name)
+    weights_df["weight"] = _area_weights(weights_df, grid_da, args.y_dim)
+    matrix, rows, cols, location_ids = build_weights_matrix(weights_df)
+    # Column-sliced per row band by every task, so convert once
+    weights = GridWeights(matrix.tocsc(), rows, cols, location_ids)
+    check_locations(ev=ev, args=args, location_ids=weights.location_ids)
+    # Only after the checks: registering skips existing names, so a wrong entry would stick
     register_domain_values(
         ev=ev,
         args=args,
@@ -479,12 +487,6 @@ def prepare_mean_areal(ev: Evaluation, grid_da: xr.DataArray, args: MeanArealVal
         variable_long_name=grid_da.attrs.get("long_name", variable_name),
         unit_name=unit_name,
     )
-    weights_df = read_weights_from_warehouse(ev=ev, location_id_prefix=args.location_id_prefix, grid_name=grid_name)
-    weights_df["weight"] = _area_weights(weights_df, grid_da, args.y_dim)
-    matrix, rows, cols, location_ids = build_weights_matrix(weights_df)
-    # Column-sliced per row band by every task, so convert once
-    weights = GridWeights(matrix.tocsc(), rows, cols, location_ids)
-    check_locations(ev=ev, args=args, location_ids=weights.location_ids)
     register_location_crosswalks(ev=ev, args=args, location_ids=weights.location_ids)
     return MeanArealTarget(weights, variable_name, unit_name)
 
@@ -497,8 +499,6 @@ def mean_areal_for_grid(ev: Evaluation, grid_da: xr.DataArray, spec: GridSpec, a
     """
     logger = get_run_logger()
     fixed = {d: grid_da[d].values for d in spec.fixed_dims}
-    if MEMBER in fixed and args.timeseries_table_name == "primary_timeseries":
-        raise ValueError("Ensemble members have no column in primary_timeseries; write them to secondary_timeseries.")
     if fixed:
         written = _written_forecast_steps(grid_da, args, fixed)
     else:

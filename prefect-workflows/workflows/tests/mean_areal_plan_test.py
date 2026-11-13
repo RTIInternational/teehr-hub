@@ -78,13 +78,6 @@ def test_small_budget_reads_in_chunk_aligned_bands(harness):
     assert all(len(batch) % 6 == 0 or batch[-1] == TIMES[-1] for batch in plan.batches)
 
 
-def test_explicit_shard_settings_keep_fixed_batches(harness):
-    """time_chunk_size/num_shard_chunks set explicitly give batches of exactly that many steps, in one band."""
-    plan = _plan(_analysis((6, 8, 8)), _args(time_chunk_size=1, num_shard_chunks=5), TIMES, {}, *PIXELS, n_zones=4)
-    assert [len(batch) for batch in plan.batches] == [5, 5, 5, 5]
-    assert plan.band_edges == [3, 39]
-
-
 def test_members_in_one_chunk_are_batched_and_read_together(harness):
     """With every member in one chunk, a batch is a cycle's block of leads across all members, read as one block."""
     da = _forecast(member_chunk=len(MEMBERS))

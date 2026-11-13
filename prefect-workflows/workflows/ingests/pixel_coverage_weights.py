@@ -7,6 +7,7 @@ in the table.
 """
 import geopandas as gpd
 import icechunk as ic
+import numpy as np
 import pandas as pd
 import rioxarray  # noqa: F401
 import xarray as xr
@@ -165,6 +166,13 @@ def read_location_polygons(ev: Evaluation, location_id_prefix: str) -> gpd.GeoDa
     return polygons_gdf
 
 
+def sql_literal(value) -> str:
+    """A Spark SQL literal for a string or a naive timestamp."""
+    if isinstance(value, (pd.Timestamp, np.datetime64)):
+        return f"TIMESTAMP_NTZ '{pd.Timestamp(value).isoformat(sep=' ')}'"
+    return "'" + str(value).replace("'", "''") + "'"
+
+
 def like_prefix(location_id_prefix: str) -> str:
     """A LIKE pattern for ids starting with ``<prefix>-``, with the prefix's own wildcards escaped.
 
@@ -217,15 +225,26 @@ def weights_for_grid(
     return format_weights_df(weights_df=weights_df, configuration_name=configuration_name, grid_name=grid_name)
 
 
-def write_weights(ev: Evaluation, weights_df: pd.DataFrame, write_mode: str):
-    """Write formatted weights, creating the table on first use."""
+def write_weights(
+    ev: Evaluation, weights_df: pd.DataFrame, write_mode: str, location_id_prefix: str, grid_name: str
+):
+    """Write a layer's formatted weights on a grid, creating the table on first use.
+
+    'replace_where' replaces the layer's weights on the grid, so pixels and polygons a re-created layer no longer
+    has are removed; 'upsert' never deletes. Other layers and grids are kept either way.
+    """
+    exists = table_exists(ev=ev, table_name=WEIGHTS_TABLE_NAME)
     write_dataframe_to_warehouse(
         ev=ev,
         dataframe=weights_df,
         table_name=WEIGHTS_TABLE_NAME,
         uniqueness_fields=WEIGHTS_UNIQUENESS_FIELDS,
-        write_mode=write_mode if table_exists(ev=ev, table_name=WEIGHTS_TABLE_NAME) else "create_or_replace",
+        write_mode=write_mode if exists else "create_or_replace",
         partition_by=WEIGHTS_PARTITION_BY,
+        replace_condition=(
+            f"grid_name = {sql_literal(grid_name)} "
+            f"AND startswith(location_id, {sql_literal(location_id_prefix + '-')})"
+        ) if exists and write_mode == "replace_where" else None,
     )
 
 
@@ -270,4 +289,4 @@ def calculate_pixel_coverage_weights(args: PixelCoverageWeightsInput):
         configuration_name=args.configuration_name,
         grid_name=grid_name,
     )
-    write_weights(ev, weights_df, args.write_mode)
+    write_weights(ev, weights_df, args.write_mode, args.location_id_prefix, grid_name)

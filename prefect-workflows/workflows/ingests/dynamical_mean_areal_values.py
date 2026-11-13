@@ -88,5 +88,4 @@ def calculate_dynamical_pixel_coverage_weights(args: DynamicalMeanArealInput):
         configuration_name=args.configuration_name,
         grid_name=args.grid_name,
     )
-    # MERGE: weights of other layers on the grid are kept
-    write_weights(ev, weights_df, write_mode="upsert")
+    write_weights(ev, weights_df, args.write_mode, args.location_id_prefix, args.grid_name)

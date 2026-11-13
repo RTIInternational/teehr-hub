@@ -46,9 +46,13 @@ class PixelCoverageWeightsInput(BaseGriddedDataInput):
         False,
         description="Whether to start a Spark cluster for processing"
     )
-    write_mode: Literal["append", "upsert"] = Field(
-        "append",
-        description="Write mode for the pixel coverage weights table, passed to ev._write.to_warehouse()"
+    write_mode: Literal["replace_where", "upsert"] = Field(
+        "replace_where",
+        description=(
+            "Write mode for the pixel coverage weights table, passed to ev._write.to_warehouse(). 'replace_where' "
+            "replaces the layer's weights on the grid, so pixels and polygons a re-created layer no longer has are "
+            "removed; 'upsert' never deletes"
+        )
     )
 
 
