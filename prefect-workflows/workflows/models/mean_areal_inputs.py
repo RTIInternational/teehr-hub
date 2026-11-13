@@ -46,9 +46,13 @@ class PixelCoverageWeightsInput(BaseGriddedDataInput):
         False,
         description="Whether to start a Spark cluster for processing"
     )
-    write_mode: Literal["append", "upsert"] = Field(
-        "append",
-        description="Write mode for the pixel coverage weights table, passed to ev._write.to_warehouse()"
+    write_mode: Literal["replace_where", "upsert"] = Field(
+        "replace_where",
+        description=(
+            "Write mode for the pixel coverage weights table, passed to ev._write.to_warehouse(). 'replace_where' "
+            "replaces the layer's weights on the grid, so pixels and polygons a re-created layer no longer has are "
+            "removed; 'upsert' never deletes"
+        )
     )
 
 
@@ -57,8 +61,27 @@ class MeanArealValuesInput(PixelCoverageWeightsInput):
 
     grid_variable_name: str = Field(
         ...,
-        description="Name of variable in the gridded dataset, already the teehr variable name (e.g. 'rainrate_hourly_mean')"
+        description=(
+            "Name of variable in the gridded dataset (e.g. 'rainrate_hourly_mean'). Written under variable_name "
+            "if set, else under this name, which must then be the teehr variable name"
+        )
     )
+    variable_name: Optional[str] = Field(
+        default=None,
+        description="teehr variable name to write. Defaults to grid_variable_name"
+    )
+    unit_name: Optional[str] = Field(
+        default=None,
+        description="teehr unit name to write. Defaults to the grid variable's 'units' attribute"
+    )
+    value_scale: float = Field(
+        1.0,
+        description=(
+            "Applied to the mean areal values (value * value_scale + value_offset), e.g. a unit conversion from "
+            "the grid's units to unit_name. Exact, since a coverage-weighted mean is linear"
+        )
+    )
+    value_offset: float = Field(0.0, description="See value_scale")
     timeseries_table_name: str = Field(
         "secondary_timeseries",
         description=(
@@ -74,13 +97,28 @@ class MeanArealValuesInput(PixelCoverageWeightsInput):
         default=None,
         description="Namespace of the timeseries table. Defaults to the evaluation's namespace"
     )
-    write_mode: Literal["append", "upsert"] = Field(
-        "upsert",
+    write_mode: Literal["replace_where", "upsert"] = Field(
+        "replace_where",
         description=(
-            "Write mode for the timeseries table, passed to ev._write.to_warehouse(). 'upsert' replaces "
-            "values for steps the grid has rewritten (e.g. provisional to stable)."
+            "Write mode for the timeseries table, passed to ev._write.to_warehouse(). 'replace_where' replaces each "
+            "write's slice (configuration, variable, location layer, time or cycle range) without a MERGE, so "
+            "reruns are idempotent and rows a rerun no longer produces are removed; it commits twice (insert, then "
+            "delete), so readers can briefly see both. 'upsert' merges in one commit and never deletes"
         )
     )
+    task_memory_gb: float = Field(
+        2.0,
+        gt=0,
+        description=(
+            "Memory one Spark task may use while reading and averaging; with the grid's chunking it sets the "
+            "batch size and the row bands the window is read in"
+        )
+    )
+    executor_instances: int = Field(
+        4, gt=0, description="Spark executors, with start_spark_cluster"
+    )
+    executor_cores: int = Field(4, gt=0, description="Cores per Spark executor")
+    executor_memory: str = Field("8g", description="JVM memory per Spark executor; Python workers get their own")
     start_dt: Union[str, datetime, None] = Field(
         default=None,
         description="First grid step to compute. Defaults to the first written step."
@@ -88,24 +126,6 @@ class MeanArealValuesInput(PixelCoverageWeightsInput):
     end_dt: Union[str, datetime, None] = Field(
         default=None,
         description="Last grid step to compute. Defaults to the last written step."
-    )
-    max_read_memory_gb: Optional[float] = Field(
-        default=None,
-        gt=0,
-        description=(
-            "Memory for grid batches read at once; caps the number of concurrent batches. Defaults to "
-            "the memory teehr finds available"
-        )
-    )
-    batch_workers: Optional[int] = Field(
-        default=None,
-        gt=0,
-        description="Concurrent grid batches before the memory cap. Defaults to the available CPUs"
-    )
-    zarr_concurrency: Optional[int] = Field(
-        default=None,
-        gt=0,
-        description="Concurrent chunk reads per batch (zarr async.concurrency). Defaults to the environment's"
     )
     max_rows_per_write: int = Field(
         5_000_000,
