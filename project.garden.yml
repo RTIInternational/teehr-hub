@@ -39,9 +39,13 @@ environments:
         catalogType: rest
         catalogUri: http://polaris:8181/api/catalog
         catalogWarehouse: s3://warehouse/
-        catalogRoleArn: "" # local S3 has no real STS; Polaris can't assume a role against it
-        skipCredentialSubscopingIndirection: "true"
-        storageStsUnavailable: "true"
+        # Polaris vends per-table, prefix-scoped credentials via STS, as on remote.
+        # RustFS implements STS AssumeRole with session policies (it is also the STS
+        # endpoint, since stsEndpoint defaults to the S3 endpoint). No role ARN:
+        # RustFS ignores it, and Polaris won't add one to an existing catalog.
+        catalogRoleArn: ""
+        skipCredentialSubscopingIndirection: "false"
+        storageStsUnavailable: "false"
         defaultRealm: teehr
         realmsCsv: teehr
         oauthServerUri: http://keycloak-service:8080/realms/teehr/protocol/openid-connect/token
