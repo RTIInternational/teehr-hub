@@ -77,6 +77,11 @@ environments:
           default: ["icechunk-read-only"]
           repos:
             authz_test_restricted: ["admin"] # for the xpublish-access-enforcement test
+      # Nightly Postgres dumps to S3 (teehr-cloud-core/db-backups, #173).
+      dbBackups:
+        bucket: db-backups
+        endpoint: http://local-s3:9000
+        credentialsSecret: local-s3-secrets
   - name: remote
     defaultNamespace: ${project.name}
     # Cluster-specific values (region, cluster, ECR, EFS, IRSA roles, buckets,
