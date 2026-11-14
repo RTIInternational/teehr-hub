@@ -26,3 +26,8 @@ deploy:
   clusterName: teehr-hub-use1
   clusterRoleArn: arn:aws:iam::935462133478:role/teehr-hub-teehr-hub-admin
   actionRoleArn: arn:aws:iam::935462133478:role/teehr-hub-github-actions-garden-deploy
+# Nightly Postgres dumps (teehr-cloud-core db-backups); bucket and write-only
+# IRSA role from teehr-cloud-platform db-backups Terraform.
+dbBackups:
+  bucket: teehr-db-backups-use1
+  roleArn: arn:aws:iam::935462133478:role/teehr-hub-use1-db-backup-irsa
