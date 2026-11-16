@@ -13,6 +13,7 @@ irsa:
   polarisRoleArn: arn:aws:iam::935462133478:role/teehr-hub-use1-polaris-irsa
   prefectJobRoleArn: arn:aws:iam::935462133478:role/teehr-hub-use1-prefect-job-irsa
   xpublishRoleArn: arn:aws:iam::935462133478:role/teehr-hub-use1-xpublish-api-irsa
+  controlPlaneRoleArn: arn:aws:iam::935462133478:role/teehr-hub-use1-control-plane-irsa
 polaris:
   catalogWarehouse: s3://teehr-iceberg-warehouse-use1/
   catalogRoleArn: arn:aws:iam::935462133478:role/teehr-hub-use1-iceberg-s3-warehouse-access
@@ -31,3 +32,10 @@ deploy:
 dbBackups:
   bucket: teehr-db-backups-use1
   roleArn: arn:aws:iam::935462133478:role/teehr-hub-use1-db-backup-irsa
+# Project control plane (teehr-cloud-core #171): dark launch, so only platform
+# admins create projects. Staging bucket and IRSA role (irsa.controlPlaneRoleArn)
+# from teehr-cloud-platform; secrets in REMOTE_SECRETS control-plane-secrets.
+controlPlane:
+  enabled: true
+  stagingBucket: teehr-upload-staging-use1
+  projectCreatorRoles: control-plane-admin
