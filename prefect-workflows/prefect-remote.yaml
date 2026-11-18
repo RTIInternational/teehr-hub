@@ -768,6 +768,22 @@ deployments:
       cron: "0 4 * * 0"
       active: true
 
+  - name: v1-table-maintenance
+    version:
+    tags: []
+    concurrency_limit:
+      limit: 1
+      collision_strategy: "CANCEL_NEW"
+    description: Lay out and tidy the v1 public tables (layout properties, sorted rewrite of changed partitions, expire snapshots, remove orphans)
+    entrypoint: workflows/maintenance/v1_table_maintenance.py:v1_table_maintenance
+    # Weekly, after routine-table-maintenance (Sundays 04:00). The schedule starts
+    # off: run it by hand first (days: null rewrites every partition once).
+    parameters: {"temp_dir_path": *temp_dir_path}
+    work_pool: *work_pool_small
+    schedule:
+      cron: "0 8 * * 0"
+      active: false
+
   - name: cleanup-old-flow-runs
     version:
     tags: []

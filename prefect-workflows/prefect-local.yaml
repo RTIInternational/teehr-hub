@@ -517,6 +517,14 @@ deployments:
     parameters: {"temp_dir_path": *temp_dir_path, "start_spark_cluster": false}
     work_pool: *work_pool
 
+  - name: v1-table-maintenance
+    version:
+    tags: []
+    description: Lay out and tidy the v1 public tables (layout properties, sorted rewrite of changed partitions, expire snapshots, remove orphans)
+    entrypoint: workflows/maintenance/v1_table_maintenance.py:v1_table_maintenance
+    parameters: {"temp_dir_path": *temp_dir_path, "start_spark_cluster": false}
+    work_pool: *work_pool
+
   - name: cleanup-old-flow-runs
     version:
     tags: []
