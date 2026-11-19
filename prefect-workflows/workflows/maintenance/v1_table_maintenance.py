@@ -25,7 +25,6 @@ from pathlib import Path
 
 from prefect import flow, get_run_logger, task
 from prefect.cache_policies import NO_CACHE
-from pyspark.errors import AnalysisException
 from pyspark.sql import SparkSession
 
 from workflows.utils.common_utils import initialize_evaluation
@@ -87,21 +86,21 @@ def changed_partitions(
 ) -> list[str | None]:
     """Filters for the table's partitions changed since ``since`` (all when None).
     ``[None]`` for an unpartitioned table (rewritten whole); ``[]`` if none changed."""
-    partitions = f"{CATALOG}.{namespace}.{table}.partitions"
-    try:
-        rows = spark.sql(f"SELECT partition, last_updated_at FROM {partitions}").collect()
-    except AnalysisException:  # an Iceberg without last_updated_at: every partition
-        rows = spark.sql(f"SELECT partition, NULL AS last_updated_at FROM {partitions}").collect()
+    # Unpartitioned tables' partitions table has no `partition` column (one row).
+    rows = [
+        r.asDict()
+        for r in spark.sql(f"SELECT * FROM {CATALOG}.{namespace}.{table}.partitions").collect()
+    ]
     out: list[str | None] = []
     for row in rows:
-        updated = row["last_updated_at"]
+        updated = row.get("last_updated_at")
         if (
             since is not None
             and updated is not None
             and updated.replace(tzinfo=updated.tzinfo or UTC) < since
         ):
             continue
-        partition = row.asDict().get("partition")
+        partition = row.get("partition")
         fields = partition.asDict() if partition else {}
         where = (
             partition_range(*next(iter(fields.items())))
