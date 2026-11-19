@@ -697,7 +697,7 @@ deployments:
     }
     work_pool: *work_pool_large
 
-  # Mean areal values from grids read in place (AORC Zarr stores, dynamical.org Icechunk collections)
+  # Mean areal values from grids read in place (AORC Zarr stores)
   - name: calculate-aorc-v1-1-pixel-coverage-weights
     version:
     tags: []
@@ -739,60 +739,6 @@ deployments:
       }
     }
     work_pool: *work_pool_large
-
-  - name: calculate-gefs-35-day-pixel-coverage-weights
-    version:
-    tags: []
-    concurrency_limit:
-      limit: 1
-      collision_strategy: "CANCEL_NEW"
-    description: >-
-      Calculate pixel coverage weights of a location layer on the grid of dynamical.org's GEFS 35-day
-      0.25 degree collection, found through its STAC record. Run once per layer.
-    entrypoint: workflows/ingests/dynamical_mean_areal_values.py:calculate_dynamical_pixel_coverage_weights
-    parameters: {
-      "args": {
-        "temp_dir_path": *temp_dir_path,
-        "configuration_name": "gefs_35day_0p25",
-        "location_id_prefix": "usgsbasin",
-        "grid_variable_name": "precipitation_surface",
-        "stac_collection_url": "https://stac.dynamical.org/noaa-gefs-forecast-35-day/collection.json",
-        "endpoint_url": "https://s3.dualstack.us-west-2.amazonaws.com",
-        "grid_name": "gefs_0p25_global"
-      }
-    }
-    work_pool: *work_pool_large
-
-  - name: calculate-gefs-35-day-mean-areal-values
-    version:
-    tags: []
-    concurrency_limit:
-      limit: 1
-      collision_strategy: "CANCEL_NEW"
-    description: >-
-      Calculate mean areal GEFS 35-day 0.25 degree precipitation of a location layer, every member and
-      lead, into secondary_timeseries, reading dynamical.org's Icechunk repo in place (us-west-2) over
-      the S3 dual-stack endpoint, so reads use IPv6 egress instead of the NAT gateway. The schedule
-      replaces the last 2 days of cycles, which also fills partly ingested ones. Written under the
-      source variable name until the teehr name is decided (3-hour means to 240 h, then 6-hour).
-    entrypoint: workflows/ingests/dynamical_mean_areal_values.py:calculate_dynamical_mean_areal_values
-    parameters: {
-      "args": {
-        "temp_dir_path": *temp_dir_path,
-        "configuration_name": "gefs_35day_0p25",
-        "location_id_prefix": "usgsbasin",
-        "grid_variable_name": "precipitation_surface",
-        "unit_name": "mm/s",
-        "stac_collection_url": "https://stac.dynamical.org/noaa-gefs-forecast-35-day/collection.json",
-        "endpoint_url": "https://s3.dualstack.us-west-2.amazonaws.com",
-        "grid_name": "gefs_0p25_global",
-        "num_lookback_days": 2
-      }
-    }
-    work_pool: *work_pool_large
-    schedule:
-      cron: "0 9 * * *"
-      active: false
 
   # Maintenance and Metrics Workflows
   - name: update-joined-forecast-table

@@ -526,7 +526,7 @@ deployments:
     }
     work_pool: *work_pool
 
-  - name: calculate-gefs-35-day-pixel-coverage-weights
+  - name: calculate-gefs-35-day-forecasts-pixel-coverage-weights
     version:
     tags: []
     concurrency_limit:
@@ -539,7 +539,7 @@ deployments:
     parameters: {
       "args": {
         "temp_dir_path": *temp_dir_path,
-        "configuration_name": "gefs_35day_0p25",
+        "configuration_name": "gefs_35day_0p25_forecast",
         "location_id_prefix": "usgsbasin",
         "grid_variable_name": "precipitation_surface",
         "stac_collection_url": "https://stac.dynamical.org/noaa-gefs-forecast-35-day/collection.json",
@@ -548,7 +548,7 @@ deployments:
     }
     work_pool: *work_pool
 
-  - name: calculate-gefs-35-day-mean-areal-values
+  - name: calculate-gefs-35-day-forecasts-mean-areal-values
     version:
     tags: []
     concurrency_limit:
@@ -563,7 +563,7 @@ deployments:
     parameters: {
       "args": {
         "temp_dir_path": *temp_dir_path,
-        "configuration_name": "gefs_35day_0p25",
+        "configuration_name": "gefs_35day_0p25_forecast",
         "location_id_prefix": "usgsbasin",
         "grid_variable_name": "precipitation_surface",
         "unit_name": "mm/s",
