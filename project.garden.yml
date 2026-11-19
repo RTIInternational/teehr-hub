@@ -28,7 +28,7 @@ environments:
         region: us-east-2
       hostname: teehr.local.app.garden
       certificateIssuerName: letsencrypt-prod
-      devTeehrVersion: dad26e34bdbc85733fbcbeca42e5ce5e93d63d16
+      devTeehrVersion: d1a1050ab95d48dda8222ce733e9e8c56053b52a
       stableTeehrVersion: place-holder # Needed for sync to work for some reason.
       previousTeehrVersion: place-holder
       polaris:
@@ -93,7 +93,7 @@ environments:
       certificateIssuerName: letsencrypt-prod
       # Maintenance status, served outside the cluster (teehr-cloud-platform)
       statusUrl: https://status.teehr.rtiamanzi.org/status.json
-      devTeehrVersion: dad26e34bdbc85733fbcbeca42e5ce5e93d63d16
+      devTeehrVersion: d1a1050ab95d48dda8222ce733e9e8c56053b52a
       stableTeehrVersion: v0.8.0
       previousTeehrVersion: v0.7.0
       polaris:
