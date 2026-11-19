@@ -39,3 +39,5 @@ controlPlane:
   enabled: true
   stagingBucket: teehr-upload-staging-use1
   projectCreatorRoles: control-plane-admin
+  # Runs across pods (ADR-0017): up to 4 pods a run, one per 8 shards.
+  runMaxPods: 4
