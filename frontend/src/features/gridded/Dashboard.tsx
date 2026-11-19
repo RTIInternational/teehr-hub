@@ -1,6 +1,8 @@
 import { useEffect } from 'react';
 
+import { teehrMapping } from '@/shared/api/gridded/variableAttrs';
 import DashboardPanel from '@/shared/components/DashboardPanel';
+import { useVariableAttrs } from '@/shared/queries/gridded/variableAttrs';
 
 import GriddedControls from './components/GriddedControls';
 import GriddedMapComponent from './components/GriddedMapComponent';
@@ -19,6 +21,8 @@ const TABS: { id: GriddedTabName; label: string }[] = [
 export const Dashboard = () => {
   const { state, dispatch } = useDashboard();
   const { resetStyles, applyVariableStyleIfNew } = useGriddedVariableStyles();
+  const { dataset, variable } = state.mapFilters;
+  const variableAttrs = useVariableAttrs(dataset);
 
   // Reset style-tracking when dataset changes
   useEffect(() => {
@@ -27,10 +31,13 @@ export const Dashboard = () => {
     }
   }, [state.mapFilters.dataset, resetStyles]);
 
-  // Auto-apply variable-specific default styles on first selection of each variable
+  // Auto-apply variable-specific default styles on first selection of each variable, once the
+  // dataset's attributes load: they convert the style's teehr units to the stored ones
   useEffect(() => {
-    applyVariableStyleIfNew(state.mapFilters.variable);
-  }, [state.mapFilters.variable, applyVariableStyleIfNew]);
+    if (variable && variableAttrs.data) {
+      applyVariableStyleIfNew(variable, teehrMapping(variable, variableAttrs.data[variable]));
+    }
+  }, [variable, variableAttrs.data, applyVariableStyleIfNew]);
 
   return (
     <div className="d-flex flex-column" style={{ height: 'calc(100dvh - 56px)', minHeight: 0 }}>

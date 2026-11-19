@@ -3,6 +3,7 @@ import Plotly from 'plotly.js-dist-min';
 import { useEffect, useRef, useState } from 'react';
 import { Button, ButtonGroup, Spinner } from 'react-bootstrap';
 
+import { teehrMapping } from '@/shared/api/gridded/variableAttrs';
 import DashboardPanel from '@/shared/components/DashboardPanel';
 import { useEdrTimeseries } from '@/shared/queries/gridded/edr';
 import { usePolygonTimeseries } from '@/shared/queries/gridded/polygonTimeseries';
@@ -70,11 +71,18 @@ const GriddedTimeseriesPanel = () => {
   const variableAttrs = useQueries({
     queries: datasets.map((ds) => variableAttrsQueryOptions(ds)),
   });
+  // Mean areal values are in the warehouse under the variable's teehr name, once its attributes load
+  const mapVariable = mapFilters.variable;
+  const polygonVariable =
+    mapVariable && variableAttrs.every((q) => !q.isLoading)
+      ? teehrMapping(mapVariable, variableAttrs.map((q) => q.data?.[mapVariable]).find(Boolean))
+          .variable
+      : null;
   const polygonSeries = usePolygonTimeseries({
     ...timeseriesFilters,
     datasets,
     locationId: polygonQuery?.location_id,
-    variable: mapFilters.variable,
+    variable: polygonVariable,
     anchor: polygonQuery?.time,
   });
 
@@ -92,20 +100,23 @@ const GriddedTimeseriesPanel = () => {
         isLoading: polygonSeries.isLoading,
       }
     : {
-        plotted: series.flatMap((s, i) =>
-          s.data?.values.some((v) => v !== null)
-            ? [
-                {
-                  name: s.datasetId,
-                  variable: formatVariableName(s.variable ?? undefined),
-                  unit: formatUnitName(
-                    s.variable ? (variableAttrs[i]?.data?.[s.variable]?.units ?? null) : null
-                  ),
-                  ...s.data,
-                },
-              ]
-            : []
-        ),
+        plotted: series.flatMap((s, i) => {
+          if (!s.data?.values.some((v) => v !== null)) return [];
+          // Shown the teehr way: point values come from the repo in its stored units
+          const mapping = teehrMapping(
+            s.variable ?? '',
+            s.variable ? variableAttrs[i]?.data?.[s.variable] : undefined
+          );
+          return [
+            {
+              name: s.datasetId,
+              variable: formatVariableName(mapping.variable || undefined),
+              unit: formatUnitName(mapping.units),
+              ...s.data,
+              values: s.data.values.map((v) => (v === null ? null : mapping.toDisplay(v))),
+            },
+          ];
+        }),
         notes: series.flatMap((s) =>
           s.skipped ? [s.skipped] : s.error ? [`${s.datasetId}: ${s.error}`] : []
         ),

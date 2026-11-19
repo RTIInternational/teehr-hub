@@ -1,5 +1,7 @@
 // Per-variable default styling for the gridded map.
 // Variables not listed here fall back to DEFAULT_VARIABLE_STYLE.
+// Keyed by teehr variable name, with min/max in teehr units; they're converted to the
+// variable's stored units (its teehr:* attributes) when applied to the tiles.
 // Units listed here are used only if the API does not provide them from the
 // dataset's variable attributes.
 // min is set to a small positive epsilon for accumulation/rate variables so
@@ -21,18 +23,6 @@ export const DEFAULT_VARIABLE_STYLE: VariableStyle = {
 };
 
 export const VARIABLE_STYLES: Record<string, VariableStyle> = {
-  swe_daily_mean: {
-    colorRamp: 'raster/turbo',
-    min: 0.001,
-    max: 100,
-    units: 'mm',
-  },
-  depth_daily_mean: {
-    colorRamp: 'raster/turbo',
-    min: 0.001,
-    max: 100,
-    units: 'mm',
-  },
   rainrate_hourly_mean: {
     colorRamp: 'raster/turbo',
     min: 0.000028, // ~0.1 mm/hr, the threshold for detectable rain
