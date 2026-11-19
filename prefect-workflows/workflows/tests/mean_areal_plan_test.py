@@ -98,6 +98,17 @@ def test_members_in_one_chunk_are_batched_and_read_together(harness):
     assert all(set(b.get_level_values(rc.MEMBER)) == set(MEMBERS) for b in plan.batches)
 
 
+def test_forecast_blocks_carry_each_leads_variable_name():
+    """With names by lead, every step's variable_name column is its lead's name."""
+    da = _forecast(member_chunk=len(MEMBERS))
+    fixed = {rc.MEMBER: np.array(MEMBERS), rc.LEAD_TIME: np.array(LEADS)}
+    steps = pd.MultiIndex.from_product([CYCLES, MEMBERS, LEADS[1:]], names=[rc.REFERENCE_TIME, *fixed])
+    lead_names = {3: "p_3h", 6: "p_3h", 9: "p_3h", 12: "p_3h"}
+    for task in _block_tasks(steps, da, rc.REFERENCE_TIME, fixed, lead_names):
+        assert set(task.step_columns["variable_name"]) == {"p_3h"}
+        assert len(task.step_columns["variable_name"]) == len(task.step_columns["value_time"])
+
+
 def test_members_chunked_separately_may_be_split(harness):
     """With one member per chunk, a one-unit budget gives batches of one member's lead chunk."""
     da = _forecast(member_chunk=1)
@@ -123,16 +134,17 @@ def test_write_groups_never_split_a_forecast_cycle():
 
 
 def test_replace_filters_cover_exactly_the_write():
-    analysis = replace_filters(_args(), "rainrate_hourly_mean", TIMES[2:5])
+    analysis = replace_filters(_args(), ["rainrate_hourly_mean"], TIMES[2:5])
     assert analysis == [
         {"column": "configuration_name", "operator": "=", "value": "c"},
-        {"column": "variable_name", "operator": "=", "value": "rainrate_hourly_mean"},
+        {"column": "variable_name", "operator": "in", "value": ["rainrate_hourly_mean"]},
         {"column": "location_id", "operator": "like", "value": "huc\\_10-%"},
         {"column": "value_time", "operator": ">=", "value": pd.Timestamp("2020-01-01 02:00")},
         {"column": "value_time", "operator": "<=", "value": pd.Timestamp("2020-01-01 04:00")},
     ]
     steps = pd.MultiIndex.from_product([CYCLES, MEMBERS, LEADS], names=[rc.REFERENCE_TIME, rc.MEMBER, rc.LEAD_TIME])
-    forecast = replace_filters(_args(append_dim=rc.REFERENCE_TIME), "p", steps)
+    forecast = replace_filters(_args(append_dim=rc.REFERENCE_TIME), ["p_3h", "p_6h"], steps)
+    assert {"column": "variable_name", "operator": "in", "value": ["p_3h", "p_6h"]} in forecast
     assert forecast[-2:] == [
         {"column": "reference_time", "operator": ">=", "value": pd.Timestamp("2026-10-01 00:00")},
         {"column": "reference_time", "operator": "<=", "value": pd.Timestamp("2026-10-01 06:00")},

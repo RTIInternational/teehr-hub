@@ -62,23 +62,24 @@ class MeanArealValuesInput(PixelCoverageWeightsInput):
     grid_variable_name: str = Field(
         ...,
         description=(
-            "Name of variable in the gridded dataset (e.g. 'rainrate_hourly_mean'). Written under variable_name "
-            "if set, else under this name, which must then be the teehr variable name"
+            "Name of variable in the gridded dataset, as the source names it (e.g. 'RAINRATE'). Written under "
+            "its teehr name, unit and scale from its source's teehr mapping (stamped on our repos as teehr:* "
+            "attributes), unless variable_name is set"
         )
     )
     variable_name: Optional[str] = Field(
         default=None,
-        description="teehr variable name to write. Defaults to grid_variable_name"
+        description="teehr variable name to write, instead of the table's; set unit_name (and value_scale) with it"
     )
     unit_name: Optional[str] = Field(
         default=None,
-        description="teehr unit name to write. Defaults to the grid variable's 'units' attribute"
+        description="teehr unit name to write, with variable_name"
     )
     value_scale: float = Field(
         1.0,
         description=(
-            "Applied to the mean areal values (value * value_scale + value_offset), e.g. a unit conversion from "
-            "the grid's units to unit_name. Exact, since a coverage-weighted mean is linear"
+            "With variable_name: applied to the mean areal values (value * value_scale + value_offset), e.g. a "
+            "unit conversion from the grid's units to unit_name. Exact, since a coverage-weighted mean is linear"
         )
     )
     value_offset: float = Field(0.0, description="See value_scale")

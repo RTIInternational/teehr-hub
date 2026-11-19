@@ -24,6 +24,7 @@ from teehr.fetching.utils import REFERENCE_BUILD_MIN_ITEMS, REFERENCE_WORKER_MEM
 from teehr.utils.concurrency import map_blocking, resolve_budget, run_sync, use_process_pool
 
 from workflows.utils.repo_const import DATA_GROUP_ATTR, DATA_GROUP_PATH
+from workflows.utils.teehr_mapping import TEEHR_ATTR_PREFIX, TeehrMapping, teehr_attrs
 
 # Store kwargs whose values are kept out of logs
 _SECRET_KWARGS = {"access_key_id", "secret_access_key", "session_token", "service_account_key", "bearer_token"}
@@ -194,6 +195,37 @@ def write_data_group(store: ic.IcechunkStore, group_path: str) -> bool:
         return False
     root.attrs[DATA_GROUP_ATTR] = group_path
     return True
+
+
+def write_teehr_attrs(store: ic.IcechunkStore, mappings: dict[str, TeehrMapping]) -> bool:
+    """Set each stored variable's ``teehr:*`` attributes from its source's ``mappings``; True if any changed.
+
+    Covers every group (``/references``, ``/data``, overviews). A variable without a mapping loses any it had; one
+    stored in other units than its mapping is for raises.
+    """
+    changed = False
+    for path, node in zarr.open_group(store, mode="a", zarr_format=3).members(max_depth=None):
+        if not isinstance(node, zarr.Array):
+            continue
+        name = path.rsplit("/", 1)[-1]
+        attrs = node.attrs.asdict()
+        mapping = mappings.get(name)
+        if mapping is not None:
+            mapping.check_units(name, attrs.get("units"))
+        wanted = {k: v for k, v in attrs.items() if not k.startswith(TEEHR_ATTR_PREFIX)}
+        wanted.update(teehr_attrs(mapping))
+        if wanted != attrs:
+            node.attrs.put(wanted)
+            changed = True
+    return changed
+
+
+def record_teehr_attrs(repo: ic.Repository, mappings: dict[str, TeehrMapping]) -> None:
+    """Commit the variables' ``teehr:*`` attributes when they changed (metadata only)."""
+    session = repo.writable_session("main")
+    if write_teehr_attrs(session.store, mappings):
+        session.commit("Updated the variables' teehr attributes")
+        get_run_logger().info("Updated the variables' teehr attributes.")
 
 
 def read_data_group(store: ic.IcechunkStore) -> str:
@@ -484,7 +516,6 @@ def standardize_and_inject_geozarr(
     fallback_crs: str | None = None,
     x_dim: str | None = None,
     y_dim: str | None = None,
-    variable_and_unit_mapper: dict | None = None
 ) -> xr.Dataset:
     """Write CF-1.11 and GeoZarr metadata to a dataset before writing to IceChunk.
 
@@ -585,50 +616,6 @@ def standardize_and_inject_geozarr(
             ds[var].attrs["proj:wkt2"] = wkt_string
             ds[var].attrs["spatial:dimensions"] = [y_name, x_name]
 
-    # --- Apply variable and unit mapping if provided ---
-    if variable_and_unit_mapper:
-        for var_name in ds.data_vars:
-            if var_name in variable_and_unit_mapper["variable_name"]:
-                new_var_name = variable_and_unit_mapper["variable_name"].get(var_name, {}).get("name", var_name)
-                new_long_name = variable_and_unit_mapper["variable_name"].get(var_name, {}).get("long_name", var_name)
-                ds[var_name].attrs["long_name"] = new_long_name
-                ds[var_name].attrs.setdefault("source_name", var_name)
-                unit_name = ds[var_name].attrs.get("units")
-                if unit_name:
-                    new_unit_name = variable_and_unit_mapper["unit_name"].get(unit_name, {}).get("name", unit_name)
-                    if new_unit_name != unit_name:
-                        ds[var_name].attrs.setdefault("source_units", unit_name)
-                    ds[var_name].attrs["units"] = new_unit_name
-                ds = ds.rename({var_name: new_var_name})
-
-    return ds
-
-
-def apply_unit_conversions(ds: xr.Dataset, variable_units: dict, unit_conversions: dict) -> xr.Dataset:
-    """Set CF ``scale_factor``/``add_offset`` so each variable in ``variable_units`` decodes to its units.
-
-    Stored values are unchanged; any packing the source already has is composed with the conversion.
-    """
-    for var in ds.data_vars:
-        target, units = variable_units.get(var), ds[var].attrs.get("units")
-        if target is None or units == target:
-            continue
-        if (units, target) not in unit_conversions:
-            raise ValueError(f"No conversion for '{var}' from '{units}' to '{target}'.")
-        conversion = unit_conversions[(units, target)]
-        scale, offset = conversion.get("scale_factor", 1.0), conversion.get("add_offset", 0.0)
-        attrs = ds[var].attrs
-        # Match the source's packing type, or its float type; CF takes the decoded type from it
-        if "scale_factor" in attrs:
-            ftype = np.asarray(attrs["scale_factor"]).dtype
-        else:
-            ftype = ds[var].dtype if np.issubdtype(ds[var].dtype, np.floating) else np.dtype("float32")
-        new_offset = attrs.get("add_offset", 0.0) * scale + offset
-        attrs["scale_factor"] = ftype.type(attrs.get("scale_factor", 1.0) * scale)
-        if new_offset or "add_offset" in attrs:
-            attrs["add_offset"] = ftype.type(new_offset)
-        attrs.setdefault("source_units", units)
-        attrs["units"] = target
     return ds
 
 

@@ -30,13 +30,7 @@ from workflows.utils.repo_const import (
     VALUE_TIME,
 )
 from workflows.models.gridded_sources import GriddedSource
-from workflows.models.ingest_gridded_data_input import (
-    IngestGriddedDataInput,
-    ParserType,
-    UNIT_CONVERSIONS,
-    VARIABLE_AND_UNIT_MAPPER,
-    VARIABLE_UNITS,
-)
+from workflows.models.ingest_gridded_data_input import IngestGriddedDataInput, ParserType
 from build_overviews import build_overviews as build_overviews_flow
 from workflows.utils.time_utils import to_naive_utc
 
@@ -102,6 +96,8 @@ def ingest_gridded_data(args: IngestGriddedDataInput) -> None:
     _record_data_group(repo, DATA_GROUP_PATH if args.write_materialized else REFERENCES_GROUP_PATH)
     if args.build_overviews_on_ingest:
         build_overviews_flow(args)
+    # Last, so every group (including new overview levels) gets them; also stamps repos written before
+    gu.record_teehr_attrs(repo, source.teehr_mappings())
 
 
 def _virtual_blocks(
@@ -140,15 +136,13 @@ def _preprocess(source: GriddedSource, args: IngestGriddedDataInput) -> Callable
 
 
 def _standardize_references(ds: xr.Dataset, args: IngestGriddedDataInput) -> xr.Dataset:
-    """Keep the ingested variables, under teehr's names, units and metadata."""
-    ds = gu.standardize_and_inject_geozarr(
+    """Keep the ingested variables as the source names them, with CF and GeoZarr metadata."""
+    return gu.standardize_and_inject_geozarr(
         ds[args.variable_names].sortby(args.append_dim),
         fallback_crs=args.fallback_source_crs,
         x_dim=args.x_dim,
         y_dim=args.y_dim,
-        variable_and_unit_mapper=VARIABLE_AND_UNIT_MAPPER,
     )
-    return gu.apply_unit_conversions(ds, VARIABLE_UNITS, UNIT_CONVERSIONS)
 
 
 def _record_data_group(repo: ic.Repository, group: str) -> None:
@@ -258,9 +252,8 @@ def write_references(
 def _data_encoding(da: xr.DataArray, fill_value: int | None = None) -> dict:
     """How ``/data`` stores a decoded ``/references`` variable.
 
-    Float sources are stored as plain float32, already in teehr units. Integer sources keep their integers,
-    losslessly, packed so they decode to teehr units (the source's packing composed with any unit conversion);
-    ``fill_value`` marks missing values when the source declares none.
+    Float sources are stored as plain float32 in the source's units. Integer sources keep their integers,
+    losslessly, with the source's own packing; ``fill_value`` marks missing values when the source declares none.
     """
     dtype = np.dtype(da.encoding.get("dtype", da.dtype))
     if not np.issubdtype(dtype, np.integer):

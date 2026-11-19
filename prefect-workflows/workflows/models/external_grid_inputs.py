@@ -14,8 +14,9 @@ class AORCMeanArealInput(MeanArealValuesInput):
     grid_variable_name: str = Field(
         "APCP_surface",
         description=(
-            "AORC variable, e.g. APCP_surface. APCP_surface defaults to rainrate_hourly_mean in mm/s; set "
-            "variable_name, unit_name and value_scale for the others"
+            "AORC variable, e.g. APCP_surface. Variables in the AORC flow's teehr mappings (APCP_surface: "
+            "rainrate_hourly_mean in mm/s) get their teehr name, unit and scale; set variable_name, unit_name and "
+            "value_scale for the others"
         )
     )
     grid_name: Optional[str] = Field("aorc_v1_1_1km_conus", description="Grid the weights index")

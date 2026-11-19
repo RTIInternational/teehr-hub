@@ -22,7 +22,7 @@ from workflows.models.ingest_gridded_data_input import BuildOverviewsDataInput, 
 NWM_CONUS_CRS = "+proj=lcc +lat_0=40 +lon_0=-97 +lat_1=30 +lat_2=60 +x_0=0 +y_0=0 +R=6370000 +units=m +no_defs"
 ORIGIN = gs.NWMForcing().time_origin()  # tm02 by default, so 2 h before the first nwm31 cycle
 HOURS = pd.date_range(ORIGIN, periods=90, freq="h")
-# Packed overview resolution for rainrate_hourly_mean (max_value 0.075 in uint16)
+# Packed overview resolution for RAINRATE (max_value 0.075 in uint16)
 PACKED_TOL = 2 * 0.075 / 65535
 
 
@@ -185,9 +185,15 @@ def test_backfill_in_any_order_then_upsert(harness, nwm, write_materialized):
         assert list(np.flatnonzero(ds.status.values >= 0)) == expected
     data = g[data_group]
     for i in expected:
-        assert float(data.rainrate_hourly_mean.isel(time=i, y=3, x=4)) == rate(i)
-    assert abs(float(g["overviews/2"].rainrate_hourly_mean.isel(time=55).max()) - rate(55)) < PACKED_TOL
-    assert np.isnan(float(g["overviews/2"].rainrate_hourly_mean.isel(time=30).max()))  # unwritten slots are missing, not 0
+        assert float(data.RAINRATE.isel(time=i, y=3, x=4)) == rate(i)
+    assert abs(float(g["overviews/2"].RAINRATE.isel(time=55).max()) - rate(55)) < PACKED_TOL
+    assert np.isnan(float(g["overviews/2"].RAINRATE.isel(time=30).max()))  # unwritten slots are missing, not 0
+    # Native names and units, with the teehr ones in attributes for the dashboard
+    for ds in g.values():
+        attrs = ds.RAINRATE.attrs
+        assert (attrs["units"], attrs["teehr:variable_name"], attrs["teehr:unit_name"]) == (
+            "mm s^-1", "rainrate_hourly_mean", "mm/s"
+        )
 
     before = {k: v.updated_at.values.copy() for k, v in g.items()}
     run(2, 59)  # fills the gap, leaves written hours alone
@@ -208,18 +214,18 @@ def test_backfill_in_any_order_then_upsert(harness, nwm, write_materialized):
     data = _groups(open_repo, groups)[data_group]
     assert (data.updated_at.values[70:75] == written).all()  # append leaves them
     if write_materialized:
-        assert float(data.rainrate_hourly_mean.isel(time=71, y=0, x=0)) == rate(71)
+        assert float(data.RAINRATE.isel(time=71, y=0, x=0)) == rate(71)
     # Not read back when virtual: a reference to a re-issued file can't be read until upsert rewrites it
     run(70, 79, mode="upsert")
     g = _groups(open_repo, groups)
     data = g[data_group]
-    assert float(data.rainrate_hourly_mean.isel(time=71, y=0, x=0)) == rate(71, reissued=True)
-    assert float(data.rainrate_hourly_mean.isel(time=76, y=0, x=0)) == rate(76)
+    assert float(data.RAINRATE.isel(time=71, y=0, x=0)) == rate(71, reissued=True)
+    assert float(data.RAINRATE.isel(time=76, y=0, x=0)) == rate(76)
     assert data.created_at.values[70] == created and data.updated_at.values[70] > created
     assert (data.updated_at.values[75:80] < data.updated_at.values[70]).all()  # untouched hours keep their write time
     for k in groups:
         assert list(g[k].status.values[70:80]) == [2] * 10
-    assert abs(float(g["overviews/2"].rainrate_hourly_mean.isel(time=71).max()) - rate(71, reissued=True)) < PACKED_TOL
+    assert abs(float(g["overviews/2"].RAINRATE.isel(time=71).max()) - rate(71, reissued=True)) < PACKED_TOL
 
     # 2x2 blocks on the data's own grid, packed, with the transforms the tile server picks levels by
     overview = g["overviews/2"]
@@ -227,9 +233,9 @@ def test_backfill_in_any_order_then_upsert(harness, nwm, write_materialized):
     store = open_repo().readonly_session("main").store
     assert zarr.open_group(store, path=data_group, mode="r", zarr_format=3).attrs["spatial:transform"][0] == 1000.0
     assert overview.attrs["spatial:transform"][0] == 2000.0 and "proj:wkt2" in overview.attrs
-    assert zarr.open_array(store, path="overviews/2/rainrate_hourly_mean", mode="r").dtype == "uint16"
+    assert zarr.open_array(store, path="overviews/2/RAINRATE", mode="r").dtype == "uint16"
 
-    assert "scale_factor" not in data.rainrate_hourly_mean.encoding and data.rainrate_hourly_mean.dtype == "float32"
+    assert "scale_factor" not in data.RAINRATE.encoding and data.RAINRATE.dtype == "float32"
     root = zarr.open_group(open_repo().readonly_session("main").store, mode="r", zarr_format=3).attrs
     assert {k: root[k] for k in ("append_dim", "time_origin", "time_step", "configuration_name", "timeseries_type", "data_group")} == {
         "append_dim": "time", "time_origin": ORIGIN.isoformat(), "time_step": pd.Timedelta("1h").isoformat(),
@@ -255,7 +261,7 @@ def test_parse_in_processes(harness, nwm, monkeypatch):
     data = _groups(open_repo, ("data",))["data"]
     assert (data.status.values == 2).all()
     for i in range(len(HOURS)):
-        assert float(data.rainrate_hourly_mean.isel(time=i, y=3, x=4)) == rate(i)
+        assert float(data.RAINRATE.isel(time=i, y=3, x=4)) == rate(i)
 
 
 def test_switching_to_materialized_with_no_new_files(harness, nwm):
@@ -269,7 +275,7 @@ def test_switching_to_materialized_with_no_new_files(harness, nwm):
     _run(HOURS[0], HOURS[4], write_materialized=True)  # no new files
     assert root()["data_group"] == "/data"
     data = _groups(open_repo, ("data",))["data"]
-    assert float(data.rainrate_hourly_mean.isel(time=3, y=0, x=0)) == rate(3)
+    assert float(data.RAINRATE.isel(time=3, y=0, x=0)) == rate(3)
 
 
 @pytest.mark.parametrize("factors", [[2, 4, 8], [3, 9]])
@@ -300,14 +306,10 @@ def test_overview_factors_each_a_multiple_of_the_previous():
             BuildOverviewsDataInput(configuration_name="r", overview_factors=bad)
 
 
-@pytest.mark.parametrize("units, source_scale, stored_scale", [
-    ("mm s^-1", None, None),  # unpacked, already mm/s: stored as is
-    ("mm/h", None, 1 / 3600),  # unpacked mm/h: the conversion adds packing
-    ("mm/h", 0.1, 0.1 / 3600),  # packed mm/h: the conversion composes with the source packing
-])
-def test_integer_source_stored_losslessly(harness, nwm, monkeypatch, units, source_scale, stored_scale):
+@pytest.mark.parametrize("source_scale", [None, 0.1])
+def test_integer_source_stored_losslessly(harness, nwm, source_scale):
+    """Integers keep their values, the source's packing and its units."""
     publish, open_repo = nwm
-    monkeypatch.setattr(ing, "UNIT_CONVERSIONS", {("mm/h", "mm/s"): {"scale_factor": 1 / 3600}})
     rng = np.random.default_rng(0)
     ints = rng.integers(0, 3000, (40, 50)).astype("float32")
     ints[:4, :6] = np.nan
@@ -315,19 +317,19 @@ def test_integer_source_stored_losslessly(harness, nwm, monkeypatch, units, sour
     if source_scale:
         encoding["scale_factor"] = source_scale
     for i in (0, 2):  # hour 1 stays unwritten
-        publish(i, ints * (source_scale or 1), "2026-09-01", units=units, encoding=encoding)
+        publish(i, ints * (source_scale or 1), "2026-09-01", encoding=encoding)
     _run(HOURS[0], HOURS[2])
 
     store = open_repo().readonly_session("main").store
-    stored = xr.open_zarr(store, group="data", consolidated=False, mask_and_scale=False).rainrate_hourly_mean
+    stored = xr.open_zarr(store, group="data", consolidated=False, mask_and_scale=False).RAINRATE
     assert stored.dtype == "int16" and stored.attrs["_FillValue"] == -9999
-    assert stored.attrs.get("scale_factor") == (pytest.approx(stored_scale) if stored_scale else None)
+    assert stored.attrs.get("scale_factor") == (pytest.approx(source_scale) if source_scale else None)
     assert "add_offset" not in stored.attrs
-    raw = xr.open_zarr(store, group="data", consolidated=False).rainrate_hourly_mean
-    assert raw.attrs["units"] == "mm/s"
+    raw = xr.open_zarr(store, group="data", consolidated=False).RAINRATE
+    assert raw.attrs["units"] == "mm s^-1"
     for i in (0, 2):
         np.testing.assert_array_equal(stored.isel(time=i).values, np.where(np.isnan(ints), -9999, ints))
-        np.testing.assert_allclose(raw.isel(time=i).values, ints * (stored_scale or 1), rtol=1e-6)
+        np.testing.assert_allclose(raw.isel(time=i).values, ints * (source_scale or 1), rtol=1e-6)
     assert np.isnan(raw.isel(time=1).values).all()  # unwritten slots are missing, not 0
 
 
@@ -340,13 +342,13 @@ def test_integer_source_without_fill_value_needs_one(harness, nwm, monkeypatch):
     with pytest.raises(ValueError, match="has no _FillValue"):
         _run(HOURS[0], HOURS[2])
     with pytest.raises(ValueError, match="outside the uint8 range"):
-        _run(HOURS[0], HOURS[2], data_fill_values={"rainrate_hourly_mean": 300})
+        _run(HOURS[0], HOURS[2], data_fill_values={"RAINRATE": 300})
 
-    _run(HOURS[0], HOURS[2], data_fill_values={"rainrate_hourly_mean": 255})
+    _run(HOURS[0], HOURS[2], data_fill_values={"RAINRATE": 255})
     store = open_repo().readonly_session("main").store
-    stored = xr.open_zarr(store, group="data", consolidated=False, mask_and_scale=False).rainrate_hourly_mean
+    stored = xr.open_zarr(store, group="data", consolidated=False, mask_and_scale=False).RAINRATE
     assert stored.dtype == "uint8" and stored.attrs["_FillValue"] == 255
-    raw = xr.open_zarr(store, group="data", consolidated=False).rainrate_hourly_mean
+    raw = xr.open_zarr(store, group="data", consolidated=False).RAINRATE
     np.testing.assert_array_equal(raw.isel(time=0).values, ints)
     assert np.isnan(raw.isel(time=1).values).all()  # the unwritten slot reads as the fill value, i.e. missing
 
@@ -360,25 +362,8 @@ def test_unsigned_source_stored_as_signed_keeps_its_values(harness, nwm):
     _run(HOURS[0], HOURS[2])
 
     store = open_repo().readonly_session("main").store
-    stored = xr.open_zarr(store, group="data", consolidated=False, mask_and_scale=False).rainrate_hourly_mean
+    stored = xr.open_zarr(store, group="data", consolidated=False, mask_and_scale=False).RAINRATE
     assert stored.dtype == "int8" and stored.attrs["_Unsigned"] == "true"
-    raw = xr.open_zarr(store, group="data", consolidated=False).rainrate_hourly_mean
+    raw = xr.open_zarr(store, group="data", consolidated=False).RAINRATE
     np.testing.assert_array_equal(raw.isel(time=0).values, ints)
     assert np.isnan(raw.isel(time=1).values).all()
-
-
-def test_unit_conversion_composes_with_source_packing():
-    units = {"rainrate_hourly_mean": "mm/s"}
-    conversions = {("mm/h", "mm/s"): {"scale_factor": 1 / 3600}}
-    ds = xr.Dataset({
-        "rainrate_hourly_mean": ("x", np.arange(3, dtype="int16"), {"units": "mm/h", "scale_factor": np.float32(0.1), "add_offset": np.float32(36)}),
-        "other": ("x", np.zeros(3, "float32"), {"units": "mm/h"}),
-    })
-    out = ing.gu.apply_unit_conversions(ds, units, conversions)
-    rate = out.rainrate_hourly_mean.attrs
-    assert (rate["units"], rate["source_units"]) == ("mm/s", "mm/h")
-    assert rate["scale_factor"] == pytest.approx(0.1 / 3600) and rate["add_offset"] == pytest.approx(0.01)
-    assert rate["scale_factor"].dtype == np.float32
-    assert out.other.attrs == {"units": "mm/h"}  # not in units
-    with pytest.raises(ValueError, match="No conversion"):
-        ing.gu.apply_unit_conversions(xr.Dataset({"rainrate_hourly_mean": ("x", [1.0], {"units": "in/h"})}), units, conversions)

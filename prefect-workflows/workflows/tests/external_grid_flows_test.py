@@ -12,7 +12,7 @@ from prefect.testing.utilities import prefect_test_harness  # noqa: E402
 
 import aorc_mean_areal_values as aorc  # noqa: E402
 import dynamical_mean_areal_values as dyn  # noqa: E402
-from workflows.models.external_grid_inputs import AORCMeanArealInput, DynamicalMeanArealInput  # noqa: E402
+from workflows.models.external_grid_inputs import DynamicalMeanArealInput  # noqa: E402
 from workflows.utils import repo_const as rc  # noqa: E402
 
 COMMON = dict(temp_dir_path="/tmp", location_id_prefix="huc10", dest_bucket="b", base_prefix="p")
@@ -49,25 +49,6 @@ def test_aorc_year_decodes_lazily_to_float32_with_crs(aorc_year):
     assert da.encoding["chunks"] == (6, 2, 5)  # the read plan follows the stored chunks
     assert da.rio.crs.to_epsg() == 4326
     np.testing.assert_allclose(da.isel(time=7).values, aorc_year[7] * 0.1, rtol=1e-6)
-
-
-def test_aorc_known_variable_gets_teehr_names_unless_set():
-    teehr_names = ("rainrate_hourly_mean", "mm/s", 1 / 3600)
-    args = aorc.with_teehr_names(AORCMeanArealInput(**COMMON))
-    assert (args.variable_name, args.unit_name, args.value_scale) == teehr_names
-    # As Prefect's run form sends them: every field, defaults included
-    form = aorc.with_teehr_names(AORCMeanArealInput(**COMMON, variable_name=None, unit_name=None, value_scale=1.0))
-    assert (form.variable_name, form.unit_name, form.value_scale) == teehr_names
-    kept = aorc.with_teehr_names(
-        AORCMeanArealInput(**COMMON, variable_name="rainrate_hourly_mean", unit_name="mm/hr", value_scale=1.0)
-    )
-    assert (kept.unit_name, kept.value_scale) == ("mm/hr", 1.0)
-    with pytest.raises(ValueError, match="unit_name"):
-        aorc.with_teehr_names(AORCMeanArealInput(**COMMON, variable_name="rainrate_hourly_mean"))
-    with pytest.raises(ValueError, match="variable_name"):
-        aorc.with_teehr_names(AORCMeanArealInput(**COMMON, unit_name="mm/hr"))
-    with pytest.raises(ValueError, match="variable_name"):
-        aorc.with_teehr_names(AORCMeanArealInput(**COMMON, grid_variable_name="TMP_2maboveground"))
 
 
 def test_aorc_available_years_skip_missing_stores(aorc_year, harness):
