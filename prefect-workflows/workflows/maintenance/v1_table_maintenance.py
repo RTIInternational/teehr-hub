@@ -198,7 +198,13 @@ def v1_table_maintenance(
         executor_instances=executor_instances,
         executor_cores=executor_cores,
         executor_memory=executor_memory,
-        update_configs={"spark.sql.session.timeZone": "UTC"},
+        update_configs={
+            "spark.sql.session.timeZone": "UTC",
+            # Orphan-file removal lists the table's files through Hadoop, which needs
+            # a FileSystem for s3:// (as routine-table-maintenance sets).
+            "spark.hadoop.fs.s3.impl": "org.apache.hadoop.fs.s3a.S3AFileSystem",
+            "spark.hadoop.fs.AbstractFileSystem.s3.impl": "org.apache.hadoop.fs.s3a.S3A",
+        },
     )
     spark = ev.spark
     names = tables or sorted(
