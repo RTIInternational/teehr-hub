@@ -6,7 +6,8 @@ flow lays the data out the way run jobs read it -- sorted by series, in files of
 few row groups per series range -- and keeps the tables tidy:
 
 1. layout properties: tables made before the control plane set them get its
-   defaults (``LAYOUT_DEFAULTS``; explicit values are kept);
+   defaults (``LAYOUT_DEFAULTS``; explicit values are kept, except a past
+   default, which is updated);
 2. sorted rewrite: each partition changed in the last ``days`` (or every one) is
    rewritten whole, in the table's sort order, so its files cover narrow key ranges
    and use the current row-group size;
@@ -36,8 +37,12 @@ CATALOG = "iceberg"
 # Keep in step with teehr-cloud-core control-plane/src/tables.py LAYOUT_DEFAULTS.
 LAYOUT_DEFAULTS = {
     "write.target-file-size-bytes": str(64 * 1024**2),
-    "write.parquet.row-group-size-bytes": str(8 * 1024**2),
+    "write.parquet.row-group-size-bytes": str(1024**2),
     "write.parquet.row-group-limit": "150000",
+}
+# Values these defaults used to have: a table holding one gets the current default.
+PAST_DEFAULTS = {
+    "write.parquet.row-group-size-bytes": {str(8 * 1024**2)},
 }
 
 SNAPSHOT_RETENTION_DAYS = 7
@@ -69,12 +74,17 @@ def partition_range(field: str, value: int) -> str | None:
 
 @task(task_run_name="layout-properties-{table}", cache_policy=NO_CACHE)
 def set_layout_properties(spark: SparkSession, namespace: str, table: str) -> list[str]:
-    """Give the table the layout defaults it lacks; returns the keys set."""
+    """Give the table the layout defaults it lacks (or holds a past one of); returns
+    the keys set."""
     have = {
         r["key"]: r["value"]
         for r in spark.sql(f"SHOW TBLPROPERTIES {CATALOG}.{namespace}.{table}").collect()
     }
-    missing = {k: v for k, v in LAYOUT_DEFAULTS.items() if k not in have}
+    missing = {
+        k: v
+        for k, v in LAYOUT_DEFAULTS.items()
+        if k not in have or have[k] in PAST_DEFAULTS.get(k, ())
+    }
     if missing:
         pairs = ", ".join(f"'{k}' = '{v}'" for k, v in missing.items())
         spark.sql(f"ALTER TABLE {CATALOG}.{namespace}.{table} SET TBLPROPERTIES ({pairs})")
