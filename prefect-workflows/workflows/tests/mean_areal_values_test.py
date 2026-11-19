@@ -1,6 +1,4 @@
 """Tests for the mean areal values and pixel coverage weights flows. Needs teehr and pyspark."""
-import functools
-
 import geopandas as gpd
 import numpy as np
 import pandas as pd
@@ -13,12 +11,12 @@ pytest.importorskip("pyspark")
 from prefect import flow  # noqa: E402
 from prefect.testing.utilities import prefect_test_harness  # noqa: E402
 from teehr.fetching.nwm.grid_utils import build_weights_matrix  # noqa: E402
-from teehr.utils.concurrency import run_concurrent_map  # noqa: E402
 
-from mean_areal_values import _area_weights, _mean_areal_batch, _written_steps  # noqa: E402
+from mean_areal_values import _area_weights, _written_steps  # noqa: E402
 from pixel_coverage_weights import filter_polygons_by_coverage, resolve_grid_name  # noqa: E402
 from utils import grid_utils as gu  # noqa: E402
 from utils import time_grid as tg  # noqa: E402
+from utils.mean_areal_kernel import GridWeights  # noqa: E402
 from workflows.models.mean_areal_inputs import MeanArealValuesInput  # noqa: E402
 
 TIMES = pd.date_range("2000-01-01", periods=6, freq="D")
@@ -50,8 +48,8 @@ def test_repo_without_status_keeps_all_steps():
     assert da.equals(_written_steps(da, _args()))
 
 
-def test_defaults_to_upsert():
-    assert _args().write_mode == "upsert"
+def test_defaults_to_replace_where():
+    assert _args().write_mode == "replace_where"
 
 
 def _lat_lon_grid(values, crs="EPSG:4326"):
@@ -76,8 +74,8 @@ def test_area_weights_only_scale_geographic_grids():
     assert projected.tolist() == [1.0, 1.0]
 
 
-def test_concurrent_batches_match_direct_calculation(tmp_path):
-    """Shard-aligned batches read concurrently from zarr, with fill values and NaN pixels, match numpy."""
+def test_batches_match_direct_calculation(tmp_path, batch_means):
+    """Shard-aligned batches read from zarr, with fill values and NaN pixels, match numpy."""
     rng = np.random.default_rng(0)
     values = rng.random((10, 6, 8)).astype("float32")
     values[3, 1, 2] = np.nan  # a's only pixel in row 1: a drops below coverage that step
@@ -96,19 +94,10 @@ def test_concurrent_batches_match_direct_calculation(tmp_path):
         "fraction_covered": [1.0, 1.0, 0.5, 0.25, 1.0],
     })
     weights["weight"] = _area_weights(weights, da, "lat")
-    matrix, rows, cols, location_ids = build_weights_matrix(weights)
-    window = (int(rows.min()), int(rows.max()) + 1, int(cols.min()), int(cols.max()) + 1)
+    grid_weights = GridWeights(*build_weights_matrix(weights))
     args = _args(x_dim="lon", y_dim="lat", min_valid_coverage=0.9)
     times = da.time.to_index()
-    batches = tg.shard_batches(times, times, 4)
-    frames = run_concurrent_map(
-        functools.partial(
-            _mean_areal_batch, da=da, args=args, window=window, rows=rows, cols=cols, matrix=matrix,
-            location_ids=location_ids,
-        ),
-        batches,
-        max_workers=len(batches),
-    )
+    frames = [batch_means(batch, da, args, grid_weights) for batch in tg.shard_batches(times, times, 4)]
     got = pd.concat(frames).set_index(["value_time", "location_id"])["value"]
 
     cos_lat = np.cos(np.deg2rad(grid.lat.values))
@@ -165,7 +154,7 @@ def test_grid_name_from_args_then_repo_then_configuration_name(harness):
         run("g", "x")
 
 
-def test_generated_weights_index_a_lat_lon_grid():
+def test_generated_weights_index_a_lat_lon_grid(batch_means):
     """Weights generated on a south-to-north lat/lon grid, renamed to x/y, reproduce exactextract's mean."""
     from exactextract import exact_extract
     from teehr.utilities.generate_weights import generate_weights_file
@@ -189,10 +178,8 @@ def test_generated_weights_index_a_lat_lon_grid():
     )
     weights = weights.rename(columns={"weight": "fraction_covered"})
     weights["weight"] = _area_weights(weights, grid, "lat")
-    matrix, rows, cols, location_ids = build_weights_matrix(weights)
-    window = (int(rows.min()), int(rows.max()) + 1, int(cols.min()), int(cols.max()) + 1)
-    got = _mean_areal_batch(
-        grid.time.to_index(), grid, _args(x_dim="lon", y_dim="lat"), window, rows, cols, matrix, location_ids
+    got = batch_means(
+        grid.time.to_index(), grid, _args(x_dim="lon", y_dim="lat"), GridWeights(*build_weights_matrix(weights))
     ).set_index("location_id")["value"]
 
     expected = exact_extract(
