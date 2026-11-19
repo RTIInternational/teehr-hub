@@ -116,24 +116,35 @@ def changed_partitions(
 
 @task(
     task_run_name="sorted-rewrite-{table}",
-    timeout_seconds=60 * 60,
+    timeout_seconds=4 * 60 * 60,
     retries=1,
     retry_delay_seconds=60,
     cache_policy=NO_CACHE,
 )
-def sorted_rewrite(spark: SparkSession, namespace: str, table: str, where: str | None) -> None:
+def sorted_rewrite(
+    spark: SparkSession,
+    namespace: str,
+    table: str,
+    where: str | None,
+    concurrent: int,
+) -> None:
     """Rewrite the rows ``where`` keeps (all when None) in the table's sort order,
-    at its target file and row-group sizes."""
+    at its target file and row-group sizes. One call for every partition: Spark
+    rewrites ``concurrent`` file groups (about a partition each) at once."""
     logger = get_run_logger()
     where_arg = f', where => "{where}"' if where else ""
     result = spark.sql(f"""
         CALL {CATALOG}.system.rewrite_data_files(
             table => '{namespace}.{table}',
             strategy => 'sort'{where_arg},
-            options => map('rewrite-all', 'true', 'partial-progress.enabled', 'true')
+            options => map(
+                'rewrite-all', 'true',
+                'partial-progress.enabled', 'true',
+                'max-concurrent-file-group-rewrites', '{concurrent}'
+            )
         )
     """).collect()
-    logger.info(f"{table} [{where or 'all'}]: {result[0].asDict() if result else {}}")
+    logger.info(f"{table}: {result[0].asDict() if result else {}}")
 
 
 @task(task_run_name="tidy-{table}", timeout_seconds=30 * 60, cache_policy=NO_CACHE)
@@ -167,6 +178,7 @@ def v1_table_maintenance(
     tables: list[str] | None = None,
     days: int | None = 8,
     rewrite: bool = True,
+    concurrent_rewrites: int = 16,
     start_spark_cluster: bool = True,
     executor_instances: int = 8,
     executor_cores: int = 4,
@@ -176,7 +188,8 @@ def v1_table_maintenance(
 
     ``days``: rewrite partitions changed in that many days (None: every partition,
     e.g. after the layout defaults change). ``rewrite=False`` only sets properties
-    and tidies.
+    and tidies. ``concurrent_rewrites``: file groups (about a partition each) Spark
+    rewrites at once.
     """
     logger = get_run_logger()
     ev = initialize_evaluation(
@@ -198,9 +211,14 @@ def v1_table_maintenance(
             logger.info(f"{table}: set {', '.join(set_now)}")
         if rewrite:
             # New layout properties apply to every partition, not just changed ones.
-            parts = changed_partitions(spark, namespace, table, None if set_now else since)
+            every = bool(set_now) or since is None
+            parts = changed_partitions(spark, namespace, table, None if every else since)
             logger.info(f"{table}: {len(parts)} partition(s) to rewrite")
-            for where in parts:
-                sorted_rewrite(spark, namespace, table, where)
+            if parts:
+                where = (
+                    None if every or None in parts
+                    else " OR ".join(f"({w})" for w in parts)
+                )  # fmt: skip
+                sorted_rewrite(spark, namespace, table, where, concurrent_rewrites)
         tidy(spark, namespace, table)
     logger.info(f"Maintained {len(names)} table(s) in {namespace}")
