@@ -7,7 +7,6 @@ in the table.
 """
 import geopandas as gpd
 import icechunk as ic
-import numpy as np
 import pandas as pd
 import rioxarray  # noqa: F401
 import xarray as xr
@@ -87,7 +86,7 @@ def write_dataframe_to_warehouse(
     catalog_name: str = None,
     namespace_name: str = None,
     partition_by: list[str] = None,
-    replace_condition: str = None,
+    replace_filters: list[dict] = None,
 ):
     """Write a pandas or Spark dataframe to an iceberg warehouse table."""
     logger = get_run_logger()
@@ -101,7 +100,7 @@ def write_dataframe_to_warehouse(
         catalog_name=catalog_name,
         namespace_name=namespace_name,
         partition_by=partition_by,
-        replace_condition=replace_condition,
+        replace_filters=replace_filters,
     )
     logger.info(f"Rows written to the '{table_name}' warehouse table.")
 
@@ -166,17 +165,10 @@ def read_location_polygons(ev: Evaluation, location_id_prefix: str) -> gpd.GeoDa
     return polygons_gdf
 
 
-def sql_literal(value) -> str:
-    """A Spark SQL literal for a string or a naive timestamp."""
-    if isinstance(value, (pd.Timestamp, np.datetime64)):
-        return f"TIMESTAMP_NTZ '{pd.Timestamp(value).isoformat(sep=' ')}'"
-    return "'" + str(value).replace("'", "''") + "'"
-
-
 def like_prefix(location_id_prefix: str) -> str:
     """A LIKE pattern for ids starting with ``<prefix>-``, with the prefix's own wildcards escaped.
 
-    Keeps reads to exactly the ids a write's ``startswith`` replace condition covers.
+    Used for reads and for replace_where filters, so both cover exactly the layer's ids.
     """
     escaped = location_id_prefix.replace("_", "\\_").replace("%", "\\%")
     return f"{escaped}-%"
@@ -241,10 +233,10 @@ def write_weights(
         uniqueness_fields=WEIGHTS_UNIQUENESS_FIELDS,
         write_mode=write_mode if exists else "create_or_replace",
         partition_by=WEIGHTS_PARTITION_BY,
-        replace_condition=(
-            f"grid_name = {sql_literal(grid_name)} "
-            f"AND startswith(location_id, {sql_literal(location_id_prefix + '-')})"
-        ) if exists and write_mode == "replace_where" else None,
+        replace_filters=[
+            {"column": "grid_name", "operator": "=", "value": grid_name},
+            {"column": "location_id", "operator": "like", "value": like_prefix(location_id_prefix)},
+        ] if exists and write_mode == "replace_where" else None,
     )
 
 

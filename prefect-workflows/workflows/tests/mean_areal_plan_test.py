@@ -9,7 +9,7 @@ from prefect import flow  # noqa: E402
 from prefect.testing.utilities import prefect_test_harness  # noqa: E402
 
 from mean_areal_values import (  # noqa: E402
-    _block_tasks, _cycle_batches, _write_groups, plan_reads, replace_condition,
+    _block_tasks, _cycle_batches, _write_groups, plan_reads, replace_filters,
 )
 from pixel_coverage_weights import like_prefix  # noqa: E402
 from workflows.models.mean_areal_inputs import MeanArealValuesInput  # noqa: E402
@@ -120,22 +120,25 @@ def test_write_groups_never_split_a_forecast_cycle():
     assert len(_write_groups(analysis, _args(max_rows_per_write=1), 1, forecast=False)) == 4
 
 
-def test_replace_condition_covers_exactly_the_write():
-    analysis = replace_condition(_args(), "rainrate_hourly_mean", TIMES[2:5])
-    assert analysis == (
-        "configuration_name = 'c' AND variable_name = 'rainrate_hourly_mean' "
-        "AND startswith(location_id, 'huc_10-') "
-        "AND value_time BETWEEN TIMESTAMP_NTZ '2020-01-01 02:00:00' AND TIMESTAMP_NTZ '2020-01-01 04:00:00'"
-    )
+def test_replace_filters_cover_exactly_the_write():
+    analysis = replace_filters(_args(), "rainrate_hourly_mean", TIMES[2:5])
+    assert analysis == [
+        {"column": "configuration_name", "operator": "=", "value": "c"},
+        {"column": "variable_name", "operator": "=", "value": "rainrate_hourly_mean"},
+        {"column": "location_id", "operator": "like", "value": "huc\\_10-%"},
+        {"column": "value_time", "operator": ">=", "value": pd.Timestamp("2020-01-01 02:00")},
+        {"column": "value_time", "operator": "<=", "value": pd.Timestamp("2020-01-01 04:00")},
+    ]
     steps = pd.MultiIndex.from_product([CYCLES, MEMBERS, LEADS], names=[rc.REFERENCE_TIME, rc.MEMBER, rc.LEAD_TIME])
-    forecast = replace_condition(_args(append_dim=rc.REFERENCE_TIME), "p", steps)
-    assert forecast.endswith(
-        "reference_time BETWEEN TIMESTAMP_NTZ '2026-10-01 00:00:00' AND TIMESTAMP_NTZ '2026-10-01 06:00:00'"
-    )
-    assert "unit_name" not in forecast and "member" not in forecast
+    forecast = replace_filters(_args(append_dim=rc.REFERENCE_TIME), "p", steps)
+    assert forecast[-2:] == [
+        {"column": "reference_time", "operator": ">=", "value": pd.Timestamp("2026-10-01 00:00")},
+        {"column": "reference_time", "operator": "<=", "value": pd.Timestamp("2026-10-01 06:00")},
+    ]
+    assert not {f["column"] for f in forecast} & {"unit_name", "member"}
 
 
 def test_like_prefix_escapes_wildcards():
-    """Reads select exactly the ids a startswith condition replaces, even for prefixes with LIKE wildcards."""
+    """Reads and replace filters select exactly the layer's ids, even for prefixes with LIKE wildcards."""
     assert like_prefix("huc_10") == "huc\\_10-%"
     assert like_prefix("usgs") == "usgs-%"

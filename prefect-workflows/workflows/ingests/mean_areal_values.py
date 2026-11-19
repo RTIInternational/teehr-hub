@@ -33,7 +33,7 @@ from workflows.utils.common_utils import initialize_evaluation
 from workflows.models.ingest_gridded_data_input import VARIABLE_AND_UNIT_MAPPER
 from workflows.models.mean_areal_inputs import MeanArealValuesInput
 from pixel_coverage_weights import (
-    ARROW_CONFIGS, WEIGHTS_TABLE_NAME, get_readonly_repo_store, like_prefix, resolve_grid_name, sql_literal,
+    ARROW_CONFIGS, WEIGHTS_TABLE_NAME, get_readonly_repo_store, like_prefix, resolve_grid_name,
     write_dataframe_to_warehouse,
 )
 
@@ -254,23 +254,23 @@ def _write_groups(batches: list[pd.Index], args: MeanArealValuesInput, n_zones: 
     return groups
 
 
-def replace_condition(args: MeanArealValuesInput, variable_name: str, steps: pd.Index) -> str:
+def replace_filters(args: MeanArealValuesInput, variable_name: str, steps: pd.Index) -> list[dict]:
     """The rows one write replaces: this configuration, variable and location layer, over the write's steps.
 
-    Every row the write produces matches it. Unit and member are left out on purpose: a rerun must also remove
+    Every row the write produces matches them. Unit and member are left out on purpose: a rerun must also remove
     rows written in an earlier unit, or for members it no longer produces.
     """
-    parts = [
-        f"configuration_name = {sql_literal(args.configuration_name)}",
-        f"variable_name = {sql_literal(variable_name)}",
-        f"startswith(location_id, {sql_literal(args.location_id_prefix + '-')})",
-    ]
     if isinstance(steps, pd.MultiIndex):
-        cycles = steps.get_level_values(args.append_dim)
-        parts.append(f"reference_time BETWEEN {sql_literal(cycles.min())} AND {sql_literal(cycles.max())}")
+        time_column, times = "reference_time", steps.get_level_values(args.append_dim)
     else:
-        parts.append(f"value_time BETWEEN {sql_literal(steps.min())} AND {sql_literal(steps.max())}")
-    return " AND ".join(parts)
+        time_column, times = "value_time", steps
+    return [
+        {"column": "configuration_name", "operator": "=", "value": args.configuration_name},
+        {"column": "variable_name", "operator": "=", "value": variable_name},
+        {"column": "location_id", "operator": "like", "value": like_prefix(args.location_id_prefix)},
+        {"column": time_column, "operator": ">=", "value": pd.Timestamp(times.min())},
+        {"column": time_column, "operator": "<=", "value": pd.Timestamp(times.max())},
+    ]
 
 
 @task(cache_policy=NO_CACHE, timeout_seconds=60 * 10)
@@ -400,8 +400,8 @@ def _write(ev: Evaluation, data, args: MeanArealValuesInput, variable_name: str,
         write_mode=args.write_mode,
         catalog_name=args.catalog_name,
         namespace_name=args.namespace_name,
-        replace_condition=(
-            replace_condition(args, variable_name, steps) if args.write_mode == "replace_where" else None
+        replace_filters=(
+            replace_filters(args, variable_name, steps) if args.write_mode == "replace_where" else None
         ),
     )
 
