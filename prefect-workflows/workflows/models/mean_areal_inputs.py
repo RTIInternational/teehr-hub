@@ -110,8 +110,8 @@ class MeanArealValuesInput(PixelCoverageWeightsInput):
         2.0,
         gt=0,
         description=(
-            "Memory one Spark task may use while reading and averaging; with the grid's chunking it sets the "
-            "batch size and the row bands the window is read in"
+            "Memory one Spark task may use while reading and averaging; with the grid's chunking and the "
+            "chunks holding weighted pixels it sets the batch size"
         )
     )
     executor_instances: int = Field(

@@ -15,7 +15,7 @@ from teehr.fetching.nwm.grid_utils import build_weights_matrix, weighted_average
 
 from utils import mean_areal_kernel  # noqa: E402
 from utils.mean_areal_kernel import (  # noqa: E402
-    BlockTask, GridWeights, arrow_task_runner, mean_areal_block, run_block_task,
+    BlockTask, GridWeights, arrow_task_runner, chunk_reads, mean_areal_block, run_block_task,
 )
 
 PREFECT_WORKFLOWS = Path(__file__).resolve().parents[2]
@@ -59,13 +59,14 @@ def _expected(data, weights_df, min_coverage):
     return GridWeights(matrix, rows, cols, location_ids), means
 
 
-@pytest.mark.parametrize("band_edges, max_slice_steps", [
-    (None, 256),          # one band, one slice
-    ([0, 3, 6, 9], 256),  # bands on chunk rows
-    ([0, 3, 6, 9], 5),    # bands and step slices not dividing the steps
+@pytest.mark.parametrize("chunk_shape, max_slice_steps", [
+    (None, 256),    # one read of the window, one slice
+    ((3, 4), 256),  # the stored chunks
+    ((3, 4), 5),    # step slices not dividing the steps
+    ((2, 3), 256),  # a chunk shape other than the stored one
 ])
-def test_block_matches_full_read(lazy_grid, band_edges, max_slice_steps):
-    """Banded, sliced reads give the same means as reading everything at once."""
+def test_block_matches_full_read(lazy_grid, chunk_shape, max_slice_steps):
+    """Chunk-by-chunk, sliced reads give the same means as reading everything at once."""
     data, da = lazy_grid
     weights, means = _expected(data, _weights(9, 7), 0.5)
     steps = pd.MultiIndex.from_product([range(2), da.time.values], names=["member", "time"])
@@ -76,7 +77,7 @@ def test_block_matches_full_read(lazy_grid, band_edges, max_slice_steps):
             "member": steps.get_level_values("member").astype(str).values,
             "value_time": steps.get_level_values("time").values,
         },
-        band_edges=band_edges,
+        chunk_shape=chunk_shape,
         max_slice_steps=max_slice_steps,
         min_coverage=0.5,
     )
@@ -91,6 +92,20 @@ def test_block_matches_full_read(lazy_grid, band_edges, max_slice_steps):
     ).dropna()
     assert not got.index.duplicated().any()
     pd.testing.assert_series_equal(got.sort_index(), expected.sort_index(), check_names=False, rtol=1e-6)
+
+
+def test_chunk_reads_cover_only_chunks_with_weighted_pixels():
+    """Each chunk row is one read of just its chunks holding pixels, trimmed to the pixels' extent."""
+    rows = np.array([1, 2, 1, 9, 10])
+    cols = np.array([1, 33, 34, 18, 17])
+    reads = list(chunk_reads(rows, cols, (8, 8)))
+    assert len(reads) == 2  # chunk rows 0 and 1
+    (rows_0, cols_0, pixels_0), (rows_1, cols_1, pixels_1) = reads
+    # Chunk row 0: chunks 0 and 4 only, not the empty chunks 1-3 between them
+    assert rows_0 == slice(1, 3) and list(cols_0) == [1, 33, 34]
+    assert sorted(pixels_0) == [0, 1, 2]
+    assert rows_1 == slice(9, 11) and cols_1 == slice(17, 19)
+    assert sorted(pixels_1) == [3, 4]
 
 
 def test_block_scale_constants_and_schema(lazy_grid):

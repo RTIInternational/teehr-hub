@@ -66,16 +66,18 @@ def test_analysis_batches_hold_whole_chunks_and_prefer_shards(harness):
     plan = _plan(_analysis((6, 8, 8), (12, 8, 8)), _args(), TIMES, {}, *PIXELS, n_zones=4)
     starts = [TIMES.get_loc(batch[0]) for batch in plan.batches]
     assert all(start % 12 == 0 for start in starts)
-    assert plan.band_edges == [3, 39]
+    assert plan.chunk_shape == (8, 8)
 
 
-def test_small_budget_reads_in_chunk_aligned_bands(harness):
-    """When one chunk of steps over the whole window is over budget, the window is read in bands of chunk rows."""
-    plan = _plan(_analysis((6, 8, 8)), _args(task_memory_gb=40e-6), TIMES, {}, *PIXELS, n_zones=4)
-    assert plan.band_edges[0] == 3 and plan.band_edges[-1] == 39
-    assert all(edge % 8 == 0 for edge in plan.band_edges[1:-1])
-    assert len(plan.band_edges) > 2
-    assert all(len(batch) % 6 == 0 or batch[-1] == TIMES[-1] for batch in plan.batches)
+def test_sparse_pixels_get_bigger_batches(harness):
+    """Batches are sized by the largest read, so pixels in a few chunks allow more steps than pixels in every chunk."""
+    def steps_per_batch(rows, cols):
+        plan = _plan(_analysis((2, 8, 8)), _args(task_memory_gb=2e-5), TIMES, {}, rows, cols, n_zones=4)
+        assert all(len(batch) % 2 == 0 or batch[-1] == TIMES[-1] for batch in plan.batches)
+        return max(len(batch) for batch in plan.batches)
+
+    dense = np.meshgrid(np.arange(0, 40, 4), np.arange(0, 32, 4), indexing="ij")
+    assert steps_per_batch(*PIXELS) > steps_per_batch(dense[0].ravel(), dense[1].ravel())
 
 
 def test_members_in_one_chunk_are_batched_and_read_together(harness):

@@ -26,7 +26,7 @@ from teehr.utils.concurrency import resolve_budget, resolve_cpu_workers
 from utils import time_grid as tg
 from utils.grid_spec import GridSpec, open_grid_dataset, read_grid_spec
 from utils import mean_areal_kernel
-from utils.mean_areal_kernel import BlockTask, GridWeights, arrow_task_runner
+from utils.mean_areal_kernel import BlockTask, GridWeights, arrow_task_runner, chunk_reads
 from workflows.utils.repo_const import MEMBER, STATUS_COORD
 from workflows.utils.time_utils import to_naive_utc
 from workflows.utils.common_utils import initialize_evaluation
@@ -104,10 +104,10 @@ def _area_weights(weights_df: pd.DataFrame, da: xr.DataArray, y_dim: str) -> pd.
 
 @dataclass(frozen=True)
 class ReadPlan:
-    """Batches of steps, and the row bands their window is read in."""
+    """Batches of steps, and the grid's (row, column) chunk size, so only chunks with weighted pixels are read."""
 
     batches: list[pd.Index]
-    band_edges: list[int]
+    chunk_shape: tuple[int, int] | None
 
 
 def _chunk_layout(da: xr.DataArray) -> dict[str, tuple[int, int]]:
@@ -136,46 +136,40 @@ def plan_reads(
     cols: np.ndarray,
     n_zones: int,
 ) -> ReadPlan:
-    """Batches and row bands from the grid's storage layout and ``task_memory_gb``.
+    """Batches from the grid's storage layout and ``task_memory_gb``.
 
     A batch holds whole inner chunks along the append axis (forecasts: the lead axis), so no chunk is decoded
-    twice, and whole shards when they fit; members stored in one chunk are read together. The window is read in
-    bands of whole chunk rows, sized so one chunk's worth of steps fits the budget.
+    twice, and whole shards when they fit; members stored in one chunk are read together. Only the chunks
+    holding weighted pixels are read, one chunk row at a time (``chunk_reads``), so a batch's size is set by its
+    largest read.
     """
     logger = get_run_logger()
     dim = args.append_dim
     layout = _chunk_layout(da)
-    y0, y1, x0, x1 = int(rows.min()), int(rows.max()) + 1, int(cols.min()), int(cols.max()) + 1
     lead_dim = list(fixed)[-1] if fixed else dim
     members_together = MEMBER in fixed and layout.get(MEMBER, (1, 1))[0] >= len(fixed[MEMBER])
     members = len(fixed[MEMBER]) if members_together else 1
     unit, shard = layout.get(lead_dim, (1, 1))
-    chunk_rows, chunk_cols = layout.get(args.y_dim, (y1 - y0, 0))[0], layout.get(args.x_dim, (x1 - x0, 0))[0]
+    chunk_shape = (layout[args.y_dim][0], layout[args.x_dim][0]) if args.y_dim in layout else None
+    reads = [(_size(r), _size(c), len(p)) for r, c, p in chunk_reads(rows, cols, chunk_shape)]
+    read_pixels = max(r * c for r, c, _ in reads)
+    read_weighted = max(p for _, _, p in reads)
     budget = args.task_memory_gb * 1e9
 
-    def batch_bytes(steps: int, band_rows: int) -> int:
-        band_pixels = rows.size * min(1.0, band_rows / (y1 - y0))
-        per_step = band_rows * (x1 - x0) * da.dtype.itemsize * 2 + band_pixels * da.dtype.itemsize + 16 * n_zones
-        return int(steps * per_step + min(steps, MAX_SLICE_STEPS) * band_pixels * AVERAGING_BYTES_PER_PIXEL)
+    def batch_bytes(steps: int) -> int:
+        per_step = read_pixels * da.dtype.itemsize * 2 + read_weighted * da.dtype.itemsize + 16 * n_zones
+        return int(steps * per_step + min(steps, MAX_SLICE_STEPS) * read_weighted * AVERAGING_BYTES_PER_PIXEL)
 
     unit_steps = unit * members
-    band_rows = y1 - y0
-    while band_rows > chunk_rows and batch_bytes(unit_steps, band_rows) > budget:
-        band_rows = max(chunk_rows, band_rows // 2 // chunk_rows * chunk_rows)
-    if batch_bytes(unit_steps, band_rows) > budget:
+    if batch_bytes(unit_steps) > budget:
         logger.warning(
-            f"One read unit ({unit_steps} steps x {band_rows} rows) needs "
-            f"{batch_bytes(unit_steps, band_rows) / 1e9:.1f} GB, over task_memory_gb={args.task_memory_gb}."
+            f"One read unit ({unit_steps} steps) needs {batch_bytes(unit_steps) / 1e9:.1f} GB, "
+            f"over task_memory_gb={args.task_memory_gb}."
         )
-    units = max(1, int(budget // batch_bytes(unit_steps, band_rows)))
+    units = max(1, int(budget // batch_bytes(unit_steps)))
     lead_steps = unit * units
     if lead_steps >= shard:
         lead_steps = lead_steps // shard * shard
-    if band_rows >= y1 - y0:
-        band_edges = [y0, y1]
-    else:
-        start = y0 // chunk_rows * chunk_rows
-        band_edges = [y0, *range(start + band_rows, y1, band_rows), y1]
 
     if not fixed:
         batches = tg.shard_batches(written, da[dim].to_index(), lead_steps)
@@ -183,15 +177,17 @@ def plan_reads(
         batches = _cycle_batches(written, fixed, lead_steps)
     else:
         batches = tg.step_batches(written, fixed, lead_steps, lead_steps)
-    if chunk_rows and chunk_cols:
-        touched = (math.ceil(y1 / chunk_rows) - y0 // chunk_rows) * (math.ceil(x1 / chunk_cols) - x0 // chunk_cols)
-        used = len(set(zip(rows // chunk_rows, cols // chunk_cols)))
-        logger.info(f"The window touches {touched} spatial chunk(s); {used} hold weighted pixels.")
+    if chunk_shape is not None:
+        used = len(set(zip(rows // chunk_shape[0], cols // chunk_shape[1])))
+        logger.info(f"Reading the {used} spatial chunk(s) holding weighted pixels, in {len(reads)} read(s) per batch.")
     steps_per_batch = max(len(batch) for batch in batches)
-    logger.info(
-        f"Read plan: {len(batches)} batch(es) of up to {steps_per_batch} step(s), {len(band_edges) - 1} row band(s)."
-    )
-    return ReadPlan(batches, band_edges)
+    logger.info(f"Read plan: {len(batches)} batch(es) of up to {steps_per_batch} step(s).")
+    return ReadPlan(batches, chunk_shape)
+
+
+def _size(selection: slice | np.ndarray) -> int:
+    """Grid rows or columns a read selects."""
+    return selection.stop - selection.start if isinstance(selection, slice) else len(selection)
 
 
 def _positions(coord: xr.DataArray, values) -> slice | np.ndarray:
@@ -225,10 +221,10 @@ def _block_tasks(batch: pd.Index, da: xr.DataArray, dim: str, fixed: dict) -> li
     return tasks
 
 
-def _kernel_kwargs(args: MeanArealValuesInput, band_edges: list[int], **extra) -> dict:
+def _kernel_kwargs(args: MeanArealValuesInput, chunk_shape: tuple[int, int] | None, **extra) -> dict:
     """``mean_areal_block`` settings."""
     return dict(
-        y_dim=args.y_dim, x_dim=args.x_dim, band_edges=band_edges, max_slice_steps=MAX_SLICE_STEPS,
+        y_dim=args.y_dim, x_dim=args.x_dim, chunk_shape=chunk_shape, max_slice_steps=MAX_SLICE_STEPS,
         min_coverage=args.min_valid_coverage, scale=args.value_scale, offset=args.value_offset, **extra,
     )
 
@@ -426,7 +422,7 @@ def _compute_on_spark(ev, da, args, plan, groups, weights: GridWeights, fixed: d
     for i, group in enumerate(groups, start=1):
         tasks = [block for batch in group for block in _block_tasks(batch, da, dim, fixed)]
         run = arrow_task_runner(
-            tasks, da, weights, **_kernel_kwargs(args, plan.band_edges, constants=constants,
+            tasks, da, weights, **_kernel_kwargs(args, plan.chunk_shape, constants=constants,
                                                  schema=to_arrow_schema(schema))
         )
         stats = Observation(f"mean_areal_{i}")
@@ -476,7 +472,7 @@ def prepare_mean_areal(ev: Evaluation, grid_da: xr.DataArray, args: MeanArealVal
     weights_df = read_weights_from_warehouse(ev=ev, location_id_prefix=args.location_id_prefix, grid_name=grid_name)
     weights_df["weight"] = _area_weights(weights_df, grid_da, args.y_dim)
     matrix, rows, cols, location_ids = build_weights_matrix(weights_df)
-    # Column-sliced per row band by every task, so convert once
+    # Column-sliced per read by every task, so convert once
     weights = GridWeights(matrix.tocsc(), rows, cols, location_ids)
     check_locations(ev=ev, args=args, location_ids=weights.location_ids)
     # Only after the checks: registering skips existing names, so a wrong entry would stick

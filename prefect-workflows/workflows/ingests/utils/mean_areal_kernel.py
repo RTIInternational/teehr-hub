@@ -1,14 +1,14 @@
 """Mean areal values of a lazily opened grid, read one block at a time.
 
 The flow splits the grid into chunk-aligned blocks of steps and runs ``mean_areal_block`` on each, on the
-Prefect pod or on Spark executors. Memory is bounded by reading the block's window in bands of grid rows and
-averaging in slices of steps.
+Prefect pod or on Spark executors. Only the storage chunks holding weighted pixels are read, one chunk row at a
+time, and means are averaged in slices of steps, which bounds memory.
 
 Spark executors don't have our workflow code, so the mean areal flow sends this module's code with each task.
 Keep its imports to libraries the executor image has (no Prefect or ``workflows`` imports).
 """
 from dataclasses import dataclass
-from typing import Callable, Dict, Iterator, Optional, Sequence
+from typing import Callable, Dict, Iterator, Optional, Sequence, Tuple
 
 import numpy as np
 import pyarrow as pa
@@ -32,13 +32,47 @@ class GridWeights:
     location_ids: np.ndarray
 
 
+def chunk_reads(
+    rows: np.ndarray, cols: np.ndarray, chunk_shape: Optional[Tuple[int, int]],
+) -> Iterator[Tuple[slice, slice | np.ndarray, np.ndarray]]:
+    """The reads covering the weighted pixels at grid ``rows``/``cols``.
+
+    One read per chunk row holding weighted pixels: its rows, crossed with the columns of just the chunks in
+    that row that hold them (an outer-indexed read, which zarr serves by fetching only those chunks). Each read
+    is trimmed to its pixels' extent. Yields the read's row slice, its column slice or sorted column positions,
+    and the indices of its pixels in ``rows``/``cols``. Without a chunk shape, one read of the pixels' window.
+    """
+    if chunk_shape is None:
+        yield (
+            slice(int(rows.min()), int(rows.max()) + 1), slice(int(cols.min()), int(cols.max()) + 1),
+            np.arange(rows.size),
+        )
+        return
+    chunk_rows, chunk_cols = chunk_shape
+    # Small integer keys, so the stable sort is a radix sort: about a second for CONUS-scale pixel counts
+    chunk_row = (rows // chunk_rows).astype(np.uint16)
+    order = np.argsort(chunk_row, kind="stable")
+    for pixels in np.split(order, np.flatnonzero(np.diff(chunk_row[order])) + 1):
+        pixel_cols = cols[pixels]
+        chunk_col = pixel_cols // chunk_cols
+        # Each chunk's column extent in one pass
+        first = np.full(int(chunk_col.max()) + 1, np.iinfo(pixel_cols.dtype).max, pixel_cols.dtype)
+        last = np.full(first.size, -1, pixel_cols.dtype)
+        np.minimum.at(first, chunk_col, pixel_cols)
+        np.maximum.at(last, chunk_col, pixel_cols)
+        columns = np.concatenate([np.arange(first[c], last[c] + 1) for c in np.flatnonzero(last >= 0)])
+        if columns[-1] - columns[0] + 1 == columns.size:
+            columns = slice(int(columns[0]), int(columns[-1]) + 1)
+        yield slice(int(rows[pixels].min()), int(rows[pixels].max()) + 1), columns, pixels
+
+
 def mean_areal_block(
     da: xr.DataArray,
     weights: GridWeights,
     y_dim: str,
     x_dim: str,
     step_columns: Dict[str, np.ndarray],
-    band_edges: Optional[Sequence[int]] = None,
+    chunk_shape: Optional[Tuple[int, int]] = None,
     max_slice_steps: int = 256,
     min_coverage: float = 1.0,
     scale: float = 1.0,
@@ -53,8 +87,8 @@ def mean_areal_block(
     - ``weights``: weights indexing the full grid that ``da`` is a block of.
     - ``step_columns``: output columns describing each step, e.g. ``value_time``. Steps are ``da``'s non-spatial
       dims, in ``da.dims`` order, flattened in C order.
-    - ``band_edges``: grid row edges of the bands read one at a time, ideally on chunk boundaries. Defaults to one
-      band spanning the weighted pixels.
+    - ``chunk_shape``: the grid's stored (row, column) chunk size, so only chunks holding weighted pixels are
+      read (see ``chunk_reads``). Defaults to one read of the weighted pixels' window.
     - ``max_slice_steps``: steps averaged at once, which bounds the float64 copies made while averaging.
     - ``min_coverage``: see teehr's ``weighted_average_from_matrix``.
     - ``scale``, ``offset``: applied to the means (``value * scale + offset``), e.g. a unit conversion. Exact,
@@ -77,20 +111,18 @@ def mean_areal_block(
     missing_weight = np.zeros((n_zones, n_steps))
 
     rows, cols = weights.rows, weights.cols
-    if band_edges is None:
-        band_edges = [int(rows.min()), int(rows.max()) + 1]
-    for r0, r1 in zip(band_edges[:-1], band_edges[1:]):
-        in_band = np.flatnonzero((rows >= r0) & (rows < r1))
-        if in_band.size == 0:
-            continue
-        band_rows, band_cols = rows[in_band], cols[in_band]
-        c0, c1 = int(band_cols.min()), int(band_cols.max()) + 1
-        window = da.isel({y_dim: slice(r0, r1), x_dim: slice(c0, c1)}).values
-        pixels = window.reshape(n_steps, r1 - r0, c1 - c0)[:, band_rows - r0, band_cols - c0]
+    for row_sel, col_sel, in_read in chunk_reads(rows, cols, chunk_shape):
+        window = da.isel({y_dim: row_sel, x_dim: col_sel}).values
+        window = window.reshape(n_steps, window.shape[-2], window.shape[-1])
+        if isinstance(col_sel, slice):
+            read_cols = cols[in_read] - col_sel.start
+        else:
+            read_cols = np.searchsorted(col_sel, cols[in_read])
+        pixels = window[:, rows[in_read] - row_sel.start, read_cols]
         del window
-        band_matrix = matrix[:, in_band]
+        read_matrix = matrix[:, in_read]
         for s in range(0, n_steps, max_slice_steps):
-            part_sums, part_missing = weighted_sums_from_matrix(band_matrix, pixels[s:s + max_slice_steps])
+            part_sums, part_missing = weighted_sums_from_matrix(read_matrix, pixels[s:s + max_slice_steps])
             sums[:, s:s + max_slice_steps] += part_sums
             missing_weight[:, s:s + max_slice_steps] += part_missing
 
