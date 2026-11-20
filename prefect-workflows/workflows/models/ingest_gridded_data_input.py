@@ -4,21 +4,12 @@ from datetime import datetime
 from typing import Any, Literal, Optional, Union
 from enum import Enum
 from itertools import pairwise
-import numpy as np
-from pydantic import BaseModel, ConfigDict, Field, TypeAdapter, field_validator, model_validator
+from pydantic import BaseModel, Field, TypeAdapter, field_validator, model_validator
 from pydantic.json_schema import SkipJsonSchema
-from teehr.fetching.const import NWM_VARIABLE_MAPPER
 
 from workflows.models.gridded_sources import GriddedSourceType
+from workflows.models.packed_encoding import PackedEncoding
 
-
-# Renames source variables and units to teehr's on ingest
-VARIABLE_AND_UNIT_MAPPER = NWM_VARIABLE_MAPPER
-# Units each teehr variable is stored in; variables not listed keep their (mapped) source units.
-# Float sources are converted in /data; integer sources keep their integers with packing that decodes to these units.
-VARIABLE_UNITS = {"rainrate_hourly_mean": "mm/s"}
-# Linear conversions into those units: value * scale_factor + add_offset
-UNIT_CONVERSIONS = {}
 
 # Spatial chunk size of overview levels, about one 256 px map tile
 OVERVIEW_CHUNK_SIZE = 256
@@ -30,72 +21,6 @@ class ParserType(str, Enum):
     hdf = "hdf"
     zarr = "zarr"
     tiff = "tiff"
-
-
-class PackedEncoding(BaseModel):
-    """CF integer packing for an overview variable, derived from its plausible range.
-
-    Maps ``min_value``-``max_value`` onto the dtype's integers, leaving one end for
-    ``_FillValue``: uint16 gives 65534 steps of ``(max_value - min_value) / 65534``. A wider
-    range coarsens the steps; values outside it are clipped. ``units`` states the units of the
-    range and must match the variable's stored ``units`` attribute.
-    """
-
-    model_config = ConfigDict(populate_by_name=True)
-
-    dtype: str = Field(..., description="Integer dtype to store, e.g. 'uint16'")
-    max_value: float = Field(..., description="Largest plausible decoded value, in `units`")
-    min_value: float = Field(default=0.0, description="Smallest plausible decoded value, in `units`")
-    units: str = Field(..., description="Units of min_value and max_value, e.g. 'mm/s'; must match the variable's units")
-    fill_value: Optional[int] = Field(
-        default=None,
-        alias="_FillValue",
-        description="Stored integer marking missing values (NaN): the dtype's min or max. Defaults to its max."
-    )
-
-    @field_validator("dtype")
-    @classmethod
-    def _integer_dtype(cls, v: str) -> str:
-        if not np.issubdtype(np.dtype(v), np.integer):
-            raise ValueError(f"dtype must be an integer type, got '{v}'")
-        return v
-
-    @model_validator(mode="after")
-    def _check_range(self) -> "PackedEncoding":
-        info = np.iinfo(self.dtype)
-        if self.fill_value is None:
-            self.fill_value = int(info.max)
-        if self.fill_value not in (info.min, info.max):
-            raise ValueError(f"_FillValue must be the min or max of {self.dtype}, got {self.fill_value}")
-        if self.max_value <= self.min_value:
-            raise ValueError(f"max_value ({self.max_value}) must be greater than min_value ({self.min_value})")
-        return self
-
-    def _stored_range(self) -> tuple[int, int]:
-        """Integers available for data, excluding the fill value."""
-        info = np.iinfo(self.dtype)
-        lo, hi = int(info.min), int(info.max)
-        return (lo, hi - 1) if self.fill_value == hi else (lo + 1, hi)
-
-    @property
-    def scale_factor(self) -> float:
-        lo, hi = self._stored_range()
-        return (self.max_value - self.min_value) / (hi - lo)
-
-    @property
-    def add_offset(self) -> float:
-        return self.min_value - self.scale_factor * self._stored_range()[0]
-
-    def to_encoding(self) -> dict[str, Any]:
-        """Return the xarray encoding keys for this packing."""
-        return {
-            "dtype": self.dtype,
-            "scale_factor": self.scale_factor,
-            "add_offset": self.add_offset,
-            "_FillValue": self.fill_value,
-            # zarr's own fill must match, or chunks never written read as valid data (e.g. 0 mm/s)
-            "fill_value": self.fill_value,
-        }
 
 
 class BaseGriddedDataInput(BaseModel):
@@ -179,13 +104,24 @@ class BuildOverviewsDataInput(BaseGriddedDataInput):
             "is written once. Bounds memory use. Forecast batches hold whole shards, at least one."
         )
     )
-    overview_encoding: dict[str, PackedEncoding] = Field(
-        default={"rainrate_hourly_mean": PackedEncoding(dtype="uint16", max_value=0.075, units="mm/s")},
+    source: Optional[GriddedSourceType] = Field(
+        default=None,
         description=(
-            "Per-variable CF packing for overview levels, keyed by the stored variable name, "
-            "e.g. {'rainrate_hourly_mean': {'dtype': 'uint16', 'max_value': 0.075, 'units': 'mm/s'}}. "
-            "Values are clipped to [min_value, max_value]; variables not listed are stored as float32. "
-            "Applies only when an overview level is first created."
+            "The gridded data source, e.g. {'type': 'nwm'}; sets configuration_name and the overview packing. "
+            "Or set configuration_name alone for a repo without a source here"
+        )
+    )
+    configuration_name: Optional[str] = Field(
+        default=None,
+        description="IceChunk repository configuration name; derived from source when that is set"
+    )
+    overview_encoding: Optional[dict[str, PackedEncoding]] = Field(
+        default=None,
+        description=(
+            "Per-variable CF packing for overview levels, keyed by the stored (source) variable name, in its "
+            "source units, e.g. {'RAINRATE': {'dtype': 'uint16', 'max_value': 0.075, 'units': 'mm s^-1'}}. "
+            "Defaults to the source's. Values are clipped to [min_value, max_value]; variables not listed are "
+            "stored as float32. Applies only when an overview level is first created."
         )
     )
 
@@ -196,6 +132,20 @@ class BuildOverviewsDataInput(BaseGriddedDataInput):
         if not v or any(f < 2 for f in v) or any(b <= a or b % a for a, b in pairwise(v)):
             raise ValueError(f"overview_factors must be integers of at least 2, each a multiple of the one before; got {v}")
         return v
+
+    @model_validator(mode="after")
+    def _from_source(self) -> "BuildOverviewsDataInput":
+        """The repository name and overview packing from the source, unless given."""
+        if self.source is not None:
+            name = self.source.repository_name()
+            if self.configuration_name not in (None, name):
+                raise ValueError(f"configuration_name is derived from the source as {name!r}; got {self.configuration_name!r}.")
+            self.configuration_name = name
+        if self.configuration_name is None:
+            raise ValueError("Set source, or configuration_name.")
+        if self.overview_encoding is None:
+            self.overview_encoding = self.source.overview_encoding() if self.source is not None else {}
+        return self
 
     @model_validator(mode="after")
     def _batch_whole_shards(self) -> "BuildOverviewsDataInput":

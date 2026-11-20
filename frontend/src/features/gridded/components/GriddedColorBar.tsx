@@ -2,10 +2,13 @@
 // its size and position never depend on the value range or label widths.
 
 import type { TilesLegendResponse } from '@/shared/api/gridded/tiles';
+import type { TeehrMapping } from '@/shared/api/gridded/variableAttrs';
 import { formatSignificant } from '@/shared/utils/formatters';
 
 type GriddedColorBarProps = {
   legend: TilesLegendResponse;
+  // Labels the range in teehr's units; the legend itself is in the variable's stored units
+  mapping?: TeehrMapping | null;
 };
 
 const BAR_WIDTH = 14; // px
@@ -17,8 +20,10 @@ const GRADIENT_STOPS = 32;
 // Exponent form keeps very small values to a fixed label width
 const formatTick = (value: number): string => formatSignificant(value, 3);
 
-const GriddedColorBar = ({ legend }: GriddedColorBarProps) => {
+const GriddedColorBar = ({ legend, mapping }: GriddedColorBarProps) => {
   const [min, max] = legend.colorscalerange;
+  const units = mapping?.units ?? legend.units;
+  const shown = (value: number) => (mapping ? mapping.toDisplay(value) : value);
   const { stops } = legend;
   // Unset or 'extend' draws values above the max in the top color
   const topIsOpenEnded = legend.abovemaxcolor == null || legend.abovemaxcolor === 'extend';
@@ -38,7 +43,7 @@ const GriddedColorBar = ({ legend }: GriddedColorBarProps) => {
 
   return (
     <div style={{ fontSize: '0.72rem', width: BAR_WIDTH + 6 + LABEL_WIDTH, paddingBlock: '6px' }}>
-      {legend.units && <div style={{ fontWeight: 600, marginBottom: '6px' }}>{legend.units}</div>}
+      {units && <div style={{ fontWeight: 600, marginBottom: '6px' }}>{units}</div>}
       <div className="d-flex" style={{ gap: '6px', height: BAR_HEIGHT }}>
         <div
           style={{
@@ -63,8 +68,8 @@ const GriddedColorBar = ({ legend }: GriddedColorBarProps) => {
               }}
             >
               {i === TICK_COUNT - 1 && topIsOpenEnded
-                ? `≥ ${formatTick(value)}`
-                : formatTick(value)}
+                ? `≥ ${formatTick(shown(value))}`
+                : formatTick(shown(value))}
             </span>
           ))}
         </div>

@@ -355,9 +355,6 @@ deployments:
           "compat": "override",
           "join": "override",
           "combine_attrs": "override"
-        },
-        "overview_encoding": {
-          "rainrate_hourly_mean": {"dtype": "uint16", "max_value": 0.075, "units": "mm/s"}
         }
       }
     }
@@ -387,9 +384,6 @@ deployments:
           "compat": "override",
           "join": "override",
           "combine_attrs": "override"
-        },
-        "overview_encoding": {
-          "rainrate_hourly_mean": {"dtype": "uint16", "max_value": 0.075, "units": "mm/s"}
         }
       }
     }
@@ -403,11 +397,9 @@ deployments:
     entrypoint: workflows/ingests/build_overviews.py:build_overviews
     parameters: {
       "args": {
-        "configuration_name": "nwm31_forcing_analysis_assim",
-        "overview_factors": [2, 4, 8],
-        "overview_encoding": {
-          "rainrate_hourly_mean": {"dtype": "uint16", "max_value": 0.075, "units": "mm/s"}
-        }
+        # The source names the repo and its overview packing
+        "source": {"type": "nwm", "nwm_configuration": "forcing_analysis_assim", "nwm_version": "nwm31"},
+        "overview_factors": [2, 4, 8]
       }
     }
     work_pool: *work_pool
@@ -440,7 +432,7 @@ deployments:
         "temp_dir_path": *temp_dir_path,
         "configuration_name": "nwm31_forcing_analysis_assim",
         "location_id_prefix": "usgsbasin",
-        "grid_variable_name": "rainrate_hourly_mean"
+        "grid_variable_name": "RAINRATE"
       }
     }
     work_pool: *work_pool
@@ -458,7 +450,7 @@ deployments:
         "temp_dir_path": *temp_dir_path,
         "configuration_name": "nwm31_forcing_analysis_assim",
         "location_id_prefix": "usgsbasin",
-        "grid_variable_name": "rainrate_hourly_mean",
+        "grid_variable_name": "RAINRATE",
         "timeseries_table_name": "primary_timeseries"
       }
     }
@@ -478,7 +470,7 @@ deployments:
         "temp_dir_path": *temp_dir_path,
         "configuration_name": "nwm31_forcing_short_range",
         "location_id_prefix": "usgsbasin",
-        "grid_variable_name": "rainrate_hourly_mean"
+        "grid_variable_name": "RAINRATE"
       }
     }
     work_pool: *work_pool
@@ -557,8 +549,8 @@ deployments:
     description: >-
       Calculate mean areal GEFS 35-day 0.25 degree precipitation of a location layer, every member and
       lead, into secondary_timeseries, reading dynamical.org's Icechunk repo in place (us-west-2). The
-      schedule replaces the last 2 days of cycles, which also fills partly ingested ones. Written under
-      the source variable name until the teehr name is decided (3-hour means to 240 h, then 6-hour).
+      schedule replaces the last 2 days of cycles, which also fills partly ingested ones. Written as
+      rainrate_3hr_mean to 240 h and rainrate_6hr_mean after (mm/s); lead 0 is skipped.
     entrypoint: workflows/ingests/dynamical_mean_areal_values.py:calculate_dynamical_mean_areal_values
     parameters: {
       "args": {
@@ -566,7 +558,6 @@ deployments:
         "configuration_name": "gefs_35day_0p25_forecast",
         "location_id_prefix": "usgsbasin",
         "grid_variable_name": "precipitation_surface",
-        "unit_name": "mm/s",
         "stac_collection_url": "https://stac.dynamical.org/noaa-gefs-forecast-35-day/collection.json",
         "grid_name": "gefs_0p25_global",
         "num_lookback_days": 2

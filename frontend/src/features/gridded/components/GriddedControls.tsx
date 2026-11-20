@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Form, Row, Col, Button, InputGroup, Spinner, Alert } from 'react-bootstrap';
 
+import { teehrMapping } from '@/shared/api/gridded/variableAttrs';
 import { useDatasets } from '@/shared/queries/gridded/datasets';
 import { usePolygonLayers } from '@/shared/queries/gridded/tiles';
 import { useTimesteps } from '@/shared/queries/gridded/timesteps';
@@ -36,7 +37,9 @@ const GriddedControls = () => {
   const timesteps = useTimesteps(dataset);
   const variableAttrs = useVariableAttrs(dataset);
 
-  const units = variable ? variableAttrs.data?.[variable]?.units : undefined;
+  // Shown the teehr way; the color range is stored in the variable's own units, as the tiles need
+  const mapping = variable ? teehrMapping(variable, variableAttrs.data?.[variable]) : null;
+  const units = mapping?.units;
 
   const currentTimestep = useCurrentTimestep() ?? '';
   // Forecast datasets step through their cycles
@@ -120,8 +123,9 @@ const GriddedControls = () => {
   };
 
   const handleRangeChange = (field: string, value: string) => {
-    const num = parseFloat(value);
-    if (Number.isNaN(num)) return;
+    const shown = parseFloat(value);
+    if (Number.isNaN(shown)) return;
+    const num = mapping ? mapping.fromDisplay(shown) : shown;
     if (field === 'colorRampMin' && num >= colorRampMax) return;
     if (field === 'colorRampMax' && num <= colorRampMin) return;
     dispatch({ type: ActionTypes.UPDATE_MAP_FILTERS, payload: { [field]: num } });
@@ -164,7 +168,7 @@ const GriddedControls = () => {
                 <option value="">Select variable…</option>
                 {variables.data.map((v) => (
                   <option key={v} value={v}>
-                    {v}
+                    {teehrMapping(v, variableAttrs.data?.[v]).variable}
                   </option>
                 ))}
               </Form.Select>
@@ -336,7 +340,7 @@ const GriddedControls = () => {
                     <Form.Control
                       size="sm"
                       type="number"
-                      value={colorRampMin}
+                      value={mapping ? mapping.toDisplay(colorRampMin) : colorRampMin}
                       onChange={(e) => handleRangeChange('colorRampMin', e.target.value)}
                     />
                   </Form.Group>
@@ -349,7 +353,7 @@ const GriddedControls = () => {
                     <Form.Control
                       size="sm"
                       type="number"
-                      value={colorRampMax}
+                      value={mapping ? mapping.toDisplay(colorRampMax) : colorRampMax}
                       onChange={(e) => handleRangeChange('colorRampMax', e.target.value)}
                     />
                   </Form.Group>

@@ -17,9 +17,8 @@ import rioxarray  # noqa: F401
 import xarray as xr
 from prefect import flow, task, get_run_logger
 from prefect.cache_policies import NO_CACHE
-from teehr import Configuration, Evaluation, Unit, Variable
+from teehr import Configuration, Evaluation
 from teehr.evaluation.write import AUDIT_COLUMNS
-from teehr.fetching.const import UNIT_NAME
 from teehr.fetching.nwm.grid_utils import build_weights_matrix
 from teehr.utils.concurrency import resolve_budget, resolve_cpu_workers
 
@@ -30,8 +29,8 @@ from utils.mean_areal_kernel import BlockTask, GridWeights, arrow_task_runner, c
 from workflows.utils.repo_const import MEMBER, STATUS_COORD
 from workflows.utils.time_utils import to_naive_utc
 from workflows.utils.common_utils import initialize_evaluation
-from workflows.models.ingest_gridded_data_input import VARIABLE_AND_UNIT_MAPPER
 from workflows.models.mean_areal_inputs import MeanArealValuesInput
+from workflows.utils.teehr_mapping import TeehrMapping, lead_variable_names, mapping_from_attrs, resolve_teehr_mapping
 from pixel_coverage_weights import (
     ARROW_CONFIGS, WEIGHTS_TABLE_NAME, get_readonly_repo_store, like_prefix, resolve_grid_name,
     write_dataframe_to_warehouse,
@@ -77,8 +76,9 @@ def _written_forecast_steps(da: xr.DataArray, args: MeanArealValuesInput, fixed:
     return steps
 
 
-def _step_columns(steps: pd.Index, dim: str) -> dict[str, np.ndarray]:
-    """Timeseries columns of each step: its value_time, and a forecast's reference_time and member."""
+def _step_columns(steps: pd.Index, dim: str, lead_names: dict | None = None) -> dict[str, np.ndarray]:
+    """Timeseries columns of each step: its value_time, a forecast's reference_time and member, and with
+    ``lead_names`` its variable_name by lead."""
     if not isinstance(steps, pd.MultiIndex):
         return {"value_time": steps.values}
     cycles = steps.get_level_values(dim)
@@ -89,6 +89,8 @@ def _step_columns(steps: pd.Index, dim: str) -> dict[str, np.ndarray]:
     if MEMBER in steps.names:
         # teehr's member is a string
         columns["member"] = steps.get_level_values(MEMBER).astype(str).values
+    if lead_names is not None:
+        columns["variable_name"] = steps.get_level_values(steps.names[-1]).map(lead_names).values.astype(str)
     return columns
 
 
@@ -200,7 +202,8 @@ def _positions(coord: xr.DataArray, values) -> slice | np.ndarray:
     return positions
 
 
-def _block_tasks(batch: pd.Index, da: xr.DataArray, dim: str, fixed: dict) -> list[BlockTask]:
+def _block_tasks(batch: pd.Index, da: xr.DataArray, dim: str, fixed: dict,
+                 lead_names: dict | None = None) -> list[BlockTask]:
     """The batch as rectangular blocks of ``isel`` positions, with each block's step columns.
 
     Forecast members sharing their cycles and leads form one block, so a chunk holding every member is read once.
@@ -217,15 +220,16 @@ def _block_tasks(batch: pd.Index, da: xr.DataArray, dim: str, fixed: dict) -> li
         levels = [list(cycles), *([sorted(set(block_members))] if MEMBER in fixed else []), list(leads)]
         steps = pd.MultiIndex.from_product(levels, names=batch.names)
         selection = {name: _positions(da[name], level) for name, level in zip(batch.names, levels)}
-        tasks.append(BlockTask(selection, _step_columns(steps, dim)))
+        tasks.append(BlockTask(selection, _step_columns(steps, dim, lead_names)))
     return tasks
 
 
-def _kernel_kwargs(args: MeanArealValuesInput, chunk_shape: tuple[int, int] | None, **extra) -> dict:
+def _kernel_kwargs(args: MeanArealValuesInput, chunk_shape: tuple[int, int] | None, scale: float = 1.0,
+                   offset: float = 0.0, **extra) -> dict:
     """``mean_areal_block`` settings."""
     return dict(
         y_dim=args.y_dim, x_dim=args.x_dim, chunk_shape=chunk_shape, max_slice_steps=MAX_SLICE_STEPS,
-        min_coverage=args.min_valid_coverage, scale=args.value_scale, offset=args.value_offset, **extra,
+        min_coverage=args.min_valid_coverage, scale=scale, offset=offset, **extra,
     )
 
 
@@ -250,8 +254,8 @@ def _write_groups(batches: list[pd.Index], args: MeanArealValuesInput, n_zones: 
     return groups
 
 
-def replace_filters(args: MeanArealValuesInput, variable_name: str, steps: pd.Index) -> list[dict]:
-    """The rows one write replaces: this configuration, variable and location layer, over the write's steps.
+def replace_filters(args: MeanArealValuesInput, variable_names: list[str], steps: pd.Index) -> list[dict]:
+    """The rows one write replaces: this configuration, its variables and location layer, over the write's steps.
 
     Every row the write produces matches them. Unit and member are left out on purpose: a rerun must also remove
     rows written in an earlier unit, or for members it no longer produces.
@@ -262,7 +266,7 @@ def replace_filters(args: MeanArealValuesInput, variable_name: str, steps: pd.In
         time_column, times = "value_time", steps
     return [
         {"column": "configuration_name", "operator": "=", "value": args.configuration_name},
-        {"column": "variable_name", "operator": "=", "value": variable_name},
+        {"column": "variable_name", "operator": "in", "value": variable_names},
         {"column": "location_id", "operator": "like", "value": like_prefix(args.location_id_prefix)},
         {"column": time_column, "operator": ">=", "value": pd.Timestamp(times.min())},
         {"column": time_column, "operator": "<=", "value": pd.Timestamp(times.max())},
@@ -316,27 +320,22 @@ def check_locations(ev: Evaluation, args: MeanArealValuesInput, location_ids: np
 def register_domain_values(
     ev: Evaluation,
     args: MeanArealValuesInput,
-    variable_name: str,
-    variable_long_name: str,
-    unit_name: str,
+    mapping: TeehrMapping,
 ):
-    """Add the configuration, variable and unit to the warehouse if they don't exist."""
+    """Add the configuration, variables and unit to the warehouse if they don't exist."""
     logger = get_run_logger()
     timeseries_type = "primary" if args.timeseries_table_name == "primary_timeseries" else "secondary"
-    unit_long_name = next(
-        (unit["long_name"] for unit in VARIABLE_AND_UNIT_MAPPER[UNIT_NAME].values() if unit["name"] == unit_name),
-        unit_name
+    configuration = Configuration(
+        name=args.configuration_name,
+        timeseries_type=timeseries_type,
+        description=f"Mean areal values from the {args.configuration_name} grid",
     )
-    entries = {
-        "configurations": Configuration(
-            name=args.configuration_name,
-            timeseries_type=timeseries_type,
-            description=f"Mean areal values from the {args.configuration_name} grid",
-        ),
-        "variables": Variable(name=variable_name, long_name=variable_long_name),
-        "units": Unit(name=unit_name, long_name=unit_long_name),
-    }
-    for table_name, entry in entries.items():
+    entries = [
+        ("configurations", configuration),
+        *(("variables", variable) for variable in mapping.variables),
+        ("units", mapping.unit),
+    ]
+    for table_name, entry in entries:
         table = ev.table(table_name, namespace_name=args.namespace_name, catalog_name=args.catalog_name)
         exists = not table.filter(
             {"column": "name", "operator": "=", "value": entry.name}
@@ -387,7 +386,7 @@ def mean_areal_evaluation(args: MeanArealValuesInput) -> Evaluation:
     )
 
 
-def _write(ev: Evaluation, data, args: MeanArealValuesInput, variable_name: str, steps: pd.Index):
+def _write(ev: Evaluation, data, args: MeanArealValuesInput, variable_names: list[str], steps: pd.Index):
     """Write one group's rows with the flow's write mode."""
     write_dataframe_to_warehouse(
         ev=ev,
@@ -397,12 +396,13 @@ def _write(ev: Evaluation, data, args: MeanArealValuesInput, variable_name: str,
         catalog_name=args.catalog_name,
         namespace_name=args.namespace_name,
         replace_filters=(
-            replace_filters(args, variable_name, steps) if args.write_mode == "replace_where" else None
+            replace_filters(args, variable_names, steps) if args.write_mode == "replace_where" else None
         ),
     )
 
 
-def _compute_on_spark(ev, da, args, plan, groups, weights: GridWeights, fixed: dict, constants: dict):
+def _compute_on_spark(ev, da, args, plan, groups, weights: GridWeights, fixed: dict, constants: dict,
+                      mapping: TeehrMapping, lead_names: dict | None):
     """Batches run as Spark mapInArrow tasks, computed once per group and written to the warehouse."""
     from pyspark import cloudpickle
     from pyspark.sql import Observation
@@ -420,11 +420,10 @@ def _compute_on_spark(ev, da, args, plan, groups, weights: GridWeights, fixed: d
     # Executors don't have our workflow code, so send the kernel's code with each task
     cloudpickle.register_pickle_by_value(mean_areal_kernel)
     for i, group in enumerate(groups, start=1):
-        tasks = [block for batch in group for block in _block_tasks(batch, da, dim, fixed)]
-        run = arrow_task_runner(
-            tasks, da, weights, **_kernel_kwargs(args, plan.chunk_shape, constants=constants,
-                                                 schema=to_arrow_schema(schema))
-        )
+        tasks = [block for batch in group for block in _block_tasks(batch, da, dim, fixed, lead_names)]
+        run = arrow_task_runner(tasks, da, weights, **_kernel_kwargs(
+            args, plan.chunk_shape, mapping.scale, mapping.offset, constants=constants, schema=to_arrow_schema(schema)
+        ))
         stats = Observation(f"mean_areal_{i}")
         sdf = (
             # One task per partition, so tasks spread evenly over the workers
@@ -439,7 +438,7 @@ def _compute_on_spark(ev, da, args, plan, groups, weights: GridWeights, fixed: d
         steps = group[0].append(group[1:])
         started = time.perf_counter()
         try:
-            _write(ev, sdf, args, constants["variable_name"], steps)
+            _write(ev, sdf, args, [variable.name for variable in mapping.variables], steps)
         finally:
             sdf.unpersist()
         logger.info(
@@ -453,20 +452,17 @@ class MeanArealTarget:
     """What a run writes: the weights of its locations on the grid, and the teehr variable and unit."""
 
     weights: GridWeights
-    variable_name: str
-    unit_name: str
+    mapping: TeehrMapping
 
 
 def prepare_mean_areal(ev: Evaluation, grid_da: xr.DataArray, args: MeanArealValuesInput,
-                       grid_name: str) -> MeanArealTarget:
+                       grid_name: str, mapping: TeehrMapping | None = None) -> MeanArealTarget:
     """Register the domain values and load the weights, once per run (shared by every grid read, e.g. each year).
 
-    ``grid_da`` is any lazily opened variable of the grid; its latitudes and attributes are used.
+    ``grid_da`` is any lazily opened variable of the grid; its latitudes and attributes are used. ``mapping`` names
+    it the teehr way, for outside grids; our repos carry theirs as ``teehr:*`` attributes.
     """
-    variable_name = args.variable_name or args.grid_variable_name
-    unit_name = args.unit_name or grid_da.attrs.get("units")
-    if unit_name is None:
-        raise ValueError(f"Grid variable '{args.grid_variable_name}' has no 'units' attribute; set unit_name.")
+    mapping = resolve_teehr_mapping(args, mapping or mapping_from_attrs(grid_da.attrs), grid_da.attrs)
     if MEMBER in grid_da.dims and args.timeseries_table_name == "primary_timeseries":
         raise ValueError("Ensemble members have no column in primary_timeseries; write them to secondary_timeseries.")
     weights_df = read_weights_from_warehouse(ev=ev, location_id_prefix=args.location_id_prefix, grid_name=grid_name)
@@ -476,15 +472,9 @@ def prepare_mean_areal(ev: Evaluation, grid_da: xr.DataArray, args: MeanArealVal
     weights = GridWeights(matrix.tocsc(), rows, cols, location_ids)
     check_locations(ev=ev, args=args, location_ids=weights.location_ids)
     # Only after the checks: registering skips existing names, so a wrong entry would stick
-    register_domain_values(
-        ev=ev,
-        args=args,
-        variable_name=variable_name,
-        variable_long_name=grid_da.attrs.get("long_name", variable_name),
-        unit_name=unit_name,
-    )
+    register_domain_values(ev=ev, args=args, mapping=mapping)
     register_location_crosswalks(ev=ev, args=args, location_ids=weights.location_ids)
-    return MeanArealTarget(weights, variable_name, unit_name)
+    return MeanArealTarget(weights, mapping)
 
 
 def mean_areal_for_grid(ev: Evaluation, grid_da: xr.DataArray, spec: GridSpec, args: MeanArealValuesInput,
@@ -494,9 +484,18 @@ def mean_areal_for_grid(ev: Evaluation, grid_da: xr.DataArray, spec: GridSpec, a
     ``grid_da`` has CF-decoded values, a CRS and the spec's dims; ``args.append_dim`` must be the spec's.
     """
     logger = get_run_logger()
+    mapping = target.mapping
     fixed = {d: grid_da[d].values for d in spec.fixed_dims}
+    lead_names = None
     if fixed:
         written = _written_forecast_steps(grid_da, args, fixed)
+        if mapping.variable is None:
+            # Named by the interval each lead covers; leads covering none (lead 0) are skipped
+            lead_dim = list(fixed)[-1]
+            lead_names = lead_variable_names(fixed[lead_dim], mapping)
+            written = written[written.get_level_values(lead_dim).isin(list(lead_names))]
+    elif mapping.variable is None:
+        raise ValueError(f"'{args.grid_variable_name}' is named by forecast step interval, but the grid has no leads.")
     else:
         written = _written_steps(grid_da, args)[args.append_dim].to_index()
     if len(written) == 0:
@@ -510,12 +509,10 @@ def mean_areal_for_grid(ev: Evaluation, grid_da: xr.DataArray, spec: GridSpec, a
         f"Computing {len(written)} step(s) for {weights.location_ids.size} location(s) from {weights.rows.size} "
         f"pixel(s) in {len(groups)} write(s)."
     )
-    constants = {
-        "configuration_name": args.configuration_name,
-        "variable_name": target.variable_name,
-        "unit_name": target.unit_name,
-    }
-    _compute_on_spark(ev, grid_da, args, plan, groups, weights, fixed, constants)
+    constants = {"configuration_name": args.configuration_name, "unit_name": mapping.unit.name}
+    if mapping.variable is not None:
+        constants["variable_name"] = mapping.variable.name
+    _compute_on_spark(ev, grid_da, args, plan, groups, weights, fixed, constants, mapping, lead_names)
 
 
 @flow(

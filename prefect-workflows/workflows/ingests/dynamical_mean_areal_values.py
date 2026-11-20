@@ -9,13 +9,25 @@ import pandas as pd
 import rioxarray  # noqa: F401
 import xarray as xr
 from prefect import flow, get_run_logger, task
+from teehr import Variable
 
 from utils import grid_utils as gu
 from utils.grid_spec import GridSpec, open_grid_dataset, read_grid_spec
 from workflows.models.external_grid_inputs import DynamicalMeanArealInput
 from workflows.utils import repo_const as rc
+from workflows.utils.teehr_mapping import MM_PER_S, TeehrMapping
 from mean_areal_values import mean_areal_evaluation, mean_areal_for_grid, prepare_mean_areal
 from pixel_coverage_weights import read_location_polygons, weights_for_grid, write_weights
+
+# teehr variable, unit and conversion of each dynamical.org variable
+TEEHR_MAPPINGS = {
+    # The average rate since the previous forecast step (equivalent to mm/s), so named by that interval: GEFS
+    # steps 3-hourly to 240 h, then 6-hourly
+    "precipitation_surface": TeehrMapping(MM_PER_S, source_units="kg m-2 s-1", variables_by_interval={
+        3: Variable(name="rainrate_3hr_mean", long_name="3-Hour Mean Rainfall Rate"),
+        6: Variable(name="rainrate_6hr_mean", long_name="6-Hour Mean Rainfall Rate"),
+    }),
+}
 
 
 @task(retries=2, retry_delay_seconds=10)
@@ -66,7 +78,7 @@ def calculate_dynamical_mean_areal_values(args: DynamicalMeanArealInput):
         })
     ev = mean_areal_evaluation(args)
     grid_da, spec = open_dynamical_grid(args)
-    target = prepare_mean_areal(ev, grid_da, args, args.grid_name)
+    target = prepare_mean_areal(ev, grid_da, args, args.grid_name, mapping=TEEHR_MAPPINGS.get(args.grid_variable_name))
     mean_areal_for_grid(ev, grid_da, spec, args, target)
     get_run_logger().info("Dynamical mean areal values completed.")
 

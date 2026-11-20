@@ -548,9 +548,6 @@ deployments:
           "compat": "override",
           "join": "override",
           "combine_attrs": "override"
-        },
-        "overview_encoding": {
-          "rainrate_hourly_mean": {"dtype": "uint16", "max_value": 0.075, "units": "mm/s"}
         }
       }
     }
@@ -587,9 +584,6 @@ deployments:
           "compat": "override",
           "join": "override",
           "combine_attrs": "override"
-        },
-        "overview_encoding": {
-          "rainrate_hourly_mean": {"dtype": "uint16", "max_value": 0.075, "units": "mm/s"}
         }
       }
     }
@@ -609,11 +603,9 @@ deployments:
     entrypoint: workflows/ingests/build_overviews.py:build_overviews
     parameters: {
       "args": {
-        "configuration_name": "nwm31_forcing_analysis_assim",
-        "overview_factors": [2, 4, 8],
-        "overview_encoding": {
-          "rainrate_hourly_mean": {"dtype": "uint16", "max_value": 0.075, "units": "mm/s"}
-        }
+        # The source names the repo and its overview packing
+        "source": {"type": "nwm", "nwm_configuration": "forcing_analysis_assim", "nwm_version": "nwm31"},
+        "overview_factors": [2, 4, 8]
       }
     }
     work_pool: *work_pool_medium
@@ -654,7 +646,7 @@ deployments:
         "temp_dir_path": *temp_dir_path,
         "configuration_name": "nwm31_forcing_analysis_assim",
         "location_id_prefix": "usgsbasin",
-        "grid_variable_name": "rainrate_hourly_mean"
+        "grid_variable_name": "RAINRATE"
       }
     }
     work_pool: *work_pool_large
@@ -672,7 +664,7 @@ deployments:
         "temp_dir_path": *temp_dir_path,
         "configuration_name": "nwm31_forcing_analysis_assim",
         "location_id_prefix": "usgsbasin",
-        "grid_variable_name": "rainrate_hourly_mean",
+        "grid_variable_name": "RAINRATE",
         "timeseries_table_name": "primary_timeseries"
       }
     }
@@ -692,7 +684,7 @@ deployments:
         "temp_dir_path": *temp_dir_path,
         "configuration_name": "nwm31_forcing_short_range",
         "location_id_prefix": "usgsbasin",
-        "grid_variable_name": "rainrate_hourly_mean"
+        "grid_variable_name": "RAINRATE"
       }
     }
     work_pool: *work_pool_large

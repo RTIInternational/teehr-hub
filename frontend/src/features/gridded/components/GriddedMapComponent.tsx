@@ -6,8 +6,10 @@ import 'maplibre-gl/dist/maplibre-gl.css';
 import { GRIDDED_API_BASE_URL } from '@/shared/api/gridded/client';
 import { fetchGriddedEdrPoint } from '@/shared/api/gridded/edr';
 import { buildGriddedTileUrl, buildPmtilesUrl } from '@/shared/api/gridded/tiles';
+import { teehrMapping } from '@/shared/api/gridded/variableAttrs';
 import { ensureFreshToken } from '@/shared/auth/keycloak';
 import { usePolygonLayers, useTilesLegend } from '@/shared/queries/gridded/tiles';
+import { useVariableAttrs } from '@/shared/queries/gridded/variableAttrs';
 import type { PolygonFeatureProps, PolygonFeatures } from '@/shared/types/gridded/tiles';
 import { formatSignificant } from '@/shared/utils/formatters';
 
@@ -112,6 +114,7 @@ const GriddedMapComponent = () => {
   const fetchedLegends = useRef<Set<string>>(new Set());
 
   const tilesLegend = useTilesLegend(dataset, variable, colorRamp, colorRampMin, colorRampMax);
+  const variableAttrs = useVariableAttrs(dataset);
 
   // Fetch ArcGIS legend JSON for newly-activated overlays that declare a legendUrl.
   useEffect(() => {
@@ -512,10 +515,13 @@ const GriddedMapComponent = () => {
           lat,
           stepSelectors
         );
+        // Shown the teehr way: the point value comes from the repo in its stored units
+        const mapping = teehrMapping(variable, variableAttrs.data?.[variable]);
+        const units = mapping.units ? ` ${escapeHtml(mapping.units)}` : '';
         popupInstance.setHTML(`
           <div style="padding:8px; font-size:0.85rem;">
-            <div style="font-weight:600; margin-bottom:4px; color:#495057;">${escapeHtml(variable)}</div>
-            <div><strong>Value:</strong> ${value !== null && value !== undefined ? (typeof value === 'number' ? formatSignificant(value, 4) : escapeHtml(value)) : 'N/A'}</div>
+            <div style="font-weight:600; margin-bottom:4px; color:#495057;">${escapeHtml(mapping.variable)}</div>
+            <div><strong>Value:</strong> ${value !== null && value !== undefined ? (typeof value === 'number' ? `${formatSignificant(mapping.toDisplay(value), 4)}${units}` : escapeHtml(value)) : 'N/A'}</div>
             <div><strong>Lat:</strong> ${lat.toFixed(4)}</div>
             <div><strong>Lon:</strong> ${lng.toFixed(4)}</div>
             <div style="margin-top:4px; font-size:0.75rem; color:#6c757d;">${when}</div>
@@ -541,6 +547,7 @@ const GriddedMapComponent = () => {
     mapLoaded,
     dataset,
     variable,
+    variableAttrs.data,
     currentTimestep,
     appendDim,
     selectors,
@@ -576,7 +583,10 @@ const GriddedMapComponent = () => {
         >
           {colorLegend && (
             <div style={{ marginBottom: activeLegendEntries.length > 0 ? '8px' : 0 }}>
-              <GriddedColorBar legend={colorLegend} />
+              <GriddedColorBar
+                legend={colorLegend}
+                mapping={variable ? teehrMapping(variable, variableAttrs.data?.[variable]) : null}
+              />
             </div>
           )}
           {activeLegendEntries.map(({ label, entries }) => (

@@ -14,6 +14,7 @@ from zarr.storage import ObjectStore
 
 from utils.grid_spec import GridSpec
 from workflows.models.external_grid_inputs import AORCMeanArealInput
+from workflows.utils.teehr_mapping import MM_PER_S, RAINRATE_HOURLY_MEAN, TeehrMapping
 from workflows.utils.time_utils import to_naive_utc
 from mean_areal_values import mean_areal_evaluation, mean_areal_for_grid, prepare_mean_areal
 from pixel_coverage_weights import read_location_polygons, weights_for_grid, write_weights
@@ -22,10 +23,10 @@ AORC_BUCKET = "noaa-nws-aorc-v1-1-1km"
 AORC_REGION = "us-east-1"
 AORC_CRS = "EPSG:4326"
 FIRST_YEAR = 1979
-# Source variable -> teehr variable, unit and scale from the source units, used unless the flow args set them
-TEEHR_VARIABLES = {
-    # kg/m^2 per hour -> mm/s
-    "APCP_surface": ("rainrate_hourly_mean", "mm/s", 1 / 3600),
+# teehr variable, unit and conversion of each AORC variable
+TEEHR_MAPPINGS = {
+    # Hourly totals; 1 kg m-2 of water is 1 mm deep
+    "APCP_surface": TeehrMapping(MM_PER_S, RAINRATE_HOURLY_MEAN, scale=1 / 3600, source_units="kg/m^2"),
 }
 
 
@@ -65,24 +66,6 @@ def available_years(start_year: int, end_year: int) -> list[int]:
     return years
 
 
-def with_teehr_names(args: AORCMeanArealInput) -> AORCMeanArealInput:
-    """The args with the variable's teehr name, unit and scale from TEEHR_VARIABLES, unless variable_name is set.
-
-    Goes by values, not by which fields were passed: Prefect's run form sends every field, defaults included.
-    """
-    if args.variable_name is not None:
-        if args.unit_name is None:
-            raise ValueError("Set unit_name (and value_scale) with variable_name.")
-        return args
-    if args.unit_name is not None:
-        raise ValueError("Set variable_name (and value_scale) with unit_name.")
-    known = TEEHR_VARIABLES.get(args.grid_variable_name)
-    if known is None:
-        raise ValueError(f"Set variable_name, unit_name and value_scale for AORC variable '{args.grid_variable_name}'.")
-    variable_name, unit_name, scale = known
-    return args.model_copy(update={"variable_name": variable_name, "unit_name": unit_name, "value_scale": scale})
-
-
 @flow(
     name="calculate-aorc-mean-areal-values",
     description="Calculate mean areal values of AORC v1.1 1 km forcing for a polygon layer from NOAA's Zarr stores."
@@ -90,7 +73,6 @@ def with_teehr_names(args: AORCMeanArealInput) -> AORCMeanArealInput:
 def calculate_aorc_mean_areal_values(args: AORCMeanArealInput):
     """Calculate mean areal values of an AORC variable over start_dt..end_dt, one year at a time."""
     logger = get_run_logger()
-    args = with_teehr_names(args)
     start = to_naive_utc(args.start_dt) if args.start_dt is not None else pd.Timestamp(f"{FIRST_YEAR}-01-01")
     end = to_naive_utc(args.end_dt) if args.end_dt is not None else pd.Timestamp.now()
     years = available_years(start.year, end.year)
@@ -100,7 +82,10 @@ def calculate_aorc_mean_areal_values(args: AORCMeanArealInput):
 
     ev = mean_areal_evaluation(args)
     spec = GridSpec(append_dim="time", grid_name=args.grid_name)
-    target = prepare_mean_areal(ev, open_aorc_year(years[0], args.grid_variable_name), args, args.grid_name)
+    target = prepare_mean_areal(
+        ev, open_aorc_year(years[0], args.grid_variable_name), args, args.grid_name,
+        mapping=TEEHR_MAPPINGS.get(args.grid_variable_name),
+    )
     for year in years:
         logger.info(f"Computing AORC {year}.")
         mean_areal_for_grid(ev, open_aorc_year(year, args.grid_variable_name), spec, args, target)

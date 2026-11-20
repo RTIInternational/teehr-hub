@@ -23,7 +23,7 @@ def batch_means():
     def compute(batch, da, args, weights, fixed=None):
         fixed = fixed or {}
         da = da.transpose(args.append_dim, *fixed, args.y_dim, args.x_dim)
-        kwargs = _kernel_kwargs(args, [int(weights.rows.min()), int(weights.rows.max()) + 1])
+        kwargs = _kernel_kwargs(args, None)
         tasks = _block_tasks(batch, da, args.append_dim, fixed)
         return pd.concat([run_block_task(t, da, weights, **kwargs).to_pandas() for t in tasks], ignore_index=True)
     return compute

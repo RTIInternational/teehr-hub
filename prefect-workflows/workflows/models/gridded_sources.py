@@ -22,8 +22,10 @@ from teehr.fetching.const import (
 from teehr.fetching.nwm.nwm_grids import plan_nwm_grid_fetch
 from teehr.fetching.utils import REMOTE_RETRY_CONFIG, format_nwm_configuration_metadata
 
+from workflows.models.packed_encoding import PackedEncoding
 from workflows.utils.data_status import with_status
 from workflows.utils.repo_const import LEAD_TIME, MEMBER, REFERENCE_TIME, STATUS_COORD
+from workflows.utils.teehr_mapping import MM_PER_S, RAINRATE_HOURLY_MEAN, TeehrMapping
 
 # Columns of a source listing, indexed by each file's timestamp (or forecast step)
 LISTING_COLUMNS = ["url", STATUS_COORD, "last_modified"]
@@ -66,6 +68,20 @@ class GriddedSource(BaseModel, ABC):
     def grid_name(self) -> str:
         """Grid (CRS, pixel size, extent) the source's data is on; sources sharing a grid share a name."""
         return self.repository_name()
+
+    def teehr_mappings(self) -> dict[str, TeehrMapping]:
+        """teehr variable, unit and conversion of each ingested variable, keyed by its own name.
+
+        Ingest stamps them on the repo as ``teehr:*`` attributes, which the dashboard and mean areal values read.
+        """
+        return {}
+
+    def overview_encoding(self) -> dict[str, PackedEncoding]:
+        """Overview packing of each ingested variable, keyed by its own name, in its stored units.
+
+        Variables not listed get float32 overviews.
+        """
+        return {}
 
     def lead_times(self) -> list[int] | None:
         """Forecast lead times in hours, fixed when the repo is created; None for analysis sources."""
@@ -280,6 +296,16 @@ class NWMForcing(GriddedSource):
 
     def grid_name(self) -> str:
         return self.grid
+
+    def _rainrate_units(self) -> str:
+        """RAINRATE's units string, which NWM changed in version 3.0."""
+        return "mm s^-1" if self.nwm_version in ("nwm30", "nwm31") else "mm s-1"
+
+    def teehr_mappings(self) -> dict[str, TeehrMapping]:
+        return {"RAINRATE": TeehrMapping(MM_PER_S, RAINRATE_HOURLY_MEAN, source_units=self._rainrate_units())}
+
+    def overview_encoding(self) -> dict[str, PackedEncoding]:
+        return {"RAINRATE": PackedEncoding(dtype="uint16", max_value=0.075, units=self._rainrate_units())}
 
     def lead_times(self) -> list[int] | None:
         return self.forecast_grids[self.nwm_configuration][1] if self._is_forecast else None
