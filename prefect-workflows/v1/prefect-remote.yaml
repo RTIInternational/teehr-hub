@@ -1,0 +1,61 @@
+# v1 flows (ADR-0019 in teehr-cloud-core) on EKS. Deployed by the v1 deployer job
+# (manifests/deployer-job.yaml.tpl) from the v1 image, apart from the legacy flows.
+name: teehr-hub-v1
+prefect-version: 3.9.0
+
+build: null
+push: null
+pull:
+  - prefect.deployments.steps.set_working_directory:
+      directory: /teehr-v1
+
+definitions:
+  work_pool_medium: &work_pool_medium
+    name: kubernetes-pool
+    job_variables:
+      image: "{{ $PREFECT_TEEHR_V1_IMAGE }}"
+      image_pull_policy: Always
+      namespace: "{{ $TEEHR_NAMESPACE }}"
+      service_account_name: prefect-job
+      finished_job_ttl: 300
+      job_watch_timeout_seconds: 900
+      pod_watch_timeout_seconds: 300
+      cpu_request: "2"
+      memory_request: 20Gi
+      node_selector:
+        teehr-hub/nodegroup-name: driver-r5-xlarge
+      env:
+        PREFECT_LOGGING_LEVEL: INFO
+        PREFECT_LOGGING_EXTRA_LOGGERS: teehr_core
+        AWS_REGION: "{{ $AWS_REGION }}"
+        REMOTE_CATALOG_REST_URI: "{{ $REMOTE_CATALOG_REST_URI }}"
+        REMOTE_WAREHOUSE_IDENTIFIER: "{{ $REMOTE_WAREHOUSE_IDENTIFIER }}"
+        POLARIS_OAUTH2_SERVER_URI: "{{ $POLARIS_OAUTH2_SERVER_URI }}"
+        POLARIS_CLIENT_ID: "{{ $POLARIS_CLIENT_ID }}"
+        POLARIS_CLIENT_SECRET: "{{ $POLARIS_CLIENT_SECRET }}"
+        POLARIS_DEFAULT_REALM: "{{ $POLARIS_DEFAULT_REALM }}"
+      tolerations:
+        - key: teehr-hub/dedicated
+          operator: Equal
+          value: worker
+          effect: NoSchedule
+        - key: teehr-hub_dedicated
+          operator: Equal
+          value: worker
+          effect: NoSchedule
+
+deployments:
+  - name: build-usgs-streamflow-percentiles
+    description: Build public.usgs_streamflow_percentiles from public.usgs_streamflow (monthly)
+    entrypoint: flows/derived.py:build_derived_dataset
+    parameters:
+      observed: usgs_streamflow
+      kind: percentiles
+    concurrency_limit:
+      limit: 1
+      collision_strategy: CANCEL_NEW
+    work_pool: *work_pool_medium
+    # Monthly, on the 2nd (after the month's ingests). Starts off: run it by hand first.
+    schedule:
+      cron: "0 6 2 * *"
+      active: false
