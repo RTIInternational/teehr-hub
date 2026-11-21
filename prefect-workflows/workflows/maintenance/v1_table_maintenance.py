@@ -14,8 +14,10 @@ few row groups per series range -- and keeps the tables tidy:
 3. expire snapshots, remove orphan files (failed or retried writes leave them),
    rewrite manifests.
 
-The rewrites change no rows. They don't record lineage (``dataset_writes``): they
-are ``replace`` snapshots, which incremental runs needn't see.
+The rewrites change no rows. Incremental runs compare their inputs' live files with
+the state the last run recorded (ADR-0019), so a partition rewritten since is
+recomputed once though unchanged, and expiring snapshots doesn't affect them:
+retention is only a storage choice.
 
 Project namespaces belong to their projects and are not maintained here.
 """
@@ -34,7 +36,7 @@ logging.getLogger("teehr").setLevel(logging.INFO)
 
 CATALOG = "iceberg"
 
-# Keep in step with teehr-cloud-core control-plane/src/tables.py LAYOUT_DEFAULTS.
+# Keep in step with teehr-core teehr_core.warehouse.LAYOUT_DEFAULTS.
 LAYOUT_DEFAULTS = {
     "write.target-file-size-bytes": str(64 * 1024**2),
     "write.parquet.row-group-size-bytes": str(1024**2),
