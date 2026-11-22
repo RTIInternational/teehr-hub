@@ -45,7 +45,31 @@ definitions:
           value: worker
           effect: NoSchedule
 
+  # Calls the control plane and waits (the runs themselves are its jobs): a small pod.
+  work_pool_control_plane: &work_pool_control_plane
+    name: kubernetes-pool
+    job_variables:
+      image: "{{ $PREFECT_TEEHR_V1_IMAGE }}"
+      image_pull_policy: Always
+      namespace: "{{ $TEEHR_NAMESPACE }}"
+      service_account_name: prefect-job
+      finished_job_ttl: 300
+      memory_request: 256Mi
+      env:
+        PREFECT_LOGGING_LEVEL: INFO
+        CONTROL_PLANE_TOKEN: "{{ $CONTROL_PLANE_TOKEN }}"
+
 deployments:
+  - name: run-platform-evaluations
+    description: Run every platform evaluation's latest version (incremental), one at a time
+    entrypoint: flows/evaluations.py:run_evaluations
+    parameters:
+      project: platform
+    concurrency_limit:
+      limit: 1
+      collision_strategy: CANCEL_NEW
+    work_pool: *work_pool_control_plane
+
   - name: build-usgs-streamflow-percentiles
     description: Build public.usgs_streamflow_percentiles from public.usgs_streamflow
     entrypoint: flows/derived.py:build_derived_dataset

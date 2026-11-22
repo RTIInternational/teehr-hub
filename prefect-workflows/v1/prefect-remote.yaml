@@ -44,7 +44,50 @@ definitions:
           value: worker
           effect: NoSchedule
 
+  # Calls the control plane and waits (the runs themselves are its jobs): a small pod.
+  work_pool_control_plane: &work_pool_control_plane
+    name: kubernetes-pool
+    job_variables:
+      image: "{{ $PREFECT_TEEHR_V1_IMAGE }}"
+      image_pull_policy: Always
+      namespace: "{{ $TEEHR_NAMESPACE }}"
+      service_account_name: prefect-job
+      finished_job_ttl: 300
+      job_watch_timeout_seconds: 900
+      pod_watch_timeout_seconds: 300
+      cpu_request: 250m
+      memory_request: 512Mi
+      node_selector:
+        teehr-hub/nodegroup-name: driver-r5-xlarge
+      env:
+        PREFECT_LOGGING_LEVEL: INFO
+        CONTROL_PLANE_TOKEN: "{{ $CONTROL_PLANE_TOKEN }}"
+      tolerations:
+        - key: teehr-hub/dedicated
+          operator: Equal
+          value: worker
+          effect: NoSchedule
+        - key: teehr-hub_dedicated
+          operator: Equal
+          value: worker
+          effect: NoSchedule
+
 deployments:
+  - name: run-platform-evaluations
+    description: Run every platform evaluation's latest version (incremental), one at a time
+    entrypoint: flows/evaluations.py:run_evaluations
+    parameters:
+      project: platform
+    concurrency_limit:
+      limit: 1
+      collision_strategy: CANCEL_NEW
+    work_pool: *work_pool_control_plane
+    # Daily, after the day's USGS and NWM medium range ingests. Starts off: needs the
+    # automation user's token (prefect-control-plane-token) and a run by hand first.
+    schedule:
+      cron: "0 14 * * *"
+      active: false
+
   - name: build-usgs-streamflow-percentiles
     description: Build public.usgs_streamflow_percentiles from public.usgs_streamflow (monthly)
     entrypoint: flows/derived.py:build_derived_dataset
