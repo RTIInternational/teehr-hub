@@ -41,12 +41,13 @@ controlPlane:
   projectCreatorRoles: control-plane-admin
   # Runs across pods (ADR-0017): up to 4 pods a run, one per 8 shards.
   runMaxPods: 4
-  # Job pods run on the on-demand driver-r5-2xlarge group (8 vCPU, 64 GiB), one
-  # pod a node, not on core-a beside Keycloak, Polaris and the control plane:
-  # a run sharing core-a overcommitted its memory and took services down.
+  # Job pods run on their own node group, runs-r5-2xlarge (on-demand, 8 vCPU,
+  # 64 GiB, tainted for them alone; teehr-cloud-platform), one pod a node, not on
+  # core-a beside Keycloak, Polaris and the control plane: a run sharing core-a
+  # overcommitted its memory and took services down.
   # Memory request = limit, so a pod can't take more than it was scheduled with.
-  jobNodeSelector: teehr-hub/nodegroup-name=driver-r5-2xlarge
-  jobTolerations: teehr-hub/dedicated=worker:NoSchedule,teehr-hub_dedicated=worker:NoSchedule
+  jobNodeSelector: teehr-hub/nodegroup-name=runs-r5-2xlarge
+  jobTolerations: teehr-hub/dedicated=runs:NoSchedule,teehr-hub_dedicated=runs:NoSchedule
   jobCpuRequest: "7"
   jobMemoryRequest: 52Gi
   jobMemoryLimit: 52Gi
