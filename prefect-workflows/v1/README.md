@@ -18,19 +18,57 @@ own image (`Dockerfile`: teehr-core's warehouse writer and builders, Prefect; no
 
 ## The automation user's token
 
-`run-platform-evaluations` calls the control plane as a dedicated Keycloak user (e.g.
-`teehr-platform-automation`), a write member of `platform`, through a personal token
-(ADR-0018 in teehr-cloud-core). Set it up once, and again before the token expires (offline
-sessions last at most a year):
+`run-platform-evaluations` calls the control plane as a dedicated Keycloak user,
+`teehr-platform-automation`, a write member of `platform`, through a personal token (ADR-0018
+in teehr-cloud-core). Runs show that user as their creator. The token is limited to
+`platform` and expires after a year: repeat steps 3-5 before then (step 3 re-approves as the
+same user; revoke the old token afterwards with `teehr tokens revoke`).
 
-1. Create the user in Keycloak and add it to `platform` with the write role.
-2. Make its token, approving in a browser signed in as that user, into a config directory
-   of its own (the token is in its `credentials.json`), limited to `platform`:
-   `TEEHR_CONFIG_DIR=<empty dir> teehr --api <url> auth login --name prefect-run-platform-evaluations -p platform --days 365 --no-browser`.
-3. Put the token in the `prefect-control-plane-token` secret (key `token`): `REMOTE_SECRETS`
-   for remote, `secrets.local.private.yaml` for KinD.
-4. Redeploy the flows (`prefect-v1-workflow-deploy`): the deployer passes the token to the
-   deployment. Without the secret, the flow fails at once and says so.
+**1. Create the user** in the Keycloak admin console, realm `teehr`
+(`https://auth.<hostname>/admin/teehr/console/`; remote: `auth.teehr.rtiamanzi.org`):
+
+- Users → Add user: username `teehr-platform-automation`; email optional (a team mailbox
+  allows password resets); **Email verified** on, so its first sign-in isn't held up; Create.
+- Credentials → Set password, **Temporary** off. Keep the password in the team's password
+  manager: renewing the token needs it.
+- No roles or groups: its access comes from its `platform` membership.
+
+**2. Add it to `platform`** as yourself (a `control-plane-admin` manages system projects'
+members). This gives it the `platform` write role in Keycloak and Polaris:
+
+```
+teehr projects members add teehr-platform-automation -p platform --role write
+teehr projects members list -p platform
+```
+
+**3. Make its token**, after step 2 (so the token carries the role), into a config directory
+of its own. Approve in a private browser window signed in as `teehr-platform-automation`, not
+as yourself; finish any required action Keycloak asks for there. `--api` is the URL your own
+CLI uses (in `~/.config/teehr/credentials.json`):
+
+```
+mkdir -p ~/teehr-automation-token
+TEEHR_CONFIG_DIR=~/teehr-automation-token teehr --api <control-plane API URL> auth login --name prefect-run-platform-evaluations -p platform --days 365 --no-browser
+TEEHR_CONFIG_DIR=~/teehr-automation-token teehr auth status
+```
+
+`auth status` should name `teehr-platform-automation`. The token (`tpat_...`) is in
+`~/teehr-automation-token/credentials.json`.
+
+**4. Store it** in the `prefect-control-plane-token` secret, then delete
+`~/teehr-automation-token`. Remote: in `REMOTE_SECRETS`; KinD: in
+`teehr-cloud-core/secrets/secrets.local.private.yaml`. Under `secrets:`:
+
+```yaml
+  prefect-control-plane-token:
+    data:
+      token: tpat_...
+```
+
+**5. Redeploy** the secrets and the flows (`prefect-v1-workflow-deploy`, with force): the
+deployer passes the token to the deployment. Without it, the flow fails at once and names the
+secret. Run `run-platform-evaluations` once by hand from the Prefect UI before turning on its
+schedule.
 
 The image's teehr-core commit is `teehrCoreVersion` in `project.garden.yml` (a var change
 needs `garden deploy prefect-v1-workflow-deploy --force`).
