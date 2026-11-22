@@ -44,7 +44,8 @@ teehr projects members list -p platform
 **3. Make its token**, after step 2 (so the token carries the role), into a config directory
 of its own. Approve in a private browser window signed in as `teehr-platform-automation`, not
 as yourself; finish any required action Keycloak asks for there. `--api` is the URL your own
-CLI uses (in `~/.config/teehr/credentials.json`):
+CLI uses (in `~/.config/teehr/credentials.json`); on KinD,
+`https://control-plane.teehr.local.app.garden` and add `--insecure` (self-signed certificate):
 
 ```
 mkdir -p ~/teehr-automation-token
@@ -53,10 +54,12 @@ TEEHR_CONFIG_DIR=~/teehr-automation-token teehr auth status
 ```
 
 `auth status` should name `teehr-platform-automation`. The token (`tpat_...`) is in
-`~/teehr-automation-token/credentials.json`.
+`~/teehr-automation-token/credentials.json`. Once approved, sign the bot out of Keycloak in
+that window (or close the private window), so your browser doesn't stay signed in as it; the
+token doesn't depend on that session.
 
 **4. Store it** in the `prefect-control-plane-token` secret, then delete
-`~/teehr-automation-token`. Remote: in `REMOTE_SECRETS`; KinD: in
+`~/teehr-automation-token` (not `teehr auth logout`: that revokes the token). Remote: in `REMOTE_SECRETS`; KinD: in
 `teehr-cloud-core/secrets/secrets.local.private.yaml`. Under `secrets:`:
 
 ```yaml
