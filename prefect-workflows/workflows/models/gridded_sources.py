@@ -2,7 +2,7 @@
 import re
 from datetime import datetime
 from functools import partial
-from typing import ClassVar, Literal, Optional
+from typing import Annotated, ClassVar, Literal, Optional, Union
 
 import numpy as np
 import obstore
@@ -23,7 +23,7 @@ from teehr.fetching.utils import REMOTE_RETRY_CONFIG, format_nwm_configuration_m
 
 from teehr_icechunk import sources as ic_sources
 from teehr_icechunk.packed_encoding import PackedEncoding
-from teehr_icechunk.sources import listing_frame
+from teehr_icechunk.sources import gefs_reforecast, listing_frame
 from teehr_icechunk.data_status import with_status
 from teehr_icechunk.repo_const import LEAD_TIME, REFERENCE_TIME, STATUS_COORD
 from workflows.utils.teehr_mapping import MM_PER_S, RAINRATE_HOURLY_MEAN, TeehrMapping
@@ -239,5 +239,8 @@ class NWMForcing(GriddedSource):
         return with_status(ds, "stable", dim=REFERENCE_TIME)
 
 
-# One source type here; with more, use Annotated[Union[...], Field(discriminator="type")]
-GriddedSourceType = NWMForcing
+class GEFSv12Reforecast(gefs_reforecast.GEFSv12Reforecast, GriddedSource):
+    """teehr-icechunk's GEFS v12 reforecast source; teehr names for its variables come with its mean areal flow."""
+
+
+GriddedSourceType = Annotated[Union[NWMForcing, GEFSv12Reforecast], Field(discriminator="type")]

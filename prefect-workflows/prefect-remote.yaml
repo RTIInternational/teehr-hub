@@ -611,6 +611,71 @@ deployments:
     work_pool: *work_pool_medium
 
   # Create Vector Tiles
+
+  - name: process-gridded-unit
+    version:
+    tags: []
+    description: >-
+      One unit of a gridded ingest that fans out (max_child_runs > 0), started by ingest-gridded-data with
+      run_deployment. Not run on its own.
+    entrypoint: workflows/ingests/process_gridded_unit.py:process_gridded_unit
+    work_pool: *work_pool_medium
+
+  - name: ingest-gefs-v12-reforecast-0p25-icechunk
+    version:
+    tags: []
+    concurrency_limit:
+      limit: 1
+      collision_strategy: "CANCEL_NEW"
+    description: >-
+      Reference the NOAA GEFS v12 reforecast (2000-2019, days 1-10 at 0.25 degrees, leads 3-240 h) in an Icechunk repository, from
+      the GRIB2 files' indexes on noaa-gefs-retrospective. References only. Run on demand with start_dt/end_dt;
+      units fan out as process-gridded-unit runs. Kept under icechunk-unserved, as the tile server can't
+      decode GRIB yet.
+    entrypoint: workflows/ingests/ingest_gridded_data.py:ingest_gridded_data
+    parameters: {
+      "args": {
+        "source": {"type": "gefs-v12-reforecast", "grid": "0p25"},
+        "base_prefix": "icechunk-unserved",
+        "start_dt": "2000-01-01",
+        "end_dt": "2019-12-31",
+        "write_mode": "upsert",
+        "write_materialized": false,
+        "build_overviews_on_ingest": false,
+        "x_dim": "longitude",
+        "y_dim": "latitude",
+        "max_child_runs": 8
+      }
+    }
+    work_pool: *work_pool_medium
+
+  - name: ingest-gefs-v12-reforecast-0p5-icechunk
+    version:
+    tags: []
+    concurrency_limit:
+      limit: 1
+      collision_strategy: "CANCEL_NEW"
+    description: >-
+      Reference the NOAA GEFS v12 reforecast (2000-2019, up to 35 days at 0.5 degrees, leads 3-840 h) in an Icechunk repository, from
+      the GRIB2 files' indexes on noaa-gefs-retrospective. References only. Run on demand with start_dt/end_dt;
+      units fan out as process-gridded-unit runs. Kept under icechunk-unserved, as the tile server can't
+      decode GRIB yet.
+    entrypoint: workflows/ingests/ingest_gridded_data.py:ingest_gridded_data
+    parameters: {
+      "args": {
+        "source": {"type": "gefs-v12-reforecast", "grid": "0p5"},
+        "base_prefix": "icechunk-unserved",
+        "start_dt": "2000-01-01",
+        "end_dt": "2019-12-31",
+        "write_mode": "upsert",
+        "write_materialized": false,
+        "build_overviews_on_ingest": false,
+        "x_dim": "longitude",
+        "y_dim": "latitude",
+        "max_child_runs": 8
+      }
+    }
+    work_pool: *work_pool_medium
   - name: create-vector-tiles
     version:
     tags: []
