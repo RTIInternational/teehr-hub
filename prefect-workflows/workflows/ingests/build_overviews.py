@@ -1,7 +1,12 @@
+import logging
 from prefect import flow
 from teehr_icechunk import overviews
 
 from workflows.models.ingest_gridded_data_input import BuildOverviewsDataInput
+
+# Show the package's progress in the run logs: PREFECT_LOGGING_EXTRA_LOGGERS attaches Prefect's handlers,
+# not a level, so the logger would otherwise inherit the root's WARNING
+logging.getLogger("teehr_icechunk").setLevel(logging.INFO)
 
 
 @flow(

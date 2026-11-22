@@ -1,3 +1,4 @@
+import logging
 from prefect import flow, task, get_run_logger
 from prefect.cache_policies import NO_CACHE
 from datetime import datetime, timedelta
@@ -11,6 +12,10 @@ from workflows.models.ingest_gridded_data_input import IngestGriddedDataInput
 from workflows.utils.teehr_mapping import record_teehr_attrs
 from workflows.utils.time_utils import to_naive_utc
 from build_overviews import build_overviews as build_overviews_flow
+
+# Show the package's progress in the run logs: PREFECT_LOGGING_EXTRA_LOGGERS attaches Prefect's handlers,
+# not a level, so the logger would otherwise inherit the root's WARNING
+logging.getLogger("teehr_icechunk").setLevel(logging.INFO)
 
 configure_icechunk_s3_repo = task(gu.configure_icechunk_s3_repo, cache_policy=NO_CACHE)
 write_references = task(ingest.write_references, cache_policy=NO_CACHE)

@@ -5,6 +5,7 @@ index (CRS, pixel size, extent). They are shared by every variable and configura
 that grid. A MERGE never deletes, so pixels a re-drawn polygon no longer covers stay
 in the table.
 """
+import logging
 import geopandas as gpd
 import icechunk as ic
 import pandas as pd
@@ -20,6 +21,10 @@ from teehr_icechunk import grid_utils as gu
 from teehr_icechunk import time_grid as tg
 from workflows.utils.common_utils import initialize_evaluation, table_exists
 from workflows.models.mean_areal_inputs import PixelCoverageWeightsInput
+
+# Show the package's progress in the run logs: PREFECT_LOGGING_EXTRA_LOGGERS attaches Prefect's handlers,
+# not a level, so the logger would otherwise inherit the root's WARNING
+logging.getLogger("teehr_icechunk").setLevel(logging.INFO)
 
 WEIGHTS_TABLE_NAME = "grid_pixel_coverage_weights"
 WEIGHTS_UNIQUENESS_FIELDS = ["location_id", "row", "col", "grid_name"]

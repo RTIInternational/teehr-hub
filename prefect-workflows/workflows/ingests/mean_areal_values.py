@@ -7,6 +7,7 @@ Batches follow the grid's storage chunks (``plan_reads``) and are computed with 
 ``mapInArrow`` tasks that write straight to the warehouse: on executors with ``start_spark_cluster``, else in Spark
 local mode on the Prefect pod.
 """
+import logging
 import math
 import time
 from dataclasses import dataclass
@@ -38,6 +39,10 @@ from pixel_coverage_weights import (
     ARROW_CONFIGS, WEIGHTS_TABLE_NAME, get_readonly_repo_store, like_prefix, resolve_grid_name,
     write_dataframe_to_warehouse,
 )
+
+# Show the package's progress in the run logs: PREFECT_LOGGING_EXTRA_LOGGERS attaches Prefect's handlers,
+# not a level, so the logger would otherwise inherit the root's WARNING
+logging.getLogger("teehr_icechunk").setLevel(logging.INFO)
 
 # Attempts per Spark task in local mode, which otherwise never retries a failed task (e.g. a transient S3 error)
 LOCAL_TASK_ATTEMPTS = 3
