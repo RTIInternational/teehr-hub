@@ -59,3 +59,31 @@ deployments:
     schedule:
       cron: "0 6 2 * *"
       active: false
+
+  - name: build-usgs-streamflow-climatology
+    description: Build public.usgs_streamflow_climatology from public.usgs_streamflow (monthly)
+    entrypoint: flows/derived.py:build_derived_dataset
+    parameters:
+      observed: usgs_streamflow
+      kind: climatology
+    concurrency_limit:
+      limit: 1
+      collision_strategy: CANCEL_NEW
+    work_pool: *work_pool_medium
+    schedule:
+      cron: "0 8 2 * *"
+      active: false
+
+  - name: build-usgs-streamflow-naive-scale
+    description: Build public.usgs_streamflow_naive_scale from public.usgs_streamflow (monthly)
+    entrypoint: flows/derived.py:build_derived_dataset
+    parameters:
+      observed: usgs_streamflow
+      kind: naive_scale
+    concurrency_limit:
+      limit: 1
+      collision_strategy: CANCEL_NEW
+    work_pool: *work_pool_medium
+    schedule:
+      cron: "0 10 2 * *"
+      active: false
