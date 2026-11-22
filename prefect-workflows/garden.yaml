@@ -11,6 +11,7 @@ spec:
   publishId: teehr-prefect:${var.devTeehrVersion}
   buildArgs:
       TEEHR_VERSION: ${var.devTeehrVersion}
+      TEEHR_ICECHUNK_VERSION: ${var.devTeehrIcechunkVersion}
 ---
 kind: Deploy
 type: kubernetes

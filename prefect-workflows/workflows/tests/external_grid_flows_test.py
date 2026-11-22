@@ -13,7 +13,7 @@ from prefect.testing.utilities import prefect_test_harness  # noqa: E402
 import aorc_mean_areal_values as aorc  # noqa: E402
 import dynamical_mean_areal_values as dyn  # noqa: E402
 from workflows.models.external_grid_inputs import DynamicalMeanArealInput  # noqa: E402
-from workflows.utils import repo_const as rc  # noqa: E402
+from teehr_icechunk import repo_const as rc  # noqa: E402
 
 COMMON = dict(temp_dir_path="/tmp", location_id_prefix="huc10", dest_bucket="b", base_prefix="p")
 

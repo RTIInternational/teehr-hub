@@ -4,7 +4,7 @@ from typing import Optional
 from pydantic import Field
 
 from workflows.models.mean_areal_inputs import MeanArealValuesInput
-from workflows.utils import repo_const as rc
+from teehr_icechunk import repo_const as rc
 
 
 class AORCMeanArealInput(MeanArealValuesInput):

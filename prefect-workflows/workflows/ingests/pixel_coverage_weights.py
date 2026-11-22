@@ -16,8 +16,8 @@ from shapely.geometry import box
 from teehr import Evaluation
 from teehr.utilities.generate_weights import generate_weights_file
 
-from utils import grid_utils as gu
-from utils import time_grid as tg
+from teehr_icechunk import grid_utils as gu
+from teehr_icechunk import time_grid as tg
 from workflows.utils.common_utils import initialize_evaluation, table_exists
 from workflows.models.mean_areal_inputs import PixelCoverageWeightsInput
 

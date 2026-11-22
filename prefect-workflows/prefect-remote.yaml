@@ -37,7 +37,7 @@ definitions:
       PREFECT_LOGGING_LEVEL: *log_level
       TEEHR_SPARK_IMAGE: "{{ $TEEHR_SPARK_IMAGE }}"
       TEEHR_NAMESPACE: "{{ $TEEHR_NAMESPACE }}"
-      PREFECT_LOGGING_EXTRA_LOGGERS: teehr
+      PREFECT_LOGGING_EXTRA_LOGGERS: teehr,teehr_icechunk
       # Concurrent chunk reads/writes per zarr call (default 10)
       ZARR_ASYNC__CONCURRENCY: "128"
       # Start Local Only

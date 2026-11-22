@@ -12,7 +12,7 @@ from obstore.store import S3Store
 from prefect import flow, get_run_logger
 from zarr.storage import ObjectStore
 
-from utils.grid_spec import GridSpec
+from teehr_icechunk.grid_spec import GridSpec
 from workflows.models.external_grid_inputs import AORCMeanArealInput
 from workflows.utils.teehr_mapping import MM_PER_S, RAINRATE_HOURLY_MEAN, TeehrMapping
 from workflows.utils.time_utils import to_naive_utc
