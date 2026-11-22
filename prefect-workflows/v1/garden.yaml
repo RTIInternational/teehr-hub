@@ -1,0 +1,29 @@
+kind: Build
+type: container
+name: teehr-prefect-v1-image
+description: The v1 flows' image (teehr-core; no legacy teehr or Spark)
+environments:
+  - local
+  - remote
+spec:
+  dockerfile: Dockerfile
+  localId: teehr-prefect-v1
+  publishId: teehr-prefect-v1:${var.teehrCoreVersion}
+  buildArgs:
+    TEEHR_CORE_VERSION: ${var.teehrCoreVersion}
+---
+kind: Deploy
+type: kubernetes
+name: prefect-v1-workflow-deploy
+description: Register the v1 flows' Prefect deployments
+dependencies:
+  - deploy.prefect-server
+  - deploy.prefect-worker
+  - deploy.update-job-template
+  - build.teehr-prefect-v1-image
+environments:
+  - local
+  - remote
+spec:
+  manifestTemplates:
+  - ./manifests/deployer-job.yaml.tpl

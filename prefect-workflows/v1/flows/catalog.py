@@ -1,0 +1,32 @@
+"""The v1 warehouse's catalog (Polaris) for v1 flows, as the flows' service account.
+
+The flows act as ``prefect-polaris`` (OAuth2 client credentials, the same identity the
+legacy flows' Spark sessions use), whose ``teehr-platform-write`` role lets it write the
+system projects (``public``). Polaris vends storage credentials per table.
+"""
+
+import os
+
+from pyiceberg.catalog import Catalog, load_catalog
+
+
+def catalog() -> Catalog:
+    """The Polaris REST catalog, configured from the work pool's environment."""
+    realm = os.environ["POLARIS_DEFAULT_REALM"]
+    properties = {
+        "type": "rest",
+        "uri": os.environ["REMOTE_CATALOG_REST_URI"],
+        "warehouse": os.environ.get("REMOTE_WAREHOUSE_IDENTIFIER") or realm,
+        "credential": f"{os.environ['POLARIS_CLIENT_ID']}:{os.environ['POLARIS_CLIENT_SECRET']}",
+        "oauth2-server-uri": os.environ["POLARIS_OAUTH2_SERVER_URI"],
+        "scope": "openid",
+        "header.X-Polaris-Realm": realm,
+        "header.X-Iceberg-Access-Delegation": "vended-credentials",
+        "s3.region": os.environ["AWS_REGION"],
+    }
+    endpoint = os.environ.get("REMOTE_CATALOG_S3_ENDPOINT")
+    if endpoint:  # local object storage (KinD)
+        properties["s3.endpoint"] = endpoint
+    if os.environ.get("REMOTE_CATALOG_S3_PATH_STYLE_ACCESS", "").lower() == "true":
+        properties["s3.path-style-access"] = "true"
+    return load_catalog("polaris", **properties)
