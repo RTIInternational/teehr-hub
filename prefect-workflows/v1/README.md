@@ -42,8 +42,13 @@ teehr projects members list -p platform
 ```
 
 **3. Make its token**, after step 2 (so the token carries the role), into a config directory
-of its own. Approve in a private browser window signed in as `teehr-platform-automation`, not
-as yourself; finish any required action Keycloak asks for there. `--api` is the URL your own
+of its own (so the CLI doesn't use your saved token). **Whoever approves in the browser is who
+the token is for**, and a browser already signed in to Keycloak as you approves as you
+without asking. So first sign out of Keycloak
+(`https://auth.<hostname>/realms/teehr/protocol/openid-connect/logout`) or use a fresh private
+window (close any other private windows first: they share one session). When you open the
+approval link, Keycloak should ask you to sign in; sign in as `teehr-platform-automation` and
+finish any required action it asks for. `--api` is the URL your own
 CLI uses (in `~/.config/teehr/credentials.json`); on KinD,
 `https://control-plane.teehr.local.app.garden` and add `--insecure` (self-signed certificate):
 
@@ -53,7 +58,9 @@ TEEHR_CONFIG_DIR=~/teehr-automation-token teehr --api <control-plane API URL> au
 TEEHR_CONFIG_DIR=~/teehr-automation-token teehr auth status
 ```
 
-`auth status` should name `teehr-platform-automation`. The token (`tpat_...`) is in
+`auth status` should name `teehr-platform-automation`. If it names you, the token is yours:
+revoke it (`teehr tokens list`, then `teehr tokens revoke <id>`, as yourself), sign out of
+Keycloak and start step 3 again. The token (`tpat_...`) is in
 `~/teehr-automation-token/credentials.json`. Once approved, sign the bot out of Keycloak in
 that window (or close the private window), so your browser doesn't stay signed in as it; the
 token doesn't depend on that session.
