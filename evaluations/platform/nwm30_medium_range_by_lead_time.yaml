@@ -1,0 +1,22 @@
+# NWM 3.0 medium range vs USGS streamflow, per gage, member and 6-hour lead time bin
+version: 1
+name: nwm30_medium_range_by_lead_time
+inputs:
+  primary:
+    dataset: public.usgs_streamflow
+  secondary:
+    - dataset: public.nwm30_medium_range
+pair:
+  relation: public.usgs_nwm30
+fields:
+  - {name: lead_time_bin, fn: lead_time_bins, width: PT6H}
+aggregate:
+  - group_by: [primary_series_key, secondary_dataset, member, lead_time_bin]
+    metrics:
+      - count
+      - root_mean_standard_deviation_ratio
+      - relative_bias
+      - nash_sutcliffe_efficiency
+      - kling_gupta_efficiency
+output:
+  geometry: primary_series_key
