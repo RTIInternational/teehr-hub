@@ -1,8 +1,7 @@
 """The v1 warehouse's catalog (Polaris) for v1 flows, as the flows' service account.
 
-The flows act as ``teehr-platform-automation`` (OAuth2 client credentials), a write
-member of the system projects (ADR-0020 in teehr-cloud-core). Polaris vends storage
-credentials per table.
+The flows act as their service account (:mod:`flows.auth`) with OAuth2 client
+credentials. Polaris vends storage credentials per table.
 """
 
 import os
@@ -10,19 +9,7 @@ from typing import Any
 
 from pyiceberg.catalog import Catalog, load_catalog
 
-#: The Prefect Secret block holding the client's secret (loaded by load-secrets).
-SECRET_BLOCK = "teehr-platform-automation-secret"
-
-
-def client_secret() -> str:
-    """The flows' client secret: ``POLARIS_CLIENT_SECRET`` if set (local tests), else the
-    Prefect Secret block, so the secret isn't in the deployments' job variables."""
-    if os.environ.get("POLARIS_CLIENT_SECRET"):
-        return os.environ["POLARIS_CLIENT_SECRET"]
-    from prefect.blocks.system import Secret
-
-    return Secret.load(SECRET_BLOCK).get()
-
+from flows.auth import client_id, client_secret, token_url
 
 def catalog() -> Catalog:
     """The Polaris REST catalog, configured from the work pool's environment.
@@ -38,9 +25,9 @@ def catalog() -> Catalog:
         "auth": {
             "type": "oauth2",
             "oauth2": {
-                "client_id": os.environ["POLARIS_CLIENT_ID"],
+                "client_id": client_id(),
                 "client_secret": client_secret(),
-                "token_url": os.environ["POLARIS_OAUTH2_SERVER_URI"],
+                "token_url": token_url(),
                 "scope": "openid",
             },
         },

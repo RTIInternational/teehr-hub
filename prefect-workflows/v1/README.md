@@ -7,6 +7,9 @@ own image (`Dockerfile`: teehr-core's warehouse writer and builders, Prefect; no
 `teehr-platform-automation` service account, a write member of `public` and `platform`
 (ADR-0020 in teehr-cloud-core), for both table writes and control-plane calls.
 
+- `flows/auth.py`: the flows' identity, shared by every flow: the client secret (from the
+  Prefect Secret block), and `control_plane()`, an HTTP client for the control plane's API
+  that renews its tokens. `flows/catalog.py`: the Polaris catalog, as the same account.
 - `flows/derived.py`: build a derived dataset (percentiles, climatology, naive scale) of an
   observed timeseries. Register the dataset first:
   `teehr datasets create usgs_streamflow_percentiles -p public --kind percentiles --observed usgs_streamflow`.

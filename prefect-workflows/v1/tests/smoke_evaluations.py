@@ -8,6 +8,7 @@ import json
 
 import httpx
 
+import flows.auth as auth
 import flows.evaluations as ev
 
 polls: dict[str, int] = {}
@@ -52,11 +53,11 @@ def keycloak(request: httpx.Request) -> httpx.Response:
     return httpx.Response(200, json={"access_token": tokens[-1], "expires_in": 60})
 
 
-ev.httpx.post = lambda url, data, timeout: keycloak(httpx.Request("POST", url, data=data))
-ev.os.environ.update(POLARIS_OAUTH2_SERVER_URI="http://kc/token", POLARIS_CLIENT_ID="bot",
+auth.httpx.post = lambda url, data, timeout: keycloak(httpx.Request("POST", url, data=data))
+auth.os.environ.update(POLARIS_OAUTH2_SERVER_URI="http://kc/token", POLARIS_CLIENT_ID="bot",
                      POLARIS_CLIENT_SECRET="s3cret")
-real = ev._client
-ev._client = lambda: httpx.Client(
+real = auth.control_plane
+ev.control_plane = lambda: httpx.Client(
     base_url="http://cp", auth=real().auth, transport=httpx.MockTransport(handle)
 )
 
@@ -76,16 +77,15 @@ assert out == {"a_eval": "succeeded"} and started == [{"slug": "a_eval", "full":
 assert len(tokens) == len(calls)  # renewed before each request
 
 try:
-    ev.ClientCredentials("http://kc/token", "bot", "wrong")._fresh()
+    auth.ClientCredentials("http://kc/token", "bot", "wrong")._fresh()
     raise AssertionError("a refused secret should fail")
 except RuntimeError as exc:
     assert "token for bot (401)" in str(exc), exc
 # Deployed, the secret comes from the Prefect Secret block, not the environment.
 from prefect.blocks.system import Secret  # noqa: E402
 
-from flows.catalog import SECRET_BLOCK, client_secret  # noqa: E402
 
-del ev.os.environ["POLARIS_CLIENT_SECRET"]
-Secret(value="from-block").save(name=SECRET_BLOCK, overwrite=True)
-assert client_secret() == "from-block"
+del auth.os.environ["POLARIS_CLIENT_SECRET"]
+Secret(value="from-block").save(name=auth.SECRET_BLOCK, overwrite=True)
+assert auth.client_secret() == "from-block"
 print("OK")
