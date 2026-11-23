@@ -11,10 +11,10 @@ import xarray as xr
 from prefect import flow, get_run_logger, task
 from teehr import Variable
 
-from utils import grid_utils as gu
-from utils.grid_spec import GridSpec, open_grid_dataset, read_grid_spec
+from teehr_icechunk import grid_utils as gu
+from teehr_icechunk.grid_spec import GridSpec, open_grid_dataset, read_grid_spec
 from workflows.models.external_grid_inputs import DynamicalMeanArealInput
-from workflows.utils import repo_const as rc
+from teehr_icechunk import repo_const as rc
 from workflows.utils.teehr_mapping import MM_PER_S, TeehrMapping
 from mean_areal_values import mean_areal_evaluation, mean_areal_for_grid, prepare_mean_areal
 from pixel_coverage_weights import read_location_polygons, weights_for_grid, write_weights

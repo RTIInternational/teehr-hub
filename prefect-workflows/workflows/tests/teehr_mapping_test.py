@@ -83,7 +83,7 @@ def test_each_sources_mappings_and_packing_agree_on_units(source):
 
 def test_write_teehr_attrs_stamps_every_group_and_drops_stale_ones():
     zarr = pytest.importorskip("zarr")
-    from utils.grid_utils import write_teehr_attrs
+    from workflows.utils.teehr_mapping import write_teehr_attrs
 
     store = zarr.storage.MemoryStore()
     root = zarr.open_group(store, mode="w", zarr_format=3)

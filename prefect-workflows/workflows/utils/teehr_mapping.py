@@ -7,6 +7,9 @@ modules). Ingest stamps a repo's mappings as ``teehr:*`` attributes, which the d
 from dataclasses import dataclass, field
 from typing import Optional
 
+import icechunk as ic
+import zarr
+from prefect import get_run_logger
 from teehr import Unit, Variable
 
 
@@ -121,3 +124,34 @@ def lead_variable_names(leads, mapping: TeehrMapping) -> dict:
             raise ValueError(f"No teehr variable for {interval}-hour steps (lead {lead}); known: {known}.")
         names[lead] = mapping.variables_by_interval[interval].name
     return names
+
+
+def write_teehr_attrs(store: ic.IcechunkStore, mappings: dict[str, TeehrMapping]) -> bool:
+    """Set each stored variable's ``teehr:*`` attributes from its source's ``mappings``; True if any changed.
+
+    Covers every group (``/references``, ``/data``, overviews). A variable without a mapping loses any it had; one
+    stored in other units than its mapping is for raises.
+    """
+    changed = False
+    for path, node in zarr.open_group(store, mode="a", zarr_format=3).members(max_depth=None):
+        if not isinstance(node, zarr.Array):
+            continue
+        name = path.rsplit("/", 1)[-1]
+        attrs = node.attrs.asdict()
+        mapping = mappings.get(name)
+        if mapping is not None:
+            mapping.check_units(name, attrs.get("units"))
+        wanted = {k: v for k, v in attrs.items() if not k.startswith(TEEHR_ATTR_PREFIX)}
+        wanted.update(teehr_attrs(mapping))
+        if wanted != attrs:
+            node.attrs.put(wanted)
+            changed = True
+    return changed
+
+
+def record_teehr_attrs(repo: ic.Repository, mappings: dict[str, TeehrMapping]) -> None:
+    """Commit the variables' ``teehr:*`` attributes when they changed (metadata only)."""
+    session = repo.writable_session("main")
+    if write_teehr_attrs(session.store, mappings):
+        session.commit("Updated the variables' teehr attributes")
+        get_run_logger().info("Updated the variables' teehr attributes.")

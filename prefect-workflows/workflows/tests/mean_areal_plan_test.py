@@ -1,19 +1,15 @@
-"""Read plans from a grid's storage chunks, ensemble blocks, write groups and replace conditions."""
+"""Ensemble blocks, write groups and replace conditions of the mean areal flow (read plans: teehr-icechunk)."""
 import numpy as np
 import pandas as pd
 import pytest
 import xarray as xr
 
 pytest.importorskip("teehr")
-from prefect import flow  # noqa: E402
-from prefect.testing.utilities import prefect_test_harness  # noqa: E402
-
-from mean_areal_values import (  # noqa: E402
-    _block_tasks, _cycle_batches, _write_groups, plan_reads, replace_filters,
-)
+from mean_areal_values import _block_tasks, _write_groups, replace_filters  # noqa: E402
 from pixel_coverage_weights import like_prefix  # noqa: E402
 from workflows.models.mean_areal_inputs import MeanArealValuesInput  # noqa: E402
-from workflows.utils import repo_const as rc  # noqa: E402
+from teehr_icechunk import repo_const as rc  # noqa: E402
+from teehr_icechunk.mean_areal_plan import cycle_batches  # noqa: E402
 
 TIMES = pd.date_range("2020-01-01", periods=20, freq="h")
 CYCLES = pd.date_range("2026-10-01", periods=2, freq="6h")
@@ -27,14 +23,6 @@ def _args(**kwargs):
     )
 
 
-def _analysis(chunks, shards=None):
-    da = xr.DataArray(
-        np.zeros((len(TIMES), 40, 30), "float32"), dims=("time", "y", "x"), coords={"time": TIMES}
-    )
-    da.encoding = {"chunks": chunks, **({"shards": shards} if shards else {})}
-    return da
-
-
 def _forecast(member_chunk):
     shape = (len(CYCLES), len(MEMBERS), len(LEADS), 8, 8)
     da = xr.DataArray(
@@ -45,57 +33,16 @@ def _forecast(member_chunk):
     return da
 
 
-@pytest.fixture(scope="module")
-def harness():
-    with prefect_test_harness():
-        yield
-
-
-def _plan(*plan_args, **plan_kwargs):
-    @flow
-    def run():
-        return plan_reads(*plan_args, **plan_kwargs)
-    return run()
-
-
-PIXELS = (np.array([3, 10, 25, 38]), np.array([2, 9, 20, 28]))
-
-
-def test_analysis_batches_hold_whole_chunks_and_prefer_shards(harness):
-    """Batches are whole 6-step chunks from the axis start, rounded to whole 12-step shards when they fit."""
-    plan = _plan(_analysis((6, 8, 8), (12, 8, 8)), _args(), TIMES, {}, *PIXELS, n_zones=4)
-    starts = [TIMES.get_loc(batch[0]) for batch in plan.batches]
-    assert all(start % 12 == 0 for start in starts)
-    assert plan.chunk_shape == (8, 8)
-
-
-def test_sparse_pixels_get_bigger_batches(harness):
-    """Batches are sized by the largest read, so pixels in a few chunks allow more steps than pixels in every chunk."""
-    def steps_per_batch(rows, cols):
-        plan = _plan(_analysis((2, 8, 8)), _args(task_memory_gb=2e-5), TIMES, {}, rows, cols, n_zones=4)
-        assert all(len(batch) % 2 == 0 or batch[-1] == TIMES[-1] for batch in plan.batches)
-        return max(len(batch) for batch in plan.batches)
-
-    dense = np.meshgrid(np.arange(0, 40, 4), np.arange(0, 32, 4), indexing="ij")
-    assert steps_per_batch(*PIXELS) > steps_per_batch(dense[0].ravel(), dense[1].ravel())
-
-
-def test_members_in_one_chunk_are_batched_and_read_together(harness):
-    """With every member in one chunk, a batch is a cycle's block of leads across all members, read as one block."""
+def test_members_in_one_chunk_are_read_together():
+    """With every member in one chunk, a cycle's block of leads across all members is read as one block."""
     da = _forecast(member_chunk=len(MEMBERS))
     fixed = {rc.MEMBER: np.array(MEMBERS), rc.LEAD_TIME: np.array(LEADS)}
     steps = pd.MultiIndex.from_product([CYCLES, MEMBERS, LEADS], names=[rc.REFERENCE_TIME, *fixed])
-    batches = _cycle_batches(steps, fixed, lead_steps=2)
-    assert len(batches) == len(CYCLES) * 3  # lead blocks [0, 3], [6, 9], [12]
-    assert all(set(b.get_level_values(rc.MEMBER)) == set(MEMBERS) for b in batches)
-
+    batches = cycle_batches(steps, fixed, lead_steps=2)
     tasks = _block_tasks(batches[0], da, rc.REFERENCE_TIME, fixed)
     assert len(tasks) == 1
     assert tasks[0].selection[rc.MEMBER] == slice(0, 3)
     assert list(tasks[0].step_columns["member"]) == ["0", "0", "1", "1", "2", "2"]
-
-    plan = _plan(da, _args(), steps, fixed, np.array([1, 6]), np.array([1, 6]), n_zones=2)
-    assert all(set(b.get_level_values(rc.MEMBER)) == set(MEMBERS) for b in plan.batches)
 
 
 def test_forecast_blocks_carry_each_leads_variable_name():
@@ -109,21 +56,11 @@ def test_forecast_blocks_carry_each_leads_variable_name():
         assert len(task.step_columns["variable_name"]) == len(task.step_columns["value_time"])
 
 
-def test_members_chunked_separately_may_be_split(harness):
-    """With one member per chunk, a one-unit budget gives batches of one member's lead chunk."""
-    da = _forecast(member_chunk=1)
-    fixed = {rc.MEMBER: np.array(MEMBERS), rc.LEAD_TIME: np.array(LEADS)}
-    steps = pd.MultiIndex.from_product([CYCLES, MEMBERS, LEADS], names=[rc.REFERENCE_TIME, *fixed])
-    plan = _plan(da, _args(task_memory_gb=1e-9), steps, fixed, np.array([1, 6]), np.array([1, 6]), n_zones=2)
-    assert all(b.get_level_values(rc.MEMBER).nunique() == 1 for b in plan.batches)
-    assert max(len(b) for b in plan.batches) == 2  # the lead chunk
-
-
 def test_write_groups_never_split_a_forecast_cycle():
     """A forecast cycle's batches always land in one write; analysis writes may split anywhere."""
     fixed = {rc.MEMBER: np.array(MEMBERS), rc.LEAD_TIME: np.array(LEADS)}
     steps = pd.MultiIndex.from_product([CYCLES, MEMBERS, LEADS], names=[rc.REFERENCE_TIME, *fixed])
-    batches = _cycle_batches(steps, fixed, lead_steps=2)
+    batches = cycle_batches(steps, fixed, lead_steps=2)
     groups = _write_groups(batches, _args(append_dim=rc.REFERENCE_TIME, max_rows_per_write=1), 1, forecast=True)
     assert len(groups) == len(CYCLES)
     for group in groups:

@@ -57,6 +57,13 @@ RUN ARCH=$(uname -m) && \
         pip install --no-cache-dir "git+https://github.com/RTIInternational/teehr.git@${TEEHR_VERSION}"; \
     fi
 
+ARG TEEHR_ICECHUNK_VERSION
+
+# The shared gridded code (references, materialize, overviews, mean areal planning and kernel). Not the [prefect]
+# extra: this image's Prefect comes from its base image and must not be changed by pip
+RUN pip install --no-cache-dir \
+    "teehr-icechunk[hdf,tiff,grib,mean-areal] @ git+https://github.com/RTIInternational/teehr-icechunk.git@${TEEHR_ICECHUNK_VERSION}"
+
 # Patch the jars bundled in the pyspark wheel, which carry most of the image's
 # fixable CVEs (see patch-spark-jars.sh). This image runs the Spark driver from
 # the pyspark wheel, so that is the copy that gets patched.
