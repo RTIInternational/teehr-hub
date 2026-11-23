@@ -21,8 +21,9 @@ own image (`Dockerfile`: teehr-core's warehouse writer and builders, Prefect; no
 ## Credentials
 
 The client's secret is `automation-client-secret` in `control-plane-secrets` (remote: in
-`REMOTE_SECRETS`); the Keycloak bootstrap sets it on the client and the deployer passes it to
-the flows. Its write membership is the control plane's `SYSTEM_PROJECT_WRITERS`, restored on
+`REMOTE_SECRETS`). The Keycloak bootstrap sets it on the client, and `load-secrets` copies it
+into the Prefect Secret block `teehr-platform-automation-secret`, which the flows load (so it
+isn't in the deployments' job variables). After changing it, redeploy both. Its write membership is the control plane's `SYSTEM_PROJECT_WRITERS`, restored on
 every restart.
 
 The image's teehr-core commit is `teehrCoreVersion` in `project.garden.yml` (a var change

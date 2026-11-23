@@ -10,6 +10,19 @@ from typing import Any
 
 from pyiceberg.catalog import Catalog, load_catalog
 
+#: The Prefect Secret block holding the client's secret (loaded by load-secrets).
+SECRET_BLOCK = "teehr-platform-automation-secret"
+
+
+def client_secret() -> str:
+    """The flows' client secret: ``POLARIS_CLIENT_SECRET`` if set (local tests), else the
+    Prefect Secret block, so the secret isn't in the deployments' job variables."""
+    if os.environ.get("POLARIS_CLIENT_SECRET"):
+        return os.environ["POLARIS_CLIENT_SECRET"]
+    from prefect.blocks.system import Secret
+
+    return Secret.load(SECRET_BLOCK).get()
+
 
 def catalog() -> Catalog:
     """The Polaris REST catalog, configured from the work pool's environment.
@@ -26,7 +39,7 @@ def catalog() -> Catalog:
             "type": "oauth2",
             "oauth2": {
                 "client_id": os.environ["POLARIS_CLIENT_ID"],
-                "client_secret": os.environ["POLARIS_CLIENT_SECRET"],
+                "client_secret": client_secret(),
                 "token_url": os.environ["POLARIS_OAUTH2_SERVER_URI"],
                 "scope": "openid",
             },

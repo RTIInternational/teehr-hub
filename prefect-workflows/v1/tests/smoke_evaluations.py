@@ -80,4 +80,12 @@ try:
     raise AssertionError("a refused secret should fail")
 except RuntimeError as exc:
     assert "token for bot (401)" in str(exc), exc
+# Deployed, the secret comes from the Prefect Secret block, not the environment.
+from prefect.blocks.system import Secret  # noqa: E402
+
+from flows.catalog import SECRET_BLOCK, client_secret  # noqa: E402
+
+del ev.os.environ["POLARIS_CLIENT_SECRET"]
+Secret(value="from-block").save(name=SECRET_BLOCK, overwrite=True)
+assert client_secret() == "from-block"
 print("OK")

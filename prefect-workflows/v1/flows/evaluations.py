@@ -18,6 +18,8 @@ from typing import Any
 import httpx
 from prefect import flow, get_run_logger, task
 
+from flows.catalog import client_secret
+
 #: Run statuses that are final.
 DONE = ("succeeded", "failed", "cancelled")
 
@@ -54,7 +56,7 @@ def _client() -> httpx.Client:
         auth=ClientCredentials(
             os.environ["POLARIS_OAUTH2_SERVER_URI"],
             os.environ["POLARIS_CLIENT_ID"],
-            os.environ["POLARIS_CLIENT_SECRET"],
+            client_secret(),
         ),
         timeout=60,
     )

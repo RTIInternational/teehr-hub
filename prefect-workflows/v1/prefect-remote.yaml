@@ -32,7 +32,6 @@ definitions:
         REMOTE_WAREHOUSE_IDENTIFIER: "{{ $REMOTE_WAREHOUSE_IDENTIFIER }}"
         POLARIS_OAUTH2_SERVER_URI: "{{ $POLARIS_OAUTH2_SERVER_URI }}"
         POLARIS_CLIENT_ID: "{{ $POLARIS_CLIENT_ID }}"
-        POLARIS_CLIENT_SECRET: "{{ $POLARIS_CLIENT_SECRET }}"
         POLARIS_DEFAULT_REALM: "{{ $POLARIS_DEFAULT_REALM }}"
       tolerations:
         - key: teehr-hub/dedicated
@@ -63,7 +62,6 @@ definitions:
         PREFECT_LOGGING_LEVEL: INFO
         POLARIS_OAUTH2_SERVER_URI: "{{ $POLARIS_OAUTH2_SERVER_URI }}"
         POLARIS_CLIENT_ID: "{{ $POLARIS_CLIENT_ID }}"
-        POLARIS_CLIENT_SECRET: "{{ $POLARIS_CLIENT_SECRET }}"
       tolerations:
         - key: teehr-hub/dedicated
           operator: Equal
