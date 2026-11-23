@@ -29,7 +29,7 @@ environments:
       hostname: teehr.local.app.garden
       certificateIssuerName: letsencrypt-prod
       devTeehrVersion: 62d62cac1ad78e823e736e9d2fa2eee33ca849b2
-      devTeehrIcechunkVersion: b84a3e2fa8bdc4cb1de1d170121912d35ea6ab0a
+      devTeehrIcechunkVersion: 332762168ce6f489268a4584385dc125647818c4
       # teehr-core commit for the v1 flows' image (prefect-workflows/v1).
       teehrCoreVersion: 3239b11f1229049c672b531ebff9f04c4607ef7d
       stableTeehrVersion: place-holder # Needed for sync to work for some reason.
@@ -97,7 +97,7 @@ environments:
       # Maintenance status, served outside the cluster (teehr-cloud-platform)
       statusUrl: https://status.teehr.rtiamanzi.org/status.json
       devTeehrVersion: 62d62cac1ad78e823e736e9d2fa2eee33ca849b2
-      devTeehrIcechunkVersion: b84a3e2fa8bdc4cb1de1d170121912d35ea6ab0a
+      devTeehrIcechunkVersion: 332762168ce6f489268a4584385dc125647818c4
       # teehr-core commit for the v1 flows' image (prefect-workflows/v1).
       teehrCoreVersion: 3239b11f1229049c672b531ebff9f04c4607ef7d
       stableTeehrVersion: v0.8.0

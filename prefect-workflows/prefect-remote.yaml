@@ -788,7 +788,7 @@ deployments:
     }
     work_pool: *work_pool_medium
 
-  - name: ingest-gefs-v12-reforecast-0p5-icechunk
+  - name: ingest-gefs-v12-reforecast-0p50-icechunk
     version:
     tags: []
     concurrency_limit:
@@ -802,7 +802,7 @@ deployments:
     entrypoint: workflows/ingests/ingest_gridded_data.py:ingest_gridded_data
     parameters: {
       "args": {
-        "source": {"type": "gefs-v12-reforecast", "grid": "0p5"},
+        "source": {"type": "gefs-v12-reforecast", "grid": "0p50"},
         "base_prefix": "icechunk-unserved",
         "start_dt": "2000-01-01",
         "end_dt": "2019-12-31",
@@ -948,7 +948,7 @@ deployments:
     }
     work_pool: *work_pool_large
 
-  - name: calculate-gefs-v12-reforecast-0p5-pixel-coverage-weights
+  - name: calculate-gefs-v12-reforecast-0p50-pixel-coverage-weights
     version:
     tags: []
     concurrency_limit:
@@ -962,7 +962,7 @@ deployments:
     parameters: {
       "args": {
         "temp_dir_path": *temp_dir_path,
-        "configuration_name": "gefs_v12_reforecast_0p5",
+        "configuration_name": "gefs_v12_reforecast_0p50",
         "base_prefix": "icechunk-unserved",
         "location_id_prefix": "rfcbasin",
         "grid_variable_name": "APCP_surface",
@@ -972,7 +972,7 @@ deployments:
     }
     work_pool: *work_pool_large
 
-  - name: calculate-gefs-v12-reforecast-0p5-mean-areal-values
+  - name: calculate-gefs-v12-reforecast-0p50-mean-areal-values
     version:
     tags: []
     concurrency_limit:
@@ -989,7 +989,7 @@ deployments:
     parameters: {
       "args": {
         "temp_dir_path": *temp_dir_path,
-        "configuration_name": "gefs_v12_reforecast_0p5",
+        "configuration_name": "gefs_v12_reforecast_0p50",
         "base_prefix": "icechunk-unserved",
         "location_id_prefix": "rfcbasin",
         "grid_variable_name": "APCP_surface",
