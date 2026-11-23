@@ -1,6 +1,5 @@
 """Gridded data sources for the ingest_gridded_data Prefect flow, selected by their ``type``."""
 import re
-from abc import ABC, abstractmethod
 from datetime import datetime
 from functools import partial
 from typing import ClassVar, Literal, Optional
@@ -11,7 +10,7 @@ import pandas as pd
 import xarray as xr
 from obspec_utils.readers import BlockStoreReader
 from obstore.store import from_url
-from pydantic import BaseModel, Field, model_validator
+from pydantic import Field, model_validator
 from teehr.fetching.const import (
     NWM12_START_DATE,
     NWM20_START_DATE,
@@ -22,52 +21,16 @@ from teehr.fetching.const import (
 from teehr.fetching.nwm.nwm_grids import plan_nwm_grid_fetch
 from teehr.fetching.utils import REMOTE_RETRY_CONFIG, format_nwm_configuration_metadata
 
-from workflows.models.packed_encoding import PackedEncoding
-from workflows.utils.data_status import with_status
-from workflows.utils.repo_const import LEAD_TIME, MEMBER, REFERENCE_TIME, STATUS_COORD
+from teehr_icechunk import sources as ic_sources
+from teehr_icechunk.packed_encoding import PackedEncoding
+from teehr_icechunk.sources import listing_frame
+from teehr_icechunk.data_status import with_status
+from teehr_icechunk.repo_const import LEAD_TIME, REFERENCE_TIME, STATUS_COORD
 from workflows.utils.teehr_mapping import MM_PER_S, RAINRATE_HOURLY_MEAN, TeehrMapping
 
-# Columns of a source listing, indexed by each file's timestamp (or forecast step)
-LISTING_COLUMNS = ["url", STATUS_COORD, "last_modified"]
 
-
-class GriddedSource(BaseModel, ABC):
-    """A gridded source: its files, its time grid, and its IceChunk repository."""
-
-    source_bucket: ClassVar[str]
-    # Source-specific obstore kwargs; deployment obstore_kwargs override them
-    store_kwargs: ClassVar[dict] = {}
-    # Options for the IceChunk virtual chunk container's object store, e.g. region
-    virtual_store_kwargs: ClassVar[dict] = {}
-    # Source-specific kwargs for the reference parser, e.g. the HDF5 reader's block size
-    parser_kwargs: ClassVar[dict] = {}
-    # Ingest's write_materialized when a run doesn't set it
-    materialize_by_default: ClassVar[bool] = True
-    time_step: ClassVar[pd.Timedelta]
-
-    @abstractmethod
-    def list_files(self, start_dt: datetime, end_dt: datetime) -> pd.DataFrame:
-        """Files published for the range, one per step: ``LISTING_COLUMNS`` indexed by time.
-
-        Forecast sources index by step, (``reference_time``, [``member``], ``lead_time``), selecting
-        cycles by reference time.
-        """
-
-    @abstractmethod
-    def time_origin(self) -> pd.Timestamp:
-        """First step of the source's record; the repo's time grid starts here."""
-
-    @abstractmethod
-    def repository_name(self) -> str:
-        """IceChunk repository (configuration) name; teehr-valid (letters, digits, underscores)."""
-
-    @abstractmethod
-    def ingest_variables(self) -> list[str]:
-        """Source variables to materialize."""
-
-    def grid_name(self) -> str:
-        """Grid (CRS, pixel size, extent) the source's data is on; sources sharing a grid share a name."""
-        return self.repository_name()
+class GriddedSource(ic_sources.GriddedSource):
+    """A gridded source of this deployment: teehr-icechunk's interface plus the teehr names of its variables."""
 
     def teehr_mappings(self) -> dict[str, TeehrMapping]:
         """teehr variable, unit and conversion of each ingested variable, keyed by its own name.
@@ -75,54 +38,6 @@ class GriddedSource(BaseModel, ABC):
         Ingest stamps them on the repo as ``teehr:*`` attributes, which the dashboard and mean areal values read.
         """
         return {}
-
-    def overview_encoding(self) -> dict[str, PackedEncoding]:
-        """Overview packing of each ingested variable, keyed by its own name, in its stored units.
-
-        Variables not listed get float32 overviews.
-        """
-        return {}
-
-    def lead_times(self) -> list[int] | None:
-        """Forecast lead times in hours, fixed when the repo is created; None for analysis sources."""
-        return None
-
-    def members(self) -> list[int] | None:
-        """Ensemble members, fixed when the repo is created; None for sources without members."""
-        return None
-
-    def fixed_axes(self) -> dict[str, list[int]]:
-        """The repo's axes after its append axis, in order; empty for analysis sources."""
-        axes = {MEMBER: self.members(), LEAD_TIME: self.lead_times()}
-        return {name: values for name, values in axes.items() if values is not None}
-
-    def append_dim(self) -> str:
-        """The repo's append axis: cycles for forecast sources, valid times otherwise."""
-        return REFERENCE_TIME if self.lead_times() is not None else "time"
-
-    def timeseries_type(self) -> str:
-        """teehr's timeseries table for the source's values."""
-        return "secondary" if self.lead_times() is not None else "primary"
-
-    def credentials(self) -> dict:
-        """Source access keys, for obstore and the virtual chunk container; empty means anonymous.
-
-        Both take the same dict, so use keys they share: S3 ``access_key_id``, ``secret_access_key``,
-        ``session_token``; GCS ``service_account_key``, ``application_credentials``, ``bearer_token``.
-        Keys are read once per run, so they must outlive it.
-        """
-        return {}
-
-    def preprocess(self, ds: xr.Dataset, url: str) -> xr.Dataset:
-        """Adjust one file's virtual dataset before concatenation."""
-        return ds
-
-
-def _listing(rows: list[dict], index: tuple[str, ...] = ("time",)) -> pd.DataFrame:
-    df = pd.DataFrame(rows, columns=[*index, *LISTING_COLUMNS])
-    if len(index) == 1:
-        return df.set_index(pd.DatetimeIndex(df.pop(index[0]), name=index[0])).sort_index()
-    return df.set_index(list(index)).sort_index()
 
 
 class NWMForcing(GriddedSource):
@@ -261,7 +176,7 @@ class NWMForcing(GriddedSource):
                 # NaT if published after the listing; upsert compares it as not newer
                 "last_modified": modified.get(url, pd.NaT),
             })
-        listing = _listing(rows, (REFERENCE_TIME, LEAD_TIME) if self._is_forecast else ("time",))
+        listing = listing_frame(rows, (REFERENCE_TIME, LEAD_TIME) if self._is_forecast else ("time",))
         if listing.index.has_duplicates:
             dupes = listing.index[listing.index.duplicated()].unique()
             raise ValueError(f"{len(dupes)} step(s) have more than one file, e.g. {dupes[0]}; check t_minus_hours.")

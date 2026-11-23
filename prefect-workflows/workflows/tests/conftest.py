@@ -18,7 +18,7 @@ def batch_means():
     """One batch's mean areal values as a DataFrame, computed as the flow's Spark tasks compute them."""
     import pandas as pd
     from mean_areal_values import _block_tasks, _kernel_kwargs
-    from utils.mean_areal_kernel import run_block_task
+    from teehr_icechunk.mean_areal_kernel import run_block_task
 
     def compute(batch, da, args, weights, fixed=None):
         fixed = fixed or {}

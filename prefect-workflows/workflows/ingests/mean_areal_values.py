@@ -3,10 +3,11 @@
 ``calculate_mean_areal_values`` reads one of our Icechunk repos. ``mean_areal_for_grid`` does the work for any
 lazily opened grid, so flows for outside sources (e.g. AORC, dynamical.org) open theirs and call it.
 
-Batches follow the grid's storage chunks (``plan_reads``) and are computed with ``utils.mean_areal_kernel`` as Spark
+Batches follow the grid's storage chunks (``plan_reads``) and are computed with ``teehr_icechunk.mean_areal_kernel`` as Spark
 ``mapInArrow`` tasks that write straight to the warehouse: on executors with ``start_spark_cluster``, else in Spark
 local mode on the Prefect pod.
 """
+import logging
 import math
 import time
 from dataclasses import dataclass
@@ -19,14 +20,17 @@ from prefect import flow, task, get_run_logger
 from prefect.cache_policies import NO_CACHE
 from teehr import Configuration, Evaluation
 from teehr.evaluation.write import AUDIT_COLUMNS
-from teehr.fetching.nwm.grid_utils import build_weights_matrix
-from teehr.utils.concurrency import resolve_budget, resolve_cpu_workers
+import teehr_icechunk
+from teehr_icechunk import time_grid as tg
+from teehr_icechunk.concurrency import resolve_budget, resolve_cpu_workers
+from teehr_icechunk.grid_spec import GridSpec, open_grid_dataset, read_grid_spec
+from teehr_icechunk.mean_areal_kernel import BlockTask, GridWeights, arrow_task_runner
+from teehr_icechunk.mean_areal_plan import (
+    MAX_SLICE_STEPS, area_weights, plan_reads, positions, written_forecast_steps, written_steps,
+)
+from teehr_icechunk.repo_const import MEMBER
+from teehr_icechunk.weights import build_weights_matrix
 
-from utils import time_grid as tg
-from utils.grid_spec import GridSpec, open_grid_dataset, read_grid_spec
-from utils import mean_areal_kernel
-from utils.mean_areal_kernel import BlockTask, GridWeights, arrow_task_runner, chunk_reads
-from workflows.utils.repo_const import MEMBER, STATUS_COORD
 from workflows.utils.time_utils import to_naive_utc
 from workflows.utils.common_utils import initialize_evaluation
 from workflows.models.mean_areal_inputs import MeanArealValuesInput
@@ -36,44 +40,17 @@ from pixel_coverage_weights import (
     write_dataframe_to_warehouse,
 )
 
-# Bytes per weighted pixel and step while averaging: weighted_sums_from_matrix's float64 copy, NaN mask,
-# zero-filled copy and missing weights
-AVERAGING_BYTES_PER_PIXEL = 25
-# Steps averaged at once, which caps those copies whatever the batch size
-MAX_SLICE_STEPS = 256
+# Show the package's progress in the run logs: PREFECT_LOGGING_EXTRA_LOGGERS attaches Prefect's handlers,
+# not a level, so the logger would otherwise inherit the root's WARNING
+logging.getLogger("teehr_icechunk").setLevel(logging.INFO)
+
 # Attempts per Spark task in local mode, which otherwise never retries a failed task (e.g. a transient S3 error)
 LOCAL_TASK_ATTEMPTS = 3
 
 
-def _written_steps(da: xr.DataArray, args: MeanArealValuesInput) -> xr.DataArray:
-    """Grid steps that hold data (time-grid slots not yet written are skipped), within start_dt..end_dt."""
-    dim = args.append_dim
-    if STATUS_COORD in da.coords:
-        da = da.isel({dim: da[STATUS_COORD].values != tg.UNWRITTEN})
-    start = to_naive_utc(args.start_dt) if args.start_dt is not None else None
-    end = to_naive_utc(args.end_dt) if args.end_dt is not None else None
-    return da.sel({dim: slice(start, end)})
-
-
-def _written_forecast_steps(da: xr.DataArray, args: MeanArealValuesInput, fixed: dict) -> pd.MultiIndex:
-    """Forecast steps that hold data, for cycles within start_dt..end_dt.
-
-    Steps not yet written, and those the source never publishes (``NOT_EXPECTED``), are skipped. Cycles are
-    selected first, so a long archive costs only the requested window.
-    """
-    dim = args.append_dim
-    cycles = da[dim].to_index()
-    keep = np.ones(len(cycles), bool)
-    if args.start_dt is not None:
-        keep &= cycles >= to_naive_utc(args.start_dt)
-    if args.end_dt is not None:
-        keep &= cycles <= to_naive_utc(args.end_dt)
-    da = da.isel({dim: np.flatnonzero(keep)})
-    step_dims = (dim, *fixed)
-    steps = pd.MultiIndex.from_product([da[d].to_index() for d in step_dims], names=step_dims)
-    if STATUS_COORD in da.coords:
-        return steps[da[STATUS_COORD].transpose(*step_dims).values.reshape(-1) >= 0]
-    return steps
+def _window(args: MeanArealValuesInput) -> tuple:
+    """The run's start_dt and end_dt as naive UTC (None when unset)."""
+    return tuple(to_naive_utc(t) if t is not None else None for t in (args.start_dt, args.end_dt))
 
 
 def _step_columns(steps: pd.Index, dim: str, lead_names: dict | None = None) -> dict[str, np.ndarray]:
@@ -94,114 +71,6 @@ def _step_columns(steps: pd.Index, dim: str, lead_names: dict | None = None) -> 
     return columns
 
 
-def _area_weights(weights_df: pd.DataFrame, da: xr.DataArray, y_dim: str) -> pd.Series:
-    """Coverage fractions scaled by pixel area on geographic grids, whose pixels shrink with latitude."""
-    if da.rio.crs is None:
-        raise ValueError("The grid has no CRS.")
-    weights = weights_df["fraction_covered"].astype("float64")
-    if da.rio.crs.is_geographic:
-        weights = weights * np.cos(np.deg2rad(da[y_dim].values[weights_df["row"].to_numpy()]))
-    return weights
-
-
-@dataclass(frozen=True)
-class ReadPlan:
-    """Batches of steps, and the grid's (row, column) chunk size, so only chunks with weighted pixels are read."""
-
-    batches: list[pd.Index]
-    chunk_shape: tuple[int, int] | None
-
-
-def _chunk_layout(da: xr.DataArray) -> dict[str, tuple[int, int]]:
-    """Each dim's stored inner chunk and shard length; empty for a grid without chunk encoding."""
-    chunks = da.encoding.get("chunks")
-    if chunks is None:
-        return {}
-    shards = da.encoding.get("shards") or chunks
-    return {dim: (int(c), int(s)) for dim, c, s in zip(da.dims, chunks, shards)}
-
-
-def _cycle_batches(steps: pd.MultiIndex, fixed: dict, lead_steps: int) -> list[pd.MultiIndex]:
-    """Forecast steps by cycle and block of ``lead_steps`` leads, all members together."""
-    dim, *fixed_dims = steps.names
-    lead_pos = pd.Index(fixed[fixed_dims[-1]]).get_indexer(steps.get_level_values(fixed_dims[-1]))
-    keys = pd.MultiIndex.from_arrays([steps.get_level_values(dim), lead_pos // lead_steps])
-    return [steps[group.to_numpy()] for _, group in pd.Series(np.arange(len(steps)), index=keys).groupby(level=[0, 1])]
-
-
-def plan_reads(
-    da: xr.DataArray,
-    args: MeanArealValuesInput,
-    written: pd.Index,
-    fixed: dict,
-    rows: np.ndarray,
-    cols: np.ndarray,
-    n_zones: int,
-) -> ReadPlan:
-    """Batches from the grid's storage layout and ``task_memory_gb``.
-
-    A batch holds whole inner chunks along the append axis (forecasts: the lead axis), so no chunk is decoded
-    twice, and whole shards when they fit; members stored in one chunk are read together. Only the chunks
-    holding weighted pixels are read, one chunk row at a time (``chunk_reads``), so a batch's size is set by its
-    largest read.
-    """
-    logger = get_run_logger()
-    dim = args.append_dim
-    layout = _chunk_layout(da)
-    lead_dim = list(fixed)[-1] if fixed else dim
-    members_together = MEMBER in fixed and layout.get(MEMBER, (1, 1))[0] >= len(fixed[MEMBER])
-    members = len(fixed[MEMBER]) if members_together else 1
-    unit, shard = layout.get(lead_dim, (1, 1))
-    chunk_shape = (layout[args.y_dim][0], layout[args.x_dim][0]) if args.y_dim in layout else None
-    reads = [(_size(r), _size(c), len(p)) for r, c, p in chunk_reads(rows, cols, chunk_shape)]
-    read_pixels = max(r * c for r, c, _ in reads)
-    read_weighted = max(p for _, _, p in reads)
-    budget = args.task_memory_gb * 1e9
-
-    def batch_bytes(steps: int) -> int:
-        per_step = read_pixels * da.dtype.itemsize * 2 + read_weighted * da.dtype.itemsize + 16 * n_zones
-        return int(steps * per_step + min(steps, MAX_SLICE_STEPS) * read_weighted * AVERAGING_BYTES_PER_PIXEL)
-
-    unit_steps = unit * members
-    if batch_bytes(unit_steps) > budget:
-        logger.warning(
-            f"One read unit ({unit_steps} steps) needs {batch_bytes(unit_steps) / 1e9:.1f} GB, "
-            f"over task_memory_gb={args.task_memory_gb}."
-        )
-    units = max(1, int(budget // batch_bytes(unit_steps)))
-    lead_steps = unit * units
-    if lead_steps >= shard:
-        lead_steps = lead_steps // shard * shard
-
-    if not fixed:
-        batches = tg.shard_batches(written, da[dim].to_index(), lead_steps)
-    elif members_together:
-        batches = _cycle_batches(written, fixed, lead_steps)
-    else:
-        batches = tg.step_batches(written, fixed, lead_steps, lead_steps)
-    if chunk_shape is not None:
-        used = len(set(zip(rows // chunk_shape[0], cols // chunk_shape[1])))
-        logger.info(f"Reading the {used} spatial chunk(s) holding weighted pixels, in {len(reads)} read(s) per batch.")
-    steps_per_batch = max(len(batch) for batch in batches)
-    logger.info(f"Read plan: {len(batches)} batch(es) of up to {steps_per_batch} step(s).")
-    return ReadPlan(batches, chunk_shape)
-
-
-def _size(selection: slice | np.ndarray) -> int:
-    """Grid rows or columns a read selects."""
-    return selection.stop - selection.start if isinstance(selection, slice) else len(selection)
-
-
-def _positions(coord: xr.DataArray, values) -> slice | np.ndarray:
-    """``isel`` positions of ``values`` on ``coord``, as a slice when contiguous."""
-    positions = coord.to_index().get_indexer(values)
-    if (positions < 0).any():
-        raise ValueError(f"Values not on the grid's {coord.name} axis.")
-    if len(positions) and (np.diff(positions) == 1).all():
-        return slice(int(positions[0]), int(positions[-1]) + 1)
-    return positions
-
-
 def _block_tasks(batch: pd.Index, da: xr.DataArray, dim: str, fixed: dict,
                  lead_names: dict | None = None) -> list[BlockTask]:
     """The batch as rectangular blocks of ``isel`` positions, with each block's step columns.
@@ -209,7 +78,7 @@ def _block_tasks(batch: pd.Index, da: xr.DataArray, dim: str, fixed: dict,
     Forecast members sharing their cycles and leads form one block, so a chunk holding every member is read once.
     """
     if not fixed:
-        return [BlockTask({dim: _positions(da[dim], batch)}, _step_columns(batch, dim))]
+        return [BlockTask({dim: positions(da[dim], batch)}, _step_columns(batch, dim))]
     lead_dim = list(fixed)[-1]
     merged: dict[tuple, list] = {}
     for block in tg.step_blocks(batch, fixed):
@@ -219,7 +88,7 @@ def _block_tasks(batch: pd.Index, da: xr.DataArray, dim: str, fixed: dict,
     for (cycles, leads), block_members in merged.items():
         levels = [list(cycles), *([sorted(set(block_members))] if MEMBER in fixed else []), list(leads)]
         steps = pd.MultiIndex.from_product(levels, names=batch.names)
-        selection = {name: _positions(da[name], level) for name, level in zip(batch.names, levels)}
+        selection = {name: positions(da[name], level) for name, level in zip(batch.names, levels)}
         tasks.append(BlockTask(selection, _step_columns(steps, dim, lead_names)))
     return tasks
 
@@ -418,7 +287,8 @@ def _compute_on_spark(ev, da, args, plan, groups, weights: GridWeights, fixed: d
     dim = args.append_dim
     da = da.transpose(dim, *fixed, args.y_dim, args.x_dim)
     # Executors don't have our workflow code, so send the kernel's code with each task
-    cloudpickle.register_pickle_by_value(mean_areal_kernel)
+    # Executors don't have teehr-icechunk; ship the kernel (and the weights helpers it uses) by value
+    cloudpickle.register_pickle_by_value(teehr_icechunk)
     for i, group in enumerate(groups, start=1):
         tasks = [block for batch in group for block in _block_tasks(batch, da, dim, fixed, lead_names)]
         run = arrow_task_runner(tasks, da, weights, **_kernel_kwargs(
@@ -466,7 +336,7 @@ def prepare_mean_areal(ev: Evaluation, grid_da: xr.DataArray, args: MeanArealVal
     if MEMBER in grid_da.dims and args.timeseries_table_name == "primary_timeseries":
         raise ValueError("Ensemble members have no column in primary_timeseries; write them to secondary_timeseries.")
     weights_df = read_weights_from_warehouse(ev=ev, location_id_prefix=args.location_id_prefix, grid_name=grid_name)
-    weights_df["weight"] = _area_weights(weights_df, grid_da, args.y_dim)
+    weights_df["weight"] = area_weights(weights_df, grid_da, args.y_dim)
     matrix, rows, cols, location_ids = build_weights_matrix(weights_df)
     # Column-sliced per read by every task, so convert once
     weights = GridWeights(matrix.tocsc(), rows, cols, location_ids)
@@ -488,7 +358,7 @@ def mean_areal_for_grid(ev: Evaluation, grid_da: xr.DataArray, spec: GridSpec, a
     fixed = {d: grid_da[d].values for d in spec.fixed_dims}
     lead_names = None
     if fixed:
-        written = _written_forecast_steps(grid_da, args, fixed)
+        written = written_forecast_steps(grid_da, args.append_dim, fixed, *_window(args))
         if mapping.variable is None:
             # Named by the interval each lead covers; leads covering none (lead 0) are skipped
             lead_dim = list(fixed)[-1]
@@ -497,13 +367,16 @@ def mean_areal_for_grid(ev: Evaluation, grid_da: xr.DataArray, spec: GridSpec, a
     elif mapping.variable is None:
         raise ValueError(f"'{args.grid_variable_name}' is named by forecast step interval, but the grid has no leads.")
     else:
-        written = _written_steps(grid_da, args)[args.append_dim].to_index()
+        written = written_steps(grid_da, args.append_dim, *_window(args))[args.append_dim].to_index()
     if len(written) == 0:
         logger.info("No written grid steps in the requested window.")
         return
 
     weights = target.weights
-    plan = plan_reads(grid_da, args, written, fixed, weights.rows, weights.cols, weights.location_ids.size)
+    plan = plan_reads(
+        grid_da, written, fixed, weights.rows, weights.cols, weights.location_ids.size,
+        dim=args.append_dim, y_dim=args.y_dim, x_dim=args.x_dim, task_memory_gb=args.task_memory_gb,
+    )
     groups = _write_groups(plan.batches, args, weights.location_ids.size, forecast=bool(fixed))
     logger.info(
         f"Computing {len(written)} step(s) for {weights.location_ids.size} location(s) from {weights.rows.size} "

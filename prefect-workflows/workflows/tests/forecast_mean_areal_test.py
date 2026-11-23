@@ -5,18 +5,24 @@ import pytest
 import xarray as xr
 
 pytest.importorskip("teehr")
-from teehr.fetching.nwm.grid_utils import build_weights_matrix  # noqa: E402
+from teehr_icechunk.weights import build_weights_matrix  # noqa: E402
 
-from mean_areal_values import _area_weights, _written_forecast_steps  # noqa: E402
-from utils import grid_utils as gu  # noqa: E402
-from utils import time_grid as tg  # noqa: E402
-from utils.mean_areal_kernel import GridWeights  # noqa: E402
+from mean_areal_values import _window  # noqa: E402
+from teehr_icechunk.mean_areal_plan import area_weights, written_forecast_steps  # noqa: E402
+from teehr_icechunk import grid_utils as gu  # noqa: E402
+from teehr_icechunk import time_grid as tg  # noqa: E402
+from teehr_icechunk.mean_areal_kernel import GridWeights  # noqa: E402
 from workflows.models.mean_areal_inputs import MeanArealValuesInput  # noqa: E402
-from workflows.utils import repo_const as rc  # noqa: E402
+from teehr_icechunk import repo_const as rc  # noqa: E402
 
 DIM = rc.REFERENCE_TIME
 CYCLES = pd.date_range("2026-10-01", periods=3, freq="6h")
 MEMBERS, LEADS = [0, 1], [1, 2, 3, 6]
+
+
+def _written_forecast_steps(da, args, fixed):
+    """The flow's written forecast steps for its run window."""
+    return written_forecast_steps(da, args.append_dim, fixed, *_window(args))
 
 
 def _args(**kwargs):
@@ -64,7 +70,7 @@ def test_forecast_batch_means_and_columns(tmp_path, ensemble, batch_means):
     weights = pd.DataFrame({
         "location_id": ["p-a", "p-a", "p-b"], "row": [0, 1, 3], "col": [1, 1, 4], "fraction_covered": [1.0, 0.5, 1.0],
     })
-    weights["weight"] = _area_weights(weights, da, "lat")
+    weights["weight"] = area_weights(weights, da, "lat")
     grid_weights = GridWeights(*build_weights_matrix(weights))
     args = _args()
     steps = _written_forecast_steps(da, args, fixed)

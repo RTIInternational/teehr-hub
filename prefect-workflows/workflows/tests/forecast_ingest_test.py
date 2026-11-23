@@ -11,10 +11,10 @@ icechunk = pytest.importorskip("icechunk")
 from prefect.testing.utilities import prefect_test_harness  # noqa: E402
 
 import ingest_gridded_data as ing  # noqa: E402
-from utils import time_grid as tg  # noqa: E402
+from teehr_icechunk import time_grid as tg  # noqa: E402
 from workflows.models import gridded_sources as gs  # noqa: E402
 from workflows.models.ingest_gridded_data_input import IngestGriddedDataInput  # noqa: E402
-from workflows.utils import repo_const as rc  # noqa: E402
+from teehr_icechunk import repo_const as rc  # noqa: E402
 
 NWM_CONUS_CRS = "+proj=lcc +lat_0=40 +lon_0=-97 +lat_1=30 +lat_2=60 +x_0=0 +y_0=0 +R=6370000 +units=m +no_defs"
 SHORT_RANGE = {"type": "nwm", "nwm_configuration": "forcing_short_range"}
@@ -124,7 +124,7 @@ def nwm(tmp_path, monkeypatch):
 
     def list_files(self, start_dt, end_dt):
         rows = [r for (cycle, _), r in published.items() if start_dt <= cycle <= end_dt]
-        return gs._listing(rows, (rc.REFERENCE_TIME, rc.LEAD_TIME))
+        return gs.listing_frame(rows, (rc.REFERENCE_TIME, rc.LEAD_TIME))
 
     config = icechunk.RepositoryConfig.default()
     config.set_virtual_chunk_container(icechunk.VirtualChunkContainer(prefix, icechunk.local_filesystem_store(str(src))))
@@ -139,7 +139,7 @@ def nwm(tmp_path, monkeypatch):
     monkeypatch.setattr(gs.NWMForcing, "source_bucket", prefix.rstrip("/"))
     monkeypatch.setattr(gs.NWMForcing, "store_kwargs", {})
     monkeypatch.setattr(gs.NWMForcing, "list_files", list_files)
-    monkeypatch.setattr(ing.gu, "configure_icechunk_s3_repo", open_repo)
+    monkeypatch.setattr(ing, "configure_icechunk_s3_repo", open_repo)
     monkeypatch.setattr(ing.gu, "build_icechunk_s3_storage", lambda **_: storage)
     monkeypatch.setattr(ing.gu, "open_repo_for_reading", open_repo)
     return publish, open_repo
