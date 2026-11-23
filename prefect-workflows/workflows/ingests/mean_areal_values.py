@@ -362,7 +362,7 @@ def mean_areal_for_grid(ev: Evaluation, grid_da: xr.DataArray, spec: GridSpec, a
         if mapping.variable is None:
             # Named by the interval each lead covers; leads covering none (lead 0) are skipped
             lead_dim = list(fixed)[-1]
-            lead_names = lead_variable_names(fixed[lead_dim], mapping)
+            lead_names = lead_variable_names(fixed[lead_dim], mapping, grid_da.attrs)
             written = written[written.get_level_values(lead_dim).isin(list(lead_names))]
     elif mapping.variable is None:
         raise ValueError(f"'{args.grid_variable_name}' is named by forecast step interval, but the grid has no leads.")

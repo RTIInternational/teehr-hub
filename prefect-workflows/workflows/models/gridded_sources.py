@@ -11,6 +11,7 @@ import xarray as xr
 from obspec_utils.readers import BlockStoreReader
 from obstore.store import from_url
 from pydantic import Field, model_validator
+from teehr import Variable
 from teehr.fetching.const import (
     NWM12_START_DATE,
     NWM20_START_DATE,
@@ -26,7 +27,7 @@ from teehr_icechunk.packed_encoding import PackedEncoding
 from teehr_icechunk.sources import gefs_reforecast, listing_frame
 from teehr_icechunk.data_status import with_status
 from teehr_icechunk.repo_const import LEAD_TIME, REFERENCE_TIME, STATUS_COORD
-from workflows.utils.teehr_mapping import MM_PER_S, RAINRATE_HOURLY_MEAN, TeehrMapping
+from workflows.utils.teehr_mapping import CELSIUS, MM, MM_PER_S, RAINRATE_HOURLY_MEAN, TeehrMapping
 
 
 class GriddedSource(ic_sources.GriddedSource):
@@ -239,8 +240,30 @@ class NWMForcing(GriddedSource):
         return with_status(ds, "stable", dim=REFERENCE_TIME)
 
 
+def _by_window(name: str, long_name: str) -> dict[int, Variable]:
+    """teehr variables for the 3 h and 6 h windows of a windowed GEFS variable, e.g. temperature_3hr_max."""
+    return {h: Variable(name=name.format(h=h), long_name=long_name.format(h=h)) for h in (3, 6)}
+
+
 class GEFSv12Reforecast(gefs_reforecast.GEFSv12Reforecast, GriddedSource):
-    """teehr-icechunk's GEFS v12 reforecast source; teehr names for its variables come with its mean areal flow."""
+    """teehr-icechunk's GEFS v12 reforecast source, with teehr names for its variables.
+
+    Values are the published windows, not deaccumulated: each is named by the hours it covers (``window_hours``),
+    3 h or 6 h, since windows restart every 6 h.
+    """
+
+    TEEHR_MAPPINGS: ClassVar[dict[str, TeehrMapping]] = {
+        # 1 kg m-2 of water is 1 mm deep
+        "APCP_surface": TeehrMapping(MM, source_units="kg m-2", variables_by_interval=_by_window(
+            "precipitation_{h}hr_sum", "{h}-Hour Total Precipitation")),
+        "TMAX_2m": TeehrMapping(CELSIUS, offset=-273.15, source_units="K", variables_by_interval=_by_window(
+            "temperature_{h}hr_max", "{h}-Hour Maximum Temperature")),
+        "TMIN_2m": TeehrMapping(CELSIUS, offset=-273.15, source_units="K", variables_by_interval=_by_window(
+            "temperature_{h}hr_min", "{h}-Hour Minimum Temperature")),
+    }
+
+    def teehr_mappings(self) -> dict[str, TeehrMapping]:
+        return {name: self.TEEHR_MAPPINGS[name] for name in self.variables if name in self.TEEHR_MAPPINGS}
 
 
 GriddedSourceType = Annotated[Union[NWMForcing, GEFSv12Reforecast], Field(discriminator="type")]
