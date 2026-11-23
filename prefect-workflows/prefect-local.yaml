@@ -360,6 +360,132 @@ deployments:
     }
     work_pool: *work_pool
 
+  - name: ingest-nwm31-forcing-analysis-assim-hawaii-icechunk
+    version:
+    tags: []
+    description: >-
+      Ingest NWM 3.1 forcing analysis/assimilation RAINRATE grids (Hawaii, tm02) into an IceChunk S3
+      repository, then build map overviews. Full resolution stays virtual (/references, read from
+      s3://noaa-nwm-pds); nothing is materialized. Backfill the version's start (2026-08-18) with start_dt.
+    entrypoint: workflows/ingests/ingest_gridded_data.py:ingest_gridded_data
+    parameters: {
+      "args": {
+        "source": {"type": "nwm", "nwm_configuration": "forcing_analysis_assim_hawaii", "nwm_version": "nwm31", "grid": "nwm_hawaii_forcing", "bucket": "s3://noaa-nwm-pds", "t_minus_hours": [2]},
+        "num_lookback_days": 1,
+        # Upsert, so a re-issued file is re-referenced; a virtual reference to a changed file can't be read
+        "write_mode": "upsert",
+        "write_materialized": false,
+        "x_dim": "x",
+        "y_dim": "y",
+        # v2.x files have no crs variable
+        "fallback_source_crs": "+proj=lcc +lat_0=20.6 +lon_0=-157.42 +lat_1=10 +lat_2=30 +x_0=0 +y_0=0 +R=6370000 +units=m +no_defs",
+        "xconcat_kwargs": {
+          "coords": "minimal",
+          "data_vars": "minimal",
+          "compat": "override",
+          "join": "override",
+          "combine_attrs": "override"
+        }
+      }
+    }
+    work_pool: *work_pool
+
+  - name: ingest-nwm20-forcing-analysis-assim-hawaii-icechunk
+    version:
+    tags: []
+    description: >-
+      Reference NWM 2.0 forcing analysis/assimilation RAINRATE grids (Hawaii, tm02) in an IceChunk S3
+      repository and build map overviews; references only, read from gs://national-water-model. Backfill only: the
+      default window is the version's cycles (2019-06-19 to 2021-04-20). A run parses and writes in one
+      pass within the 3 h flow timeout, so run about a year at a time (start_dt/end_dt); upsert resumes.
+    entrypoint: workflows/ingests/ingest_gridded_data.py:ingest_gridded_data
+    parameters: {
+      "args": {
+        "source": {"type": "nwm", "nwm_configuration": "forcing_analysis_assim_hawaii", "nwm_version": "nwm20", "grid": "nwm_hawaii_forcing", "bucket": "gs://national-water-model", "t_minus_hours": [2]},
+        "start_dt": "2019-06-19T14:00:00",
+        "end_dt": "2021-04-20T11:00:00",
+        # Upsert, so a re-issued file is re-referenced; a virtual reference to a changed file can't be read
+        "write_mode": "upsert",
+        "write_materialized": false,
+        "x_dim": "x",
+        "y_dim": "y",
+        # v2.x files have no crs variable
+        "fallback_source_crs": "+proj=lcc +lat_0=20.6 +lon_0=-157.42 +lat_1=10 +lat_2=30 +x_0=0 +y_0=0 +R=6370000 +units=m +no_defs",
+        "xconcat_kwargs": {
+          "coords": "minimal",
+          "data_vars": "minimal",
+          "compat": "override",
+          "join": "override",
+          "combine_attrs": "override"
+        }
+      }
+    }
+    work_pool: *work_pool
+
+  - name: ingest-nwm22-forcing-analysis-assim-hawaii-icechunk
+    version:
+    tags: []
+    description: >-
+      Reference NWM 2.1/2.2 forcing analysis/assimilation RAINRATE grids (Hawaii, tm02) in an IceChunk S3
+      repository and build map overviews; references only, read from gs://national-water-model. Backfill only: the
+      default window is the version's cycles (2021-04-20 to 2023-09-19). A run parses and writes in one
+      pass within the 3 h flow timeout, so run about a year at a time (start_dt/end_dt); upsert resumes.
+    entrypoint: workflows/ingests/ingest_gridded_data.py:ingest_gridded_data
+    parameters: {
+      "args": {
+        "source": {"type": "nwm", "nwm_configuration": "forcing_analysis_assim_hawaii", "nwm_version": "nwm22", "grid": "nwm_hawaii_forcing", "bucket": "gs://national-water-model", "t_minus_hours": [2]},
+        "start_dt": "2021-04-20T14:00:00",
+        "end_dt": "2023-09-19T11:00:00",
+        # Upsert, so a re-issued file is re-referenced; a virtual reference to a changed file can't be read
+        "write_mode": "upsert",
+        "write_materialized": false,
+        "x_dim": "x",
+        "y_dim": "y",
+        # v2.x files have no crs variable
+        "fallback_source_crs": "+proj=lcc +lat_0=20.6 +lon_0=-157.42 +lat_1=10 +lat_2=30 +x_0=0 +y_0=0 +R=6370000 +units=m +no_defs",
+        "xconcat_kwargs": {
+          "coords": "minimal",
+          "data_vars": "minimal",
+          "compat": "override",
+          "join": "override",
+          "combine_attrs": "override"
+        }
+      }
+    }
+    work_pool: *work_pool
+
+  - name: ingest-nwm30-forcing-analysis-assim-hawaii-icechunk
+    version:
+    tags: []
+    description: >-
+      Reference NWM 3.0 forcing analysis/assimilation RAINRATE grids (Hawaii, tm02) in an IceChunk S3
+      repository and build map overviews; references only, read from gs://national-water-model. Backfill only: the
+      default window is the version's cycles (2023-09-19 to 2026-08-17). A run parses and writes in one
+      pass within the 3 h flow timeout, so run about a year at a time (start_dt/end_dt); upsert resumes.
+    entrypoint: workflows/ingests/ingest_gridded_data.py:ingest_gridded_data
+    parameters: {
+      "args": {
+        "source": {"type": "nwm", "nwm_configuration": "forcing_analysis_assim_hawaii", "nwm_version": "nwm30", "grid": "nwm_hawaii_forcing", "bucket": "gs://national-water-model", "t_minus_hours": [2]},
+        "start_dt": "2023-09-19T12:00:00",
+        "end_dt": "2026-08-17T23:00:00",
+        # Upsert, so a re-issued file is re-referenced; a virtual reference to a changed file can't be read
+        "write_mode": "upsert",
+        "write_materialized": false,
+        "x_dim": "x",
+        "y_dim": "y",
+        # v2.x files have no crs variable
+        "fallback_source_crs": "+proj=lcc +lat_0=20.6 +lon_0=-157.42 +lat_1=10 +lat_2=30 +x_0=0 +y_0=0 +R=6370000 +units=m +no_defs",
+        "xconcat_kwargs": {
+          "coords": "minimal",
+          "data_vars": "minimal",
+          "compat": "override",
+          "join": "override",
+          "combine_attrs": "override"
+        }
+      }
+    }
+    work_pool: *work_pool
+
   - name: ingest-nwm31-forcing-short-range-icechunk
     version:
     tags: []
