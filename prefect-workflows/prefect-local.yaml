@@ -404,8 +404,6 @@ deployments:
     }
     work_pool: *work_pool
 
-  # Create Vector Tiles
-
   - name: process-gridded-unit
     version:
     tags: []
@@ -470,6 +468,8 @@ deployments:
       }
     }
     work_pool: *work_pool
+
+  # Create Vector Tiles
   - name: create-vector-tiles
     version:
     tags: []
