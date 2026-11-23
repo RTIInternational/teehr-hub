@@ -1,8 +1,7 @@
 """The v1 warehouse's catalog (Polaris) for v1 flows, as the flows' service account.
 
-The flows act as ``prefect-polaris`` (OAuth2 client credentials, the same identity the
-legacy flows' Spark sessions use), whose ``teehr-platform-write`` role lets it write the
-system projects (``public``). Polaris vends storage credentials per table.
+The flows act as their service account (:mod:`flows.auth`) with OAuth2 client
+credentials. Polaris vends storage credentials per table.
 """
 
 import os
@@ -10,6 +9,7 @@ from typing import Any
 
 from pyiceberg.catalog import Catalog, load_catalog
 
+from flows.auth import client_id, client_secret, token_url
 
 def catalog() -> Catalog:
     """The Polaris REST catalog, configured from the work pool's environment.
@@ -25,9 +25,9 @@ def catalog() -> Catalog:
         "auth": {
             "type": "oauth2",
             "oauth2": {
-                "client_id": os.environ["POLARIS_CLIENT_ID"],
-                "client_secret": os.environ["POLARIS_CLIENT_SECRET"],
-                "token_url": os.environ["POLARIS_OAUTH2_SERVER_URI"],
+                "client_id": client_id(),
+                "client_secret": client_secret(),
+                "token_url": token_url(),
                 "scope": "openid",
             },
         },

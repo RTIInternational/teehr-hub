@@ -31,7 +31,6 @@ definitions:
         REMOTE_CATALOG_S3_PATH_STYLE_ACCESS: "{{ $REMOTE_CATALOG_S3_PATH_STYLE_ACCESS }}"
         POLARIS_OAUTH2_SERVER_URI: "{{ $POLARIS_OAUTH2_SERVER_URI }}"
         POLARIS_CLIENT_ID: "{{ $POLARIS_CLIENT_ID }}"
-        POLARIS_CLIENT_SECRET: "{{ $POLARIS_CLIENT_SECRET }}"
         POLARIS_DEFAULT_REALM: "{{ $POLARIS_DEFAULT_REALM }}"
       node_selector:
         teehr-hub/nodegroup-name: spark-r5-4xlarge
@@ -57,7 +56,8 @@ definitions:
       memory_request: 256Mi
       env:
         PREFECT_LOGGING_LEVEL: INFO
-        CONTROL_PLANE_TOKEN: "{{ $CONTROL_PLANE_TOKEN }}"
+        POLARIS_OAUTH2_SERVER_URI: "{{ $POLARIS_OAUTH2_SERVER_URI }}"
+        POLARIS_CLIENT_ID: "{{ $POLARIS_CLIENT_ID }}"
 
 deployments:
   - name: run-platform-evaluations

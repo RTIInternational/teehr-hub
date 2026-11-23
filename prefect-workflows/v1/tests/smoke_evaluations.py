@@ -8,14 +8,20 @@ import json
 
 import httpx
 
+import flows.auth as auth
 import flows.evaluations as ev
 
 polls: dict[str, int] = {}
 started: list[dict] = []
 
 
+tokens: list[str] = []
+calls: list[str] = []
+
+
 def handle(request: httpx.Request) -> httpx.Response:
-    assert request.headers["Authorization"] == "Bearer tpat_test"
+    assert request.headers["Authorization"] == f"Bearer {tokens[-1]}"
+    calls.append(request.url.path)
     path = request.url.path
     if path == "/v1/projects/platform/evaluations":
         return httpx.Response(200, json=[{"slug": s} for s in ("b_eval", "a_eval", "busy")])
@@ -37,10 +43,22 @@ def handle(request: httpx.Request) -> httpx.Response:
     return httpx.Response(404)
 
 
-ev.os.environ["CONTROL_PLANE_TOKEN"] = "tpat_test"
-real = ev._client
-ev._client = lambda: httpx.Client(
-    base_url="http://cp", headers=real().headers, transport=httpx.MockTransport(handle)
+def keycloak(request: httpx.Request) -> httpx.Response:
+    form = dict(httpx.QueryParams(request.content.decode()))
+    if form != {"grant_type": "client_credentials", "client_id": "bot",
+                "client_secret": "s3cret"}:
+        return httpx.Response(401, json={"error": "unauthorized_client"})
+    tokens.append(f"t{len(tokens)}")
+    # 60 s: within the renewal minute at once, so every request gets a new token.
+    return httpx.Response(200, json={"access_token": tokens[-1], "expires_in": 60})
+
+
+auth.httpx.post = lambda url, data, timeout: keycloak(httpx.Request("POST", url, data=data))
+auth.os.environ.update(POLARIS_OAUTH2_SERVER_URI="http://kc/token", POLARIS_CLIENT_ID="bot",
+                     POLARIS_CLIENT_SECRET="s3cret")
+real = auth.control_plane
+ev.control_plane = lambda: httpx.Client(
+    base_url="http://cp", auth=real().auth, transport=httpx.MockTransport(handle)
 )
 
 try:
@@ -56,10 +74,18 @@ polls.clear()
 out = ev.run_evaluations(evaluations=["a_eval"], full=True, poll_seconds=0)
 assert out == {"a_eval": "succeeded"} and started == [{"slug": "a_eval", "full": True}]
 
-ev.os.environ["CONTROL_PLANE_TOKEN"] = "{{ $CONTROL_PLANE_TOKEN }}"  # secret missing
+assert len(tokens) == len(calls)  # renewed before each request
+
 try:
-    real()
-    raise AssertionError("a missing token should be refused")
+    auth.ClientCredentials("http://kc/token", "bot", "wrong")._fresh()
+    raise AssertionError("a refused secret should fail")
 except RuntimeError as exc:
-    assert "prefect-control-plane-token" in str(exc)
+    assert "token for bot (401)" in str(exc), exc
+# Deployed, the secret comes from the Prefect Secret block, not the environment.
+from prefect.blocks.system import Secret  # noqa: E402
+
+
+del auth.os.environ["POLARIS_CLIENT_SECRET"]
+Secret(value="from-block").save(name=auth.SECRET_BLOCK, overwrite=True)
+assert auth.client_secret() == "from-block"
 print("OK")

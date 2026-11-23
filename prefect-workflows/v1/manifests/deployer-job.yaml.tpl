@@ -40,23 +40,12 @@ spec:
           value: ${var.polaris.defaultRealm}
         - name: POLARIS_OAUTH2_SERVER_URI
           value: ${var.polaris.oauthServerUri}
+        # The v1 flows' service account (ADR-0020 in teehr-cloud-core). Its secret is the
+        # Prefect Secret block teehr-platform-automation-secret (load-secrets).
         - name: POLARIS_CLIENT_ID
-          value: prefect-polaris
-        - name: POLARIS_CLIENT_SECRET
-          valueFrom:
-            secretKeyRef:
-              name: prefect-polaris-secrets
-              key: client-secret
+          value: teehr-platform-automation
         - name: POLARIS_DEFAULT_REALM
           value: ${var.polaris.defaultRealm}
-        # The automation user's personal token, for flows that call the control plane
-        # (run-platform-evaluations). Optional: without it those flows refuse to start.
-        - name: CONTROL_PLANE_TOKEN
-          valueFrom:
-            secretKeyRef:
-              name: prefect-control-plane-token
-              key: token
-              optional: true
         resources:
           requests:
             cpu: 250m
