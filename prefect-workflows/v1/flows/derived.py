@@ -62,6 +62,8 @@ def build_derived_dataset(
         source, target, kind, keys,
         params=params, batch_series=batch_series, start=start, end=end,
         producer=f"prefect:{runtime.flow_run.name or 'local'}",
+        # Fresh storage credentials (and metadata for the commit) on a long build.
+        reload=lambda table: cat.load_table(table.name()),
     )  # fmt: skip
     summary = {
         "rows": result.rows,

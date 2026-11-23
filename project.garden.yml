@@ -30,7 +30,7 @@ environments:
       certificateIssuerName: letsencrypt-prod
       devTeehrVersion: 62d62cac1ad78e823e736e9d2fa2eee33ca849b2
       # teehr-core commit for the v1 flows' image (prefect-workflows/v1).
-      teehrCoreVersion: 71918c7f7f8da8a61ae8aab72a310b76618a1bdb
+      teehrCoreVersion: 3239b11f1229049c672b531ebff9f04c4607ef7d
       stableTeehrVersion: place-holder # Needed for sync to work for some reason.
       previousTeehrVersion: place-holder
       polaris:
@@ -97,7 +97,7 @@ environments:
       statusUrl: https://status.teehr.rtiamanzi.org/status.json
       devTeehrVersion: 62d62cac1ad78e823e736e9d2fa2eee33ca849b2
       # teehr-core commit for the v1 flows' image (prefect-workflows/v1).
-      teehrCoreVersion: 71918c7f7f8da8a61ae8aab72a310b76618a1bdb
+      teehrCoreVersion: 3239b11f1229049c672b531ebff9f04c4607ef7d
       stableTeehrVersion: v0.8.0
       previousTeehrVersion: v0.7.0
       polaris:
