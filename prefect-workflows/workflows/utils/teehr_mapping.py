@@ -11,6 +11,7 @@ import icechunk as ic
 import zarr
 from prefect import get_run_logger
 from teehr import Unit, Variable
+from teehr_icechunk.grid_spec import window_hours
 
 
 @dataclass(frozen=True)
@@ -18,8 +19,8 @@ class TeehrMapping:
     """A source variable's teehr variable and unit, and the conversion into that unit: ``value * scale + offset``.
 
     ``source_units`` is the units the mapping is for; a variable stored in others is refused rather than misnamed.
-    ``variables_by_interval`` names a forecast variable whose step changes with lead time (e.g. GEFS: 3-hourly to
-    240 h, then 6-hourly), by the hours each value covers.
+    ``variables_by_interval`` names a forecast variable by the hours each value covers, which can change with lead
+    time (e.g. GEFS: 3-hourly to 240 h, then 6-hourly; or 3 h and 6 h windows, see ``lead_variable_names``).
     """
 
     unit: Unit
@@ -44,6 +45,8 @@ class TeehrMapping:
 # teehr variables and units the sources share
 MM = Unit(name="mm", long_name="Millimeters")
 MM_PER_S = Unit(name="mm/s", long_name="Millimeters per Second")
+# teehr's name for Celsius (its NWM fetch converts Kelvin to "C")
+CELSIUS = Unit(name="C", long_name="Degrees Celsius")
 RAINRATE_HOURLY_MEAN = Variable(name="rainrate_hourly_mean", long_name="Hourly Mean Rainfall Rate")
 SWE_DAILY_INST = Variable(name="swe_daily_inst", long_name="Snow Water Equivalent")
 DEPTH_DAILY_INST = Variable(name="depth_daily_inst", long_name="Snow Depth")
@@ -55,13 +58,22 @@ def teehr_attrs(mapping: Optional[TeehrMapping]) -> dict:
     """``teehr:*`` attributes naming a stored variable the teehr way, for readers such as the dashboard.
 
     Values stay as the source stores them; ``teehr:scale``/``teehr:offset`` convert them to ``teehr:unit_name``.
-    Empty without a single teehr variable (e.g. GEFS, named per interval).
+    A variable named per interval gets ``teehr:variables_by_interval`` ({hours: {name, long_name}}) instead of
+    ``teehr:variable_name``.
     """
-    if mapping is None or mapping.variable is None:
+    if mapping is None:
         return {}
+    if mapping.variable is not None:
+        names = {
+            f"{TEEHR_ATTR_PREFIX}variable_name": mapping.variable.name,
+            f"{TEEHR_ATTR_PREFIX}variable_long_name": mapping.variable.long_name,
+        }
+    else:
+        names = {f"{TEEHR_ATTR_PREFIX}variables_by_interval": {
+            str(hours): {"name": v.name, "long_name": v.long_name} for hours, v in mapping.variables_by_interval.items()
+        }}
     return {
-        f"{TEEHR_ATTR_PREFIX}variable_name": mapping.variable.name,
-        f"{TEEHR_ATTR_PREFIX}variable_long_name": mapping.variable.long_name,
+        **names,
         f"{TEEHR_ATTR_PREFIX}unit_name": mapping.unit.name,
         f"{TEEHR_ATTR_PREFIX}unit_long_name": mapping.unit.long_name,
         f"{TEEHR_ATTR_PREFIX}scale": mapping.scale,
@@ -72,12 +84,18 @@ def teehr_attrs(mapping: Optional[TeehrMapping]) -> dict:
 def mapping_from_attrs(attrs: dict) -> Optional[TeehrMapping]:
     """The mapping a variable's ``teehr:*`` attributes record; None without them."""
     name = attrs.get(f"{TEEHR_ATTR_PREFIX}variable_name")
-    if name is None:
+    by_interval = attrs.get(f"{TEEHR_ATTR_PREFIX}variables_by_interval")
+    if name is None and by_interval is None:
         return None
     unit_name = attrs[f"{TEEHR_ATTR_PREFIX}unit_name"]
     return TeehrMapping(
         unit=Unit(name=unit_name, long_name=attrs.get(f"{TEEHR_ATTR_PREFIX}unit_long_name", unit_name)),
-        variable=Variable(name=name, long_name=attrs.get(f"{TEEHR_ATTR_PREFIX}variable_long_name", name)),
+        variable=None if name is None else Variable(
+            name=name, long_name=attrs.get(f"{TEEHR_ATTR_PREFIX}variable_long_name", name)
+        ),
+        variables_by_interval={
+            int(hours): Variable(name=v["name"], long_name=v["long_name"]) for hours, v in (by_interval or {}).items()
+        },
         scale=float(attrs.get(f"{TEEHR_ATTR_PREFIX}scale", 1.0)),
         offset=float(attrs.get(f"{TEEHR_ATTR_PREFIX}offset", 0.0)),
     )
@@ -108,21 +126,18 @@ def resolve_teehr_mapping(args, mapping: Optional[TeehrMapping], grid_attrs: dic
     return mapping
 
 
-def lead_variable_names(leads, mapping: TeehrMapping) -> dict:
-    """Each lead's teehr variable name, by the interval since the lead before it (the first lead's, since 0).
+def lead_variable_names(leads, mapping: TeehrMapping, attrs: dict) -> dict:
+    """Each lead's teehr variable name, by the hours its value covers (``window_hours`` of the variable's ``attrs``).
 
-    A lead of 0 covers no interval, so it has no name and is skipped. An interval with no name raises.
+    A windowed variable (e.g. GEFS reforecast APCP) covers the hours since its window started; others the hours
+    since the lead before it. A lead covering none (lead 0) has no name and is skipped. Hours with no name raise.
     """
-    names, previous = {}, 0
-    for lead in leads:
-        interval = int(lead) - previous
-        previous = int(lead)
-        if interval == 0:
-            continue
-        if interval not in mapping.variables_by_interval:
+    names = {}
+    for lead, hours in window_hours(leads, attrs).items():
+        if hours not in mapping.variables_by_interval:
             known = sorted(mapping.variables_by_interval)
-            raise ValueError(f"No teehr variable for {interval}-hour steps (lead {lead}); known: {known}.")
-        names[lead] = mapping.variables_by_interval[interval].name
+            raise ValueError(f"No teehr variable for {hours}-hour values (lead {lead}); known: {known}.")
+        names[lead] = mapping.variables_by_interval[hours].name
     return names
 
 

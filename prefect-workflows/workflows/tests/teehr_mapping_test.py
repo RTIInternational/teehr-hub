@@ -50,23 +50,48 @@ def test_incomplete_unknown_or_mismatched_names_raise(kwargs, mapping, units, ma
         resolve_teehr_mapping(_args(**kwargs), mapping, {"units": units})
 
 
-def test_attrs_round_trip_and_skip_per_interval_names():
+def test_attrs_round_trip():
     attrs = teehr_attrs(CU_SWE)
     assert attrs["teehr:variable_name"] == "swe_daily_inst" and attrs["teehr:scale"] == 1000.0
     back = mapping_from_attrs({"units": "m", **attrs})
     assert (back.variable, back.unit, back.scale, back.offset) == (SWE_DAILY_INST, MM, 1000.0, 0.0)
-    assert mapping_from_attrs({"units": "m"}) is None
-    assert teehr_attrs(GEFS) == {} and teehr_attrs(None) == {}
+    assert mapping_from_attrs({"units": "m"}) is None and teehr_attrs(None) == {}
+
+
+def test_per_interval_names_round_trip_as_attrs():
+    attrs = teehr_attrs(GEFS)
+    assert "teehr:variable_name" not in attrs
+    assert attrs["teehr:variables_by_interval"] == {"3": {"name": "r_3hr", "long_name": "3-Hour"},
+                                                    "6": {"name": "r_6hr", "long_name": "6-Hour"}}
+    back = mapping_from_attrs(attrs)
+    assert (back.variable, back.variables_by_interval, back.unit) == (None, GEFS.variables_by_interval, MM_PER_S)
 
 
 def test_gefs_leads_are_named_by_the_interval_they_cover():
     """3-hourly leads to 240 h, then 6-hourly; lead 0 covers no interval and gets no name."""
     leads = [*range(0, 241, 3), *range(246, 841, 6)]
-    names = lead_variable_names(leads, GEFS)
+    names = lead_variable_names(leads, GEFS, {})
     assert 0 not in names and len(names) == len(leads) - 1
     assert {names[3], names[240]} == {"r_3hr"} and {names[246], names[840]} == {"r_6hr"}
     with pytest.raises(ValueError, match="12-hour"):
-        lead_variable_names([3, 6, 18], GEFS)
+        lead_variable_names([3, 6, 18], GEFS, {})
+
+
+@pytest.mark.parametrize("variable, prefix, unit", [
+    ("APCP_surface", "precipitation", "mm"), ("TMAX_2m", "temperature", "C"), ("TMIN_2m", "temperature", "C"),
+])
+def test_gefs_reforecast_windows_are_named_by_the_hours_they_cover(variable, prefix, unit):
+    """Windows restart every 6 h: 0.25 degree leads alternate 3 h and 6 h windows; 0.5 degree leads are all 6 h."""
+    source = gs.GEFSv12Reforecast(grid="0p25")
+    mapping = source.teehr_mappings()[variable]
+    attrs = source.template()[variable].attrs
+    names = lead_variable_names(range(3, 241, 3), mapping, attrs)
+    stat = {"APCP_surface": "sum", "TMAX_2m": "max", "TMIN_2m": "min"}[variable]
+    assert [names[lead] for lead in (3, 6, 9, 240)] == [
+        f"{prefix}_3hr_{stat}", f"{prefix}_6hr_{stat}", f"{prefix}_3hr_{stat}", f"{prefix}_6hr_{stat}"
+    ]
+    assert set(lead_variable_names(range(246, 841, 6), mapping, attrs).values()) == {f"{prefix}_6hr_{stat}"}
+    assert mapping.unit.name == unit and mapping.check_units(variable, attrs["units"]) is None
 
 
 # Built without validation: required settings (e.g. iSnobal's domain) don't affect mappings or packing

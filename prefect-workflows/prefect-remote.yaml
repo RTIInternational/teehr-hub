@@ -788,7 +788,7 @@ deployments:
     }
     work_pool: *work_pool_medium
 
-  - name: ingest-gefs-v12-reforecast-0p5-icechunk
+  - name: ingest-gefs-v12-reforecast-0p50-icechunk
     version:
     tags: []
     concurrency_limit:
@@ -802,7 +802,7 @@ deployments:
     entrypoint: workflows/ingests/ingest_gridded_data.py:ingest_gridded_data
     parameters: {
       "args": {
-        "source": {"type": "gefs-v12-reforecast", "grid": "0p5"},
+        "source": {"type": "gefs-v12-reforecast", "grid": "0p50"},
         "base_prefix": "icechunk-unserved",
         "start_dt": "2000-01-01",
         "end_dt": "2019-12-31",
@@ -895,6 +895,112 @@ deployments:
     }
     work_pool: *work_pool_large
 
+  - name: calculate-gefs-v12-reforecast-0p25-pixel-coverage-weights
+    version:
+    tags: []
+    concurrency_limit:
+      limit: 1
+      collision_strategy: "CANCEL_NEW"
+    description: >-
+      Calculate rfcbasin pixel coverage weights on the GEFS v12 reforecast 0.25 degree grid (gefs_0p25_global, shared with dynamical.org's GEFS),
+      from its reference repo in icechunk-unserved. Run once per layer; a rerun replaces the layer's
+      weights on the grid.
+    entrypoint: workflows/ingests/pixel_coverage_weights.py:calculate_pixel_coverage_weights
+    parameters: {
+      "args": {
+        "temp_dir_path": *temp_dir_path,
+        "configuration_name": "gefs_v12_reforecast_0p25",
+        "base_prefix": "icechunk-unserved",
+        "location_id_prefix": "rfcbasin",
+        "grid_variable_name": "APCP_surface",
+        "x_dim": "longitude",
+        "y_dim": "latitude"
+      }
+    }
+    work_pool: *work_pool_large
+
+  - name: calculate-gefs-v12-reforecast-0p25-mean-areal-values
+    version:
+    tags: []
+    concurrency_limit:
+      limit: 1
+      collision_strategy: "CANCEL_NEW"
+    description: >-
+      Calculate rfcbasin mean areal values of one GEFS v12 reforecast 0.25 degree variable (leads 3-240 h), every
+      member and lead, into secondary_timeseries, from its reference repo in icechunk-unserved. Run once
+      per variable (grid_variable_name APCP_surface, TMAX_2m or TMIN_2m). Values are the published
+      windows, named by the hours each covers (e.g. precipitation_3hr_sum, precipitation_6hr_sum).
+      Defaults to the pilot cycles (2019-01-01 to 2019-01-31); replace_where makes reruns idempotent.
+      Spark runs in local mode: the executor image can't decode GRIB.
+    entrypoint: workflows/ingests/mean_areal_values.py:calculate_mean_areal_values
+    parameters: {
+      "args": {
+        "temp_dir_path": *temp_dir_path,
+        "configuration_name": "gefs_v12_reforecast_0p25",
+        "base_prefix": "icechunk-unserved",
+        "location_id_prefix": "rfcbasin",
+        "grid_variable_name": "APCP_surface",
+        "x_dim": "longitude",
+        "y_dim": "latitude",
+        "start_dt": "2019-01-01",
+        "end_dt": "2019-01-31T23:00:00"
+      }
+    }
+    work_pool: *work_pool_large
+
+  - name: calculate-gefs-v12-reforecast-0p50-pixel-coverage-weights
+    version:
+    tags: []
+    concurrency_limit:
+      limit: 1
+      collision_strategy: "CANCEL_NEW"
+    description: >-
+      Calculate rfcbasin pixel coverage weights on the GEFS v12 reforecast 0.5 degree grid,
+      from its reference repo in icechunk-unserved. Run once per layer; a rerun replaces the layer's
+      weights on the grid.
+    entrypoint: workflows/ingests/pixel_coverage_weights.py:calculate_pixel_coverage_weights
+    parameters: {
+      "args": {
+        "temp_dir_path": *temp_dir_path,
+        "configuration_name": "gefs_v12_reforecast_0p50",
+        "base_prefix": "icechunk-unserved",
+        "location_id_prefix": "rfcbasin",
+        "grid_variable_name": "APCP_surface",
+        "x_dim": "longitude",
+        "y_dim": "latitude"
+      }
+    }
+    work_pool: *work_pool_large
+
+  - name: calculate-gefs-v12-reforecast-0p50-mean-areal-values
+    version:
+    tags: []
+    concurrency_limit:
+      limit: 1
+      collision_strategy: "CANCEL_NEW"
+    description: >-
+      Calculate rfcbasin mean areal values of one GEFS v12 reforecast 0.5 degree variable (leads 246-840 h), every
+      member and lead, into secondary_timeseries, from its reference repo in icechunk-unserved. Run once
+      per variable (grid_variable_name APCP_surface, TMAX_2m or TMIN_2m). Values are the published
+      windows, named by the hours each covers (e.g. precipitation_3hr_sum, precipitation_6hr_sum).
+      Defaults to the pilot cycles (2019-01-01 to 2019-01-31); replace_where makes reruns idempotent.
+      Spark runs in local mode: the executor image can't decode GRIB.
+    entrypoint: workflows/ingests/mean_areal_values.py:calculate_mean_areal_values
+    parameters: {
+      "args": {
+        "temp_dir_path": *temp_dir_path,
+        "configuration_name": "gefs_v12_reforecast_0p50",
+        "base_prefix": "icechunk-unserved",
+        "location_id_prefix": "rfcbasin",
+        "grid_variable_name": "APCP_surface",
+        "x_dim": "longitude",
+        "y_dim": "latitude",
+        "start_dt": "2019-01-01",
+        "end_dt": "2019-01-31T23:00:00"
+      }
+    }
+    work_pool: *work_pool_large
+
   # Mean areal values from grids read in place (AORC Zarr stores)
   - name: calculate-aorc-v1-1-pixel-coverage-weights
     version:
@@ -934,6 +1040,46 @@ deployments:
         "grid_variable_name": "APCP_surface",
         "start_dt": "2020-01-01",
         "end_dt": "2021-12-31T23:00:00"
+      }
+    }
+    work_pool: *work_pool_large
+
+  - name: calculate-aorc-v1-1-rfcbasin-pixel-coverage-weights
+    version:
+    tags: []
+    concurrency_limit:
+      limit: 1
+      collision_strategy: "CANCEL_NEW"
+    description: >-
+      Calculate rfcbasin pixel coverage weights on the AORC v1.1 1 km grid, for the same basins as the GEFS
+      v12 reforecast mean areal values. Run once per layer.
+    entrypoint: workflows/ingests/aorc_mean_areal_values.py:calculate_aorc_pixel_coverage_weights
+    parameters: {
+      "args": {
+        "temp_dir_path": *temp_dir_path,
+        "location_id_prefix": "rfcbasin"
+      }
+    }
+    work_pool: *work_pool_large
+
+  - name: calculate-aorc-v1-1-rfcbasin-mean-areal-values
+    version:
+    tags: []
+    concurrency_limit:
+      limit: 1
+      collision_strategy: "CANCEL_NEW"
+    description: >-
+      Calculate rfcbasin mean areal AORC v1.1 APCP into primary_timeseries (rainrate_hourly_mean, mm/s), for
+      the same basins as the GEFS v12 reforecast mean areal values. Defaults to the GEFS pilot's valid times
+      (the 2019-01 cycles reach 35 days ahead, to 2019-03-06); set start_dt/end_dt for other ranges.
+    entrypoint: workflows/ingests/aorc_mean_areal_values.py:calculate_aorc_mean_areal_values
+    parameters: {
+      "args": {
+        "temp_dir_path": *temp_dir_path,
+        "location_id_prefix": "rfcbasin",
+        "grid_variable_name": "APCP_surface",
+        "start_dt": "2019-01-01",
+        "end_dt": "2019-03-06T23:00:00"
       }
     }
     work_pool: *work_pool_large
