@@ -1,8 +1,8 @@
 """The v1 warehouse's catalog (Polaris) for v1 flows, as the flows' service account.
 
-The flows act as ``prefect-polaris`` (OAuth2 client credentials, the same identity the
-legacy flows' Spark sessions use), whose ``teehr-platform-write`` role lets it write the
-system projects (``public``). Polaris vends storage credentials per table.
+The flows act as ``teehr-platform-automation`` (OAuth2 client credentials), a write
+member of the system projects (ADR-0020 in teehr-cloud-core). Polaris vends storage
+credentials per table.
 """
 
 import os

@@ -61,7 +61,9 @@ definitions:
         teehr-hub/nodegroup-name: driver-r5-xlarge
       env:
         PREFECT_LOGGING_LEVEL: INFO
-        CONTROL_PLANE_TOKEN: "{{ $CONTROL_PLANE_TOKEN }}"
+        POLARIS_OAUTH2_SERVER_URI: "{{ $POLARIS_OAUTH2_SERVER_URI }}"
+        POLARIS_CLIENT_ID: "{{ $POLARIS_CLIENT_ID }}"
+        POLARIS_CLIENT_SECRET: "{{ $POLARIS_CLIENT_SECRET }}"
       tolerations:
         - key: teehr-hub/dedicated
           operator: Equal
@@ -82,8 +84,8 @@ deployments:
       limit: 1
       collision_strategy: CANCEL_NEW
     work_pool: *work_pool_control_plane
-    # Daily, after the day's USGS and NWM medium range ingests. Starts off: needs the
-    # automation user's token (prefect-control-plane-token) and a run by hand first.
+    # Daily, after the day's USGS and NWM medium range ingests. Starts off: turn it on
+    # after a run by hand.
     schedule:
       cron: "0 14 * * *"
       active: false

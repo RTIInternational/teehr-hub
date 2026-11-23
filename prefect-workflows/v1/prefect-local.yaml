@@ -57,7 +57,9 @@ definitions:
       memory_request: 256Mi
       env:
         PREFECT_LOGGING_LEVEL: INFO
-        CONTROL_PLANE_TOKEN: "{{ $CONTROL_PLANE_TOKEN }}"
+        POLARIS_OAUTH2_SERVER_URI: "{{ $POLARIS_OAUTH2_SERVER_URI }}"
+        POLARIS_CLIENT_ID: "{{ $POLARIS_CLIENT_ID }}"
+        POLARIS_CLIENT_SECRET: "{{ $POLARIS_CLIENT_SECRET }}"
 
 deployments:
   - name: run-platform-evaluations

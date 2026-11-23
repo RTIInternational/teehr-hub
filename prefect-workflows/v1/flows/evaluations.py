@@ -5,10 +5,10 @@ waited on, one at a time (a run spreads across several pods on its own node grou
 incremental: only the months whose inputs changed since the version's last run are
 recomputed, so a run with nothing new is quick.
 
-The control plane runs every job as its caller (ADR-0014), so the flow calls it with a
-personal token (ADR-0018) of the platform's automation user, a write member of ``platform``:
-``CONTROL_PLANE_TOKEN``, from the ``prefect-control-plane-token`` secret. Runs show that user
-as their creator.
+The control plane runs every job as its caller (ADR-0014). The flow calls it as the v1
+flows' service account, ``teehr-platform-automation``, a write member of ``platform``
+(ADR-0020): client-credentials tokens, renewed before they expire. Runs show
+``service-account-teehr-platform-automation`` as their creator.
 """
 
 import os
@@ -22,16 +22,40 @@ from prefect import flow, get_run_logger, task
 DONE = ("succeeded", "failed", "cancelled")
 
 
+class ClientCredentials(httpx.Auth):
+    """Bearer tokens for the flows' client from Keycloak, renewed a minute before they
+    expire (a run is waited on for hours; tokens last minutes)."""
+
+    def __init__(self, token_url: str, client_id: str, client_secret: str):
+        self._form = {"grant_type": "client_credentials", "client_id": client_id,
+                      "client_secret": client_secret}  # fmt: skip
+        self._token_url = token_url
+        self._token, self._expires = "", 0.0
+
+    def _fresh(self) -> str:
+        if time.monotonic() > self._expires - 60:
+            resp = httpx.post(self._token_url, data=self._form, timeout=30)
+            if resp.is_error:
+                raise RuntimeError(f"getting a token for {self._form['client_id']} "
+                                   f"({resp.status_code}): {_detail(resp)}")  # fmt: skip
+            body = resp.json()
+            self._token = body["access_token"]
+            self._expires = time.monotonic() + float(body.get("expires_in", 300))
+        return self._token
+
+    def auth_flow(self, request: httpx.Request):
+        request.headers["Authorization"] = f"Bearer {self._fresh()}"
+        yield request
+
+
 def _client() -> httpx.Client:
-    token = os.environ.get("CONTROL_PLANE_TOKEN", "")
-    if not token.startswith("tpat_"):
-        raise RuntimeError(
-            "CONTROL_PLANE_TOKEN isn't a personal token (tpat_...): put the automation "
-            "user's token in the prefect-control-plane-token secret and redeploy the flows"
-        )
     return httpx.Client(
         base_url=os.environ.get("CONTROL_PLANE_URL", "http://teehr-control-plane:8000"),
-        headers={"Authorization": f"Bearer {token}"},
+        auth=ClientCredentials(
+            os.environ["POLARIS_OAUTH2_SERVER_URI"],
+            os.environ["POLARIS_CLIENT_ID"],
+            os.environ["POLARIS_CLIENT_SECRET"],
+        ),
         timeout=60,
     )
 
