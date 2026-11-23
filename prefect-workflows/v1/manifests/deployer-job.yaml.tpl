@@ -49,6 +49,14 @@ spec:
               key: client-secret
         - name: POLARIS_DEFAULT_REALM
           value: ${var.polaris.defaultRealm}
+        # The automation user's personal token, for flows that call the control plane
+        # (run-platform-evaluations). Optional: without it those flows refuse to start.
+        - name: CONTROL_PLANE_TOKEN
+          valueFrom:
+            secretKeyRef:
+              name: prefect-control-plane-token
+              key: token
+              optional: true
         resources:
           requests:
             cpu: 250m
