@@ -121,6 +121,7 @@ deployments:
     entrypoint: flows/ingest_usgs.py:backfill_usgs_streamflow
     parameters:
       dataset: usgs_streamflow
+      workers: 1  # ~1 GB per site being read
     concurrency_limit:
       limit: 1
       collision_strategy: CANCEL_NEW

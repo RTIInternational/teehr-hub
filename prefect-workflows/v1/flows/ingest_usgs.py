@@ -175,7 +175,7 @@ def backfill_usgs_streamflow(
     end: datetime | None = None,
     service: usgs.Service = "iv",
     hourly: bool = True,
-    workers: int = 8,
+    workers: int = 4,
     stage_dir: str | None = None,
     top_up: bool = True,
 ) -> dict[str, Any]:
