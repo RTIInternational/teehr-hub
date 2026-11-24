@@ -19,8 +19,9 @@ import os
 import tempfile
 import time
 from collections.abc import Iterable, Iterator
-from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import FIRST_COMPLETED, ThreadPoolExecutor, wait
 from datetime import UTC, datetime, timedelta
+from itertools import islice
 from typing import Any
 
 import pyarrow as pa
@@ -136,12 +137,16 @@ def _fit(cat: Any, namespace: str, dataset: str, batches: Iterable[pa.Table]) ->
 @task(persist_result=False, task_run_name="stage {total} sites' bulk files")
 def stage_sites(
     sites: list[str], start: datetime | None, end: datetime | None, service: usgs.Service,
-    hourly: bool, directory: str, workers: int, total: int,
+    hourly: bool, directory: str, workers: int, total: int, buffer_sites: int = 50,
 ) -> dict[str, datetime]:  # fmt: skip
-    """Download each site's bulk file and stage its rows by month; each site's last time."""
+    """Download each site's bulk file and stage the rows by month; each site's last time.
+
+    Rows are held for ``buffer_sites`` sites, then staged together: one file per month
+    per buffer, not per site (thousands of sites over decades of months).
+    """
     log = get_run_logger()
 
-    def one(site: str) -> tuple[str, datetime | None, int]:
+    def one(site: str) -> tuple[str, pa.Table | None]:
         began = time.monotonic()
         for attempt in range(3):
             try:
@@ -150,23 +155,34 @@ def stage_sites(
             except Exception as err:  # a download blip: try again, then give up on the site
                 if attempt == 2:
                     log.warning("%s: bulk file failed: %s", site, err)
-                    return site, None, 0
+                    return site, None
         if not rows.num_rows:  # teehr-core's own log of why doesn't reach Prefect from threads
             log.warning("%s: no rows (no bulk file, or none in the range)", site)
-            return site, None, 0
-        staged = stage_by_month([rows], directory)
-        log.info("%s: %d rows in %.0f s", site, staged, time.monotonic() - began)
-        return site, max(rows["value_time"].to_pylist()), staged
+            return site, None
+        log.info("%s: %d rows in %.0f s", site, rows.num_rows, time.monotonic() - began)
+        return site, rows
 
     last_times: dict[str, datetime] = {}
+    held: list[pa.Table] = []
     staged = done = 0
+    todo = iter(sites)
     with ThreadPoolExecutor(max_workers=workers) as pool:
-        for site, last, count in pool.map(one, sites):
-            done += 1
-            staged += count
-            if last is not None:
-                last_times[site] = last
-            if done % 100 == 0 or done == len(sites):
+        # A few downloads ahead of the staging, not all of them: finished ones wait in memory.
+        running = {pool.submit(one, s) for s in islice(todo, 2 * workers)}
+        while running:
+            finished, running = wait(running, return_when=FIRST_COMPLETED)
+            for future in finished:
+                site, rows = future.result()
+                done += 1
+                if rows is not None:
+                    held.append(rows)
+                    last_times[site] = max(rows["value_time"].to_pylist())
+                following = next(todo, None)
+                if following is not None:
+                    running.add(pool.submit(one, following))
+            if held and (len(held) >= buffer_sites or not running):
+                staged += stage_by_month([pa.concat_tables(held)], directory)
+                held = []
                 log.info("staged %d of %d sites: %d rows", done, len(sites), staged)
     return last_times
 
