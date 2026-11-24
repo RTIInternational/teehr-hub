@@ -32,6 +32,10 @@ cols, key = timeseries_columns(["quality"], "instant")
 make("usgs_streamflow", cols, key, {
     "teehr.type": "timeseries", "teehr.unit": "m3/s", "teehr.series_table": "usgs_streamflow_series",
     "teehr.location_layer": "usgs_gauges"})
+bare, _ = timeseries_columns([], "instant")
+make("no_quality", bare, key, {
+    "teehr.type": "timeseries", "teehr.unit": "m3/s", "teehr.series_table": "usgs_streamflow_series",
+    "teehr.location_layer": "usgs_gauges"})
 make("usgs_streamflow_series", series_columns(), ["series_key"], {"teehr.type": "series"})
 attr = {"name": "is_active", "type": "boolean", "required": False, "doc": None}
 gauges = make("usgs_gauges", layer_columns([attr]), ["location_key"], {"teehr.type": "layer"})
@@ -52,7 +56,9 @@ def fake_request(service, sites, start, end):
         "time_series_id": [f"ts-{s}" for s in sites for _ in hours],
         "monitoring_location_id": [f"USGS-{usgs.site_number(s)}" for s in sites for _ in hours],
         "time": [t for _ in sites for t in hours],
-        "value": [100.0 for _ in sites for _ in hours]})
+        "value": [100.0 for _ in sites for _ in hours],
+        "approval_status": "Provisional",
+        "qualifier": [None for _ in sites for _ in hours]})
 
 
 usgs._request = fake_request
@@ -67,8 +73,12 @@ assert (out["sites"], out["rows"], out["commits"], out["series_added"]) == (2, 6
 again = ingest.ingest_usgs_streamflow(sites=["01"], end=END, lookback_days=0.125)
 assert (again["rows"], again["series_added"]) == (3, 0), again
 stored = cat.load_table(("public", "usgs_streamflow")).scan().to_arrow()
+assert set(stored["quality"].to_pylist()) == {"Provisional"}
 assert stored.num_rows == 6 and round(stored["value"][0].as_py(), 4) == round(100 * usgs.CFS_TO_M3S, 4)
 series = cat.load_table(("public", "usgs_streamflow_series")).scan().to_arrow().to_pylist()
 assert {(s["series_key"], s["location_key"], s["location_layer"]) for s in series} == {
     ("usgs-01", "usgs-01", "usgs_gauges"), ("usgs-02", "usgs-02", "usgs_gauges")}, series
+no_q = ingest.ingest_usgs_streamflow(dataset="no_quality", sites=["01"], end=END,
+                                     lookback_days=0.125)
+assert no_q["rows"] == 3, no_q
 print("OK")

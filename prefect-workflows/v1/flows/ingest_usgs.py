@@ -86,6 +86,11 @@ def ingest_usgs_streamflow(
               i + 1, min(i + batch_sites, len(sites)), len(sites))
         for i in range(0, len(sites), batch_sites)
     )  # fmt: skip
+    columns = {f.name for f in cat.load_table((namespace, dataset)).schema().fields}
+    if "quality" not in columns:
+        log.warning("%s.%s has no quality column: the approval status and qualifiers "
+                    "aren't kept", namespace, dataset)  # fmt: skip
+        batches = (b.drop_columns(["quality"]) for b in batches)
     written = write_timeseries(
         cat, namespace, dataset, combine(batches, commit_rows),
         producer=f"prefect:{runtime.flow_run.name or 'local'}",
