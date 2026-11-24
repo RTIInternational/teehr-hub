@@ -214,8 +214,8 @@ class NWMForcing(GriddedSource):
         return self.grid
 
     def _rainrate_units(self) -> str:
-        """RAINRATE's units string, which NWM changed in version 3.0."""
-        return "mm s^-1" if self.nwm_version in ("nwm30", "nwm31") else "mm s-1"
+        """RAINRATE's units string, which NWM changed in version 2.1 (teehr's nwm22)."""
+        return "mm s-1" if self.nwm_version == "nwm20" else "mm s^-1"
 
     def teehr_mappings(self) -> dict[str, TeehrMapping]:
         return {"RAINRATE": TeehrMapping(MM_PER_S, RAINRATE_HOURLY_MEAN, source_units=self._rainrate_units())}

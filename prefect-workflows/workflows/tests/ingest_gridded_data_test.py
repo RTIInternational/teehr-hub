@@ -13,6 +13,7 @@ pytest.importorskip("teehr")
 pytest.importorskip("h5netcdf")
 icechunk = pytest.importorskip("icechunk")
 from prefect.testing.utilities import prefect_test_harness  # noqa: E402
+from prefect.utilities.callables import parameter_schema  # noqa: E402
 
 import ingest_gridded_data as ing  # noqa: E402
 from teehr_icechunk import grid_utils as gu  # noqa: E402
@@ -137,6 +138,13 @@ def test_nwm_aws_bucket_reads_in_region():
     ing.gu._virtual_chunk_store(f"{gcs.source_bucket}/", **gcs.virtual_store_kwargs)
     with pytest.raises(ValueError):
         gs.NWMForcing(bucket="s3://some-other-bucket")
+
+
+def test_derived_fields_hidden_from_the_flow_form():
+    """A UI run sends every field the form shows, so the fields derived from the source stay off it."""
+    schema = parameter_schema(ing.ingest_gridded_data).model_dump()
+    shown = schema["definitions"]["IngestGriddedDataInput"]["properties"]
+    assert not {"configuration_name", "variable_names", "append_dim"} & shown.keys()
 
 
 def test_write_materialized_defaults_to_the_source():
