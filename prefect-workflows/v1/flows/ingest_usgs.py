@@ -17,6 +17,7 @@ month written whole, then topped up from the API where the files end.
 
 import os
 import tempfile
+import time
 from collections.abc import Iterable, Iterator
 from concurrent.futures import ThreadPoolExecutor
 from datetime import UTC, datetime, timedelta
@@ -140,6 +141,7 @@ def stage_sites(
     log = get_run_logger()
 
     def one(site: str) -> tuple[str, datetime | None, int]:
+        began = time.monotonic()
         for attempt in range(3):
             try:
                 rows = next(usgs.read_bulk([site], start, end, service=service, hourly=hourly))
@@ -148,9 +150,12 @@ def stage_sites(
                 if attempt == 2:
                     log.warning("%s: bulk file failed: %s", site, err)
                     return site, None, 0
+        if not rows.num_rows:  # teehr-core's own log of why doesn't reach Prefect from threads
+            log.warning("%s: no rows (no bulk file, or none in the range)", site)
+            return site, None, 0
         staged = stage_by_month([rows], directory)
-        last = max(rows["value_time"].to_pylist()) if rows.num_rows else None
-        return site, last, staged
+        log.info("%s: %d rows in %.0f s", site, staged, time.monotonic() - began)
+        return site, max(rows["value_time"].to_pylist()), staged
 
     last_times: dict[str, datetime] = {}
     staged = done = 0
