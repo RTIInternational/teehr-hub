@@ -106,6 +106,16 @@ def test_each_sources_mappings_and_packing_agree_on_units(source):
         assert mapping is None or mapping.source_units == packing.units, name
 
 
+@pytest.mark.parametrize("version, units", [
+    ("nwm20", "mm s-1"), ("nwm22", "mm s^-1"), ("nwm30", "mm s^-1"), ("nwm31", "mm s^-1"),
+])
+def test_nwm_rainrate_units_by_version(version, units):
+    """The units string the files store: NWM changed it at 2.1, the first nwm22 cycle."""
+    source = gs.NWMForcing.model_construct(nwm_version=version)
+    assert source.overview_encoding()["RAINRATE"].units == units
+    assert source.teehr_mappings()["RAINRATE"].source_units == units
+
+
 def test_write_teehr_attrs_stamps_every_group_and_drops_stale_ones():
     zarr = pytest.importorskip("zarr")
     from workflows.utils.teehr_mapping import write_teehr_attrs
