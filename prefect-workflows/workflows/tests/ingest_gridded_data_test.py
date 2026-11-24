@@ -3,6 +3,10 @@
 Uses the NWM source pointed at local hourly netCDF files shaped like NWM forcing. Needs teehr and Prefect.
 """
 
+import json
+import os
+from types import SimpleNamespace
+
 import numpy as np
 import pandas as pd
 import pytest
@@ -58,6 +62,8 @@ def nwm(tmp_path, monkeypatch):
             {"RAINRATE": (("time", "y", "x"), data, {"units": units})},
             coords={"time": [t], "y": np.arange(40) * 1000.0, "x": np.arange(50) * 1000.0 - 25000.0},
         ).to_netcdf(src / name, engine="h5netcdf", encoding={"RAINRATE": encoding} if encoding else None)
+        # The file's own modified time is the listed one, as in a bucket: references are checked against it
+        os.utime(src / name, (pd.Timestamp(modified).timestamp(),) * 2)
         published[t] = {"time": t, "url": f"{prefix}{name}", "status": "stable", "last_modified": pd.Timestamp(modified)}
 
     def list_files(self, start_dt, end_dt):
@@ -77,6 +83,7 @@ def nwm(tmp_path, monkeypatch):
     monkeypatch.setattr(gs.NWMForcing, "store_kwargs", {})
     monkeypatch.setattr(gs.NWMForcing, "list_files", list_files)
     monkeypatch.setattr(ing, "configure_icechunk_s3_repo", open_repo)
+    monkeypatch.setattr(gu, "configure_icechunk_s3_repo", open_repo)  # the run model's repo
     monkeypatch.setattr(gu, "build_icechunk_s3_storage", lambda **_: storage)
     monkeypatch.setattr(gu, "open_repo_for_reading", open_repo)
     return publish, open_repo
@@ -264,12 +271,41 @@ def test_parse_in_processes(harness, nwm, monkeypatch):
     monkeypatch.setattr(ing.gu, "map_blocking", lambda *a, **kw: processes.append(kw["processes"]) or map_blocking(*a, **kw))
     monkeypatch.setattr(concurrency.logger, "warning", lambda msg, *_, **__: fallbacks.append(msg))
     _run(HOURS[0], HOURS[-1])
-    assert processes[0] > 1 and not fallbacks
+    assert max(processes) > 1 and not fallbacks  # the first parse is a new repo's template, one file
 
     data = _groups(open_repo, ("data",))["data"]
     assert (data.status.values == 2).all()
     for i in range(len(HOURS)):
         assert float(data.RAINRATE.isel(time=i, y=3, x=4)) == rate(i)
+
+
+def test_references_and_overviews_fan_out_as_child_runs(harness, nwm, monkeypatch):
+    """Units of a day become child runs of process-gridded-unit, from their JSON parameters: references, then
+    overviews. The repo holds every hour, as an in-process run would."""
+    import process_gridded_unit as pgu
+    from teehr_icechunk import prefect as ic_prefect
+
+    publish, open_repo = nwm
+    for i in range(len(HOURS)):
+        publish(i, rate(i), "2026-09-01")
+    monkeypatch.setattr(gs.NWMForcing, "manifest_split_steps", 24)
+    stages = []
+
+    def run_deployment(name, parameters, job_variables, timeout, flow_run_name):
+        params = json.loads(json.dumps(parameters))
+        stages.append(params["stage"])
+        pgu.process_gridded_unit.fn(**params)
+        return SimpleNamespace(name=flow_run_name, state=SimpleNamespace(is_completed=lambda: True))
+
+    monkeypatch.setattr(ic_prefect, "run_deployment", run_deployment)
+    _run(HOURS[0], HOURS[-1], write_materialized=False, max_child_runs=2, unit_steps=24, num_shard_chunks=6)
+    assert stages.count("references") == stages.count("overviews") == 4  # 90 hours from the origin: 4 days
+
+    groups = _groups(open_repo, ("references", "overviews/2"))
+    assert (groups["references"].status.values == 2).all() and (groups["overviews/2"].status.values == 2).all()
+    for i in range(len(HOURS)):
+        assert float(groups["references"].RAINRATE.isel(time=i, y=3, x=4)) == rate(i)
+        assert abs(float(groups["overviews/2"].RAINRATE.isel(time=i, y=1, x=2)) - rate(i)) <= PACKED_TOL
 
 
 def test_switching_to_materialized_with_no_new_files(harness, nwm):

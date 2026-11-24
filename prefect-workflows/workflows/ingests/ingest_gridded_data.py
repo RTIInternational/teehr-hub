@@ -6,16 +6,15 @@ import time
 
 import icechunk as ic
 from teehr_icechunk import grid_utils as gu
-from teehr_icechunk import index_ingest, ingest
+from teehr_icechunk import ingest, ref_ingest
 from teehr_icechunk import time_grid as tg
-from teehr_icechunk.prefect import PrefectRunner
+from teehr_icechunk.prefect import runner
 from teehr_icechunk.repo_const import DATA_GROUP_PATH, REFERENCES_GROUP_PATH
-from teehr_icechunk.sources import IndexSource
-from teehr_icechunk.units import InProcessRunner
+from teehr_icechunk.sources import ReferenceSource
 from workflows.models.ingest_gridded_data_input import IngestGriddedDataInput
 from workflows.utils.teehr_mapping import record_teehr_attrs
 from workflows.utils.time_utils import to_naive_utc
-from build_overviews import build_overviews as build_overviews_flow
+from build_overviews import CHILD_DEPLOYMENT, build_overviews as build_overviews_flow
 
 # Show the package's progress in the run logs: PREFECT_LOGGING_EXTRA_LOGGERS attaches Prefect's handlers,
 # not a level, so the logger would otherwise inherit the root's WARNING
@@ -25,11 +24,8 @@ configure_icechunk_s3_repo = task(gu.configure_icechunk_s3_repo, cache_policy=NO
 write_references = task(ingest.write_references, cache_policy=NO_CACHE)
 # Retried because reading source chunks can drop connections; each shard batch is committed on its own
 materialize_references = task(ingest.materialize_references, cache_policy=NO_CACHE, retries=3, retry_delay_seconds=30)
-open_index_repo = task(index_ingest.open_repo, cache_policy=NO_CACHE)
-ingest_index_references = task(index_ingest.ingest_references, cache_policy=NO_CACHE)
-
-# Units fan out as runs of this deployment (prefect-*.yaml)
-CHILD_DEPLOYMENT = "process-gridded-unit/process-gridded-unit"
+open_reference_repo = task(ref_ingest.open_repo, cache_policy=NO_CACHE)
+ingest_unit_references = task(ref_ingest.ingest_references, cache_policy=NO_CACHE)
 
 
 @flow(
@@ -46,8 +42,8 @@ def ingest_gridded_data(args: IngestGriddedDataInput) -> None:
     group to the map overviews. Each later stage processes the steps its upstream group changed, so a
     run that failed part-way is completed by the next one.
 
-    Sources whose references come from their files' indexes (e.g. GRIB2) run on teehr-icechunk's run model:
-    in units, in this run or fanned out as child runs (``max_child_runs``).
+    References of reference sources (GRIB2 indexes, parsed NWM analysis files) and every repo's overviews run on
+    teehr-icechunk's run model: in units, in this run or fanned out as child runs (``max_child_runs``).
 
     Parameters
     ----------
@@ -58,11 +54,10 @@ def ingest_gridded_data(args: IngestGriddedDataInput) -> None:
     end_dt = to_naive_utc(args.end_dt)
     start_dt = _resolve_start_dt(args, end_dt)
 
-    if isinstance(source, IndexSource):
-        repo = open_index_repo(args)
-        runner = (PrefectRunner(CHILD_DEPLOYMENT, args.max_child_runs, args.child_job_variables)
-                  if args.max_child_runs else InProcessRunner())
-        ingest_index_references(args, start_dt, end_dt, runner=runner, unit_steps=args.unit_steps, repo=repo)
+    if isinstance(source, ReferenceSource) and source.uses_run_model():
+        repo = open_reference_repo(args)
+        ingest_unit_references(args, start_dt, end_dt, runner=runner(args, CHILD_DEPLOYMENT), unit_steps=args.unit_steps,
+                               repo=repo)
     else:
         repo = _ingest_parsed_references(args, start_dt, end_dt)
     if args.write_materialized:

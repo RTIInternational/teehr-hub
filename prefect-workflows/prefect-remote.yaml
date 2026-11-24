@@ -529,7 +529,8 @@ deployments:
     description: >-
       Ingest NWM 3.1 forcing analysis/assimilation RAINRATE grids (CONUS) into an IceChunk S3
       repository using VirtualiZarr, then build map overviews. Full resolution stays virtual
-      (/references, read from noaa-nwm-pds); nothing is materialized.
+      (/references, read from noaa-nwm-pds); nothing is materialized. A scheduled run is one unit, run in
+      this run; a longer catch-up (start_dt/end_dt) fans out units of 30 days as process-gridded-unit runs.
     entrypoint: workflows/ingests/ingest_gridded_data.py:ingest_gridded_data
     parameters: {
       "args": {
@@ -537,6 +538,7 @@ deployments:
         "num_lookback_days": 1,
         # Upsert, so a re-issued file is re-referenced; a virtual reference to a changed file can't be read
         "write_mode": "upsert",
+        "max_child_runs": 4,
         # If materialized: 256 x 256 chunks encode 3.4x faster than 128 x 128, with about the same point reads
         "chunk_size": 256,
         "x_dim": "x",
@@ -555,6 +557,43 @@ deployments:
     schedule:
       cron: "40 */6 * * *"
       active: false
+
+  - name: ingest-nwm30-forcing-analysis-assim-icechunk
+    version:
+    tags: []
+    concurrency_limit:
+      limit: 1
+      collision_strategy: "CANCEL_NEW"
+    description: >-
+      Reference NWM 3.0 forcing analysis/assimilation RAINRATE grids (CONUS, tm02) in an IceChunk S3
+      repository and build map overviews; references only, read from gs://national-water-model. Backfill only: the
+      default window is the version's cycles (2023-09-19 to 2026-08-17). Units of 30 days fan out as
+      process-gridded-unit runs, 8 at a time, for the references and then the overviews; a rerun fills any that failed.
+    entrypoint: workflows/ingests/ingest_gridded_data.py:ingest_gridded_data
+    parameters: {
+      "args": {
+        "source": {"type": "nwm", "nwm_configuration": "forcing_analysis_assim", "nwm_version": "nwm30", "bucket": "gs://national-water-model", "t_minus_hours": [2]},
+        "start_dt": "2023-09-19T12:00:00",
+        "end_dt": "2026-08-17T23:00:00",
+        # Upsert, so a re-issued file is re-referenced; a virtual reference to a changed file can't be read
+        "write_mode": "upsert",
+        # GCS reads would otherwise be materialized; overviews and readers read the source
+        "write_materialized": false,
+        "max_child_runs": 8,
+        "x_dim": "x",
+        "y_dim": "y",
+        "fallback_source_crs": "+proj=lcc +lat_0=40 +lon_0=-97 +lat_1=30 +lat_2=60 +x_0=0 +y_0=0 +R=6370000 +units=m +no_defs",
+        "xconcat_kwargs": {
+          "coords": "minimal",
+          "data_vars": "minimal",
+          "compat": "override",
+          "join": "override",
+          "combine_attrs": "override"
+        }
+      }
+    }
+    # The units do the work; this run lists, prepares and records
+    work_pool: *work_pool_medium
 
   - name: ingest-nwm31-forcing-analysis-assim-hawaii-icechunk
     version:
@@ -601,8 +640,8 @@ deployments:
     description: >-
       Reference NWM 2.0 forcing analysis/assimilation RAINRATE grids (Hawaii, tm02) in an IceChunk S3
       repository and build map overviews; references only, read from gs://national-water-model. Backfill only: the
-      default window is the version's cycles (2019-06-19 to 2021-04-20). A run parses and writes in one
-      pass within the 3 h flow timeout, so run about a year at a time (start_dt/end_dt); upsert resumes.
+      default window is the version's cycles (2019-06-19 to 2021-04-20). Units run in this run, so run
+      about a year at a time within the 3 h flow timeout (start_dt/end_dt), or fan out (max_child_runs).
     entrypoint: workflows/ingests/ingest_gridded_data.py:ingest_gridded_data
     parameters: {
       "args": {
@@ -636,8 +675,8 @@ deployments:
     description: >-
       Reference NWM 2.1/2.2 forcing analysis/assimilation RAINRATE grids (Hawaii, tm02) in an IceChunk S3
       repository and build map overviews; references only, read from gs://national-water-model. Backfill only: the
-      default window is the version's cycles (2021-04-20 to 2023-09-19). A run parses and writes in one
-      pass within the 3 h flow timeout, so run about a year at a time (start_dt/end_dt); upsert resumes.
+      default window is the version's cycles (2021-04-20 to 2023-09-19). Units run in this run, so run
+      about a year at a time within the 3 h flow timeout (start_dt/end_dt), or fan out (max_child_runs).
     entrypoint: workflows/ingests/ingest_gridded_data.py:ingest_gridded_data
     parameters: {
       "args": {
@@ -671,8 +710,8 @@ deployments:
     description: >-
       Reference NWM 3.0 forcing analysis/assimilation RAINRATE grids (Hawaii, tm02) in an IceChunk S3
       repository and build map overviews; references only, read from gs://national-water-model. Backfill only: the
-      default window is the version's cycles (2023-09-19 to 2026-08-17). A run parses and writes in one
-      pass within the 3 h flow timeout, so run about a year at a time (start_dt/end_dt); upsert resumes.
+      default window is the version's cycles (2023-09-19 to 2026-08-17). Units run in this run, so run
+      about a year at a time within the 3 h flow timeout (start_dt/end_dt), or fan out (max_child_runs).
     entrypoint: workflows/ingests/ingest_gridded_data.py:ingest_gridded_data
     parameters: {
       "args": {
@@ -755,8 +794,8 @@ deployments:
     version:
     tags: []
     description: >-
-      One unit of a gridded ingest that fans out (max_child_runs > 0), started by ingest-gridded-data with
-      run_deployment. Not run on its own.
+      One unit of a gridded run that fans out (max_child_runs > 0): references or overviews, started by
+      ingest-gridded-data with run_deployment. Not run on its own. CONUS overview batches peak near 7 GB.
     entrypoint: workflows/ingests/process_gridded_unit.py:process_gridded_unit
     work_pool: *work_pool_medium
 
