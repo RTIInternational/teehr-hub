@@ -60,7 +60,7 @@ definitions:
         POLARIS_CLIENT_ID: "{{ $POLARIS_CLIENT_ID }}"
 
 deployments:
-  - name: run-platform-evaluations
+  - name: v1-run-platform-evaluations
     description: Run every platform evaluation's latest version (incremental), one at a time
     entrypoint: flows/evaluations.py:run_evaluations
     parameters:
@@ -70,7 +70,7 @@ deployments:
       collision_strategy: CANCEL_NEW
     work_pool: *work_pool_control_plane
 
-  - name: build-usgs-streamflow-percentiles
+  - name: v1-build-usgs-streamflow-percentiles
     description: Build public.usgs_streamflow_percentiles from public.usgs_streamflow
     entrypoint: flows/derived.py:build_derived_dataset
     parameters:
@@ -83,7 +83,7 @@ deployments:
       collision_strategy: CANCEL_NEW
     work_pool: *work_pool
 
-  - name: build-usgs-streamflow-climatology
+  - name: v1-build-usgs-streamflow-climatology
     description: Build public.usgs_streamflow_climatology from public.usgs_streamflow
     entrypoint: flows/derived.py:build_derived_dataset
     parameters:
@@ -94,12 +94,23 @@ deployments:
       collision_strategy: CANCEL_NEW
     work_pool: *work_pool
 
-  - name: build-usgs-streamflow-naive-scale
+  - name: v1-build-usgs-streamflow-naive-scale
     description: Build public.usgs_streamflow_naive_scale from public.usgs_streamflow
     entrypoint: flows/derived.py:build_derived_dataset
     parameters:
       observed: usgs_streamflow
       kind: naive_scale
+    concurrency_limit:
+      limit: 1
+      collision_strategy: CANCEL_NEW
+    work_pool: *work_pool
+
+  - name: v1-ingest-usgs-streamflow
+    description: Ingest USGS streamflow (the last day) into public.usgs_streamflow, for the gauges of its layer
+    entrypoint: flows/ingest_usgs.py:ingest_usgs_streamflow
+    parameters:
+      dataset: usgs_streamflow
+      lookback_days: 1
     concurrency_limit:
       limit: 1
       collision_strategy: CANCEL_NEW

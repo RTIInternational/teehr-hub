@@ -7,7 +7,7 @@ FROM prefecthq/prefect:3.9.0-python3.12
 ARG TEEHR_CORE_VERSION
 
 RUN pip install --no-cache-dir \
-    "teehr-core[engine,iceberg] @ https://github.com/RTIInternational/teehr-core/archive/${TEEHR_CORE_VERSION}.zip"
+    "teehr-core[engine,iceberg,fetch] @ https://github.com/RTIInternational/teehr-core/archive/${TEEHR_CORE_VERSION}.zip"
 
 RUN groupadd -g 1000 prefect && useradd -u 1000 -g 1000 -m -d /home/prefect prefect \
     && mkdir -p /teehr-v1 && chown -R prefect:prefect /teehr-v1
