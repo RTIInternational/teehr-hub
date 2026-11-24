@@ -15,12 +15,12 @@ own image (`Dockerfile`: teehr-core's warehouse writer and builders, Prefect; no
   `teehr datasets create usgs_streamflow_percentiles -p public --kind percentiles --observed usgs_streamflow`.
 - `flows/evaluations.py`: run a project's evaluations (default: all of `platform`, the specs in
   `evaluations/platform/`) through the control plane, one at a time, waiting for each.
-  Deployed as `run-platform-evaluations` (daily, starts paused: run it once by hand from the
+  Deployed as `v1-run-platform-evaluations` (daily, starts paused: run it once by hand from the
   Prefect UI before turning on its schedule). Runs act as their caller, so they show
   `service-account-teehr-platform-automation` as their creator.
 - `flows/ingest_usgs.py`: ingest USGS streamflow into `public.usgs_streamflow` for the gauges
   of its location layer (or given `sites`), with teehr-core's fetch and writer; the template
-  for v1 ingests. Deployed as `ingest-usgs-streamflow` (twice daily on use1, starts paused).
+  for v1 ingests. Deployed as `v1-ingest-usgs-streamflow` (twice daily on use1, starts paused).
   Uses the `api-usgs-pat` Secret block when there is one.
 - `tests/smoke_derived.py`: the flow against a throwaway local catalog, in the image.
 - `tests/smoke_evaluations.py`: the run-evaluations flow against a fake control plane.

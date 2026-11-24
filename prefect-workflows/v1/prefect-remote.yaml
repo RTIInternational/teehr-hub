@@ -107,7 +107,7 @@ definitions:
           effect: NoSchedule
 
 deployments:
-  - name: run-platform-evaluations
+  - name: v1-run-platform-evaluations
     description: Run every platform evaluation's latest version (incremental), one at a time
     entrypoint: flows/evaluations.py:run_evaluations
     parameters:
@@ -122,7 +122,7 @@ deployments:
       cron: "0 14 * * *"
       active: false
 
-  - name: build-usgs-streamflow-percentiles
+  - name: v1-build-usgs-streamflow-percentiles
     description: Build public.usgs_streamflow_percentiles from public.usgs_streamflow (monthly)
     entrypoint: flows/derived.py:build_derived_dataset
     parameters:
@@ -137,7 +137,7 @@ deployments:
       cron: "0 6 2 * *"
       active: false
 
-  - name: build-usgs-streamflow-climatology
+  - name: v1-build-usgs-streamflow-climatology
     description: Build public.usgs_streamflow_climatology from public.usgs_streamflow (monthly)
     entrypoint: flows/derived.py:build_derived_dataset
     parameters:
@@ -151,7 +151,7 @@ deployments:
       cron: "0 8 2 * *"
       active: false
 
-  - name: build-usgs-streamflow-naive-scale
+  - name: v1-build-usgs-streamflow-naive-scale
     description: Build public.usgs_streamflow_naive_scale from public.usgs_streamflow (monthly)
     entrypoint: flows/derived.py:build_derived_dataset
     parameters:
@@ -165,7 +165,7 @@ deployments:
       cron: "0 10 2 * *"
       active: false
 
-  - name: ingest-usgs-streamflow
+  - name: v1-ingest-usgs-streamflow
     description: Ingest USGS streamflow (the last day) into public.usgs_streamflow, for the gauges of its layer
     entrypoint: flows/ingest_usgs.py:ingest_usgs_streamflow
     parameters:
