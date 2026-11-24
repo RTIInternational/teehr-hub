@@ -123,6 +123,25 @@ def test_nwm_listing_valid_times(monkeypatch, bucket):
         gs.NWMForcing(t_minus_hours=[0, 1]).list_files(pd.Timestamp("2026-09-22"), pd.Timestamp("2026-09-22T01:00"))
 
 
+def test_nwm_listing_window_is_in_valid_times(monkeypatch):
+    """The range is valid times: tm02 files come from cycles 2 h later, and those valid outside the range are dropped,
+    so units of consecutive ranges list every hour once."""
+    asked = {}
+
+    def plan_nwm_grid_fetch(**kwargs):
+        asked.update(kwargs)
+        hours = pd.date_range(kwargs["start_date"] - pd.Timedelta("1h"), kwargs["end_date"] + pd.Timedelta("1h"), freq="h")
+        keys = [f"nwm.{c:%Y%m%d}/forcing_analysis_assim/nwm.t{c:%H}z.analysis_assim.forcing.tm02.conus.nc" for c in hours]
+        return type("Plan", (), {"component_paths": [f"gcs://national-water-model/{k}" for k in keys]})
+
+    monkeypatch.setattr(gs, "plan_nwm_grid_fetch", plan_nwm_grid_fetch)
+    monkeypatch.setattr(gs.NWMForcing, "_last_modified", lambda self, u: {})
+    start, end = pd.Timestamp("2026-10-16T18:00"), pd.Timestamp("2026-10-16T21:00")
+    listing = gs.NWMForcing().list_files(start, end)
+    assert (asked["start_date"], asked["end_date"]) == (start + pd.Timedelta("2h"), end + pd.Timedelta("2h"))
+    assert list(listing.index) == list(pd.date_range(start, end, freq="h"))
+
+
 def test_nwm_time_origin_covers_t_minus():
     """The grid starts at the earliest valid time of the version's first cycle, so tm02 files stay on it."""
     start = pd.Timestamp(gs.NWMForcing.version_start["nwm31"])

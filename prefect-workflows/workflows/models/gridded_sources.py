@@ -154,7 +154,11 @@ class NWMForcing(ic_sources.ParsedSource, GriddedSource):
         return not self.bucket.startswith("s3://")
 
     def list_files(self, start_dt: datetime, end_dt: datetime) -> pd.DataFrame:
-        """One file per hour in the range, with its last modified time from one listing per day."""
+        """One file per step in the range (valid hours, or forecast cycles), with its last modified time from one
+        listing per day."""
+        # The planner selects cycles (z-hours); an analysis file is valid tm hours before its cycle, so the cycles
+        # are the range shifted by the tm hours, and files valid outside it are dropped below
+        shifts = [] if self._is_forecast else [pd.Timedelta(hours=h) for h in (self.t_minus_hours or [0])]
         # Same planning path as teehr's nwm_grids_to_parquet: validation, GCS listing,
         # z-hour clipping by reference time, and the NWM version check
         plan = plan_nwm_grid_fetch(
@@ -162,8 +166,8 @@ class NWMForcing(ic_sources.ParsedSource, GriddedSource):
             output_type=self.output_type,
             variable_name=self.variable_name,
             nwm_version=self.nwm_version,
-            start_date=start_dt,
-            end_date=end_dt,
+            start_date=pd.Timestamp(start_dt) + min(shifts, default=pd.Timedelta(0)),
+            end_date=pd.Timestamp(end_dt) + max(shifts, default=pd.Timedelta(0)),
             t_minus_hours=None if self._is_forecast else self.t_minus_hours,
             ignore_missing_file=self.ignore_missing_file,
             prioritize_analysis_value_time=self.prioritize_analysis_value_time,
@@ -189,6 +193,8 @@ class NWMForcing(ic_sources.ParsedSource, GriddedSource):
                 "last_modified": modified.get(url, pd.NaT),
             })
         listing = listing_frame(rows, (REFERENCE_TIME, LEAD_TIME) if self._is_forecast else ("time",))
+        if not self._is_forecast:
+            listing = listing[(listing.index >= pd.Timestamp(start_dt)) & (listing.index <= pd.Timestamp(end_dt))]
         if listing.index.has_duplicates:
             dupes = listing.index[listing.index.duplicated()].unique()
             raise ValueError(f"{len(dupes)} step(s) have more than one file, e.g. {dupes[0]}; check t_minus_hours.")
