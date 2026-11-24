@@ -41,8 +41,12 @@ class GriddedSource(ic_sources.GriddedSource):
         return {}
 
 
-class NWMForcing(GriddedSource):
-    """NWM operational analysis and forecast forcing grids, listed through teehr's grid fetch planner."""
+class NWMForcing(ic_sources.ParsedSource, GriddedSource):
+    """NWM operational analysis and forecast forcing grids, listed through teehr's grid fetch planner.
+
+    Analysis references are written on teehr-icechunk's run model (units, fanned out with ``max_child_runs``);
+    forecasts stay on the one-commit path for now.
+    """
 
     type: Literal["nwm"] = "nwm"
     nwm_configuration: str = Field(default="forcing_analysis_assim", description="NWM configuration, e.g. 'forcing_analysis_assim'")
@@ -81,6 +85,9 @@ class NWMForcing(GriddedSource):
     # The parser reads HDF5 metadata in blocks; NWM's is scattered in small pieces, so 64 KB blocks
     # read 0.66 MB per file against 8.4 MB with the 1 MB default
     parser_kwargs: ClassVar[dict] = {"reader_factory": partial(BlockStoreReader, block_size=64 * 1024)}
+    # A new repo's manifests split every 30 days of hourly steps (25 CONUS references each), so a commit rewrites
+    # only the month it touches
+    manifest_split_steps: ClassVar[int] = 720
     # First cycle of each version; v2.1 and v2.2 are one version in teehr
     version_start: ClassVar[dict[str, datetime]] = {
         "nwm12": NWM12_START_DATE,
@@ -110,6 +117,10 @@ class NWMForcing(GriddedSource):
     @property
     def _is_forecast(self) -> bool:
         return self.nwm_configuration in self.forecast_grids
+
+    def uses_run_model(self) -> bool:
+        # Forecasts need only this flipped: list_files already indexes them by (cycle, lead)
+        return not self._is_forecast
 
     @property
     def source_bucket(self) -> str:
