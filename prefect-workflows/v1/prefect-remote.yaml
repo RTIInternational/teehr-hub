@@ -1,0 +1,195 @@
+# v1 flows (ADR-0019 in teehr-cloud-core) on EKS. Deployed by the v1 deployer job
+# (manifests/deployer-job.yaml.tpl) from the v1 image, apart from the legacy flows.
+name: teehr-hub-v1
+prefect-version: 3.9.0
+
+build: null
+push: null
+pull:
+  - prefect.deployments.steps.set_working_directory:
+      directory: /teehr-v1
+
+definitions:
+  work_pool_medium: &work_pool_medium
+    name: kubernetes-pool
+    job_variables:
+      image: "{{ $PREFECT_TEEHR_V1_IMAGE }}"
+      image_pull_policy: Always
+      namespace: "{{ $TEEHR_NAMESPACE }}"
+      service_account_name: prefect-job
+      finished_job_ttl: 300
+      job_watch_timeout_seconds: 900
+      pod_watch_timeout_seconds: 300
+      cpu_request: "2"
+      memory_request: 20Gi
+      node_selector:
+        teehr-hub/nodegroup-name: driver-r5-xlarge
+      env:
+        PREFECT_LOGGING_LEVEL: INFO
+        PREFECT_LOGGING_EXTRA_LOGGERS: teehr_core
+        AWS_REGION: "{{ $AWS_REGION }}"
+        REMOTE_CATALOG_REST_URI: "{{ $REMOTE_CATALOG_REST_URI }}"
+        REMOTE_WAREHOUSE_IDENTIFIER: "{{ $REMOTE_WAREHOUSE_IDENTIFIER }}"
+        POLARIS_OAUTH2_SERVER_URI: "{{ $POLARIS_OAUTH2_SERVER_URI }}"
+        POLARIS_CLIENT_ID: "{{ $POLARIS_CLIENT_ID }}"
+        POLARIS_DEFAULT_REALM: "{{ $POLARIS_DEFAULT_REALM }}"
+      tolerations:
+        - key: teehr-hub/dedicated
+          operator: Equal
+          value: worker
+          effect: NoSchedule
+        - key: teehr-hub_dedicated
+          operator: Equal
+          value: worker
+          effect: NoSchedule
+
+  # Fetch and write a few hundred thousand rows (ingests): a small pod.
+  work_pool_small: &work_pool_small
+    name: kubernetes-pool
+    job_variables:
+      image: "{{ $PREFECT_TEEHR_V1_IMAGE }}"
+      image_pull_policy: Always
+      namespace: "{{ $TEEHR_NAMESPACE }}"
+      service_account_name: prefect-job
+      finished_job_ttl: 300
+      job_watch_timeout_seconds: 900
+      pod_watch_timeout_seconds: 300
+      cpu_request: "1"
+      memory_request: 2Gi
+      node_selector:
+        teehr-hub/nodegroup-name: driver-r5-xlarge
+      env:
+        PREFECT_LOGGING_LEVEL: INFO
+        PREFECT_LOGGING_EXTRA_LOGGERS: teehr_core
+        AWS_REGION: "{{ $AWS_REGION }}"
+        REMOTE_CATALOG_REST_URI: "{{ $REMOTE_CATALOG_REST_URI }}"
+        REMOTE_WAREHOUSE_IDENTIFIER: "{{ $REMOTE_WAREHOUSE_IDENTIFIER }}"
+        POLARIS_OAUTH2_SERVER_URI: "{{ $POLARIS_OAUTH2_SERVER_URI }}"
+        POLARIS_CLIENT_ID: "{{ $POLARIS_CLIENT_ID }}"
+        POLARIS_DEFAULT_REALM: "{{ $POLARIS_DEFAULT_REALM }}"
+      tolerations:
+        - key: teehr-hub/dedicated
+          operator: Equal
+          value: worker
+          effect: NoSchedule
+        - key: teehr-hub_dedicated
+          operator: Equal
+          value: worker
+          effect: NoSchedule
+
+  # Calls the control plane and waits (the runs themselves are its jobs): a small pod.
+  work_pool_control_plane: &work_pool_control_plane
+    name: kubernetes-pool
+    job_variables:
+      image: "{{ $PREFECT_TEEHR_V1_IMAGE }}"
+      image_pull_policy: Always
+      namespace: "{{ $TEEHR_NAMESPACE }}"
+      service_account_name: prefect-job
+      finished_job_ttl: 300
+      job_watch_timeout_seconds: 900
+      pod_watch_timeout_seconds: 300
+      cpu_request: 250m
+      memory_request: 512Mi
+      node_selector:
+        teehr-hub/nodegroup-name: driver-r5-xlarge
+      env:
+        PREFECT_LOGGING_LEVEL: INFO
+        POLARIS_OAUTH2_SERVER_URI: "{{ $POLARIS_OAUTH2_SERVER_URI }}"
+        POLARIS_CLIENT_ID: "{{ $POLARIS_CLIENT_ID }}"
+      tolerations:
+        - key: teehr-hub/dedicated
+          operator: Equal
+          value: worker
+          effect: NoSchedule
+        - key: teehr-hub_dedicated
+          operator: Equal
+          value: worker
+          effect: NoSchedule
+
+deployments:
+  - name: v1-run-platform-evaluations
+    description: Run every platform evaluation's latest version (incremental), one at a time
+    entrypoint: flows/evaluations.py:run_evaluations
+    parameters:
+      project: platform
+    concurrency_limit:
+      limit: 1
+      collision_strategy: CANCEL_NEW
+    work_pool: *work_pool_control_plane
+    # Daily, after the day's USGS and NWM medium range ingests. Starts off: turn it on
+    # after a run by hand.
+    schedule:
+      cron: "0 14 * * *"
+      active: false
+
+  - name: v1-build-usgs-streamflow-percentiles
+    description: Build public.usgs_streamflow_percentiles from public.usgs_streamflow (monthly)
+    entrypoint: flows/derived.py:build_derived_dataset
+    parameters:
+      observed: usgs_streamflow
+      kind: percentiles
+    concurrency_limit:
+      limit: 1
+      collision_strategy: CANCEL_NEW
+    work_pool: *work_pool_medium
+    # Monthly, on the 2nd (after the month's ingests). Starts off: run it by hand first.
+    schedule:
+      cron: "0 6 2 * *"
+      active: false
+
+  - name: v1-build-usgs-streamflow-climatology
+    description: Build public.usgs_streamflow_climatology from public.usgs_streamflow (monthly)
+    entrypoint: flows/derived.py:build_derived_dataset
+    parameters:
+      observed: usgs_streamflow
+      kind: climatology
+    concurrency_limit:
+      limit: 1
+      collision_strategy: CANCEL_NEW
+    work_pool: *work_pool_medium
+    schedule:
+      cron: "0 8 2 * *"
+      active: false
+
+  - name: v1-build-usgs-streamflow-naive-scale
+    description: Build public.usgs_streamflow_naive_scale from public.usgs_streamflow (monthly)
+    entrypoint: flows/derived.py:build_derived_dataset
+    parameters:
+      observed: usgs_streamflow
+      kind: naive_scale
+    concurrency_limit:
+      limit: 1
+      collision_strategy: CANCEL_NEW
+    work_pool: *work_pool_medium
+    schedule:
+      cron: "0 10 2 * *"
+      active: false
+
+  - name: v1-ingest-usgs-streamflow
+    description: Ingest USGS streamflow (the last day) into public.usgs_streamflow, for the active gages of its layer with instantaneous discharge
+    entrypoint: flows/ingest_usgs.py:ingest_usgs_streamflow
+    parameters:
+      dataset: usgs_streamflow
+      where: is_active == True and has_inst_discharge == True
+      lookback_days: 1
+    concurrency_limit:
+      limit: 1
+      collision_strategy: CANCEL_NEW
+    work_pool: *work_pool_small
+    # Twice a day, as the legacy ingest (alongside it until they match). Starts off: run it
+    # by hand first.
+    schedule:
+      cron: "0 8,20 * * *"
+      active: false
+
+  - name: v1-backfill-usgs-streamflow
+    description: Fill public.usgs_streamflow's whole record from the USGS bulk Parquet files, then top up from the API (by hand; replaces the months it writes)
+    entrypoint: flows/ingest_usgs.py:backfill_usgs_streamflow
+    parameters:
+      dataset: usgs_streamflow
+      where: has_inst_discharge == True
+      workers: 4  # ~1 GB per site being read
+    concurrency_limit:
+      limit: 1
+      collision_strategy: CANCEL_NEW
+    work_pool: *work_pool_medium

@@ -11,10 +11,10 @@ icechunk = pytest.importorskip("icechunk")
 from prefect.testing.utilities import prefect_test_harness  # noqa: E402
 
 import ingest_gridded_data as ing  # noqa: E402
-from utils import time_grid as tg  # noqa: E402
+from teehr_icechunk import time_grid as tg  # noqa: E402
 from workflows.models import gridded_sources as gs  # noqa: E402
 from workflows.models.ingest_gridded_data_input import IngestGriddedDataInput  # noqa: E402
-from workflows.utils import repo_const as rc  # noqa: E402
+from teehr_icechunk import repo_const as rc  # noqa: E402
 
 NWM_CONUS_CRS = "+proj=lcc +lat_0=40 +lon_0=-97 +lat_1=30 +lat_2=60 +x_0=0 +y_0=0 +R=6370000 +units=m +no_defs"
 SHORT_RANGE = {"type": "nwm", "nwm_configuration": "forcing_short_range"}
@@ -124,7 +124,7 @@ def nwm(tmp_path, monkeypatch):
 
     def list_files(self, start_dt, end_dt):
         rows = [r for (cycle, _), r in published.items() if start_dt <= cycle <= end_dt]
-        return gs._listing(rows, (rc.REFERENCE_TIME, rc.LEAD_TIME))
+        return gs.listing_frame(rows, (rc.REFERENCE_TIME, rc.LEAD_TIME))
 
     config = icechunk.RepositoryConfig.default()
     config.set_virtual_chunk_container(icechunk.VirtualChunkContainer(prefix, icechunk.local_filesystem_store(str(src))))
@@ -139,7 +139,7 @@ def nwm(tmp_path, monkeypatch):
     monkeypatch.setattr(gs.NWMForcing, "source_bucket", prefix.rstrip("/"))
     monkeypatch.setattr(gs.NWMForcing, "store_kwargs", {})
     monkeypatch.setattr(gs.NWMForcing, "list_files", list_files)
-    monkeypatch.setattr(ing.gu, "configure_icechunk_s3_repo", open_repo)
+    monkeypatch.setattr(ing, "configure_icechunk_s3_repo", open_repo)
     monkeypatch.setattr(ing.gu, "build_icechunk_s3_storage", lambda **_: storage)
     monkeypatch.setattr(ing.gu, "open_repo_for_reading", open_repo)
     return publish, open_repo
@@ -171,7 +171,7 @@ def test_forecast_ingest_writes_steps_and_fills_partial_cycles(harness, nwm):
     assert attrs[rc.CONFIGURATION_NAME_ATTR] == "nwm31_forcing_short_range"
     assert refs[rc.REFERENCE_TIME].attrs.get("axis") is None and refs[rc.LEAD_TIME].values.tolist() == LEADS
     assert refs["status"].attrs["flag_meanings"].startswith("not_expected unwritten")
-    rain = refs["rainrate_hourly_mean"].isel(y=0, x=0).values
+    rain = refs["RAINRATE"].isel(y=0, x=0).values
     assert np.allclose(rain[0], [rate(0, lead) for lead in LEADS])
     assert np.allclose(rain[1, :6], [rate(1, lead) for lead in LEADS[:6]]) and np.isnan(rain[1, 6:]).all()
     assert (refs["status"].values[1, 6:] == rc.UNWRITTEN).all()
@@ -186,7 +186,7 @@ def test_forecast_ingest_writes_steps_and_fills_partial_cycles(harness, nwm):
         publish(3, lead)
     _run()
     refs, _ = _refs(open_repo)
-    rain = refs["rainrate_hourly_mean"].isel(y=0, x=0).values
+    rain = refs["RAINRATE"].isel(y=0, x=0).values
     assert np.allclose(rain[1], [rate(1, lead) for lead in LEADS])
     assert np.allclose(rain[3, :-1], [rate(3, lead) for lead in LEADS[:-1]]) and np.isnan(rain[3, -1])
     assert (refs["status"].values[2] == rc.UNWRITTEN).all()
@@ -202,7 +202,7 @@ def test_forecast_upsert_rewrites_reissued_steps(harness, nwm):
     publish(0, 5, modified="2026-02-01", reissued=True)
     _run(mode="upsert")
     refs, _ = _refs(open_repo)
-    assert np.isclose(float(refs["rainrate_hourly_mean"].isel({rc.REFERENCE_TIME: 0, "y": 0, "x": 0}).sel(lead_time=5)),
+    assert np.isclose(float(refs["RAINRATE"].isel({rc.REFERENCE_TIME: 0, "y": 0, "x": 0}).sel(lead_time=5)),
                       rate(0, 5, reissued=True))
     assert refs["created_at"].values[0, 4] == created and refs["updated_at"].values[0, 4] > created
     # Untouched steps keep their write
@@ -227,16 +227,16 @@ def test_forecast_data_and_overviews_follow_references(harness, nwm):
         publish(1, lead)
     _run(write_materialized=True, build_overviews_on_ingest=True, overview_factors=[2], num_shard_chunks=8, time_batch_size=16)
     refs, data, level = (_group(open_repo, g) for g in ("references", "data", "overviews/2"))
-    rain, refs_rain = data["rainrate_hourly_mean"].isel(y=0, x=0).values, refs["rainrate_hourly_mean"].isel(y=0, x=0).values
+    rain, refs_rain = data["RAINRATE"].isel(y=0, x=0).values, refs["RAINRATE"].isel(y=0, x=0).values
     assert np.allclose(rain, refs_rain, equal_nan=True) and np.isnan(rain[1, 6:9]).all()
     assert (data["status"].values == refs["status"].values).all()
     assert (data["value_time"].values == refs["value_time"].values).all()
     # Each shard is one cycle and a block of leads; each overview chunk one step and tile
-    assert _array(open_repo, "data/rainrate_hourly_mean").shards[:2] == (1, 8)
-    assert _array(open_repo, "data/rainrate_hourly_mean").chunks[:2] == (1, 1)
-    assert _array(open_repo, "overviews/2/rainrate_hourly_mean").chunks[:2] == (1, 1)
+    assert _array(open_repo, "data/RAINRATE").shards[:2] == (1, 8)
+    assert _array(open_repo, "data/RAINRATE").chunks[:2] == (1, 1)
+    assert _array(open_repo, "overviews/2/RAINRATE").chunks[:2] == (1, 1)
     assert level.sizes == {rc.REFERENCE_TIME: 2, rc.LEAD_TIME: 18, "y": 4, "x": 5}
-    assert np.allclose(level["rainrate_hourly_mean"].isel(y=0, x=0).values, rain, atol=2 * 0.075 / 65535, equal_nan=True)
+    assert np.allclose(level["RAINRATE"].isel(y=0, x=0).values, rain, atol=2 * 0.075 / 65535, equal_nan=True)
     assert (level["status"].values == data["status"].values).all()
 
     # Filling cycle 1's gap materializes and coarsens only the new steps
@@ -245,9 +245,9 @@ def test_forecast_data_and_overviews_follow_references(harness, nwm):
         publish(1, lead)
     _run(write_materialized=True, build_overviews_on_ingest=True, overview_factors=[2], num_shard_chunks=8, time_batch_size=16)
     data, level = _group(open_repo, "data"), _group(open_repo, "overviews/2")
-    assert np.allclose(data["rainrate_hourly_mean"].isel(y=0, x=0).values[1], [rate(1, lead) for lead in LEADS])
+    assert np.allclose(data["RAINRATE"].isel(y=0, x=0).values[1], [rate(1, lead) for lead in LEADS])
     assert (data["updated_at"].values[0] == updated[0]).all() and (data["updated_at"].values[1, :6] == updated[1, :6]).all()
-    assert not np.isnan(level["rainrate_hourly_mean"].isel(y=0, x=0).values[1]).any()
+    assert not np.isnan(level["RAINRATE"].isel(y=0, x=0).values[1]).any()
 
 
 def test_step_batches_hold_whole_shards():

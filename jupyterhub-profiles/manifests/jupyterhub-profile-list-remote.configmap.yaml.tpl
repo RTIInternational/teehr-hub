@@ -406,7 +406,7 @@ data:
                 "hefs-v0-3-0": {
                   "display_name": "HEFS-FEWS v0.3.x - XL (4 cores, 16 GB memory)",
                   "kubespawner_override": {
-                    "image": "${var.remoteCluster.ecrRegistry}/hefs-fews-hub:v0.3.1",
+                    "image": "${var.remoteCluster.ecrRegistry}/hefs-fews-hub:v0.3.3",
                     "mem_limit": "32G",
                     "mem_guarantee": "19G",
                     "cpu_limit": 4,

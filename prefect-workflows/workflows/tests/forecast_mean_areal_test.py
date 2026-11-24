@@ -5,17 +5,24 @@ import pytest
 import xarray as xr
 
 pytest.importorskip("teehr")
-from teehr.fetching.nwm.grid_utils import build_weights_matrix  # noqa: E402
+from teehr_icechunk.weights import build_weights_matrix  # noqa: E402
 
-from mean_areal_values import _area_weights, _mean_areal_batch, _written_forecast_steps  # noqa: E402
-from utils import grid_utils as gu  # noqa: E402
-from utils import time_grid as tg  # noqa: E402
+from mean_areal_values import _window  # noqa: E402
+from teehr_icechunk.mean_areal_plan import area_weights, written_forecast_steps  # noqa: E402
+from teehr_icechunk import grid_utils as gu  # noqa: E402
+from teehr_icechunk import time_grid as tg  # noqa: E402
+from teehr_icechunk.mean_areal_kernel import GridWeights  # noqa: E402
 from workflows.models.mean_areal_inputs import MeanArealValuesInput  # noqa: E402
-from workflows.utils import repo_const as rc  # noqa: E402
+from teehr_icechunk import repo_const as rc  # noqa: E402
 
 DIM = rc.REFERENCE_TIME
 CYCLES = pd.date_range("2026-10-01", periods=3, freq="6h")
 MEMBERS, LEADS = [0, 1], [1, 2, 3, 6]
+
+
+def _written_forecast_steps(da, args, fixed):
+    """The flow's written forecast steps for its run window."""
+    return written_forecast_steps(da, args.append_dim, fixed, *_window(args))
 
 
 def _args(**kwargs):
@@ -58,20 +65,18 @@ def test_written_forecast_steps_skip_unwritten_and_not_expected(tmp_path):
 
 
 @pytest.mark.parametrize("ensemble", [True, False])
-def test_forecast_batch_means_and_columns(tmp_path, ensemble):
+def test_forecast_batch_means_and_columns(tmp_path, ensemble, batch_means):
     da, values, fixed = _forecast_grid(tmp_path, ensemble)
     weights = pd.DataFrame({
         "location_id": ["p-a", "p-a", "p-b"], "row": [0, 1, 3], "col": [1, 1, 4], "fraction_covered": [1.0, 0.5, 1.0],
     })
-    weights["weight"] = _area_weights(weights, da, "lat")
-    matrix, rows, cols, location_ids = build_weights_matrix(weights)
-    window = (int(rows.min()), int(rows.max()) + 1, int(cols.min()), int(cols.max()) + 1)
+    weights["weight"] = area_weights(weights, da, "lat")
+    grid_weights = GridWeights(*build_weights_matrix(weights))
     args = _args()
     steps = _written_forecast_steps(da, args, fixed)
     # Shards of 2 leads, batches of up to 4 steps: leads are not contiguous within some batches
     frames = [
-        _mean_areal_batch(batch, da=da, args=args, window=window, rows=rows, cols=cols, matrix=matrix,
-                          location_ids=location_ids, fixed=fixed)
+        batch_means(batch, da, args, grid_weights, fixed)
         for batch in tg.step_batches(steps, fixed, shard_leads=2, max_steps=4)
     ]
     df = pd.concat(frames, ignore_index=True)

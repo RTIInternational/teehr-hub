@@ -5,6 +5,7 @@ index (CRS, pixel size, extent). They are shared by every variable and configura
 that grid. A MERGE never deletes, so pixels a re-drawn polygon no longer covers stay
 in the table.
 """
+import logging
 import geopandas as gpd
 import icechunk as ic
 import pandas as pd
@@ -16,16 +17,26 @@ from shapely.geometry import box
 from teehr import Evaluation
 from teehr.utilities.generate_weights import generate_weights_file
 
-from utils import grid_utils as gu
-from utils import time_grid as tg
+from teehr_icechunk import grid_utils as gu
+from teehr_icechunk import time_grid as tg
 from workflows.utils.common_utils import initialize_evaluation, table_exists
 from workflows.models.mean_areal_inputs import PixelCoverageWeightsInput
+
+# Show the package's progress in the run logs: PREFECT_LOGGING_EXTRA_LOGGERS attaches Prefect's handlers,
+# not a level, so the logger would otherwise inherit the root's WARNING
+logging.getLogger("teehr_icechunk").setLevel(logging.INFO)
 
 WEIGHTS_TABLE_NAME = "grid_pixel_coverage_weights"
 WEIGHTS_UNIQUENESS_FIELDS = ["location_id", "row", "col", "grid_name"]
 WEIGHTS_PARTITION_BY = ["grid_name"]
 # Equal-area CRS for comparing polygon areas
 EQUAL_AREA_CRS = "EPSG:6933"
+# Spark settings for the weights and mean areal flows: Arrow converts pandas <-> Spark ~10x faster (weights,
+# timeseries writes), and a failed conversion errors instead of silently taking the slow path
+ARROW_CONFIGS = {
+    "spark.sql.execution.arrow.pyspark.enabled": "true",
+    "spark.sql.execution.arrow.pyspark.fallback.enabled": "false",
+}
 
 
 @task(timeout_seconds=60 * 2)
@@ -80,10 +91,12 @@ def write_dataframe_to_warehouse(
     catalog_name: str = None,
     namespace_name: str = None,
     partition_by: list[str] = None,
+    replace_filters: list[dict] = None,
 ):
-    """Write a dataframe to an iceberg warehouse table."""
+    """Write a pandas or Spark dataframe to an iceberg warehouse table."""
     logger = get_run_logger()
-    logger.info(f"Writing {len(dataframe)} rows to the '{table_name}' warehouse table with write_mode='{write_mode}'.")
+    rows = f"{len(dataframe)} rows" if isinstance(dataframe, pd.DataFrame) else "rows"
+    logger.info(f"Writing {rows} to the '{table_name}' warehouse table with write_mode='{write_mode}'.")
     ev._write.to_warehouse(
         source_data=dataframe,
         table_name=table_name,
@@ -92,6 +105,7 @@ def write_dataframe_to_warehouse(
         catalog_name=catalog_name,
         namespace_name=namespace_name,
         partition_by=partition_by,
+        replace_filters=replace_filters,
     )
     logger.info(f"Rows written to the '{table_name}' warehouse table.")
 
@@ -145,6 +159,92 @@ def filter_polygons_by_coverage(
     return kept
 
 
+@task(cache_policy=NO_CACHE, timeout_seconds=60 * 10)
+def read_location_polygons(ev: Evaluation, location_id_prefix: str) -> gpd.GeoDataFrame:
+    """The polygon locations whose ids start with ``location_id_prefix``."""
+    polygons_gdf = ev.locations.filter(
+        filters=[{"column": "id", "operator": "like", "value": like_prefix(location_id_prefix)}]
+    ).to_geopandas()
+    if polygons_gdf.empty:
+        raise ValueError(f"No locations found with prefix '{location_id_prefix}'.")
+    return polygons_gdf
+
+
+def like_prefix(location_id_prefix: str) -> str:
+    """A LIKE pattern for ids starting with ``<prefix>-``, with the prefix's own wildcards escaped.
+
+    Used for reads and for replace_where filters, so both cover exactly the layer's ids.
+    """
+    escaped = location_id_prefix.replace("_", "\\_").replace("%", "\\%")
+    return f"{escaped}-%"
+
+
+def weights_for_grid(
+    polygons_gdf: gpd.GeoDataFrame,
+    template_da: xr.DataArray,
+    x_dim: str,
+    y_dim: str,
+    min_coverage: float,
+    configuration_name: str,
+    grid_name: str,
+) -> pd.DataFrame:
+    """Pixel coverage weights of the polygons on a grid, formatted for the warehouse table.
+
+    ``template_da`` is any variable of the grid, opened lazily; only its geometry is used.
+    """
+    logger = get_run_logger()
+    missing_dims = {x_dim, y_dim} - set(template_da.dims)
+    if missing_dims:
+        raise ValueError(
+            f"Grid has no dimension(s) {sorted(missing_dims)}; set x_dim/y_dim. Dims: {template_da.dims}"
+        )
+    # teehr requires x/y dims; positions are unchanged, so row/col still index the stored grid.
+    # teehr uses only the grid geometry, so the data isn't read.
+    template_da = template_da.rename({x_dim: "x", y_dim: "y"})
+    polygons_gdf = polygons_gdf.to_crs(template_da.rio.crs)
+    # Some source polygons are invalid (degenerate or self-intersecting segments); repair as teehr does.
+    polygons_gdf.geometry = polygons_gdf.geometry.make_valid(method="structure", keep_collapsed=False)
+    polygons_gdf = filter_polygons_by_coverage(
+        polygons_gdf=polygons_gdf,
+        grid_da=template_da,
+        min_coverage=min_coverage
+    )
+    # Shared with standalone teehr: one implementation, one row/col convention.
+    weights_df = generate_weights_file(
+        zone_polygons=polygons_gdf,
+        template_dataset=template_da.to_dataset(name="template"),
+        variable_name="template",
+        output_weights_filepath=None,
+        crs_wkt=template_da.rio.crs.to_wkt(),
+        unique_zone_id="id",
+    )
+    logger.info(f"Generated weights for {weights_df['location_id'].nunique()} location(s).")
+    return format_weights_df(weights_df=weights_df, configuration_name=configuration_name, grid_name=grid_name)
+
+
+def write_weights(
+    ev: Evaluation, weights_df: pd.DataFrame, write_mode: str, location_id_prefix: str, grid_name: str
+):
+    """Write a layer's formatted weights on a grid, creating the table on first use.
+
+    'replace_where' replaces the layer's weights on the grid, so pixels and polygons a re-created layer no longer
+    has are removed; 'upsert' never deletes. Other layers and grids are kept either way.
+    """
+    exists = table_exists(ev=ev, table_name=WEIGHTS_TABLE_NAME)
+    write_dataframe_to_warehouse(
+        ev=ev,
+        dataframe=weights_df,
+        table_name=WEIGHTS_TABLE_NAME,
+        uniqueness_fields=WEIGHTS_UNIQUENESS_FIELDS,
+        write_mode=write_mode if exists else "create_or_replace",
+        partition_by=WEIGHTS_PARTITION_BY,
+        replace_filters=[
+            {"column": "grid_name", "operator": "=", "value": grid_name},
+            {"column": "location_id", "operator": "like", "value": like_prefix(location_id_prefix)},
+        ] if exists and write_mode == "replace_where" else None,
+    )
+
+
 @flow(
     name="calculate-pixel-coverage-weights",
     description="Calculate pixel coverage weights for a given grid and polygon layer using exactextract."
@@ -162,23 +262,9 @@ def calculate_pixel_coverage_weights(args: PixelCoverageWeightsInput):
     ev = initialize_evaluation(
         temp_dir_path=args.temp_dir_path,
         start_spark_cluster=args.start_spark_cluster,
-        # Arrow converts the weights DataFrame to Spark ~10x faster
-        update_configs={
-            "spark.sql.execution.arrow.pyspark.enabled": "true"
-        }
+        update_configs=ARROW_CONFIGS,
     )
-    # Read the polygon locations based on the location ID prefix
-    polygons_gdf = ev.locations.filter(
-        filters=[
-            {
-                "column": "id",
-                "operator": "like",
-                "value": f"{args.location_id_prefix}-%"
-            }
-        ]
-    ).to_geopandas()
-    if polygons_gdf.empty:
-        raise ValueError(f"No locations found with prefix '{args.location_id_prefix}'.")
+    polygons_gdf = read_location_polygons(ev, args.location_id_prefix)
 
     store = get_readonly_repo_store(
         dest_bucket=args.dest_bucket,
@@ -189,47 +275,15 @@ def calculate_pixel_coverage_weights(args: PixelCoverageWeightsInput):
     grid_name = resolve_grid_name(store, args.grid_name, args.configuration_name)
     grid_ds = xr.open_zarr(store, group=gu.read_data_group(store), decode_coords="all", chunks=None)
     variable_name = args.grid_variable_name or next(iter(grid_ds.data_vars))
-    grid_template_da = grid_ds[variable_name]
-    missing_dims = {args.x_dim, args.y_dim} - set(grid_template_da.dims)
-    if missing_dims:
-        raise ValueError(
-            f"Grid has no dimension(s) {sorted(missing_dims)}; set x_dim/y_dim. Dims: {grid_template_da.dims}"
-        )
-    # teehr requires x/y dims; positions are unchanged, so row/col still index the stored grid.
-    # teehr uses only the grid geometry, so the data isn't read.
-    grid_template_da = grid_template_da.rename({args.x_dim: "x", args.y_dim: "y"})
     logger.info(f"Using the '{variable_name}' grid as the template.")
 
-    polygons_gdf = polygons_gdf.to_crs(grid_template_da.rio.crs)
-    # Some source polygons are invalid (degenerate or self-intersecting segments); repair as teehr does.
-    polygons_gdf.geometry = polygons_gdf.geometry.make_valid(method="structure", keep_collapsed=False)
-    polygons_gdf = filter_polygons_by_coverage(
+    weights_df = weights_for_grid(
         polygons_gdf=polygons_gdf,
-        grid_da=grid_template_da,
-        min_coverage=args.min_valid_coverage
-    )
-
-    # Shared with standalone teehr: one implementation, one row/col convention.
-    weights_df = generate_weights_file(
-        zone_polygons=polygons_gdf,
-        template_dataset=grid_template_da.to_dataset(name=variable_name),
-        variable_name=variable_name,
-        output_weights_filepath=None,
-        crs_wkt=grid_template_da.rio.crs.to_wkt(),
-        unique_zone_id="id",
-    )
-
-    weights_df = format_weights_df(
-        weights_df=weights_df,
+        template_da=grid_ds[variable_name],
+        x_dim=args.x_dim,
+        y_dim=args.y_dim,
+        min_coverage=args.min_valid_coverage,
         configuration_name=args.configuration_name,
-        grid_name=grid_name
+        grid_name=grid_name,
     )
-
-    write_dataframe_to_warehouse(
-        ev=ev,
-        dataframe=weights_df,
-        table_name=WEIGHTS_TABLE_NAME,
-        uniqueness_fields=WEIGHTS_UNIQUENESS_FIELDS,
-        write_mode=args.write_mode if table_exists(ev=ev, table_name=WEIGHTS_TABLE_NAME) else "create_or_replace",
-        partition_by=WEIGHTS_PARTITION_BY,
-    )
+    write_weights(ev, weights_df, args.write_mode, args.location_id_prefix, grid_name)

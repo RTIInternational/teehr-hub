@@ -1,9 +1,8 @@
 """Gridded data sources for the ingest_gridded_data Prefect flow, selected by their ``type``."""
 import re
-from abc import ABC, abstractmethod
 from datetime import datetime
 from functools import partial
-from typing import ClassVar, Literal, Optional
+from typing import Annotated, ClassVar, Literal, Optional, Union
 
 import numpy as np
 import obstore
@@ -11,7 +10,8 @@ import pandas as pd
 import xarray as xr
 from obspec_utils.readers import BlockStoreReader
 from obstore.store import from_url
-from pydantic import BaseModel, Field, model_validator
+from pydantic import Field, model_validator
+from teehr import Variable
 from teehr.fetching.const import (
     NWM12_START_DATE,
     NWM20_START_DATE,
@@ -22,91 +22,23 @@ from teehr.fetching.const import (
 from teehr.fetching.nwm.nwm_grids import plan_nwm_grid_fetch
 from teehr.fetching.utils import REMOTE_RETRY_CONFIG, format_nwm_configuration_metadata
 
-from workflows.utils.data_status import with_status
-from workflows.utils.repo_const import LEAD_TIME, MEMBER, REFERENCE_TIME, STATUS_COORD
+from teehr_icechunk import sources as ic_sources
+from teehr_icechunk.packed_encoding import PackedEncoding
+from teehr_icechunk.sources import gefs_reforecast, listing_frame
+from teehr_icechunk.data_status import with_status
+from teehr_icechunk.repo_const import LEAD_TIME, REFERENCE_TIME, STATUS_COORD
+from workflows.utils.teehr_mapping import CELSIUS, MM, MM_PER_S, RAINRATE_HOURLY_MEAN, TeehrMapping
 
-# Columns of a source listing, indexed by each file's timestamp (or forecast step)
-LISTING_COLUMNS = ["url", STATUS_COORD, "last_modified"]
 
+class GriddedSource(ic_sources.GriddedSource):
+    """A gridded source of this deployment: teehr-icechunk's interface plus the teehr names of its variables."""
 
-class GriddedSource(BaseModel, ABC):
-    """A gridded source: its files, its time grid, and its IceChunk repository."""
+    def teehr_mappings(self) -> dict[str, TeehrMapping]:
+        """teehr variable, unit and conversion of each ingested variable, keyed by its own name.
 
-    source_bucket: ClassVar[str]
-    # Source-specific obstore kwargs; deployment obstore_kwargs override them
-    store_kwargs: ClassVar[dict] = {}
-    # Options for the IceChunk virtual chunk container's object store, e.g. region
-    virtual_store_kwargs: ClassVar[dict] = {}
-    # Source-specific kwargs for the reference parser, e.g. the HDF5 reader's block size
-    parser_kwargs: ClassVar[dict] = {}
-    # Ingest's write_materialized when a run doesn't set it
-    materialize_by_default: ClassVar[bool] = True
-    time_step: ClassVar[pd.Timedelta]
-
-    @abstractmethod
-    def list_files(self, start_dt: datetime, end_dt: datetime) -> pd.DataFrame:
-        """Files published for the range, one per step: ``LISTING_COLUMNS`` indexed by time.
-
-        Forecast sources index by step, (``reference_time``, [``member``], ``lead_time``), selecting
-        cycles by reference time.
-        """
-
-    @abstractmethod
-    def time_origin(self) -> pd.Timestamp:
-        """First step of the source's record; the repo's time grid starts here."""
-
-    @abstractmethod
-    def repository_name(self) -> str:
-        """IceChunk repository (configuration) name; teehr-valid (letters, digits, underscores)."""
-
-    @abstractmethod
-    def ingest_variables(self) -> list[str]:
-        """Source variables to materialize."""
-
-    def grid_name(self) -> str:
-        """Grid (CRS, pixel size, extent) the source's data is on; sources sharing a grid share a name."""
-        return self.repository_name()
-
-    def lead_times(self) -> list[int] | None:
-        """Forecast lead times in hours, fixed when the repo is created; None for analysis sources."""
-        return None
-
-    def members(self) -> list[int] | None:
-        """Ensemble members, fixed when the repo is created; None for sources without members."""
-        return None
-
-    def fixed_axes(self) -> dict[str, list[int]]:
-        """The repo's axes after its append axis, in order; empty for analysis sources."""
-        axes = {MEMBER: self.members(), LEAD_TIME: self.lead_times()}
-        return {name: values for name, values in axes.items() if values is not None}
-
-    def append_dim(self) -> str:
-        """The repo's append axis: cycles for forecast sources, valid times otherwise."""
-        return REFERENCE_TIME if self.lead_times() is not None else "time"
-
-    def timeseries_type(self) -> str:
-        """teehr's timeseries table for the source's values."""
-        return "secondary" if self.lead_times() is not None else "primary"
-
-    def credentials(self) -> dict:
-        """Source access keys, for obstore and the virtual chunk container; empty means anonymous.
-
-        Both take the same dict, so use keys they share: S3 ``access_key_id``, ``secret_access_key``,
-        ``session_token``; GCS ``service_account_key``, ``application_credentials``, ``bearer_token``.
-        Keys are read once per run, so they must outlive it.
+        Ingest stamps them on the repo as ``teehr:*`` attributes, which the dashboard and mean areal values read.
         """
         return {}
-
-    def preprocess(self, ds: xr.Dataset, url: str) -> xr.Dataset:
-        """Adjust one file's virtual dataset before concatenation."""
-        return ds
-
-
-def _listing(rows: list[dict], index: tuple[str, ...] = ("time",)) -> pd.DataFrame:
-    df = pd.DataFrame(rows, columns=[*index, *LISTING_COLUMNS])
-    if len(index) == 1:
-        return df.set_index(pd.DatetimeIndex(df.pop(index[0]), name=index[0])).sort_index()
-    return df.set_index(list(index)).sort_index()
 
 
 class NWMForcing(GriddedSource):
@@ -245,7 +177,7 @@ class NWMForcing(GriddedSource):
                 # NaT if published after the listing; upsert compares it as not newer
                 "last_modified": modified.get(url, pd.NaT),
             })
-        listing = _listing(rows, (REFERENCE_TIME, LEAD_TIME) if self._is_forecast else ("time",))
+        listing = listing_frame(rows, (REFERENCE_TIME, LEAD_TIME) if self._is_forecast else ("time",))
         if listing.index.has_duplicates:
             dupes = listing.index[listing.index.duplicated()].unique()
             raise ValueError(f"{len(dupes)} step(s) have more than one file, e.g. {dupes[0]}; check t_minus_hours.")
@@ -281,6 +213,16 @@ class NWMForcing(GriddedSource):
     def grid_name(self) -> str:
         return self.grid
 
+    def _rainrate_units(self) -> str:
+        """RAINRATE's units string, which NWM changed in version 2.1 (teehr's nwm22)."""
+        return "mm s-1" if self.nwm_version == "nwm20" else "mm s^-1"
+
+    def teehr_mappings(self) -> dict[str, TeehrMapping]:
+        return {"RAINRATE": TeehrMapping(MM_PER_S, RAINRATE_HOURLY_MEAN, source_units=self._rainrate_units())}
+
+    def overview_encoding(self) -> dict[str, PackedEncoding]:
+        return {"RAINRATE": PackedEncoding(dtype="uint16", max_value=0.075, units=self._rainrate_units())}
+
     def lead_times(self) -> list[int] | None:
         return self.forecast_grids[self.nwm_configuration][1] if self._is_forecast else None
 
@@ -298,5 +240,30 @@ class NWMForcing(GriddedSource):
         return with_status(ds, "stable", dim=REFERENCE_TIME)
 
 
-# One source type here; with more, use Annotated[Union[...], Field(discriminator="type")]
-GriddedSourceType = NWMForcing
+def _by_window(name: str, long_name: str) -> dict[int, Variable]:
+    """teehr variables for the 3 h and 6 h windows of a windowed GEFS variable, e.g. temperature_3hr_max."""
+    return {h: Variable(name=name.format(h=h), long_name=long_name.format(h=h)) for h in (3, 6)}
+
+
+class GEFSv12Reforecast(gefs_reforecast.GEFSv12Reforecast, GriddedSource):
+    """teehr-icechunk's GEFS v12 reforecast source, with teehr names for its variables.
+
+    Values are the published windows, not deaccumulated: each is named by the hours it covers (``window_hours``),
+    3 h or 6 h, since windows restart every 6 h.
+    """
+
+    TEEHR_MAPPINGS: ClassVar[dict[str, TeehrMapping]] = {
+        # 1 kg m-2 of water is 1 mm deep
+        "APCP_surface": TeehrMapping(MM, source_units="kg m-2", variables_by_interval=_by_window(
+            "precipitation_{h}hr_sum", "{h}-Hour Total Precipitation")),
+        "TMAX_2m": TeehrMapping(CELSIUS, offset=-273.15, source_units="K", variables_by_interval=_by_window(
+            "temperature_{h}hr_max", "{h}-Hour Maximum Temperature")),
+        "TMIN_2m": TeehrMapping(CELSIUS, offset=-273.15, source_units="K", variables_by_interval=_by_window(
+            "temperature_{h}hr_min", "{h}-Hour Minimum Temperature")),
+    }
+
+    def teehr_mappings(self) -> dict[str, TeehrMapping]:
+        return {name: self.TEEHR_MAPPINGS[name] for name in self.variables if name in self.TEEHR_MAPPINGS}
+
+
+GriddedSourceType = Annotated[Union[NWMForcing, GEFSv12Reforecast], Field(discriminator="type")]

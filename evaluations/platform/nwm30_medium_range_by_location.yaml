@@ -1,0 +1,20 @@
+# NWM 3.0 medium range vs USGS streamflow, per gage and member over all lead times
+version: 1
+name: nwm30_medium_range_by_location
+inputs:
+  primary:
+    dataset: public.usgs_streamflow
+  secondary:
+    - dataset: public.nwm30_medium_range
+pair:
+  relation: public.usgs_nwm30
+aggregate:
+  - group_by: [primary_series_key, secondary_dataset, member]
+    metrics:
+      - count
+      - root_mean_standard_deviation_ratio
+      - relative_bias
+      - nash_sutcliffe_efficiency
+      - kling_gupta_efficiency
+output:
+  geometry: primary_series_key

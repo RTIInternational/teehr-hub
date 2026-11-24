@@ -39,7 +39,7 @@ definitions:
         PREFECT_LOGGING_LEVEL: *log_level
         TEEHR_SPARK_IMAGE: "{{ $TEEHR_SPARK_IMAGE }}"
         TEEHR_NAMESPACE: "{{ $TEEHR_NAMESPACE }}"
-        PREFECT_LOGGING_EXTRA_LOGGERS: teehr
+        PREFECT_LOGGING_EXTRA_LOGGERS: teehr,teehr_icechunk
         # Concurrent chunk reads/writes per zarr call (default 10)
         ZARR_ASYNC__CONCURRENCY: "128"
         # Start Local Only
@@ -355,9 +355,132 @@ deployments:
           "compat": "override",
           "join": "override",
           "combine_attrs": "override"
-        },
-        "overview_encoding": {
-          "rainrate_hourly_mean": {"dtype": "uint16", "max_value": 0.075, "units": "mm/s"}
+        }
+      }
+    }
+    work_pool: *work_pool
+
+  - name: ingest-nwm31-forcing-analysis-assim-hawaii-icechunk
+    version:
+    tags: []
+    description: >-
+      Ingest NWM 3.1 forcing analysis/assimilation RAINRATE grids (Hawaii, tm02) into an IceChunk S3
+      repository, then build map overviews. Full resolution stays virtual (/references, read from
+      s3://noaa-nwm-pds); nothing is materialized. Backfill the version's start (2026-08-18) with start_dt.
+    entrypoint: workflows/ingests/ingest_gridded_data.py:ingest_gridded_data
+    parameters: {
+      "args": {
+        "source": {"type": "nwm", "nwm_configuration": "forcing_analysis_assim_hawaii", "nwm_version": "nwm31", "grid": "nwm_hawaii_forcing", "bucket": "s3://noaa-nwm-pds", "t_minus_hours": [2]},
+        "num_lookback_days": 1,
+        # Upsert, so a re-issued file is re-referenced; a virtual reference to a changed file can't be read
+        "write_mode": "upsert",
+        "write_materialized": false,
+        "x_dim": "x",
+        "y_dim": "y",
+        # v2.x files have no crs variable
+        "fallback_source_crs": "+proj=lcc +lat_0=20.6 +lon_0=-157.42 +lat_1=10 +lat_2=30 +x_0=0 +y_0=0 +R=6370000 +units=m +no_defs",
+        "xconcat_kwargs": {
+          "coords": "minimal",
+          "data_vars": "minimal",
+          "compat": "override",
+          "join": "override",
+          "combine_attrs": "override"
+        }
+      }
+    }
+    work_pool: *work_pool
+
+  - name: ingest-nwm20-forcing-analysis-assim-hawaii-icechunk
+    version:
+    tags: []
+    description: >-
+      Reference NWM 2.0 forcing analysis/assimilation RAINRATE grids (Hawaii, tm02) in an IceChunk S3
+      repository and build map overviews; references only, read from gs://national-water-model. Backfill only: the
+      default window is the version's cycles (2019-06-19 to 2021-04-20). A run parses and writes in one
+      pass within the 3 h flow timeout, so run about a year at a time (start_dt/end_dt); upsert resumes.
+    entrypoint: workflows/ingests/ingest_gridded_data.py:ingest_gridded_data
+    parameters: {
+      "args": {
+        "source": {"type": "nwm", "nwm_configuration": "forcing_analysis_assim_hawaii", "nwm_version": "nwm20", "grid": "nwm_hawaii_forcing", "bucket": "gs://national-water-model", "t_minus_hours": [2]},
+        "start_dt": "2019-06-19T14:00:00",
+        "end_dt": "2021-04-20T11:00:00",
+        # Upsert, so a re-issued file is re-referenced; a virtual reference to a changed file can't be read
+        "write_mode": "upsert",
+        "write_materialized": false,
+        "x_dim": "x",
+        "y_dim": "y",
+        # v2.x files have no crs variable
+        "fallback_source_crs": "+proj=lcc +lat_0=20.6 +lon_0=-157.42 +lat_1=10 +lat_2=30 +x_0=0 +y_0=0 +R=6370000 +units=m +no_defs",
+        "xconcat_kwargs": {
+          "coords": "minimal",
+          "data_vars": "minimal",
+          "compat": "override",
+          "join": "override",
+          "combine_attrs": "override"
+        }
+      }
+    }
+    work_pool: *work_pool
+
+  - name: ingest-nwm22-forcing-analysis-assim-hawaii-icechunk
+    version:
+    tags: []
+    description: >-
+      Reference NWM 2.1/2.2 forcing analysis/assimilation RAINRATE grids (Hawaii, tm02) in an IceChunk S3
+      repository and build map overviews; references only, read from gs://national-water-model. Backfill only: the
+      default window is the version's cycles (2021-04-20 to 2023-09-19). A run parses and writes in one
+      pass within the 3 h flow timeout, so run about a year at a time (start_dt/end_dt); upsert resumes.
+    entrypoint: workflows/ingests/ingest_gridded_data.py:ingest_gridded_data
+    parameters: {
+      "args": {
+        "source": {"type": "nwm", "nwm_configuration": "forcing_analysis_assim_hawaii", "nwm_version": "nwm22", "grid": "nwm_hawaii_forcing", "bucket": "gs://national-water-model", "t_minus_hours": [2]},
+        "start_dt": "2021-04-20T14:00:00",
+        "end_dt": "2023-09-19T11:00:00",
+        # Upsert, so a re-issued file is re-referenced; a virtual reference to a changed file can't be read
+        "write_mode": "upsert",
+        "write_materialized": false,
+        "x_dim": "x",
+        "y_dim": "y",
+        # v2.x files have no crs variable
+        "fallback_source_crs": "+proj=lcc +lat_0=20.6 +lon_0=-157.42 +lat_1=10 +lat_2=30 +x_0=0 +y_0=0 +R=6370000 +units=m +no_defs",
+        "xconcat_kwargs": {
+          "coords": "minimal",
+          "data_vars": "minimal",
+          "compat": "override",
+          "join": "override",
+          "combine_attrs": "override"
+        }
+      }
+    }
+    work_pool: *work_pool
+
+  - name: ingest-nwm30-forcing-analysis-assim-hawaii-icechunk
+    version:
+    tags: []
+    description: >-
+      Reference NWM 3.0 forcing analysis/assimilation RAINRATE grids (Hawaii, tm02) in an IceChunk S3
+      repository and build map overviews; references only, read from gs://national-water-model. Backfill only: the
+      default window is the version's cycles (2023-09-19 to 2026-08-17). A run parses and writes in one
+      pass within the 3 h flow timeout, so run about a year at a time (start_dt/end_dt); upsert resumes.
+    entrypoint: workflows/ingests/ingest_gridded_data.py:ingest_gridded_data
+    parameters: {
+      "args": {
+        "source": {"type": "nwm", "nwm_configuration": "forcing_analysis_assim_hawaii", "nwm_version": "nwm30", "grid": "nwm_hawaii_forcing", "bucket": "gs://national-water-model", "t_minus_hours": [2]},
+        "start_dt": "2023-09-19T12:00:00",
+        "end_dt": "2026-08-17T23:00:00",
+        # Upsert, so a re-issued file is re-referenced; a virtual reference to a changed file can't be read
+        "write_mode": "upsert",
+        "write_materialized": false,
+        "x_dim": "x",
+        "y_dim": "y",
+        # v2.x files have no crs variable
+        "fallback_source_crs": "+proj=lcc +lat_0=20.6 +lon_0=-157.42 +lat_1=10 +lat_2=30 +x_0=0 +y_0=0 +R=6370000 +units=m +no_defs",
+        "xconcat_kwargs": {
+          "coords": "minimal",
+          "data_vars": "minimal",
+          "compat": "override",
+          "join": "override",
+          "combine_attrs": "override"
         }
       }
     }
@@ -387,9 +510,6 @@ deployments:
           "compat": "override",
           "join": "override",
           "combine_attrs": "override"
-        },
-        "overview_encoding": {
-          "rainrate_hourly_mean": {"dtype": "uint16", "max_value": 0.075, "units": "mm/s"}
         }
       }
     }
@@ -403,11 +523,74 @@ deployments:
     entrypoint: workflows/ingests/build_overviews.py:build_overviews
     parameters: {
       "args": {
-        "configuration_name": "nwm31_forcing_analysis_assim",
-        "overview_factors": [2, 4, 8],
-        "overview_encoding": {
-          "rainrate_hourly_mean": {"dtype": "uint16", "max_value": 0.075, "units": "mm/s"}
-        }
+        # The source names the repo and its overview packing
+        "source": {"type": "nwm", "nwm_configuration": "forcing_analysis_assim", "nwm_version": "nwm31"},
+        "overview_factors": [2, 4, 8]
+      }
+    }
+    work_pool: *work_pool
+
+  - name: process-gridded-unit
+    version:
+    tags: []
+    description: >-
+      One unit of a gridded ingest that fans out (max_child_runs > 0), started by ingest-gridded-data with
+      run_deployment. Not run on its own.
+    entrypoint: workflows/ingests/process_gridded_unit.py:process_gridded_unit
+    work_pool: *work_pool
+
+  - name: ingest-gefs-v12-reforecast-0p25-icechunk
+    version:
+    tags: []
+    concurrency_limit:
+      limit: 1
+      collision_strategy: "CANCEL_NEW"
+    description: >-
+      Reference the NOAA GEFS v12 reforecast (2000-2019, days 1-10 at 0.25 degrees, leads 3-240 h) in an Icechunk repository, from
+      the GRIB2 files' indexes on noaa-gefs-retrospective. References only. Run on demand with start_dt/end_dt;
+      units fan out as process-gridded-unit runs. Kept under icechunk-unserved, as the tile server can't
+      decode GRIB yet.
+    entrypoint: workflows/ingests/ingest_gridded_data.py:ingest_gridded_data
+    parameters: {
+      "args": {
+        "source": {"type": "gefs-v12-reforecast", "grid": "0p25"},
+        "base_prefix": "icechunk-unserved",
+        "start_dt": "2000-01-01",
+        "end_dt": "2019-12-31",
+        "write_mode": "upsert",
+        "write_materialized": false,
+        "build_overviews_on_ingest": false,
+        "x_dim": "longitude",
+        "y_dim": "latitude",
+        "max_child_runs": 8
+      }
+    }
+    work_pool: *work_pool
+
+  - name: ingest-gefs-v12-reforecast-0p50-icechunk
+    version:
+    tags: []
+    concurrency_limit:
+      limit: 1
+      collision_strategy: "CANCEL_NEW"
+    description: >-
+      Reference the NOAA GEFS v12 reforecast (2000-2019, up to 35 days at 0.5 degrees, leads 3-840 h) in an Icechunk repository, from
+      the GRIB2 files' indexes on noaa-gefs-retrospective. References only. Run on demand with start_dt/end_dt;
+      units fan out as process-gridded-unit runs. Kept under icechunk-unserved, as the tile server can't
+      decode GRIB yet.
+    entrypoint: workflows/ingests/ingest_gridded_data.py:ingest_gridded_data
+    parameters: {
+      "args": {
+        "source": {"type": "gefs-v12-reforecast", "grid": "0p50"},
+        "base_prefix": "icechunk-unserved",
+        "start_dt": "2000-01-01",
+        "end_dt": "2019-12-31",
+        "write_mode": "upsert",
+        "write_materialized": false,
+        "build_overviews_on_ingest": false,
+        "x_dim": "longitude",
+        "y_dim": "latitude",
+        "max_child_runs": 8
       }
     }
     work_pool: *work_pool
@@ -433,15 +616,14 @@ deployments:
     tags: []
     description: >-
       Calculate usgsbasin pixel coverage weights for the NWM 3.1 CONUS forcing grid. Run on
-      demand; write_mode "append" adds only missing (location, pixel, grid) rows.
+      demand; a rerun replaces the layer's weights on the grid.
     entrypoint: workflows/ingests/pixel_coverage_weights.py:calculate_pixel_coverage_weights
     parameters: {
       "args": {
         "temp_dir_path": *temp_dir_path,
         "configuration_name": "nwm31_forcing_analysis_assim",
         "location_id_prefix": "usgsbasin",
-        "grid_variable_name": "rainrate_hourly_mean",
-        "write_mode": "append"
+        "grid_variable_name": "RAINRATE"
       }
     }
     work_pool: *work_pool
@@ -459,7 +641,7 @@ deployments:
         "temp_dir_path": *temp_dir_path,
         "configuration_name": "nwm31_forcing_analysis_assim",
         "location_id_prefix": "usgsbasin",
-        "grid_variable_name": "rainrate_hourly_mean",
+        "grid_variable_name": "RAINRATE",
         "timeseries_table_name": "primary_timeseries"
       }
     }
@@ -479,10 +661,197 @@ deployments:
         "temp_dir_path": *temp_dir_path,
         "configuration_name": "nwm31_forcing_short_range",
         "location_id_prefix": "usgsbasin",
-        "grid_variable_name": "rainrate_hourly_mean"
+        "grid_variable_name": "RAINRATE"
       }
     }
     work_pool: *work_pool
+
+  - name: calculate-gefs-v12-reforecast-0p25-pixel-coverage-weights
+    version:
+    tags: []
+    description: >-
+      Calculate usgsbasin pixel coverage weights on the GEFS v12 reforecast 0.25 degree grid (gefs_0p25_global, shared with dynamical.org's GEFS),
+      from its reference repo in icechunk-unserved. Run once per layer; a rerun replaces the layer's
+      weights on the grid.
+    entrypoint: workflows/ingests/pixel_coverage_weights.py:calculate_pixel_coverage_weights
+    parameters: {
+      "args": {
+        "temp_dir_path": *temp_dir_path,
+        "configuration_name": "gefs_v12_reforecast_0p25",
+        "base_prefix": "icechunk-unserved",
+        "location_id_prefix": "usgsbasin",
+        "grid_variable_name": "APCP_surface",
+        "x_dim": "longitude",
+        "y_dim": "latitude"
+      }
+    }
+    work_pool: *work_pool
+
+  - name: calculate-gefs-v12-reforecast-0p25-mean-areal-values
+    version:
+    tags: []
+    description: >-
+      Calculate usgsbasin mean areal values of one GEFS v12 reforecast 0.25 degree variable (leads 3-240 h), every
+      member and lead, into secondary_timeseries, from its reference repo in icechunk-unserved. Run once
+      per variable (grid_variable_name APCP_surface, TMAX_2m or TMIN_2m). Values are the published
+      windows, named by the hours each covers (e.g. precipitation_3hr_sum, precipitation_6hr_sum).
+      Defaults to the pilot cycles (2019-01-01 to 2019-01-03); replace_where makes reruns idempotent.
+      Spark runs in local mode: the executor image can't decode GRIB.
+    entrypoint: workflows/ingests/mean_areal_values.py:calculate_mean_areal_values
+    parameters: {
+      "args": {
+        "temp_dir_path": *temp_dir_path,
+        "configuration_name": "gefs_v12_reforecast_0p25",
+        "base_prefix": "icechunk-unserved",
+        "location_id_prefix": "usgsbasin",
+        "grid_variable_name": "APCP_surface",
+        "x_dim": "longitude",
+        "y_dim": "latitude",
+        "start_dt": "2019-01-01",
+        "end_dt": "2019-01-03T23:00:00"
+      }
+    }
+    work_pool: *work_pool
+
+  - name: calculate-gefs-v12-reforecast-0p50-pixel-coverage-weights
+    version:
+    tags: []
+    description: >-
+      Calculate usgsbasin pixel coverage weights on the GEFS v12 reforecast 0.5 degree grid,
+      from its reference repo in icechunk-unserved. Run once per layer; a rerun replaces the layer's
+      weights on the grid.
+    entrypoint: workflows/ingests/pixel_coverage_weights.py:calculate_pixel_coverage_weights
+    parameters: {
+      "args": {
+        "temp_dir_path": *temp_dir_path,
+        "configuration_name": "gefs_v12_reforecast_0p50",
+        "base_prefix": "icechunk-unserved",
+        "location_id_prefix": "usgsbasin",
+        "grid_variable_name": "APCP_surface",
+        "x_dim": "longitude",
+        "y_dim": "latitude"
+      }
+    }
+    work_pool: *work_pool
+
+  - name: calculate-gefs-v12-reforecast-0p50-mean-areal-values
+    version:
+    tags: []
+    description: >-
+      Calculate usgsbasin mean areal values of one GEFS v12 reforecast 0.5 degree variable (leads 246-840 h), every
+      member and lead, into secondary_timeseries, from its reference repo in icechunk-unserved. Run once
+      per variable (grid_variable_name APCP_surface, TMAX_2m or TMIN_2m). Values are the published
+      windows, named by the hours each covers (e.g. precipitation_3hr_sum, precipitation_6hr_sum).
+      Defaults to the pilot cycles (2019-01-01 to 2019-01-03); replace_where makes reruns idempotent.
+      Spark runs in local mode: the executor image can't decode GRIB.
+    entrypoint: workflows/ingests/mean_areal_values.py:calculate_mean_areal_values
+    parameters: {
+      "args": {
+        "temp_dir_path": *temp_dir_path,
+        "configuration_name": "gefs_v12_reforecast_0p50",
+        "base_prefix": "icechunk-unserved",
+        "location_id_prefix": "usgsbasin",
+        "grid_variable_name": "APCP_surface",
+        "x_dim": "longitude",
+        "y_dim": "latitude",
+        "start_dt": "2019-01-01",
+        "end_dt": "2019-01-03T23:00:00"
+      }
+    }
+    work_pool: *work_pool
+
+  # Mean areal values from grids read in place (AORC Zarr stores, dynamical.org Icechunk collections)
+  - name: calculate-aorc-v1-1-pixel-coverage-weights
+    version:
+    tags: []
+    concurrency_limit:
+      limit: 1
+      collision_strategy: "CANCEL_NEW"
+    description: >-
+      Calculate pixel coverage weights of a location layer (location_id_prefix) on the AORC v1.1 1 km
+      grid, using one year's store in s3://noaa-nws-aorc-v1-1-1km as the template. Run once per layer.
+    entrypoint: workflows/ingests/aorc_mean_areal_values.py:calculate_aorc_pixel_coverage_weights
+    parameters: {
+      "args": {
+        "temp_dir_path": *temp_dir_path,
+        "location_id_prefix": "usgsbasin"
+      }
+    }
+    work_pool: *work_pool
+
+  - name: calculate-aorc-v1-1-mean-areal-values
+    version:
+    tags: []
+    concurrency_limit:
+      limit: 1
+      collision_strategy: "CANCEL_NEW"
+    description: >-
+      Calculate mean areal AORC v1.1 1 km values of a location layer into primary_timeseries, reading
+      NOAA's yearly Zarr stores in place, one year at a time. APCP_surface is written as
+      rainrate_hourly_mean (mm/s); other variables need variable_name, unit_name and value_scale.
+      Set start_dt/end_dt; replace_where makes reruns of a range idempotent. For CONUS-wide layers over
+      long records set start_spark_cluster.
+    entrypoint: workflows/ingests/aorc_mean_areal_values.py:calculate_aorc_mean_areal_values
+    parameters: {
+      "args": {
+        "temp_dir_path": *temp_dir_path,
+        "location_id_prefix": "usgsbasin",
+        "grid_variable_name": "APCP_surface",
+        "start_dt": "2020-01-01",
+        "end_dt": "2021-12-31T23:00:00"
+      }
+    }
+    work_pool: *work_pool
+
+  - name: calculate-gefs-35-day-forecasts-pixel-coverage-weights
+    version:
+    tags: []
+    concurrency_limit:
+      limit: 1
+      collision_strategy: "CANCEL_NEW"
+    description: >-
+      Calculate pixel coverage weights of a location layer on the grid of dynamical.org's GEFS 35-day
+      0.25 degree collection, found through its STAC record. Run once per layer.
+    entrypoint: workflows/ingests/dynamical_mean_areal_values.py:calculate_dynamical_pixel_coverage_weights
+    parameters: {
+      "args": {
+        "temp_dir_path": *temp_dir_path,
+        "configuration_name": "gefs_35day_0p25_forecast",
+        "location_id_prefix": "usgsbasin",
+        "grid_variable_name": "precipitation_surface",
+        "stac_collection_url": "https://stac.dynamical.org/noaa-gefs-forecast-35-day/collection.json",
+        "grid_name": "gefs_0p25_global"
+      }
+    }
+    work_pool: *work_pool
+
+  - name: calculate-gefs-35-day-forecasts-mean-areal-values
+    version:
+    tags: []
+    concurrency_limit:
+      limit: 1
+      collision_strategy: "CANCEL_NEW"
+    description: >-
+      Calculate mean areal GEFS 35-day 0.25 degree precipitation of a location layer, every member and
+      lead, into secondary_timeseries, reading dynamical.org's Icechunk repo in place (us-west-2). The
+      schedule replaces the last 2 days of cycles, which also fills partly ingested ones. Written as
+      rainrate_3hr_mean to 240 h and rainrate_6hr_mean after (mm/s); lead 0 is skipped.
+    entrypoint: workflows/ingests/dynamical_mean_areal_values.py:calculate_dynamical_mean_areal_values
+    parameters: {
+      "args": {
+        "temp_dir_path": *temp_dir_path,
+        "configuration_name": "gefs_35day_0p25_forecast",
+        "location_id_prefix": "usgsbasin",
+        "grid_variable_name": "precipitation_surface",
+        "stac_collection_url": "https://stac.dynamical.org/noaa-gefs-forecast-35-day/collection.json",
+        "grid_name": "gefs_0p25_global",
+        "num_lookback_days": 2
+      }
+    }
+    work_pool: *work_pool
+    schedule:
+      cron: "0 9 * * *"
+      active: false
 
   # Maintenance and Metrics Workflows
   - name: update-joined-forecast-table
@@ -514,6 +883,14 @@ deployments:
     tags: []
     description: Run routine Iceberg table maintenance (expire snapshots, remove orphan files, compact data files, rewrite manifests)
     entrypoint: workflows/maintenance/routine_table_maintenance.py:routine_table_maintenance
+    parameters: {"temp_dir_path": *temp_dir_path, "start_spark_cluster": false}
+    work_pool: *work_pool
+
+  - name: v1-table-maintenance
+    version:
+    tags: []
+    description: Lay out and tidy the v1 public tables (layout properties, sorted rewrite of changed partitions, expire snapshots, remove orphans)
+    entrypoint: workflows/maintenance/v1_table_maintenance.py:v1_table_maintenance
     parameters: {"temp_dir_path": *temp_dir_path, "start_spark_cluster": false}
     work_pool: *work_pool
 
