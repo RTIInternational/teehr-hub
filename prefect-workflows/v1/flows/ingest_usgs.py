@@ -24,6 +24,7 @@ from datetime import UTC, datetime, timedelta
 from typing import Any
 
 import pyarrow as pa
+import pyarrow.compute as pc
 from prefect import flow, get_run_logger, runtime, task
 from prefect.blocks.system import Secret
 from teehr_core.fetch import usgs
@@ -170,6 +171,18 @@ def stage_sites(
     return last_times
 
 
+def _logged(batches: Iterable[pa.Table]) -> Iterator[pa.Table]:
+    """The batches of whole months, each logged (its months and rows) as it's written."""
+    log = get_run_logger()
+    began, rows = time.monotonic(), 0
+    for i, batch in enumerate(batches, 1):
+        months = pc.unique(pc.strftime(batch["value_time"], format="%Y-%m")).to_pylist()
+        rows += batch.num_rows
+        log.info("commit %d: %s..%s, %d rows (%d so far, %.0f s)", i, min(months),
+                 max(months), batch.num_rows, rows, time.monotonic() - began)  # fmt: skip
+        yield batch
+
+
 @flow(name="backfill-usgs-streamflow", log_prints=True)
 def backfill_usgs_streamflow(
     dataset: str = "usgs_streamflow",
@@ -183,6 +196,7 @@ def backfill_usgs_streamflow(
     workers: int = 4,
     stage_dir: str | None = None,
     top_up: bool = True,
+    commit_rows: int = 5_000_000,
 ) -> dict[str, Any]:
     """Fill the sites' whole record (or ``start`` to ``end``) from the USGS bulk files.
 
@@ -194,6 +208,9 @@ def backfill_usgs_streamflow(
     The files lag the API (continuous values by months, varying by site). With ``top_up``,
     the API then fills from the earliest last time among sites still reporting (a file
     ending within the last year) up to now, refilling the months the files only partly cover.
+
+    Months are written whole, joined into commits of at least ``commit_rows`` rows (fewer
+    commits for small or early months).
     """
     log = get_run_logger()
     _use_pat()
@@ -203,8 +220,9 @@ def backfill_usgs_streamflow(
     with tempfile.TemporaryDirectory(dir=stage_dir) as directory:
         last_times = stage_sites(sites, start, end, service, hourly, directory, workers,
                                  len(sites))  # fmt: skip
+        months = _logged(combine(staged_months(directory), commit_rows))
         written = write_timeseries(
-            cat, namespace, dataset, _fit(cat, namespace, dataset, staged_months(directory)),
+            cat, namespace, dataset, _fit(cat, namespace, dataset, months),
             producer=f"prefect:{runtime.flow_run.name or 'local'}",
             unit=usgs.UNIT, location_of=lambda key: key, replace_months=True,
         )  # fmt: skip
