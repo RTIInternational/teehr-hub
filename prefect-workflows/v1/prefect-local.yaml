@@ -104,3 +104,14 @@ deployments:
       limit: 1
       collision_strategy: CANCEL_NEW
     work_pool: *work_pool
+
+  - name: ingest-usgs-streamflow
+    description: Ingest USGS streamflow (the last day) into public.usgs_streamflow, for the gauges of its layer
+    entrypoint: flows/ingest_usgs.py:ingest_usgs_streamflow
+    parameters:
+      dataset: usgs_streamflow
+      lookback_days: 1
+    concurrency_limit:
+      limit: 1
+      collision_strategy: CANCEL_NEW
+    work_pool: *work_pool

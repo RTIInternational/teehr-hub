@@ -31,7 +31,7 @@ environments:
       devTeehrVersion: 62d62cac1ad78e823e736e9d2fa2eee33ca849b2
       devTeehrIcechunkVersion: 0d7b6e8a59f61e08ccb75439baac71280582bcde
       # teehr-core commit for the v1 flows' image (prefect-workflows/v1).
-      teehrCoreVersion: 3239b11f1229049c672b531ebff9f04c4607ef7d
+      teehrCoreVersion: 3888a8165f30d92c6c7f1d1111c2a748b289ed85
       stableTeehrVersion: place-holder # Needed for sync to work for some reason.
       previousTeehrVersion: place-holder
       polaris:
@@ -99,7 +99,7 @@ environments:
       devTeehrVersion: 62d62cac1ad78e823e736e9d2fa2eee33ca849b2
       devTeehrIcechunkVersion: 0d7b6e8a59f61e08ccb75439baac71280582bcde
       # teehr-core commit for the v1 flows' image (prefect-workflows/v1).
-      teehrCoreVersion: 3239b11f1229049c672b531ebff9f04c4607ef7d
+      teehrCoreVersion: 3888a8165f30d92c6c7f1d1111c2a748b289ed85
       stableTeehrVersion: v0.8.0
       previousTeehrVersion: v0.7.0
       polaris:

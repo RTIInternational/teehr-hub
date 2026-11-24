@@ -18,8 +18,13 @@ own image (`Dockerfile`: teehr-core's warehouse writer and builders, Prefect; no
   Deployed as `run-platform-evaluations` (daily, starts paused: run it once by hand from the
   Prefect UI before turning on its schedule). Runs act as their caller, so they show
   `service-account-teehr-platform-automation` as their creator.
+- `flows/ingest_usgs.py`: ingest USGS streamflow into `public.usgs_streamflow` for the gauges
+  of its location layer (or given `sites`), with teehr-core's fetch and writer; the template
+  for v1 ingests. Deployed as `ingest-usgs-streamflow` (twice daily on use1, starts paused).
+  Uses the `api-usgs-pat` Secret block when there is one.
 - `tests/smoke_derived.py`: the flow against a throwaway local catalog, in the image.
 - `tests/smoke_evaluations.py`: the run-evaluations flow against a fake control plane.
+- `tests/smoke_ingest_usgs.py`: the USGS ingest flow against a throwaway local catalog and a fake API.
 
 ## Credentials
 
