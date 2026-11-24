@@ -180,3 +180,13 @@ deployments:
     schedule:
       cron: "0 8,20 * * *"
       active: false
+
+  - name: v1-backfill-usgs-streamflow
+    description: Fill public.usgs_streamflow's whole record from the USGS bulk Parquet files, then top up from the API (by hand; replaces the months it writes)
+    entrypoint: flows/ingest_usgs.py:backfill_usgs_streamflow
+    parameters:
+      dataset: usgs_streamflow
+    concurrency_limit:
+      limit: 1
+      collision_strategy: CANCEL_NEW
+    work_pool: *work_pool_medium

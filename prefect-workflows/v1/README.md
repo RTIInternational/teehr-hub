@@ -22,6 +22,10 @@ own image (`Dockerfile`: teehr-core's warehouse writer and builders, Prefect; no
   of its location layer (or given `sites`), with teehr-core's fetch and writer; the template
   for v1 ingests. Deployed as `v1-ingest-usgs-streamflow` (twice daily on use1, starts paused).
   Uses the `api-usgs-pat` Secret block when there is one.
+- `flows/ingest_usgs.py:backfill_usgs_streamflow`: fill a USGS dataset's whole record from the
+  USGS bulk Parquet files (staged by month, each month written whole, replacing it), then top up
+  from the API where the files end. Deployed as `v1-backfill-usgs-streamflow`, run by hand: for
+  a rebuild, or to reload months USGS has since approved.
 - `tests/smoke_derived.py`: the flow against a throwaway local catalog, in the image.
 - `tests/smoke_evaluations.py`: the run-evaluations flow against a fake control plane.
 - `tests/smoke_ingest_usgs.py`: the USGS ingest flow against a throwaway local catalog and a fake API.

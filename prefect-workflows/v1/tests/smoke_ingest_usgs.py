@@ -83,3 +83,29 @@ no_q = ingest.ingest_usgs_streamflow(dataset="no_flags", sites=["01"], end=END,
                                      lookback_days=0.125)
 assert no_q["rows"] == 3, no_q
 print("OK")
+
+# The backfill: bulk files (the last one ending two days ago), staged and written a month at a
+# time, then topped up from the API.
+recent = datetime.now(UTC).replace(minute=0, second=0, microsecond=0) - timedelta(days=2)
+months_ago = recent - timedelta(days=40)
+
+
+def fake_bulk(service, site):
+    hours = pd.date_range(months_ago, recent, freq="6h")
+    return pd.DataFrame({
+        "time_series_id": "ts", "monitoring_location_id": f"USGS-{usgs.site_number(site)}",
+        "time": hours, "value": "200", "approval_status": "Approved", "qualifier": None})
+
+
+usgs._bulk_file = fake_bulk
+requests.clear()
+filled = ingest.backfill_usgs_streamflow(where="is_active == True")
+print("BACKFILL", filled)
+assert filled["with_data"] == 2 and filled["months"] >= 2, filled
+assert filled["top_up"]["sites"] == 2 and requests, filled
+stored = cat.load_table(("public", "usgs_streamflow")).scan().to_arrow()
+statuses = set(stored["approval_status"].to_pylist())
+assert statuses == {"Approved", "Provisional"}, statuses  # bulk, then the API's latest
+older = stored.filter(pa.compute.less(stored["value_time"], pa.scalar(recent)))
+assert {round(v, 4) for v in older["value"].to_pylist()} == {round(200 * usgs.CFS_TO_M3S, 4)}  # replaced
+print("BACKFILL OK")
