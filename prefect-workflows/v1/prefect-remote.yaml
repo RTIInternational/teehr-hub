@@ -166,10 +166,11 @@ deployments:
       active: false
 
   - name: v1-ingest-usgs-streamflow
-    description: Ingest USGS streamflow (the last day) into public.usgs_streamflow, for the gauges of its layer
+    description: Ingest USGS streamflow (the last day) into public.usgs_streamflow, for the active gages of its layer with instantaneous discharge
     entrypoint: flows/ingest_usgs.py:ingest_usgs_streamflow
     parameters:
       dataset: usgs_streamflow
+      where: is_active == True and has_inst_discharge == True
       lookback_days: 1
     concurrency_limit:
       limit: 1
@@ -186,6 +187,7 @@ deployments:
     entrypoint: flows/ingest_usgs.py:backfill_usgs_streamflow
     parameters:
       dataset: usgs_streamflow
+      where: has_inst_discharge == True
       workers: 4  # ~1 GB per site being read
     concurrency_limit:
       limit: 1

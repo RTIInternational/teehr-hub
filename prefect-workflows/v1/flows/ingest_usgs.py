@@ -81,8 +81,8 @@ def ingest_usgs_streamflow(
     ``sites`` (``usgs-01646500`` or ``01646500``) default to the location layer's keys,
     filtered by ``where`` (a PyIceberg row filter on its attributes, e.g.
     ``"is_active == True and has_inst_discharge == True"``). ``end`` defaults to the end of
-    the current hour, UTC; ``start``, if given, instead of ``lookback_days``. ``service``: ``iv`` instantaneous (on the hour with ``hourly``)
-    or ``dv`` daily. ``batch_sites`` sites per request; ``commit_rows`` rows per commit.
+    the current hour, UTC; ``start``, if given, instead of ``lookback_days``. ``service``:
+    ``iv`` instantaneous (on the hour with ``hourly``) or ``dv`` daily. ``batch_sites`` sites per request; ``commit_rows`` rows per commit.
     """
     log = get_run_logger()
     _use_pat()

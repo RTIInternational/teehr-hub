@@ -31,19 +31,19 @@ def make(name, columns, key, props):
 cols, key = timeseries_columns(["approval_status", "qualifier"], "instant")
 make("usgs_streamflow", cols, key, {
     "teehr.type": "timeseries", "teehr.unit": "m3/s", "teehr.series_table": "usgs_streamflow_series",
-    "teehr.location_layer": "usgs_gauges"})
+    "teehr.location_layer": "usgs_gages"})
 bare, _ = timeseries_columns([], "instant")
 make("no_flags", bare, key, {
     "teehr.type": "timeseries", "teehr.unit": "m3/s", "teehr.series_table": "usgs_streamflow_series",
-    "teehr.location_layer": "usgs_gauges"})
+    "teehr.location_layer": "usgs_gages"})
 make("usgs_streamflow_series", series_columns(), ["series_key"], {"teehr.type": "series"})
 attr = {"name": "is_active", "type": "boolean", "required": False, "doc": None}
-gauges = make("usgs_gauges", layer_columns([attr]), ["location_key"], {"teehr.type": "layer"})
+gages = make("usgs_gages", layer_columns([attr]), ["location_key"], {"teehr.type": "layer"})
 point = bytes.fromhex("0101000000000000000000f03f000000000000f03f")
-gauges.append(pa.table({
+gages.append(pa.table({
     "location_key": ["usgs-01", "usgs-02", "usgs-03"], "name": [None] * 3, "geometry": [point] * 3,
     **{c: [1.0] * 3 for c in ("bbox_xmin", "bbox_ymin", "bbox_xmax", "bbox_ymax")},
-    "is_active": [True, True, False]}, schema=gauges.schema().as_arrow()))
+    "is_active": [True, True, False]}, schema=gages.schema().as_arrow()))
 
 END = datetime(2026, 11, 20, 3, tzinfo=UTC)
 requests = []
@@ -78,7 +78,7 @@ assert set(stored["qualifier"].to_pylist()) == {"ICE"}
 assert stored.num_rows == 6 and round(stored["value"][0].as_py(), 4) == round(100 * usgs.CFS_TO_M3S, 4)
 series = cat.load_table(("public", "usgs_streamflow_series")).scan().to_arrow().to_pylist()
 assert {(s["series_key"], s["location_key"], s["location_layer"]) for s in series} == {
-    ("usgs-01", "usgs-01", "usgs_gauges"), ("usgs-02", "usgs-02", "usgs_gauges")}, series
+    ("usgs-01", "usgs-01", "usgs_gages"), ("usgs-02", "usgs-02", "usgs_gages")}, series
 no_q = ingest.ingest_usgs_streamflow(dataset="no_flags", sites=["01"], end=END,
                                      lookback_days=0.125)
 assert no_q["rows"] == 3, no_q
