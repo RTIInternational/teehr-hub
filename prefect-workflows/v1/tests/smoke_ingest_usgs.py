@@ -31,19 +31,19 @@ def make(name, columns, key, props):
 cols, key = timeseries_columns(["approval_status", "qualifier"], "instant")
 make("usgs_streamflow", cols, key, {
     "teehr.type": "timeseries", "teehr.unit": "m3/s", "teehr.series_table": "usgs_streamflow_series",
-    "teehr.location_layer": "usgs_gauges"})
+    "teehr.location_layer": "usgs_gages"})
 bare, _ = timeseries_columns([], "instant")
 make("no_flags", bare, key, {
     "teehr.type": "timeseries", "teehr.unit": "m3/s", "teehr.series_table": "usgs_streamflow_series",
-    "teehr.location_layer": "usgs_gauges"})
+    "teehr.location_layer": "usgs_gages"})
 make("usgs_streamflow_series", series_columns(), ["series_key"], {"teehr.type": "series"})
 attr = {"name": "is_active", "type": "boolean", "required": False, "doc": None}
-gauges = make("usgs_gauges", layer_columns([attr]), ["location_key"], {"teehr.type": "layer"})
+gages = make("usgs_gages", layer_columns([attr]), ["location_key"], {"teehr.type": "layer"})
 point = bytes.fromhex("0101000000000000000000f03f000000000000f03f")
-gauges.append(pa.table({
+gages.append(pa.table({
     "location_key": ["usgs-01", "usgs-02", "usgs-03"], "name": [None] * 3, "geometry": [point] * 3,
     **{c: [1.0] * 3 for c in ("bbox_xmin", "bbox_ymin", "bbox_xmax", "bbox_ymax")},
-    "is_active": [True, True, False]}, schema=gauges.schema().as_arrow()))
+    "is_active": [True, True, False]}, schema=gages.schema().as_arrow()))
 
 END = datetime(2026, 11, 20, 3, tzinfo=UTC)
 requests = []
@@ -78,8 +78,34 @@ assert set(stored["qualifier"].to_pylist()) == {"ICE"}
 assert stored.num_rows == 6 and round(stored["value"][0].as_py(), 4) == round(100 * usgs.CFS_TO_M3S, 4)
 series = cat.load_table(("public", "usgs_streamflow_series")).scan().to_arrow().to_pylist()
 assert {(s["series_key"], s["location_key"], s["location_layer"]) for s in series} == {
-    ("usgs-01", "usgs-01", "usgs_gauges"), ("usgs-02", "usgs-02", "usgs_gauges")}, series
+    ("usgs-01", "usgs-01", "usgs_gages"), ("usgs-02", "usgs-02", "usgs_gages")}, series
 no_q = ingest.ingest_usgs_streamflow(dataset="no_flags", sites=["01"], end=END,
                                      lookback_days=0.125)
 assert no_q["rows"] == 3, no_q
 print("OK")
+
+# The backfill: bulk files (the last one ending two days ago), staged and written a month at a
+# time, then topped up from the API.
+recent = datetime.now(UTC).replace(minute=0, second=0, microsecond=0) - timedelta(days=2)
+months_ago = recent - timedelta(days=40)
+
+
+def fake_bulk(service, site):
+    hours = pd.date_range(months_ago, recent, freq="6h")
+    return pd.DataFrame({
+        "time_series_id": "ts", "monitoring_location_id": f"USGS-{usgs.site_number(site)}",
+        "time": hours, "value": "200", "approval_status": "Approved", "qualifier": None})
+
+
+usgs._bulk_file = fake_bulk
+requests.clear()
+filled = ingest.backfill_usgs_streamflow(where="is_active == True")
+print("BACKFILL", filled)
+assert filled["with_data"] == 2 and filled["months"] >= 2, filled
+assert filled["top_up"]["sites"] == 2 and requests, filled
+stored = cat.load_table(("public", "usgs_streamflow")).scan().to_arrow()
+statuses = set(stored["approval_status"].to_pylist())
+assert statuses == {"Approved", "Provisional"}, statuses  # bulk, then the API's latest
+older = stored.filter(pa.compute.less(stored["value_time"], pa.scalar(recent)))
+assert {round(v, 4) for v in older["value"].to_pylist()} == {round(200 * usgs.CFS_TO_M3S, 4)}  # replaced
+print("BACKFILL OK")
