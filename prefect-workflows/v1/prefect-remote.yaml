@@ -12,7 +12,7 @@ pull:
 definitions:
   work_pool_medium: &work_pool_medium
     name: kubernetes-pool
-    job_variables:
+    job_variables: &medium_vars
       image: "{{ $PREFECT_TEEHR_V1_IMAGE }}"
       image_pull_policy: Always
       namespace: "{{ $TEEHR_NAMESPACE }}"
@@ -192,4 +192,8 @@ deployments:
     concurrency_limit:
       limit: 1
       collision_strategy: CANCEL_NEW
-    work_pool: *work_pool_medium
+    work_pool:
+      name: kubernetes-pool
+      job_variables:
+        <<: *medium_vars
+        active_deadline_seconds: 172800  # 2 days; the default 6 h ends a full backfill
