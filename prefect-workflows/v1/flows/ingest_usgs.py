@@ -242,11 +242,11 @@ def backfill_usgs_streamflow(
             producer=f"prefect:{runtime.flow_run.name or 'local'}",
             unit=usgs.UNIT, location_of=lambda key: key, replace_months=True,
         )  # fmt: skip
-    log.info("bulk: wrote %d rows, %d months, %d new series; %d of %d sites had data",
+    log.info("bulk: wrote %d rows in %d commit(s), %d new series; %d of %d sites had data",
              written.rows, written.batches, written.series_added, len(last_times),
              len(sites))  # fmt: skip
     result: dict[str, Any] = {"sites": len(sites), "with_data": len(last_times),
-                              "rows": written.rows, "months": written.batches,
+                              "rows": written.rows, "commits": written.batches,
                               "series_added": written.series_added}  # fmt: skip
     now = datetime.now(UTC)
     reporting = [t for t in last_times.values() if t > now - timedelta(days=365)]
