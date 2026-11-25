@@ -366,13 +366,14 @@ deployments:
     description: >-
       Reference NWM 3.0 forcing analysis/assimilation RAINRATE grids (CONUS, tm02) in an IceChunk S3
       repository and build map overviews; references only, read from gs://national-water-model. Backfill only: the
-      default window is the version's cycles (2023-09-19 to 2026-08-17). Units of 30 days fan out as
+      default window is the version's hours from 2023-09-20 04:00 (earlier v3.0 hours mix in v2.2 reruns with
+      another fill value, so they can't share the repo's arrays) to 2026-08-17. Units of 30 days fan out as
       process-gridded-unit runs, 2 at a time, for the references and then the overviews; a rerun fills any that failed.
     entrypoint: workflows/ingests/ingest_gridded_data.py:ingest_gridded_data
     parameters: {
       "args": {
         "source": {"type": "nwm", "nwm_configuration": "forcing_analysis_assim", "nwm_version": "nwm30", "bucket": "gs://national-water-model", "t_minus_hours": [2]},
-        "start_dt": "2023-09-19T10:00:00",
+        "start_dt": "2023-09-20T04:00:00",
         "end_dt": "2026-08-17T21:00:00",
         # Upsert, so a re-issued file is re-referenced; a virtual reference to a changed file can't be read
         "write_mode": "upsert",
