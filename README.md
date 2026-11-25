@@ -185,7 +185,7 @@ ECR, EFS, IAM roles, buckets, hostname) is in `deploy-targets/<target>.yml`, and
 as an input. Locally:
 
 ```bash
-DEPLOY_TARGET=use2 garden deploy --env remote
+DEPLOY_TARGET=use1 garden deploy --env remote
 ```
 
 Before the first deploy to a new cluster, create its ECR image secret once:
