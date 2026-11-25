@@ -535,6 +535,8 @@ deployments:
     parameters: {
       "args": {
         "source": {"type": "nwm", "nwm_configuration": "forcing_analysis_assim", "nwm_version": "nwm31", "bucket": "s3://noaa-nwm-pds", "t_minus_hours": [2]},
+        # No 2x level: tiles at those zooms read the full resolution fast enough
+        "overview_factors": [4, 8],
         # Two days, so a missed run or a file re-uploaded the next day is still caught; written hours are skipped
         "num_lookback_days": 2,
         # Upsert, so a re-issued file is re-referenced; a virtual reference to a changed file can't be read
@@ -575,6 +577,8 @@ deployments:
     parameters: {
       "args": {
         "source": {"type": "nwm", "nwm_configuration": "forcing_analysis_assim", "nwm_version": "nwm30", "bucket": "gs://national-water-model", "t_minus_hours": [2]},
+        # No 2x level: tiles at those zooms read the full resolution fast enough
+        "overview_factors": [4, 8],
         "start_dt": "2023-09-20T04:00:00",
         "end_dt": "2026-08-17T21:00:00",
         # Upsert, so a re-issued file is re-referenced; a virtual reference to a changed file can't be read
@@ -611,6 +615,8 @@ deployments:
     parameters: {
       "args": {
         "source": {"type": "nwm", "nwm_configuration": "forcing_analysis_assim_hawaii", "nwm_version": "nwm31", "grid": "nwm_hawaii_forcing", "bucket": "s3://noaa-nwm-pds", "t_minus_hours": [2]},
+        # No 2x level: tiles at those zooms read the full resolution fast enough
+        "overview_factors": [4, 8],
         # Two days, so a missed run or a file re-uploaded the next day is still caught; written hours are skipped
         "num_lookback_days": 2,
         # Upsert, so a re-issued file is re-referenced; a virtual reference to a changed file can't be read
@@ -649,6 +655,8 @@ deployments:
     parameters: {
       "args": {
         "source": {"type": "nwm", "nwm_configuration": "forcing_analysis_assim_hawaii", "nwm_version": "nwm20", "grid": "nwm_hawaii_forcing", "bucket": "gs://national-water-model", "t_minus_hours": [2]},
+        # No 2x level: tiles at those zooms read the full resolution fast enough
+        "overview_factors": [4, 8],
         "start_dt": "2019-06-19T12:00:00",
         "end_dt": "2021-04-20T09:00:00",
         # Upsert, so a re-issued file is re-referenced; a virtual reference to a changed file can't be read
@@ -684,6 +692,8 @@ deployments:
     parameters: {
       "args": {
         "source": {"type": "nwm", "nwm_configuration": "forcing_analysis_assim_hawaii", "nwm_version": "nwm22", "grid": "nwm_hawaii_forcing", "bucket": "gs://national-water-model", "t_minus_hours": [2]},
+        # No 2x level: tiles at those zooms read the full resolution fast enough
+        "overview_factors": [4, 8],
         "start_dt": "2021-04-20T12:00:00",
         "end_dt": "2023-09-19T09:00:00",
         # Upsert, so a re-issued file is re-referenced; a virtual reference to a changed file can't be read
@@ -719,6 +729,8 @@ deployments:
     parameters: {
       "args": {
         "source": {"type": "nwm", "nwm_configuration": "forcing_analysis_assim_hawaii", "nwm_version": "nwm30", "grid": "nwm_hawaii_forcing", "bucket": "gs://national-water-model", "t_minus_hours": [2]},
+        # No 2x level: tiles at those zooms read the full resolution fast enough
+        "overview_factors": [4, 8],
         "start_dt": "2023-09-19T10:00:00",
         "end_dt": "2026-08-17T21:00:00",
         # Upsert, so a re-issued file is re-referenced; a virtual reference to a changed file can't be read
@@ -753,6 +765,8 @@ deployments:
     parameters: {
       "args": {
         "source": {"type": "nwm", "nwm_configuration": "forcing_short_range", "nwm_version": "nwm31", "bucket": "s3://noaa-nwm-pds"},
+        # No 2x level: tiles at those zooms read the full resolution fast enough
+        "overview_factors": [4, 8],
         # Every hourly cycle since the last run, and those still publishing their leads
         "num_lookback_days": 1,
         # Upsert, so a re-issued file is re-referenced; a virtual reference to a changed file can't be read
@@ -788,7 +802,7 @@ deployments:
       "args": {
         # The source names the repo and its overview packing
         "source": {"type": "nwm", "nwm_configuration": "forcing_analysis_assim", "nwm_version": "nwm31"},
-        "overview_factors": [2, 4, 8]
+        "overview_factors": [4, 8]
       }
     }
     work_pool: *work_pool_medium
