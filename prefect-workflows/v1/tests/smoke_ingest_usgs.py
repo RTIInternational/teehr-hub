@@ -101,7 +101,7 @@ usgs._bulk_file = fake_bulk
 requests.clear()
 filled = ingest.backfill_usgs_streamflow(where="is_active == True")
 print("BACKFILL", filled)
-assert filled["with_data"] == 2 and filled["months"] >= 2, filled
+assert filled["with_data"] == 2 and filled["months"] >= 2 and filled["commits"] >= 1, filled
 assert filled["top_up"]["sites"] == 2 and requests, filled
 stored = cat.load_table(("public", "usgs_streamflow")).scan().to_arrow()
 statuses = set(stored["approval_status"].to_pylist())

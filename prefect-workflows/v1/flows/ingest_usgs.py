@@ -1,10 +1,10 @@
 """Ingest USGS streamflow observations into a v1 timeseries dataset (``public.usgs_streamflow``).
 
 The template for v1 ingests (ADR-0019 in teehr-cloud-core): a teehr-core source
-(:mod:`teehr_core.fetch.usgs`) yields rows a batch of sites at a time, and teehr-core's
-writer (:func:`teehr_core.warehouse.write_timeseries`) writes them straight into the
-registered dataset as the flows' service account. Each commit is upserted on the dataset's
-key, so a re-run, or an overlapping window, rewrites rather than repeats.
+(:mod:`teehr_core.fetch.usgs`) yields rows a batch of sites at a time, and
+:func:`flows.write.write_rows` writes them straight into the registered dataset as the
+flows' service account. Each commit is upserted on the dataset's key, so a re-run, or an
+overlapping window, rewrites rather than repeats.
 
 The sites are the dataset's location layer's (``teehr.location_layer``), optionally
 filtered on its attributes (``where``), or a list given with ``sites``. Outside Prefect,
@@ -18,31 +18,22 @@ month written whole, then topped up from the API where the files end.
 import os
 import tempfile
 import time
-from collections.abc import Iterable, Iterator
 from concurrent.futures import FIRST_COMPLETED, ThreadPoolExecutor, wait
 from datetime import UTC, datetime, timedelta
 from itertools import islice
 from typing import Any
 
 import pyarrow as pa
-import pyarrow.compute as pc
-from prefect import flow, get_run_logger, runtime, task
+from prefect import flow, get_run_logger, task
 from prefect.blocks.system import Secret
 from teehr_core.fetch import usgs
-from teehr_core.warehouse import (
-    combine,
-    location_keys,
-    stage_by_month,
-    staged_months,
-    write_timeseries,
-)
+from teehr_core.warehouse import location_keys, stage_by_month, staged_months
 
 from flows.catalog import catalog
+from flows.write import write_rows
 
 #: The Prefect Secret block with the USGS Water Data API key (higher rate limits).
 PAT_BLOCK = "api-usgs-pat"
-#: The optional columns the rows carry, kept when the dataset has them.
-FLAGS = ("approval_status", "qualifier")
 
 
 @task(retries=2, retry_delay_seconds=60, persist_result=False,
@@ -102,16 +93,9 @@ def ingest_usgs_streamflow(
               i + 1, min(i + batch_sites, len(sites)), len(sites))
         for i in range(0, len(sites), batch_sites)
     )  # fmt: skip
-    written = write_timeseries(
-        cat, namespace, dataset, combine(_fit(cat, namespace, dataset, batches), commit_rows),
-        producer=f"prefect:{runtime.flow_run.name or 'local'}",
-        unit=usgs.UNIT, location_of=lambda key: key,
-    )  # fmt: skip
-    log.info("wrote %d rows in %d commit(s); %d new series; months %s", written.rows,
-             written.batches, written.series_added, ", ".join(written.months) or "-")  # fmt: skip
-    return {"sites": len(sites), "start": start.isoformat(), "end": end.isoformat(),
-            "rows": written.rows, "commits": written.batches,
-            "series_added": written.series_added, "snapshot_id": written.snapshot_id}  # fmt: skip
+    written = write_rows(cat, namespace, dataset, batches, unit=usgs.UNIT,
+                         location_of=lambda key: key, commit_rows=commit_rows)  # fmt: skip
+    return {"sites": len(sites), "start": start.isoformat(), "end": end.isoformat(), **written}
 
 
 def _sites(cat: Any, namespace: str, dataset: str, sites: list[str] | None,
@@ -121,17 +105,6 @@ def _sites(cat: Any, namespace: str, dataset: str, sites: list[str] | None,
         sites = [k for k in location_keys(cat, namespace, dataset, where)
                  if k.lower().startswith("usgs-")]  # fmt: skip
     return list(dict.fromkeys(sites))
-
-
-def _fit(cat: Any, namespace: str, dataset: str, batches: Iterable[pa.Table]) -> Iterator[pa.Table]:
-    """The batches without the flag columns the dataset doesn't have."""
-    columns = {f.name for f in cat.load_table((namespace, dataset)).schema().fields}
-    missing = [c for c in FLAGS if c not in columns]
-    if missing:
-        get_run_logger().warning("%s.%s has no %s column(s): not kept", namespace, dataset,
-                                 " or ".join(missing))  # fmt: skip
-    for batch in batches:
-        yield batch.drop_columns(missing) if missing else batch
 
 
 @task(persist_result=False, task_run_name="stage {total} sites' bulk files")
@@ -187,18 +160,6 @@ def stage_sites(
     return last_times
 
 
-def _logged(batches: Iterable[pa.Table]) -> Iterator[pa.Table]:
-    """The batches of whole months, each logged (its months and rows) as it's written."""
-    log = get_run_logger()
-    began, rows = time.monotonic(), 0
-    for i, batch in enumerate(batches, 1):
-        months = pc.unique(pc.strftime(batch["value_time"], format="%Y-%m")).to_pylist()
-        rows += batch.num_rows
-        log.info("commit %d: %s..%s, %d rows (%d so far, %.0f s)", i, min(months),
-                 max(months), batch.num_rows, rows, time.monotonic() - began)  # fmt: skip
-        yield batch
-
-
 @flow(name="backfill-usgs-streamflow", log_prints=True)
 def backfill_usgs_streamflow(
     dataset: str = "usgs_streamflow",
@@ -236,18 +197,11 @@ def backfill_usgs_streamflow(
     with tempfile.TemporaryDirectory(dir=stage_dir) as directory:
         last_times = stage_sites(sites, start, end, service, hourly, directory, workers,
                                  len(sites))  # fmt: skip
-        months = _logged(combine(staged_months(directory), commit_rows))
-        written = write_timeseries(
-            cat, namespace, dataset, _fit(cat, namespace, dataset, months),
-            producer=f"prefect:{runtime.flow_run.name or 'local'}",
-            unit=usgs.UNIT, location_of=lambda key: key, replace_months=True,
-        )  # fmt: skip
-    log.info("bulk: wrote %d rows in %d commit(s), %d new series; %d of %d sites had data",
-             written.rows, written.batches, written.series_added, len(last_times),
-             len(sites))  # fmt: skip
-    result: dict[str, Any] = {"sites": len(sites), "with_data": len(last_times),
-                              "rows": written.rows, "commits": written.batches,
-                              "series_added": written.series_added}  # fmt: skip
+        written = write_rows(cat, namespace, dataset, staged_months(directory),
+                             unit=usgs.UNIT, location_of=lambda key: key,
+                             commit_rows=commit_rows, replace_months=True)  # fmt: skip
+    log.info("bulk: %d of %d sites had data", len(last_times), len(sites))
+    result: dict[str, Any] = {"sites": len(sites), "with_data": len(last_times), **written}
     now = datetime.now(UTC)
     reporting = [t for t in last_times.values() if t > now - timedelta(days=365)]
     if top_up and reporting:
