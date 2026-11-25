@@ -7,7 +7,6 @@ on:
         type: choice
         options:
           - use1
-          - use2
         default: use1
       force:
         description: Redeploy every action, even ones Garden thinks are current (needed after changing a deploy-target value such as hostname)
