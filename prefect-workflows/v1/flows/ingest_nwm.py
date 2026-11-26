@@ -86,12 +86,57 @@ def ingest_nwm_streamflow(
 ) -> dict[str, Any]:
     """Read the configuration's cycles from ``start`` up to ``end`` at the reaches and write them.
 
-    ``configuration``: its directory on GCS (:data:`teehr_core.fetch.nwm.CONFIGURATIONS`).
-    ``dataset`` defaults to legacy's name for it (:func:`dataset_name`). The reaches are
-    ``crosswalk``'s right keys for ``observed``'s gages in the configuration's domain
-    (:func:`domain_filter`), or that match ``where`` (a row filter on the gages' layer).
-    ``end`` defaults to now; ``start`` to midnight UTC ``lookback_days`` before it. Files
-    are read ``batch_files`` at a time, ``workers`` at once; ``commit_rows`` rows per commit.
+    The reaches are ``crosswalk``'s right keys for ``observed``'s gages. New series rows get
+    no ``location_key`` (``write_rows`` without ``location_of``): reaches have no location
+    layer of their own, and evaluations reach the gages through the crosswalk.
+
+    Parameters
+    ----------
+    configuration : str, default "short_range"
+        Its directory on GCS, one of :data:`teehr_core.fetch.nwm.CONFIGURATIONS`.
+    dataset : str, optional
+        Defaults to legacy's name for the configuration (:func:`dataset_name`).
+    namespace : str, default "public"
+    version : str, default "nwm31"
+        The reaches' key prefix, and the NWM version the files are read as.
+    crosswalk : str, default "usgs_nwm31"
+        Pairs ``observed``'s gages (left) with the reaches (right).
+    observed : str, default "usgs_streamflow"
+        The dataset whose location layer holds the gages.
+    where : str, optional
+        A row filter on the gages' layer; defaults to the configuration's domain
+        (:func:`domain_filter`).
+    lookback_days : int, default 1
+        Without ``start``, read from midnight UTC this many days before ``end``.
+    start, end : datetime, optional
+        The window of reference times; ``end`` defaults to now.
+    batch_files : int, default 100
+        Files read per batch (one retried task each).
+    workers : int, default 16
+        Files read at once.
+    commit_rows : int, default 2_000_000
+        The fewest rows in each commit.
+
+    Returns
+    -------
+    dict
+        The configuration, dataset, reaches and files counts and window, and
+        :func:`flows.write.write_rows`' summary.
+
+    Examples
+    --------
+    The scheduled run: yesterday and today's cycles, at the CONUS gages' reaches.
+
+    >>> ingest_nwm_streamflow("short_range")
+
+    A member's medium range, into legacy's ``nwm31_medium_range``, for one week.
+
+    >>> ingest_nwm_streamflow("medium_range_mem1", start=datetime(2026, 11, 1, tzinfo=UTC),
+    ...                       end=datetime(2026, 11, 8, tzinfo=UTC))
+
+    On KinD, whose gages have no ``state_name``: every gage.
+
+    >>> ingest_nwm_streamflow("short_range", where="True", workers=4)
     """
     log = get_run_logger()
     if configuration not in nwm.CONFIGURATIONS:
