@@ -33,12 +33,53 @@ DOMAINS = {"alaska": "Alaska", "hawaii": "Hawaii", "puertorico": "Puerto Rico"}
 
 
 def dataset_name(configuration: str, version: str = "nwm31") -> str:
-    """Legacy's configuration name: ``medium_range_alaska_mem1`` -> ``nwm31_medium_range_alaska``."""
+    """Legacy's dataset name for a configuration: the version, then the name without a member.
+
+    Parameters
+    ----------
+    configuration : str
+        Its directory on GCS, e.g. ``medium_range_alaska_mem1``.
+    version : str, default "nwm31"
+        The dataset name's prefix.
+
+    Returns
+    -------
+    str
+        The dataset name.
+
+    Examples
+    --------
+    >>> dataset_name("medium_range_alaska_mem1")
+    'nwm31_medium_range_alaska'
+    >>> dataset_name("analysis_assim_no_da")
+    'nwm31_analysis_assim_no_da'
+    """
     return f"{version}_{re.sub(r'_mem[0-9]+', '', configuration)}"
 
 
 def domain_filter(configuration: str) -> str:
-    """The gages in the configuration's domain, as a row filter on their ``state_name``."""
+    """The gages in the configuration's domain, as a row filter on their ``state_name``.
+
+    A configuration named for an OCONUS domain (:data:`DOMAINS`) is that state's gages;
+    any other is CONUS: the gages with a state not in :data:`OCONUS`.
+
+    Parameters
+    ----------
+    configuration : str
+        Its directory on GCS.
+
+    Returns
+    -------
+    str
+        A row filter for :func:`teehr_core.warehouse.location_keys`.
+
+    Examples
+    --------
+    >>> domain_filter("short_range_hawaii")
+    "state_name == 'Hawaii'"
+    >>> domain_filter("medium_range_mem1")  # doctest: +ELLIPSIS
+    "state_name is not null and state_name not in ('Alaska', 'Hawaii', ...)"
+    """
     for word, state in DOMAINS.items():
         if word in configuration:
             return f"state_name == '{state}'"
@@ -48,7 +89,35 @@ def domain_filter(configuration: str) -> str:
 
 def reaches(cat: Catalog, namespace: str, crosswalk: str, observed: str, where: str,
             version: str) -> list[str]:  # fmt: skip
-    """The crosswalk's ``version`` reaches for ``observed``'s gages that match ``where``."""
+    """The crosswalk's ``version`` reaches for ``observed``'s gages that match ``where``.
+
+    Parameters
+    ----------
+    cat : Catalog
+        The warehouse catalog.
+    namespace : str
+        Where ``crosswalk`` and ``observed`` are.
+    crosswalk : str
+        Pairs the gages (left) with reaches (right).
+    observed : str
+        The dataset whose location layer holds the gages.
+    where : str
+        A row filter on the gages' layer, e.g. :func:`domain_filter`'s.
+    version : str
+        The reaches' key prefix; links to other versions' reaches are ignored.
+
+    Returns
+    -------
+    list[str]
+        The reaches' keys, sorted, each once.
+
+    Examples
+    --------
+    The ``nwm31`` reaches at the Alaska gages:
+
+    >>> reaches(cat, "public", "usgs_nwm31", "usgs_streamflow",
+    ...         domain_filter("short_range_alaska"), "nwm31")
+    """
     gages = pa.array(location_keys(cat, namespace, observed, where), pa.string())
     links = cat.load_table((namespace, crosswalk)).scan(
         selected_fields=("left_key", "right_key")
@@ -62,7 +131,30 @@ def reaches(cat: Catalog, namespace: str, crosswalk: str, observed: str, where: 
       task_run_name="read files {first}-{last} of {total}")  # fmt: skip
 def read(files: list[nwm.File], keys: list[str], version: str, workers: int,
          first: int, last: int, total: int) -> pa.Table | None:  # fmt: skip
-    """One batch of files' rows at the reaches; retried, so a blip doesn't fail the run."""
+    """Read one batch of files' rows at the reaches; retried, so a blip doesn't fail the run.
+
+    Parameters
+    ----------
+    files : list[nwm.File]
+        The batch, from :func:`teehr_core.fetch.nwm.files`.
+    keys : list[str]
+        The reaches' series keys.
+    version : str
+        The NWM version the files are read as.
+    workers : int
+        Files read at once.
+    first, last, total : int
+        The batch's place among the run's files, for the task run's name.
+
+    Returns
+    -------
+    pa.Table or None
+        The rows, or None when the files hold none at the reaches.
+
+    Examples
+    --------
+    >>> read(found[:100], keys, "nwm31", 16, 1, 100, len(found))
+    """
     tables = list(nwm.read_points(files, keys, version=version, workers=workers,
                                   batch_files=len(files)))  # fmt: skip
     return pa.concat_tables(tables) if tables else None
