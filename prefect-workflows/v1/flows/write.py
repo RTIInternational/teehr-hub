@@ -96,7 +96,33 @@ def write_rows(
 
 def _fit(cat: Catalog, namespace: str, dataset: str,
          batches: Iterable[pa.Table]) -> Iterator[pa.Table]:  # fmt: skip
-    """The batches without the non-key columns the dataset doesn't have."""
+    """Drop the columns ``namespace.dataset`` doesn't have from each batch.
+
+    Key columns are kept, so ``write_timeseries`` refuses rows with a ``reference_time`` or
+    ``member`` the dataset lacks rather than merging them silently. Each dropped column is
+    warned about once.
+
+    Parameters
+    ----------
+    cat : Catalog
+        The warehouse catalog.
+    namespace, dataset : str
+        The timeseries dataset the batches are for.
+    batches : Iterable[pa.Table]
+        v1 timeseries rows.
+
+    Yields
+    ------
+    pa.Table
+        Each batch, without the dataset's missing non-key columns.
+
+    Examples
+    --------
+    USGS rows carry ``approval_status`` and ``qualifier`` flags; ``usgs_streamflow`` keeps neither.
+
+    >>> next(_fit(cat, "public", "usgs_streamflow", [rows])).column_names
+    ['series_key', 'value_time', 'value']
+    """
     columns = {f.name for f in cat.load_table((namespace, dataset)).schema().fields}
     warned: set[str] = set()
     for batch in batches:
@@ -109,7 +135,26 @@ def _fit(cat: Catalog, namespace: str, dataset: str,
 
 
 def _logged(batches: Iterable[pa.Table]) -> Iterator[pa.Table]:
-    """The commits, each logged (its months and rows) as it's written."""
+    """Log each commit (its months and rows) as it's written.
+
+    Months are by ``reference_time`` when the rows have one, else by ``value_time``.
+
+    Parameters
+    ----------
+    batches : Iterable[pa.Table]
+        The commits, as :func:`teehr_core.warehouse.combine` joins them.
+
+    Yields
+    ------
+    pa.Table
+        Each commit, unchanged.
+
+    Examples
+    --------
+    >>> write_timeseries(cat, namespace, dataset, _logged(combine(batches, 1_000_000)), ...)
+
+    logs, per commit, e.g. ``commit 3: 2007-11..2008-02, 1004211 rows (3012655 so far, 412 s)``.
+    """
     log = get_run_logger()
     began, rows = time.monotonic(), 0
     for i, batch in enumerate(batches, 1):
