@@ -27,14 +27,57 @@ def write_rows(
     commit_rows: int = 1_000_000,
     replace_months: bool = False,
 ) -> dict[str, Any]:
-    """Write ``batches`` (values in ``unit``) into ``namespace.dataset``; a summary.
+    """Write a source's batches of rows into ``namespace.dataset``.
 
     Columns the dataset doesn't have (a source's flags) are dropped with a warning, except key
     columns: rows with a ``reference_time`` or ``member`` the dataset lacks are refused.
     Batches are joined into commits of at least ``commit_rows`` rows, each logged as it's
-    written, and upserted on the dataset's key, or, with ``replace_months``, replace the whole
-    months they hold.
-    ``location_of`` gives a new series' location key (None: series without a location).
+    written.
+
+    Parameters
+    ----------
+    cat : Catalog
+        The warehouse catalog.
+    namespace, dataset : str
+        The timeseries dataset to write.
+    batches : Iterable[pa.Table]
+        v1 timeseries rows, as a :mod:`teehr_core.fetch` source returns them.
+    unit : str
+        The unit of the rows' values (the source's ``UNIT``), converted to the dataset's.
+    location_of : Callable[[str], str | None], optional
+        A new series' ``location_key`` in the dataset's location layer, from its
+        ``series_key``. It's called only for series keys not yet in the dataset's series
+        table, to fill their rows; existing series and the timeseries rows are unchanged.
+        None (the default): new series have no location, as for NWM reaches, which are
+        paired with gages through a crosswalk instead.
+    commit_rows : int, default 1_000_000
+        The fewest rows in each commit (but the last).
+    replace_months : bool, default False
+        Replace the whole months the rows hold, instead of upserting on the dataset's key.
+
+    Returns
+    -------
+    dict
+        ``rows``, ``commits``, ``series_added``, ``months`` (how many were written) and
+        ``snapshot_id``.
+
+    Examples
+    --------
+    USGS: the series key is the gage's location key.
+
+    >>> write_rows(cat, "public", "usgs_streamflow", usgs.read_bulk(sites, start, end),
+    ...            unit=usgs.UNIT, location_of=lambda key: key)
+
+    NWM: reaches have no location layer.
+
+    >>> write_rows(cat, "public", "nwm31_short_range", batches, unit=nwm.UNIT)
+
+    A source whose series keys aren't location keys maps one to the other, e.g. keys per gage
+    and variable (``usgs-01646500-discharge``), or a lookup the flow built.
+
+    >>> write_rows(cat, "public", dataset, batches, unit=UNIT,
+    ...            location_of=lambda key: key.rsplit("-", 1)[0])
+    >>> write_rows(cat, "public", dataset, batches, unit=UNIT, location_of=site_for.get)
     """
     log = get_run_logger()
     written = write_timeseries(
