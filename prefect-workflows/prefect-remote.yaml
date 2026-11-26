@@ -1065,13 +1065,14 @@ deployments:
       limit: 1
       collision_strategy: "CANCEL_NEW"
     description: >-
-      Calculate pixel coverage weights of a location layer (location_id_prefix) on the AORC v1.1 1 km
-      grid, using one year's store in s3://noaa-nws-aorc-v1-1-1km as the template. Run once per layer.
+      Calculate pixel coverage weights of a location layer (location_id_prefix, default rfcbasin) on the AORC v1.1 1 km
+      grid, using one year's store in s3://noaa-nws-aorc-v1-1-1km as the template. Run once per layer; a rerun
+      replaces the layer's weights on the grid.
     entrypoint: workflows/ingests/aorc_mean_areal_values.py:calculate_aorc_pixel_coverage_weights
     parameters: {
       "args": {
         "temp_dir_path": *temp_dir_path,
-        "location_id_prefix": "usgsbasin"
+        "location_id_prefix": "rfcbasin"
       }
     }
     work_pool: *work_pool_large
@@ -1083,51 +1084,12 @@ deployments:
       limit: 1
       collision_strategy: "CANCEL_NEW"
     description: >-
-      Calculate mean areal AORC v1.1 1 km values of a location layer into primary_timeseries, reading
-      NOAA's yearly Zarr stores in place, one year at a time. APCP_surface is written as
-      rainrate_hourly_mean (mm/s); other variables need variable_name, unit_name and value_scale.
-      Set start_dt/end_dt; replace_where makes reruns of a range idempotent. For CONUS-wide layers over
-      long records set start_spark_cluster.
-    entrypoint: workflows/ingests/aorc_mean_areal_values.py:calculate_aorc_mean_areal_values
-    parameters: {
-      "args": {
-        "temp_dir_path": *temp_dir_path,
-        "location_id_prefix": "usgsbasin",
-        "grid_variable_name": "APCP_surface",
-        "start_dt": "2020-01-01",
-        "end_dt": "2021-12-31T23:00:00"
-      }
-    }
-    work_pool: *work_pool_large
-
-  - name: calculate-aorc-v1-1-rfcbasin-pixel-coverage-weights
-    version:
-    tags: []
-    concurrency_limit:
-      limit: 1
-      collision_strategy: "CANCEL_NEW"
-    description: >-
-      Calculate rfcbasin pixel coverage weights on the AORC v1.1 1 km grid, for the same basins as the GEFS
-      v12 reforecast mean areal values. Run once per layer.
-    entrypoint: workflows/ingests/aorc_mean_areal_values.py:calculate_aorc_pixel_coverage_weights
-    parameters: {
-      "args": {
-        "temp_dir_path": *temp_dir_path,
-        "location_id_prefix": "rfcbasin"
-      }
-    }
-    work_pool: *work_pool_large
-
-  - name: calculate-aorc-v1-1-rfcbasin-mean-areal-values
-    version:
-    tags: []
-    concurrency_limit:
-      limit: 1
-      collision_strategy: "CANCEL_NEW"
-    description: >-
-      Calculate rfcbasin mean areal AORC v1.1 APCP into primary_timeseries (rainrate_hourly_mean, mm/s), for
-      the same basins as the GEFS v12 reforecast mean areal values. Defaults to the GEFS pilot's valid times
-      (the 2019-01 cycles reach 35 days ahead, to 2019-03-06); set start_dt/end_dt for other ranges.
+      Calculate mean areal AORC v1.1 1 km values of a location layer (location_id_prefix, default rfcbasin) into
+      primary_timeseries, reading NOAA's yearly Zarr stores in place, one year at a time. APCP_surface is written as
+      rainrate_hourly_mean (mm/s); other variables need variable_name, unit_name and value_scale. Defaults to the
+      GEFS v12 reforecast pilot's valid times (the 2019-01 cycles reach 35 days ahead, to 2019-03-06); set
+      start_dt/end_dt for other ranges. replace_where makes reruns of a range idempotent. For CONUS-wide layers
+      over long records set start_spark_cluster.
     entrypoint: workflows/ingests/aorc_mean_areal_values.py:calculate_aorc_mean_areal_values
     parameters: {
       "args": {
