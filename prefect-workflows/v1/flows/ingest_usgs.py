@@ -12,12 +12,13 @@ the same two teehr-core calls make a one-off ingest from a notebook.
 
 :func:`backfill_usgs_streamflow` fills whole records from the USGS bulk Parquet files
 instead (a rebuild, or a reload of months USGS has since approved): staged by month, each
-month written whole, then topped up from the API where the files end.
+month written whole, then topped up from the API where each site's file ends.
 """
 
 import os
 import tempfile
 import time
+from collections import defaultdict
 from concurrent.futures import FIRST_COMPLETED, ThreadPoolExecutor, wait
 from datetime import UTC, datetime, timedelta
 from itertools import islice
@@ -160,6 +161,59 @@ def stage_sites(
     return last_times
 
 
+def top_up_groups(
+    sites: list[str], last_times: dict[str, datetime], now: datetime,
+    horizon: timedelta = timedelta(days=365),
+) -> list[tuple[datetime, list[str]]]:  # fmt: skip
+    """Group the sites to top up from the API by the month their bulk file ends.
+
+    The files lag the API by months, varying by site. Each group is fetched from its
+    earliest last time, so a few sites whose files end early don't drag every site's window
+    back with them. Sites whose files ended before ``horizon`` have stopped reporting and
+    are skipped; sites with no file (none, or its download failed) start ``horizon`` back.
+
+    Parameters
+    ----------
+    sites : list[str]
+        The backfill's sites.
+    last_times : dict[str, datetime]
+        Each staged site's last time in its file (:func:`stage_sites`).
+    now : datetime
+        The top-up's end.
+    horizon : timedelta, default 365 days
+        How recent a site's last time must be to count as still reporting.
+
+    Returns
+    -------
+    list[tuple[datetime, list[str]]]
+        Each group's start (its earliest last time, to the hour) and sites, earliest first.
+
+    Examples
+    --------
+    >>> now = datetime(2026, 11, 27, tzinfo=UTC)
+    >>> top_up_groups(["usgs-01", "usgs-02", "usgs-03", "usgs-04"], {
+    ...     "usgs-01": datetime(2026, 6, 30, 23, 15, tzinfo=UTC),
+    ...     "usgs-02": datetime(2026, 6, 12, 4, 0, tzinfo=UTC),
+    ...     "usgs-03": datetime(2025, 1, 1, tzinfo=UTC)}, now)  # doctest: +NORMALIZE_WHITESPACE
+    [(datetime.datetime(2025, 11, 27, 0, 0, tzinfo=datetime.timezone.utc), ['usgs-04']),
+     (datetime.datetime(2026, 6, 12, 4, 0, tzinfo=datetime.timezone.utc),
+      ['usgs-01', 'usgs-02'])]
+    """
+    groups: dict[tuple[int, int], list[str]] = defaultdict(list)
+    starts: dict[tuple[int, int], datetime] = {}
+    for site in sites:
+        last = last_times.get(site)
+        if last is None:
+            last = now - horizon
+        elif last <= now - horizon:
+            continue
+        month = (last.year, last.month)
+        groups[month].append(site)
+        start = last.replace(minute=0, second=0, microsecond=0)
+        starts[month] = min(starts.get(month, start), start)
+    return [(starts[m], groups[m]) for m in sorted(groups)]
+
+
 @flow(name="backfill-usgs-streamflow", log_prints=True)
 def backfill_usgs_streamflow(
     dataset: str = "usgs_streamflow",
@@ -177,17 +231,56 @@ def backfill_usgs_streamflow(
 ) -> dict[str, Any]:
     """Fill the sites' whole record (or ``start`` to ``end``) from the USGS bulk files.
 
-    Every site's file is staged by month (``stage_dir``, default a temporary folder), then
-    each month is written whole, **replacing** that month: rows of sites not staged for it
-    are deleted. So run it for every site of the dataset (the default), or limit the months
-    with ``start``/``end`` to ones the files cover for all of them.
+    Every site's file is staged by month, then each month is written whole, **replacing**
+    that month: rows of sites not staged for it are deleted. So run it for every site of the
+    dataset (the default), or limit the months with ``start``/``end`` to ones the files cover
+    for all of them.
 
-    The files lag the API (continuous values by months, varying by site). With ``top_up``,
-    the API then fills from the earliest last time among sites still reporting (a file
-    ending within the last year) up to now, refilling the months the files only partly cover.
+    The files lag the API by months, varying by site. With ``top_up``, the API then fills
+    each still-reporting site from where its file ends up to now, a group of sites per month
+    their files end in (:func:`top_up_groups`), each group an :func:`ingest_usgs_streamflow`
+    subflow run.
 
-    Months are written whole, joined into commits of at least ``commit_rows`` rows (fewer
-    commits for small or early months).
+    Parameters
+    ----------
+    dataset : str, default "usgs_streamflow"
+    namespace : str, default "public"
+    sites : list[str], optional
+        ``usgs-01646500`` or ``01646500``; defaults to the dataset's location layer's keys.
+    where : str, optional
+        A row filter on the location layer's attributes, e.g. ``"has_inst_discharge == True"``.
+    start, end : datetime, optional
+        Limit the files' rows to this window; the whole record by default.
+    service : {"iv", "dv"}, default "iv"
+        Instantaneous or daily values.
+    hourly : bool, default True
+        Keep only instantaneous values on the hour.
+    workers : int, default 4
+        Files downloaded at once.
+    stage_dir : str, optional
+        Where to stage the months; a temporary folder by default.
+    top_up : bool, default True
+        Fill from the API where the files end.
+    commit_rows : int, default 5_000_000
+        The fewest rows in each commit (whole months; fewer commits for small months).
+
+    Returns
+    -------
+    dict
+        ``sites``, ``with_data`` (sites with a file), :func:`flows.write.write_rows`'
+        summary, and, with ``top_up``, ``top_up``: its ``groups``, ``sites``, ``rows`` and
+        ``series_added``.
+
+    Examples
+    --------
+    Every gage with instantaneous discharge, whole record, then topped up:
+
+    >>> backfill_usgs_streamflow(where="has_inst_discharge == True")
+
+    Reload the months USGS approved since the last backfill, without a top-up:
+
+    >>> backfill_usgs_streamflow(where="has_inst_discharge == True",
+    ...                          start=datetime(2025, 1, 1, tzinfo=UTC), top_up=False)
     """
     log = get_run_logger()
     _use_pat()
@@ -202,14 +295,19 @@ def backfill_usgs_streamflow(
                              commit_rows=commit_rows, replace_months=True)  # fmt: skip
     log.info("bulk: %d of %d sites had data", len(last_times), len(sites))
     result: dict[str, Any] = {"sites": len(sites), "with_data": len(last_times), **written}
-    now = datetime.now(UTC)
-    reporting = [t for t in last_times.values() if t > now - timedelta(days=365)]
-    if top_up and reporting:
-        since = min(reporting).replace(minute=0, second=0, microsecond=0)
-        log.info("top-up from the API: %d sites still reporting, from %s", len(reporting),
-                 since)  # fmt: skip
-        result["top_up"] = ingest_usgs_streamflow(
-            dataset=dataset, namespace=namespace, sites=sites, start=since,
-            service=service, hourly=hourly,
-        )  # fmt: skip
+    groups = top_up_groups(sites, last_times, datetime.now(UTC)) if top_up else []
+    if groups:
+        log.info("top-up from the API: %d sites in %d groups, from %s",
+                 sum(len(g) for _, g in groups), len(groups),
+                 ", ".join(f"{s:%Y-%m-%d %H:%M} ({len(g)})" for s, g in groups))  # fmt: skip
+        topped = [
+            ingest_usgs_streamflow.with_options(flow_run_name=f"top-up from {since:%Y-%m-%d}")(
+                dataset=dataset, namespace=namespace, sites=group, start=since,
+                service=service, hourly=hourly,
+            )
+            for since, group in groups
+        ]  # fmt: skip
+        result["top_up"] = {"groups": len(groups), "sites": sum(t["sites"] for t in topped),
+                            "rows": sum(t["rows"] for t in topped),
+                            "series_added": sum(t["series_added"] for t in topped)}  # fmt: skip
     return result

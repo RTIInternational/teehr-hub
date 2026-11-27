@@ -102,10 +102,23 @@ requests.clear()
 filled = ingest.backfill_usgs_streamflow(where="is_active == True")
 print("BACKFILL", filled)
 assert filled["with_data"] == 2 and filled["months"] >= 2 and filled["commits"] >= 1, filled
-assert filled["top_up"]["sites"] == 2 and requests, filled
+assert filled["top_up"]["groups"] == 1 and filled["top_up"]["sites"] == 2 and requests, filled
 stored = cat.load_table(("public", "usgs_streamflow")).scan().to_arrow()
 statuses = set(stored["approval_status"].to_pylist())
 assert statuses == {"Approved", "Provisional"}, statuses  # bulk, then the API's latest
 older = stored.filter(pa.compute.less(stored["value_time"], pa.scalar(recent)))
 assert {round(v, 4) for v in older["value"].to_pylist()} == {round(200 * usgs.CFS_TO_M3S, 4)}  # replaced
 print("BACKFILL OK")
+
+# The top-up's groups: by the month each site's file ends, each from its earliest last time;
+# sites whose files ended over a year ago skipped, sites without a file from a year back.
+now = datetime(2026, 11, 27, tzinfo=UTC)
+groups = ingest.top_up_groups(["usgs-01", "usgs-02", "usgs-03", "usgs-04", "usgs-05"], {
+    "usgs-01": datetime(2026, 6, 30, 23, 15, tzinfo=UTC),
+    "usgs-02": datetime(2026, 6, 12, 4, 0, tzinfo=UTC),
+    "usgs-03": datetime(2025, 1, 1, tzinfo=UTC),
+    "usgs-05": datetime(2026, 11, 26, 22, 0, tzinfo=UTC)}, now)
+assert groups == [(now - timedelta(days=365), ["usgs-04"]),
+                  (datetime(2026, 6, 12, 4, tzinfo=UTC), ["usgs-01", "usgs-02"]),
+                  (datetime(2026, 11, 26, 22, tzinfo=UTC), ["usgs-05"])], groups
+print("GROUPS OK")
