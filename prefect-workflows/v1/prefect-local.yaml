@@ -145,11 +145,12 @@ deployments:
     work_pool: *work_pool
 
   - name: v1-ingest-nwm-medium-range-mem1
-    description: Ingest NWM medium_range_mem1 streamflow into public.nwm31_medium_range_mem1
+    # Into nwm31_medium_range (with its member column), as on use1: register it with
+    # warehouse/remote/06_v1_copy/06_nwm_points.ipynb (the seed's nwm31_medium_range_mem1 has none).
+    description: Ingest NWM medium_range_mem1 streamflow into public.nwm31_medium_range
     entrypoint: flows/ingest_nwm.py:ingest_nwm_streamflow
     parameters:
       configuration: medium_range_mem1
-      dataset: nwm31_medium_range_mem1
       where: "True"
       workers: 4  # the local pool's 1 GiB
     concurrency_limit:

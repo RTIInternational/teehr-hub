@@ -35,7 +35,7 @@ own image (`Dockerfile`: teehr-core's warehouse writer and builders, Prefect; no
   at the gages' reaches, one dataset per configuration with legacy's names (`nwm31_short_range`,
   `nwm31_medium_range` for `medium_range_mem1`, ...), sharing one series table. Reaches are the
   `usgs_nwm31` crosswalk's for the gages in the configuration's domain (their `state_name`, as
-  legacy). Deployed as `v1-ingest-nwm-<configuration>` (twice daily on legacy's times, start paused).
+  legacy). Deployed as `v1-ingest-nwm-<configuration>` (twice daily on legacy's times, each run from the dataset's latest cycle).
 - `tests/smoke_derived.py`: the flow against a throwaway local catalog, in the image.
 - `tests/smoke_evaluations.py`: the run-evaluations flow against a fake control plane.
 - `tests/smoke_ingest_usgs.py`: the USGS ingest flow against a throwaway local catalog and a fake API.

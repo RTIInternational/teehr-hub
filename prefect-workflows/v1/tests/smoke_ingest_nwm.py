@@ -108,8 +108,10 @@ sr = ingest.ingest_nwm_streamflow("short_range", end=END, batch_files=2)
 print("SHORT RANGE", sr)
 assert (sr["dataset"], sr["reaches"], sr["files"]) == ("nwm31_short_range", 1, 6), sr
 assert (sr["rows"], sr["series_added"]) == (6, 1), sr  # CONUS: reach 101 only (not AK, not null)
-again = ingest.ingest_nwm_streamflow("short_range", end=END)
-assert (again["rows"], again["series_added"]) == (6, 0), again
+assert ingest.latest_cycle(cat, "public", "nwm31_short_range") == DAY + timedelta(hours=12)
+again = ingest.ingest_nwm_streamflow("short_range", end=END)  # from the latest cycle: 12z again
+assert (again["start"], again["files"], again["rows"], again["series_added"]) == (
+    (DAY + timedelta(hours=12)).isoformat(), 3, 3, 0), again
 stored = cat.load_table(("public", "nwm31_short_range")).scan().to_arrow()
 assert stored.num_rows == 6 and set(stored["series_key"].to_pylist()) == {"nwm31-101"}
 assert sorted(stored["reference_time"].to_pylist()) == [DAY] * 3 + [DAY + timedelta(hours=12)] * 3
@@ -124,6 +126,17 @@ aa = ingest.ingest_nwm_streamflow("analysis_assim_alaska_no_da", end=END)
 assert (aa["reaches"], aa["rows"]) == (1, 4), aa  # Alaska: reach 202; times -2h..1h, once each
 stored = cat.load_table(("public", "nwm31_analysis_assim_alaska_no_da")).scan().to_arrow()
 assert "reference_time" not in stored.column_names
+assert sorted((r["value_time"] - DAY, r["value"]) for r in stored.to_pylist()) == [
+    (timedelta(hours=h), v) for h, v in [(-2, 2.0), (-1, 12.0), (0, 11.0), (1, 10.0)]]
+try:  # medium range rows have a member: refused up front for a dataset without one
+    ingest.ingest_nwm_streamflow("medium_range_mem1", dataset="nwm31_short_range", end=END)
+    raise AssertionError("no member column, but no error")
+except ValueError as err:
+    assert "has no member column" in str(err), err
+assert ingest.latest_cycle(cat, "public", "nwm31_analysis_assim_alaska_no_da") == DAY + timedelta(hours=1)
+aa = ingest.ingest_nwm_streamflow("analysis_assim_alaska_no_da", end=END)  # cycle 1 again
+assert (aa["files"], aa["rows"]) == (3, 3), aa
+stored = cat.load_table(("public", "nwm31_analysis_assim_alaska_no_da")).scan().to_arrow()
 assert sorted((r["value_time"] - DAY, r["value"]) for r in stored.to_pylist()) == [
     (timedelta(hours=h), v) for h, v in [(-2, 2.0), (-1, 12.0), (0, 11.0), (1, 10.0)]]
 series = cat.load_table(("public", "nwm31_series")).scan().to_arrow()
