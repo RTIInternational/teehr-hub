@@ -6,9 +6,11 @@ for ``medium_range_mem1``, ...), all sharing the version's series table, so one 
 files from NOAA's GCS bucket; :func:`flows.write.write_rows` writes them.
 
 As the legacy ingest did: the reaches are the crosswalk's, for the gages in the
-configuration's domain (their ``state_name``); each run reads whole UTC days, from
-``lookback_days`` before now, and upserts, so cycles read again are rewritten, not repeated;
-analysis keeps the latest cycle's value for each time, with no ``reference_time``.
+configuration's domain (their ``state_name``); runs upsert, so cycles read again are
+rewritten, not repeated; analysis keeps the latest cycle's value for each time, with no
+``reference_time``. Unlike legacy, a run reads from the dataset's latest cycle on (read again,
+in case it was published partly), not whole days: each commit rewrites the data files that
+overlap its window, so the less it reads again, the less it rewrites.
 """
 
 import re
@@ -127,6 +129,42 @@ def reaches(cat: Catalog, namespace: str, crosswalk: str, observed: str, where: 
     return sorted(set(keys))
 
 
+def latest_cycle(cat: Catalog, namespace: str, dataset: str) -> datetime | None:
+    """The dataset's latest cycle, from its files' metadata (no data is read).
+
+    A forecast's latest ``reference_time``; analysis has none, but its latest ``value_time``
+    is its latest cycle's (the file with no look-back).
+
+    Parameters
+    ----------
+    cat : Catalog
+        The warehouse catalog.
+    namespace, dataset : str
+        The timeseries dataset.
+
+    Returns
+    -------
+    datetime or None
+        The cycle (UTC), or None for a dataset without rows.
+
+    Examples
+    --------
+    >>> latest_cycle(cat, "public", "nwm31_short_range")
+    datetime.datetime(2026, 11, 27, 17, 0, tzinfo=datetime.timezone.utc)
+    """
+    table = cat.load_table((namespace, dataset))
+    if table.current_snapshot() is None:
+        return None
+    names = {f.name for f in table.schema().fields}
+    column = "reference_time" if "reference_time" in names else "value_time"
+    metrics = table.inspect.files().column("readable_metrics").to_pylist()
+    bounds = [m[column]["upper_bound"] for m in metrics if m and m.get(column)]
+    latest = max((b for b in bounds if b is not None), default=None)
+    if latest is None:
+        return None
+    return latest if latest.tzinfo else latest.replace(tzinfo=UTC)
+
+
 def _check_columns(cat: Catalog, namespace: str, dataset: str, configuration: str,
                    found: list[nwm.File]) -> None:  # fmt: skip
     """Refuse, before reading any file, a dataset without the key columns the rows will have.
@@ -212,7 +250,7 @@ def ingest_nwm_streamflow(
     end: datetime | None = None,
     batch_files: int = 100,
     workers: int = 16,
-    commit_rows: int = 2_000_000,
+    commit_rows: int = 20_000_000,
 ) -> dict[str, Any]:
     """Read the configuration's cycles from ``start`` up to ``end`` at the reaches and write them.
 
@@ -237,15 +275,18 @@ def ingest_nwm_streamflow(
         A row filter on the gages' layer; defaults to the configuration's domain
         (:func:`domain_filter`).
     lookback_days : int, default 1
-        Without ``start``, read from midnight UTC this many days before ``end``.
+        For a dataset without rows and no ``start``: read from midnight UTC this many days
+        before ``end``.
     start, end : datetime, optional
-        The window of reference times; ``end`` defaults to now.
+        The window of cycles. ``start`` defaults to the dataset's latest cycle
+        (:func:`latest_cycle`), read again in case it was published partly; ``end`` to now.
     batch_files : int, default 100
         Files read per batch (one retried task each).
     workers : int, default 16
         Files read at once.
-    commit_rows : int, default 2_000_000
-        The fewest rows in each commit.
+    commit_rows : int, default 20_000_000
+        The fewest rows in each commit. Each commit rewrites the data files its window
+        overlaps, so a run is best one commit: a 12-hour medium range run is about 6M rows.
 
     Returns
     -------
@@ -255,7 +296,7 @@ def ingest_nwm_streamflow(
 
     Examples
     --------
-    The scheduled run: yesterday and today's cycles, at the CONUS gages' reaches.
+    The scheduled run: the cycles since the dataset's latest, at the CONUS gages' reaches.
 
     >>> ingest_nwm_streamflow("short_range")
 
@@ -276,9 +317,9 @@ def ingest_nwm_streamflow(
     where = where or domain_filter(configuration)
     keys = reaches(cat, namespace, crosswalk, observed, where, version)
     end = end or datetime.now(UTC)
-    start = start or (end - timedelta(days=lookback_days)).replace(
-        hour=0, minute=0, second=0, microsecond=0
-    )  # fmt: skip
+    start = start or latest_cycle(cat, namespace, dataset) or (
+        end - timedelta(days=lookback_days)
+    ).replace(hour=0, minute=0, second=0, microsecond=0)  # fmt: skip
     found = nwm.files(configuration, start, end)
     log.info("NWM %s: %d reaches (gages: %s), %d files (cycles %s to %s) into %s.%s", configuration,
              len(keys), where, len(found), start, end, namespace, dataset)  # fmt: skip
