@@ -127,6 +127,44 @@ def reaches(cat: Catalog, namespace: str, crosswalk: str, observed: str, where: 
     return sorted(set(keys))
 
 
+def _check_columns(cat: Catalog, namespace: str, dataset: str, configuration: str,
+                   found: list[nwm.File]) -> None:  # fmt: skip
+    """Refuse, before reading any file, a dataset without the key columns the rows will have.
+
+    Parameters
+    ----------
+    cat : Catalog
+        The warehouse catalog.
+    namespace, dataset : str
+        The timeseries dataset to write.
+    configuration : str
+        The files' configuration, for the message.
+    found : list[nwm.File]
+        The files to read: a forecast's rows have a ``reference_time``, an ensemble
+        member's a ``member``.
+
+    Raises
+    ------
+    ValueError
+        When the dataset lacks one of those columns.
+
+    Examples
+    --------
+    >>> _check_columns(cat, "public", "nwm31_short_range", "medium_range_mem1",
+    ...                nwm.files("medium_range_mem1", start, end))
+    Traceback (most recent call last):
+    ValueError: public.nwm31_short_range has no member column, which medium_range_mem1's rows ...
+    """
+    needed = {"reference_time" for f in found if not f.analysis} | {
+        "member" for f in found if f.member is not None}  # fmt: skip
+    columns = {f.name for f in cat.load_table((namespace, dataset)).schema().fields}
+    missing = sorted(needed - columns)
+    if missing:
+        raise ValueError(f"{namespace}.{dataset} has no {' or '.join(missing)} column, which "
+                         f"{configuration}'s rows have: register it with them (or pick the "
+                         "dataset that has them)")  # fmt: skip
+
+
 @task(retries=2, retry_delay_seconds=60, persist_result=False,
       task_run_name="read files {first}-{last} of {total}")  # fmt: skip
 def read(files: list[nwm.File], keys: list[str], version: str, workers: int,
@@ -246,6 +284,7 @@ def ingest_nwm_streamflow(
              len(keys), where, len(found), start, end, namespace, dataset)  # fmt: skip
     if not keys:
         raise ValueError(f"no {version} reaches in {namespace}.{crosswalk} for the domain's gages")
+    _check_columns(cat, namespace, dataset, configuration, found)
 
     batches = (
         read(found[i : i + batch_files], keys, version, workers,

@@ -126,6 +126,11 @@ stored = cat.load_table(("public", "nwm31_analysis_assim_alaska_no_da")).scan().
 assert "reference_time" not in stored.column_names
 assert sorted((r["value_time"] - DAY, r["value"]) for r in stored.to_pylist()) == [
     (timedelta(hours=h), v) for h, v in [(-2, 2.0), (-1, 12.0), (0, 11.0), (1, 10.0)]]
+try:  # medium range rows have a member: refused up front for a dataset without one
+    ingest.ingest_nwm_streamflow("medium_range_mem1", dataset="nwm31_short_range", end=END)
+    raise AssertionError("no member column, but no error")
+except ValueError as err:
+    assert "has no member column" in str(err), err
 series = cat.load_table(("public", "nwm31_series")).scan().to_arrow()
 assert sorted(series["series_key"].to_pylist()) == ["nwm31-101", "nwm31-202"]
 assert set(series["location_key"].to_pylist()) == {None}
