@@ -31,9 +31,15 @@ own image (`Dockerfile`: teehr-core's warehouse writer and builders, Prefect; no
   USGS bulk Parquet files (staged by month, each month written whole, replacing it), then top up
   from the API where the files end. Deployed as `v1-backfill-usgs-streamflow`, run by hand: for
   a rebuild, or to reload months USGS has since approved.
+- `flows/ingest_nwm.py`: ingest NWM operational streamflow (`channel_rt`, from NOAA's GCS bucket)
+  at the gages' reaches, one dataset per configuration with legacy's names (`nwm31_short_range`,
+  `nwm31_medium_range` for `medium_range_mem1`, ...), sharing one series table. Reaches are the
+  `usgs_nwm31` crosswalk's for the gages in the configuration's domain (their `state_name`, as
+  legacy). Deployed as `v1-ingest-nwm-<configuration>` (twice daily on legacy's times, start paused).
 - `tests/smoke_derived.py`: the flow against a throwaway local catalog, in the image.
 - `tests/smoke_evaluations.py`: the run-evaluations flow against a fake control plane.
 - `tests/smoke_ingest_usgs.py`: the USGS ingest flow against a throwaway local catalog and a fake API.
+- `tests/smoke_ingest_nwm.py`: the NWM ingest flow against a throwaway local catalog and a fake GCS.
 
 ## Credentials
 

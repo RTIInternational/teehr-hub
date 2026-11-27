@@ -128,3 +128,31 @@ deployments:
       limit: 1
       collision_strategy: CANCEL_NEW
     work_pool: *work_pool
+
+  # NWM: the seeded short range and medium range datasets, for the seed's three gages (its
+  # layer has no state_name: every gage). Run by hand with start/end around the seed's days.
+  - name: v1-ingest-nwm-short-range
+    description: Ingest NWM short_range streamflow into public.nwm31_short_range
+    entrypoint: flows/ingest_nwm.py:ingest_nwm_streamflow
+    parameters:
+      configuration: short_range
+      dataset: nwm31_short_range
+      where: "True"
+      workers: 4  # the local pool's 1 GiB
+    concurrency_limit:
+      limit: 1
+      collision_strategy: CANCEL_NEW
+    work_pool: *work_pool
+
+  - name: v1-ingest-nwm-medium-range-mem1
+    description: Ingest NWM medium_range_mem1 streamflow into public.nwm31_medium_range_mem1
+    entrypoint: flows/ingest_nwm.py:ingest_nwm_streamflow
+    parameters:
+      configuration: medium_range_mem1
+      dataset: nwm31_medium_range_mem1
+      where: "True"
+      workers: 4  # the local pool's 1 GiB
+    concurrency_limit:
+      limit: 1
+      collision_strategy: CANCEL_NEW
+    work_pool: *work_pool

@@ -77,6 +77,14 @@ definitions:
           value: worker
           effect: NoSchedule
 
+  # NWM point ingests: up to ~16 files in flight (~13 MB each, decoded): a mid-size pod.
+  work_pool_nwm: &work_pool_nwm
+    name: kubernetes-pool
+    job_variables:
+      <<: *medium_vars
+      cpu_request: "2"
+      memory_request: 6Gi
+
   # Calls the control plane and waits (the runs themselves are its jobs): a small pod.
   work_pool_control_plane: &work_pool_control_plane
     name: kubernetes-pool
@@ -176,11 +184,10 @@ deployments:
       limit: 1
       collision_strategy: CANCEL_NEW
     work_pool: *work_pool_small
-    # Twice a day, as the legacy ingest (alongside it until they match). Starts off: run it
-    # by hand first.
+    # Twice a day, as the legacy ingest (alongside it until they match).
     schedule:
       cron: "0 8,20 * * *"
-      active: false
+      active: true
 
   - name: v1-backfill-usgs-streamflow
     description: Fill public.usgs_streamflow's whole record from the USGS bulk Parquet files, then top up from the API (by hand; replaces the months it writes)
@@ -197,3 +204,202 @@ deployments:
       job_variables:
         <<: *medium_vars
         active_deadline_seconds: 172800  # 2 days; the default 6 h ends a full backfill
+
+  # NWM operational streamflow at the gages' reaches, one dataset per configuration
+  # (legacy's names; nwm31_medium_range for medium_range_mem1). Twice a day on legacy's
+  # times, alongside it until they match. Start off: run each by hand first.
+  - name: v1-ingest-nwm-short-range
+    description: Ingest NWM short_range streamflow (the last day's cycles) into public.nwm31_short_range
+    entrypoint: flows/ingest_nwm.py:ingest_nwm_streamflow
+    parameters:
+      configuration: short_range
+      dataset: nwm31_short_range
+    concurrency_limit:
+      limit: 1
+      collision_strategy: CANCEL_NEW
+    work_pool: *work_pool_nwm
+    schedule:
+      cron: "0 7,19 * * *"
+      active: false
+
+  - name: v1-ingest-nwm-short-range-alaska
+    description: Ingest NWM short_range_alaska streamflow (the last day's cycles) into public.nwm31_short_range_alaska
+    entrypoint: flows/ingest_nwm.py:ingest_nwm_streamflow
+    parameters:
+      configuration: short_range_alaska
+      dataset: nwm31_short_range_alaska
+    concurrency_limit:
+      limit: 1
+      collision_strategy: CANCEL_NEW
+    work_pool: *work_pool_nwm
+    schedule:
+      cron: "10 7,19 * * *"
+      active: false
+
+  - name: v1-ingest-nwm-short-range-hawaii
+    description: Ingest NWM short_range_hawaii streamflow (the last day's cycles) into public.nwm31_short_range_hawaii
+    entrypoint: flows/ingest_nwm.py:ingest_nwm_streamflow
+    parameters:
+      configuration: short_range_hawaii
+      dataset: nwm31_short_range_hawaii
+    concurrency_limit:
+      limit: 1
+      collision_strategy: CANCEL_NEW
+    work_pool: *work_pool_nwm
+    schedule:
+      cron: "20 7,19 * * *"
+      active: false
+
+  - name: v1-ingest-nwm-short-range-puertorico
+    description: Ingest NWM short_range_puertorico streamflow (the last day's cycles) into public.nwm31_short_range_puertorico
+    entrypoint: flows/ingest_nwm.py:ingest_nwm_streamflow
+    parameters:
+      configuration: short_range_puertorico
+      dataset: nwm31_short_range_puertorico
+    concurrency_limit:
+      limit: 1
+      collision_strategy: CANCEL_NEW
+    work_pool: *work_pool_nwm
+    schedule:
+      cron: "30 7,19 * * *"
+      active: false
+
+  - name: v1-ingest-nwm-medium-range-mem1
+    description: Ingest NWM medium_range_mem1 streamflow (the last day's cycles) into public.nwm31_medium_range
+    entrypoint: flows/ingest_nwm.py:ingest_nwm_streamflow
+    parameters:
+      configuration: medium_range_mem1
+      dataset: nwm31_medium_range
+    concurrency_limit:
+      limit: 1
+      collision_strategy: CANCEL_NEW
+    work_pool: *work_pool_nwm
+    schedule:
+      cron: "0 6,18 * * *"
+      active: false
+
+  - name: v1-ingest-nwm-medium-range-blend
+    description: Ingest NWM medium_range_blend streamflow (the last day's cycles) into public.nwm31_medium_range_blend
+    entrypoint: flows/ingest_nwm.py:ingest_nwm_streamflow
+    parameters:
+      configuration: medium_range_blend
+      dataset: nwm31_medium_range_blend
+    concurrency_limit:
+      limit: 1
+      collision_strategy: CANCEL_NEW
+    work_pool: *work_pool_nwm
+    schedule:
+      cron: "10 6,18 * * *"
+      active: false
+
+  - name: v1-ingest-nwm-medium-range-alaska-mem1
+    description: Ingest NWM medium_range_alaska_mem1 streamflow (the last day's cycles) into public.nwm31_medium_range_alaska
+    entrypoint: flows/ingest_nwm.py:ingest_nwm_streamflow
+    parameters:
+      configuration: medium_range_alaska_mem1
+      dataset: nwm31_medium_range_alaska
+    concurrency_limit:
+      limit: 1
+      collision_strategy: CANCEL_NEW
+    work_pool: *work_pool_nwm
+    schedule:
+      cron: "20 6,18 * * *"
+      active: false
+
+  - name: v1-ingest-nwm-medium-range-blend-alaska
+    description: Ingest NWM medium_range_blend_alaska streamflow (the last day's cycles) into public.nwm31_medium_range_blend_alaska
+    entrypoint: flows/ingest_nwm.py:ingest_nwm_streamflow
+    parameters:
+      configuration: medium_range_blend_alaska
+      dataset: nwm31_medium_range_blend_alaska
+    concurrency_limit:
+      limit: 1
+      collision_strategy: CANCEL_NEW
+    work_pool: *work_pool_nwm
+    schedule:
+      cron: "30 6,18 * * *"
+      active: false
+
+  - name: v1-ingest-nwm-analysis-assim-no-da
+    description: Ingest NWM analysis_assim_no_da streamflow (the last day's cycles) into public.nwm31_analysis_assim_no_da
+    entrypoint: flows/ingest_nwm.py:ingest_nwm_streamflow
+    parameters:
+      configuration: analysis_assim_no_da
+      dataset: nwm31_analysis_assim_no_da
+    concurrency_limit:
+      limit: 1
+      collision_strategy: CANCEL_NEW
+    work_pool: *work_pool_nwm
+    schedule:
+      cron: "0 5,17 * * *"
+      active: false
+
+  - name: v1-ingest-nwm-analysis-assim-alaska-no-da
+    description: Ingest NWM analysis_assim_alaska_no_da streamflow (the last day's cycles) into public.nwm31_analysis_assim_alaska_no_da
+    entrypoint: flows/ingest_nwm.py:ingest_nwm_streamflow
+    parameters:
+      configuration: analysis_assim_alaska_no_da
+      dataset: nwm31_analysis_assim_alaska_no_da
+    concurrency_limit:
+      limit: 1
+      collision_strategy: CANCEL_NEW
+    work_pool: *work_pool_nwm
+    schedule:
+      cron: "10 5,17 * * *"
+      active: false
+
+  - name: v1-ingest-nwm-analysis-assim-extend-no-da
+    description: Ingest NWM analysis_assim_extend_no_da streamflow (the last day's cycles) into public.nwm31_analysis_assim_extend_no_da
+    entrypoint: flows/ingest_nwm.py:ingest_nwm_streamflow
+    parameters:
+      configuration: analysis_assim_extend_no_da
+      dataset: nwm31_analysis_assim_extend_no_da
+    concurrency_limit:
+      limit: 1
+      collision_strategy: CANCEL_NEW
+    work_pool: *work_pool_nwm
+    schedule:
+      cron: "20 5,17 * * *"
+      active: false
+
+  - name: v1-ingest-nwm-analysis-assim-extend-alaska-no-da
+    description: Ingest NWM analysis_assim_extend_alaska_no_da streamflow (the last day's cycles) into public.nwm31_analysis_assim_extend_alaska_no_da
+    entrypoint: flows/ingest_nwm.py:ingest_nwm_streamflow
+    parameters:
+      configuration: analysis_assim_extend_alaska_no_da
+      dataset: nwm31_analysis_assim_extend_alaska_no_da
+    concurrency_limit:
+      limit: 1
+      collision_strategy: CANCEL_NEW
+    work_pool: *work_pool_nwm
+    schedule:
+      cron: "30 5,17 * * *"
+      active: false
+
+  - name: v1-ingest-nwm-analysis-assim-hawaii-no-da
+    description: Ingest NWM analysis_assim_hawaii_no_da streamflow (the last day's cycles) into public.nwm31_analysis_assim_hawaii_no_da
+    entrypoint: flows/ingest_nwm.py:ingest_nwm_streamflow
+    parameters:
+      configuration: analysis_assim_hawaii_no_da
+      dataset: nwm31_analysis_assim_hawaii_no_da
+    concurrency_limit:
+      limit: 1
+      collision_strategy: CANCEL_NEW
+    work_pool: *work_pool_nwm
+    schedule:
+      cron: "40 5,17 * * *"
+      active: false
+
+  - name: v1-ingest-nwm-analysis-assim-puertorico-no-da
+    description: Ingest NWM analysis_assim_puertorico_no_da streamflow (the last day's cycles) into public.nwm31_analysis_assim_puertorico_no_da
+    entrypoint: flows/ingest_nwm.py:ingest_nwm_streamflow
+    parameters:
+      configuration: analysis_assim_puertorico_no_da
+      dataset: nwm31_analysis_assim_puertorico_no_da
+    concurrency_limit:
+      limit: 1
+      collision_strategy: CANCEL_NEW
+    work_pool: *work_pool_nwm
+    schedule:
+      cron: "50 5,17 * * *"
+      active: false
