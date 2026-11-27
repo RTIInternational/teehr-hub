@@ -1,10 +1,10 @@
 """Ingest USGS streamflow observations into a v1 timeseries dataset (``public.usgs_streamflow``).
 
 The template for v1 ingests (ADR-0019 in teehr-cloud-core): a teehr-core source
-(:mod:`teehr_core.fetch.usgs`) yields rows a batch of sites at a time, and teehr-core's
-writer (:func:`teehr_core.warehouse.write_timeseries`) writes them straight into the
-registered dataset as the flows' service account. Each commit is upserted on the dataset's
-key, so a re-run, or an overlapping window, rewrites rather than repeats.
+(:mod:`teehr_core.fetch.usgs`) yields rows a batch of sites at a time, and
+:func:`flows.write.write_rows` writes them straight into the registered dataset as the
+flows' service account. Each commit is upserted on the dataset's key, so a re-run, or an
+overlapping window, rewrites rather than repeats.
 
 The sites are the dataset's location layer's (``teehr.location_layer``), optionally
 filtered on its attributes (``where``), or a list given with ``sites``. Outside Prefect,
@@ -12,37 +12,29 @@ the same two teehr-core calls make a one-off ingest from a notebook.
 
 :func:`backfill_usgs_streamflow` fills whole records from the USGS bulk Parquet files
 instead (a rebuild, or a reload of months USGS has since approved): staged by month, each
-month written whole, then topped up from the API where the files end.
+month written whole, then topped up from the API where each site's file ends.
 """
 
 import os
 import tempfile
 import time
-from collections.abc import Iterable, Iterator
+from collections import defaultdict
 from concurrent.futures import FIRST_COMPLETED, ThreadPoolExecutor, wait
 from datetime import UTC, datetime, timedelta
 from itertools import islice
 from typing import Any
 
 import pyarrow as pa
-import pyarrow.compute as pc
-from prefect import flow, get_run_logger, runtime, task
+from prefect import flow, get_run_logger, task
 from prefect.blocks.system import Secret
 from teehr_core.fetch import usgs
-from teehr_core.warehouse import (
-    combine,
-    location_keys,
-    stage_by_month,
-    staged_months,
-    write_timeseries,
-)
+from teehr_core.warehouse import location_keys, stage_by_month, staged_months
 
 from flows.catalog import catalog
+from flows.write import write_rows
 
 #: The Prefect Secret block with the USGS Water Data API key (higher rate limits).
 PAT_BLOCK = "api-usgs-pat"
-#: The optional columns the rows carry, kept when the dataset has them.
-FLAGS = ("approval_status", "qualifier")
 
 
 @task(retries=2, retry_delay_seconds=60, persist_result=False,
@@ -102,16 +94,9 @@ def ingest_usgs_streamflow(
               i + 1, min(i + batch_sites, len(sites)), len(sites))
         for i in range(0, len(sites), batch_sites)
     )  # fmt: skip
-    written = write_timeseries(
-        cat, namespace, dataset, combine(_fit(cat, namespace, dataset, batches), commit_rows),
-        producer=f"prefect:{runtime.flow_run.name or 'local'}",
-        unit=usgs.UNIT, location_of=lambda key: key,
-    )  # fmt: skip
-    log.info("wrote %d rows in %d commit(s); %d new series; months %s", written.rows,
-             written.batches, written.series_added, ", ".join(written.months) or "-")  # fmt: skip
-    return {"sites": len(sites), "start": start.isoformat(), "end": end.isoformat(),
-            "rows": written.rows, "commits": written.batches,
-            "series_added": written.series_added, "snapshot_id": written.snapshot_id}  # fmt: skip
+    written = write_rows(cat, namespace, dataset, batches, unit=usgs.UNIT,
+                         location_of=lambda key: key, commit_rows=commit_rows)  # fmt: skip
+    return {"sites": len(sites), "start": start.isoformat(), "end": end.isoformat(), **written}
 
 
 def _sites(cat: Any, namespace: str, dataset: str, sites: list[str] | None,
@@ -121,17 +106,6 @@ def _sites(cat: Any, namespace: str, dataset: str, sites: list[str] | None,
         sites = [k for k in location_keys(cat, namespace, dataset, where)
                  if k.lower().startswith("usgs-")]  # fmt: skip
     return list(dict.fromkeys(sites))
-
-
-def _fit(cat: Any, namespace: str, dataset: str, batches: Iterable[pa.Table]) -> Iterator[pa.Table]:
-    """The batches without the flag columns the dataset doesn't have."""
-    columns = {f.name for f in cat.load_table((namespace, dataset)).schema().fields}
-    missing = [c for c in FLAGS if c not in columns]
-    if missing:
-        get_run_logger().warning("%s.%s has no %s column(s): not kept", namespace, dataset,
-                                 " or ".join(missing))  # fmt: skip
-    for batch in batches:
-        yield batch.drop_columns(missing) if missing else batch
 
 
 @task(persist_result=False, task_run_name="stage {total} sites' bulk files")
@@ -187,16 +161,57 @@ def stage_sites(
     return last_times
 
 
-def _logged(batches: Iterable[pa.Table]) -> Iterator[pa.Table]:
-    """The batches of whole months, each logged (its months and rows) as it's written."""
-    log = get_run_logger()
-    began, rows = time.monotonic(), 0
-    for i, batch in enumerate(batches, 1):
-        months = pc.unique(pc.strftime(batch["value_time"], format="%Y-%m")).to_pylist()
-        rows += batch.num_rows
-        log.info("commit %d: %s..%s, %d rows (%d so far, %.0f s)", i, min(months),
-                 max(months), batch.num_rows, rows, time.monotonic() - began)  # fmt: skip
-        yield batch
+def top_up_groups(
+    sites: list[str], last_times: dict[str, datetime], now: datetime,
+    horizon: timedelta = timedelta(days=365),
+) -> list[tuple[datetime, list[str]]]:  # fmt: skip
+    """Group the sites to top up from the API by the month their bulk file ends.
+
+    The files lag the API by months, varying by site. Each group is fetched from its
+    earliest last time, so a few sites whose files end early don't drag every site's window
+    back with them. Sites whose files ended before ``horizon`` have stopped reporting and
+    are skipped; sites with no file (none, or its download failed) start ``horizon`` back.
+
+    Parameters
+    ----------
+    sites : list[str]
+        The backfill's sites.
+    last_times : dict[str, datetime]
+        Each staged site's last time in its file (:func:`stage_sites`).
+    now : datetime
+        The top-up's end.
+    horizon : timedelta, default 365 days
+        How recent a site's last time must be to count as still reporting.
+
+    Returns
+    -------
+    list[tuple[datetime, list[str]]]
+        Each group's start (its earliest last time, to the hour) and sites, earliest first.
+
+    Examples
+    --------
+    >>> now = datetime(2026, 11, 27, tzinfo=UTC)
+    >>> top_up_groups(["usgs-01", "usgs-02", "usgs-03", "usgs-04"], {
+    ...     "usgs-01": datetime(2026, 6, 30, 23, 15, tzinfo=UTC),
+    ...     "usgs-02": datetime(2026, 6, 12, 4, 0, tzinfo=UTC),
+    ...     "usgs-03": datetime(2025, 1, 1, tzinfo=UTC)}, now)  # doctest: +NORMALIZE_WHITESPACE
+    [(datetime.datetime(2025, 11, 27, 0, 0, tzinfo=datetime.timezone.utc), ['usgs-04']),
+     (datetime.datetime(2026, 6, 12, 4, 0, tzinfo=datetime.timezone.utc),
+      ['usgs-01', 'usgs-02'])]
+    """
+    groups: dict[tuple[int, int], list[str]] = defaultdict(list)
+    starts: dict[tuple[int, int], datetime] = {}
+    for site in sites:
+        last = last_times.get(site)
+        if last is None:
+            last = now - horizon
+        elif last <= now - horizon:
+            continue
+        month = (last.year, last.month)
+        groups[month].append(site)
+        start = last.replace(minute=0, second=0, microsecond=0)
+        starts[month] = min(starts.get(month, start), start)
+    return [(starts[m], groups[m]) for m in sorted(groups)]
 
 
 @flow(name="backfill-usgs-streamflow", log_prints=True)
@@ -216,17 +231,56 @@ def backfill_usgs_streamflow(
 ) -> dict[str, Any]:
     """Fill the sites' whole record (or ``start`` to ``end``) from the USGS bulk files.
 
-    Every site's file is staged by month (``stage_dir``, default a temporary folder), then
-    each month is written whole, **replacing** that month: rows of sites not staged for it
-    are deleted. So run it for every site of the dataset (the default), or limit the months
-    with ``start``/``end`` to ones the files cover for all of them.
+    Every site's file is staged by month, then each month is written whole, **replacing**
+    that month: rows of sites not staged for it are deleted. So run it for every site of the
+    dataset (the default), or limit the months with ``start``/``end`` to ones the files cover
+    for all of them.
 
-    The files lag the API (continuous values by months, varying by site). With ``top_up``,
-    the API then fills from the earliest last time among sites still reporting (a file
-    ending within the last year) up to now, refilling the months the files only partly cover.
+    The files lag the API by months, varying by site. With ``top_up``, the API then fills
+    each still-reporting site from where its file ends up to now, a group of sites per month
+    their files end in (:func:`top_up_groups`), each group an :func:`ingest_usgs_streamflow`
+    subflow run.
 
-    Months are written whole, joined into commits of at least ``commit_rows`` rows (fewer
-    commits for small or early months).
+    Parameters
+    ----------
+    dataset : str, default "usgs_streamflow"
+    namespace : str, default "public"
+    sites : list[str], optional
+        ``usgs-01646500`` or ``01646500``; defaults to the dataset's location layer's keys.
+    where : str, optional
+        A row filter on the location layer's attributes, e.g. ``"has_inst_discharge == True"``.
+    start, end : datetime, optional
+        Limit the files' rows to this window; the whole record by default.
+    service : {"iv", "dv"}, default "iv"
+        Instantaneous or daily values.
+    hourly : bool, default True
+        Keep only instantaneous values on the hour.
+    workers : int, default 4
+        Files downloaded at once.
+    stage_dir : str, optional
+        Where to stage the months; a temporary folder by default.
+    top_up : bool, default True
+        Fill from the API where the files end.
+    commit_rows : int, default 5_000_000
+        The fewest rows in each commit (whole months; fewer commits for small months).
+
+    Returns
+    -------
+    dict
+        ``sites``, ``with_data`` (sites with a file), :func:`flows.write.write_rows`'
+        summary, and, with ``top_up``, ``top_up``: its ``groups``, ``sites``, ``rows`` and
+        ``series_added``.
+
+    Examples
+    --------
+    Every gage with instantaneous discharge, whole record, then topped up:
+
+    >>> backfill_usgs_streamflow(where="has_inst_discharge == True")
+
+    Reload the months USGS approved since the last backfill, without a top-up:
+
+    >>> backfill_usgs_streamflow(where="has_inst_discharge == True",
+    ...                          start=datetime(2025, 1, 1, tzinfo=UTC), top_up=False)
     """
     log = get_run_logger()
     _use_pat()
@@ -236,26 +290,24 @@ def backfill_usgs_streamflow(
     with tempfile.TemporaryDirectory(dir=stage_dir) as directory:
         last_times = stage_sites(sites, start, end, service, hourly, directory, workers,
                                  len(sites))  # fmt: skip
-        months = _logged(combine(staged_months(directory), commit_rows))
-        written = write_timeseries(
-            cat, namespace, dataset, _fit(cat, namespace, dataset, months),
-            producer=f"prefect:{runtime.flow_run.name or 'local'}",
-            unit=usgs.UNIT, location_of=lambda key: key, replace_months=True,
-        )  # fmt: skip
-    log.info("bulk: wrote %d rows in %d commit(s), %d new series; %d of %d sites had data",
-             written.rows, written.batches, written.series_added, len(last_times),
-             len(sites))  # fmt: skip
-    result: dict[str, Any] = {"sites": len(sites), "with_data": len(last_times),
-                              "rows": written.rows, "commits": written.batches,
-                              "series_added": written.series_added}  # fmt: skip
-    now = datetime.now(UTC)
-    reporting = [t for t in last_times.values() if t > now - timedelta(days=365)]
-    if top_up and reporting:
-        since = min(reporting).replace(minute=0, second=0, microsecond=0)
-        log.info("top-up from the API: %d sites still reporting, from %s", len(reporting),
-                 since)  # fmt: skip
-        result["top_up"] = ingest_usgs_streamflow(
-            dataset=dataset, namespace=namespace, sites=sites, start=since,
-            service=service, hourly=hourly,
-        )  # fmt: skip
+        written = write_rows(cat, namespace, dataset, staged_months(directory),
+                             unit=usgs.UNIT, location_of=lambda key: key,
+                             commit_rows=commit_rows, replace_months=True)  # fmt: skip
+    log.info("bulk: %d of %d sites had data", len(last_times), len(sites))
+    result: dict[str, Any] = {"sites": len(sites), "with_data": len(last_times), **written}
+    groups = top_up_groups(sites, last_times, datetime.now(UTC)) if top_up else []
+    if groups:
+        log.info("top-up from the API: %d sites in %d groups, from %s",
+                 sum(len(g) for _, g in groups), len(groups),
+                 ", ".join(f"{s:%Y-%m-%d %H:%M} ({len(g)})" for s, g in groups))  # fmt: skip
+        topped = [
+            ingest_usgs_streamflow.with_options(flow_run_name=f"top-up from {since:%Y-%m-%d}")(
+                dataset=dataset, namespace=namespace, sites=group, start=since,
+                service=service, hourly=hourly,
+            )
+            for since, group in groups
+        ]  # fmt: skip
+        result["top_up"] = {"groups": len(groups), "sites": sum(t["sites"] for t in topped),
+                            "rows": sum(t["rows"] for t in topped),
+                            "series_added": sum(t["series_added"] for t in topped)}  # fmt: skip
     return result

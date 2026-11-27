@@ -18,6 +18,11 @@ own image (`Dockerfile`: teehr-core's warehouse writer and builders, Prefect; no
   Deployed as `v1-run-platform-evaluations` (daily, starts paused: run it once by hand from the
   Prefect UI before turning on its schedule). Runs act as their caller, so they show
   `service-account-teehr-platform-automation` as their creator.
+- `flows/write.py`: `write_rows`, the one write path for every ingest. A teehr-core source
+  (`teehr_core.fetch.*`) fetches however suits it but returns v1 timeseries rows in its `UNIT`;
+  `write_rows` drops non-key columns the dataset lacks, joins batches into commits, logs each,
+  and writes them with teehr-core's `write_timeseries` (new series added to the series table).
+  A new source's flow picks its locations and window, calls the source, then `write_rows`.
 - `flows/ingest_usgs.py`: ingest USGS streamflow into `public.usgs_streamflow` for the gages
   of its location layer (or given `sites`), with teehr-core's fetch and writer; the template
   for v1 ingests. Deployed as `v1-ingest-usgs-streamflow` (twice daily on use1, starts paused).
