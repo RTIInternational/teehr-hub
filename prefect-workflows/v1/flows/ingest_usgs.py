@@ -1,4 +1,4 @@
-"""Ingest USGS streamflow observations into a v1 timeseries dataset (``public.usgs_streamflow``).
+"""Ingest USGS streamflow observations into a v1 timeseries dataset (``public.usgs_inst_streamflow``).
 
 The template for v1 ingests (ADR-0019 in teehr-cloud-core): a teehr-core source
 (:mod:`teehr_core.fetch.usgs`) yields rows a batch of sites at a time, and
@@ -79,7 +79,7 @@ def _use_pat() -> None:
 
 @flow(name="ingest-usgs-streamflow", log_prints=True)
 def ingest_usgs_streamflow(
-    dataset: str = "usgs_streamflow",
+    dataset: str = "usgs_inst_streamflow",
     namespace: str = "public",
     sites: list[str] | None = None,
     where: str | None = None,
@@ -240,7 +240,7 @@ def top_up_groups(
 
 @flow(name="backfill-usgs-streamflow", log_prints=True)
 def backfill_usgs_streamflow(
-    dataset: str = "usgs_streamflow",
+    dataset: str = "usgs_inst_streamflow",
     namespace: str = "public",
     sites: list[str] | None = None,
     where: str | None = None,
@@ -267,7 +267,7 @@ def backfill_usgs_streamflow(
 
     Parameters
     ----------
-    dataset : str, default "usgs_streamflow"
+    dataset : str, default "usgs_inst_streamflow"
     namespace : str, default "public"
     sites : list[str], optional
         ``usgs-01646500`` or ``01646500``; defaults to the dataset's location layer's keys.

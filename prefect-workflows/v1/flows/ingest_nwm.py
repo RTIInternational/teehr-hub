@@ -117,7 +117,7 @@ def reaches(cat: Catalog, namespace: str, crosswalk: str, observed: str, where: 
     --------
     The ``nwm31`` reaches at the Alaska gages:
 
-    >>> reaches(cat, "public", "usgs_nwm31", "usgs_streamflow",
+    >>> reaches(cat, "public", "usgs_nwm31", "usgs_inst_streamflow",
     ...         domain_filter("short_range_alaska"), "nwm31")
     """
     gages = pa.array(location_keys(cat, namespace, observed, where), pa.string())
@@ -243,7 +243,7 @@ def ingest_nwm_streamflow(
     namespace: str = "public",
     version: str = "nwm31",
     crosswalk: str = "usgs_nwm31",
-    observed: str = "usgs_streamflow",
+    observed: str = "usgs_inst_streamflow",
     where: str | None = None,
     lookback_days: int = 1,
     start: datetime | None = None,
@@ -269,7 +269,7 @@ def ingest_nwm_streamflow(
         The reaches' key prefix, and the NWM version the files are read as.
     crosswalk : str, default "usgs_nwm31"
         Pairs ``observed``'s gages (left) with the reaches (right).
-    observed : str, default "usgs_streamflow"
+    observed : str, default "usgs_inst_streamflow"
         The dataset whose location layer holds the gages.
     where : str, optional
         A row filter on the gages' layer; defaults to the configuration's domain

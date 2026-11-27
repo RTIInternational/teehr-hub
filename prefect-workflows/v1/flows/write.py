@@ -65,7 +65,7 @@ def write_rows(
     --------
     USGS: the series key is the gage's location key.
 
-    >>> write_rows(cat, "public", "usgs_streamflow", usgs.read_bulk(sites, start, end),
+    >>> write_rows(cat, "public", "usgs_inst_streamflow", usgs.read_bulk(sites, start, end),
     ...            unit=usgs.UNIT, location_of=lambda key: key)
 
     NWM: reaches have no location layer.
@@ -118,9 +118,9 @@ def _fit(cat: Catalog, namespace: str, dataset: str,
 
     Examples
     --------
-    USGS rows carry ``approval_status`` and ``qualifier`` flags; ``usgs_streamflow`` keeps neither.
+    USGS rows carry ``approval_status`` and ``qualifier`` flags; ``usgs_inst_streamflow`` keeps neither.
 
-    >>> next(_fit(cat, "public", "usgs_streamflow", [rows])).column_names
+    >>> next(_fit(cat, "public", "usgs_inst_streamflow", [rows])).column_names
     ['series_key', 'value_time', 'value']
     """
     columns = {f.name for f in cat.load_table((namespace, dataset)).schema().fields}

@@ -131,10 +131,10 @@ deployments:
       active: false
 
   - name: v1-build-usgs-streamflow-percentiles
-    description: Build public.usgs_streamflow_percentiles from public.usgs_streamflow (monthly)
+    description: Build public.usgs_inst_streamflow_percentiles from public.usgs_inst_streamflow (monthly)
     entrypoint: flows/derived.py:build_derived_dataset
     parameters:
-      observed: usgs_streamflow
+      observed: usgs_inst_streamflow
       kind: percentiles
     concurrency_limit:
       limit: 1
@@ -146,10 +146,10 @@ deployments:
       active: false
 
   - name: v1-build-usgs-streamflow-climatology
-    description: Build public.usgs_streamflow_climatology from public.usgs_streamflow (monthly)
+    description: Build public.usgs_inst_streamflow_climatology from public.usgs_inst_streamflow (monthly)
     entrypoint: flows/derived.py:build_derived_dataset
     parameters:
-      observed: usgs_streamflow
+      observed: usgs_inst_streamflow
       kind: climatology
     concurrency_limit:
       limit: 1
@@ -160,10 +160,10 @@ deployments:
       active: false
 
   - name: v1-build-usgs-streamflow-naive-scale
-    description: Build public.usgs_streamflow_naive_scale from public.usgs_streamflow (monthly)
+    description: Build public.usgs_inst_streamflow_naive_scale from public.usgs_inst_streamflow (monthly)
     entrypoint: flows/derived.py:build_derived_dataset
     parameters:
-      observed: usgs_streamflow
+      observed: usgs_inst_streamflow
       kind: naive_scale
     concurrency_limit:
       limit: 1
@@ -174,10 +174,10 @@ deployments:
       active: false
 
   - name: v1-ingest-usgs-streamflow
-    description: Ingest USGS streamflow (the last day) into public.usgs_streamflow, for the active gages of its layer with instantaneous discharge
+    description: Ingest USGS streamflow (the last day) into public.usgs_inst_streamflow, for the active gages of its layer with instantaneous discharge
     entrypoint: flows/ingest_usgs.py:ingest_usgs_streamflow
     parameters:
-      dataset: usgs_streamflow
+      dataset: usgs_inst_streamflow
       where: is_active == True and has_inst_discharge == True
       lookback_days: 1
     concurrency_limit:
@@ -190,10 +190,10 @@ deployments:
       active: true
 
   - name: v1-backfill-usgs-streamflow
-    description: Fill public.usgs_streamflow's whole record from the USGS bulk Parquet files, then top up from the API (by hand; replaces the months it writes)
+    description: Fill public.usgs_inst_streamflow's whole record from the USGS bulk Parquet files, then top up from the API (by hand; replaces the months it writes)
     entrypoint: flows/ingest_usgs.py:backfill_usgs_streamflow
     parameters:
-      dataset: usgs_streamflow
+      dataset: usgs_inst_streamflow
       where: has_inst_discharge == True
       workers: 4  # ~1 GB per site being read
     concurrency_limit:
@@ -204,6 +204,42 @@ deployments:
       job_variables:
         <<: *medium_vars
         active_deadline_seconds: 172800  # 2 days; the default 6 h ends a full backfill
+
+  # USGS daily mean streamflow: a separate dataset (statistic mean, period day_starting), at
+  # midnight UTC of each day. Daily values appear the day after and are revised for a few
+  # days, so each run re-reads the last week.
+  - name: v1-ingest-usgs-daily-streamflow
+    description: Ingest USGS daily mean streamflow (the last week) into public.usgs_daily_streamflow, for the active gages of its layer with daily mean discharge
+    entrypoint: flows/ingest_usgs.py:ingest_usgs_streamflow
+    parameters:
+      dataset: usgs_daily_streamflow
+      service: dv
+      where: is_active == True and has_mean_daily_discharge == True
+      lookback_days: 7
+    concurrency_limit:
+      limit: 1
+      collision_strategy: CANCEL_NEW
+    work_pool: *work_pool_small
+    schedule:
+      cron: "0 12 * * *"
+      active: true
+
+  - name: v1-backfill-usgs-daily-streamflow
+    description: Fill public.usgs_daily_streamflow's whole record from the USGS daily bulk Parquet files, then top up from the API (by hand; replaces the months it writes)
+    entrypoint: flows/ingest_usgs.py:backfill_usgs_streamflow
+    parameters:
+      dataset: usgs_daily_streamflow
+      service: dv
+      where: has_mean_daily_discharge == True
+      workers: 4
+    concurrency_limit:
+      limit: 1
+      collision_strategy: CANCEL_NEW
+    work_pool:
+      name: kubernetes-pool
+      job_variables:
+        <<: *medium_vars
+        active_deadline_seconds: 172800
 
   # NWM operational streamflow at the gages' reaches, one dataset per configuration
   # (legacy's names; nwm31_medium_range for medium_range_mem1). Twice a day on legacy's

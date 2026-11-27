@@ -21,7 +21,7 @@ from flows.catalog import catalog
 
 @flow(name="build-derived-dataset", log_prints=True)
 def build_derived_dataset(
-    observed: str = "usgs_streamflow",
+    observed: str = "usgs_inst_streamflow",
     kind: str = "percentiles",
     name: str | None = None,
     namespace: str = "public",
