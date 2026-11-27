@@ -3,7 +3,7 @@ version: 1
 name: nwm30_medium_range_by_location
 inputs:
   primary:
-    dataset: public.usgs_streamflow
+    dataset: public.usgs_inst_streamflow
   secondary:
     - dataset: public.nwm30_medium_range
 pair:

@@ -41,7 +41,7 @@ gages.append(pa.table({
     **{c: [1.0] * 3 for c in ("bbox_xmin", "bbox_ymin", "bbox_xmax", "bbox_ymax")},
     "state_name": ["Virginia", "Alaska", None]}, schema=gages.schema().as_arrow()))
 bare, key = timeseries_columns([], "instant")
-make("usgs_streamflow", bare, key, {"teehr.type": "timeseries", "teehr.unit": "m3/s",
+make("usgs_inst_streamflow", bare, key, {"teehr.type": "timeseries", "teehr.unit": "m3/s",
                                     "teehr.location_layer": "usgs_gages"})
 make("usgs_nwm31", [{"name": n, "type": "string", "required": True, "doc": None}
                     for n in ("left_key", "right_key")], [], {"teehr.type": "crosswalk"})

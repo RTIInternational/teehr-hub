@@ -12,7 +12,7 @@ own image (`Dockerfile`: teehr-core's warehouse writer and builders, Prefect; no
   that renews its tokens. `flows/catalog.py`: the Polaris catalog, as the same account.
 - `flows/derived.py`: build a derived dataset (percentiles, climatology, naive scale) of an
   observed timeseries. Register the dataset first:
-  `teehr datasets create usgs_streamflow_percentiles -p public --kind percentiles --observed usgs_streamflow`.
+  `teehr datasets create usgs_inst_streamflow_percentiles -p public --kind percentiles --observed usgs_inst_streamflow`.
 - `flows/evaluations.py`: run a project's evaluations (default: all of `platform`, the specs in
   `evaluations/platform/`) through the control plane, one at a time, waiting for each.
   Deployed as `v1-run-platform-evaluations` (daily, starts paused: run it once by hand from the
@@ -23,9 +23,11 @@ own image (`Dockerfile`: teehr-core's warehouse writer and builders, Prefect; no
   `write_rows` drops non-key columns the dataset lacks, joins batches into commits, logs each,
   and writes them with teehr-core's `write_timeseries` (new series added to the series table).
   A new source's flow picks its locations and window, calls the source, then `write_rows`.
-- `flows/ingest_usgs.py`: ingest USGS streamflow into `public.usgs_streamflow` for the gages
+- `flows/ingest_usgs.py`: ingest USGS streamflow into `public.usgs_inst_streamflow` for the gages
   of its location layer (or given `sites`), with teehr-core's fetch and writer; the template
-  for v1 ingests. Deployed as `v1-ingest-usgs-streamflow` (twice daily on use1).
+  for v1 ingests. Deployed as `v1-ingest-usgs-streamflow` (twice daily on use1), and, with
+  `service: dv`, as `v1-ingest-usgs-daily-streamflow` into `public.usgs_daily_streamflow`
+  (daily means; once a day, the last week).
   Uses the `api-usgs-pat` Secret block when there is one. At sites with several discharge
   time series, teehr-core's `choose_series` ranks them from the USGS's metadata, with the
   flow's `PINS` first, and keeps the best one covering each time.

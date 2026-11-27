@@ -29,14 +29,14 @@ def make(name, columns, key, props):
 
 
 cols, key = timeseries_columns(["approval_status", "qualifier"], "instant")
-make("usgs_streamflow", cols, key, {
-    "teehr.type": "timeseries", "teehr.unit": "m3/s", "teehr.series_table": "usgs_streamflow_series",
+make("usgs_inst_streamflow", cols, key, {
+    "teehr.type": "timeseries", "teehr.unit": "m3/s", "teehr.series_table": "usgs_inst_streamflow_series",
     "teehr.location_layer": "usgs_gages"})
 bare, _ = timeseries_columns([], "instant")
 make("no_flags", bare, key, {
-    "teehr.type": "timeseries", "teehr.unit": "m3/s", "teehr.series_table": "usgs_streamflow_series",
+    "teehr.type": "timeseries", "teehr.unit": "m3/s", "teehr.series_table": "usgs_inst_streamflow_series",
     "teehr.location_layer": "usgs_gages"})
-make("usgs_streamflow_series", series_columns(), ["series_key"], {"teehr.type": "series"})
+make("usgs_inst_streamflow_series", series_columns(), ["series_key"], {"teehr.type": "series"})
 attr = {"name": "is_active", "type": "boolean", "required": False, "doc": None}
 gages = make("usgs_gages", layer_columns([attr]), ["location_key"], {"teehr.type": "layer"})
 point = bytes.fromhex("0101000000000000000000f03f000000000000f03f")
@@ -90,12 +90,12 @@ assert (out["sites"], out["rows"], out["commits"], out["series_added"]) == (2, 6
 
 again = ingest.ingest_usgs_streamflow(sites=["01"], end=END, lookback_days=0.125)
 assert (again["rows"], again["series_added"]) == (3, 0), again
-stored = cat.load_table(("public", "usgs_streamflow")).scan().to_arrow()
+stored = cat.load_table(("public", "usgs_inst_streamflow")).scan().to_arrow()
 assert set(stored["approval_status"].to_pylist()) == {"Provisional"}
 assert set(stored["qualifier"].to_pylist()) == {"ICE"}
 assert stored.num_rows == 6 and {round(v, 4) for v in stored["value"].to_pylist()} == {
     round(100 * usgs.CFS_TO_M3S, 4)}  # site 02's secondary sensor (999) isn't kept
-series = cat.load_table(("public", "usgs_streamflow_series")).scan().to_arrow().to_pylist()
+series = cat.load_table(("public", "usgs_inst_streamflow_series")).scan().to_arrow().to_pylist()
 assert {(s["series_key"], s["location_key"], s["location_layer"]) for s in series} == {
     ("usgs-01", "usgs-01", "usgs_gages"), ("usgs-02", "usgs-02", "usgs_gages")}, series
 no_q = ingest.ingest_usgs_streamflow(dataset="no_flags", sites=["01"], end=END,
@@ -122,7 +122,7 @@ filled = ingest.backfill_usgs_streamflow(where="is_active == True")
 print("BACKFILL", filled)
 assert filled["with_data"] == 2 and filled["months"] >= 2 and filled["commits"] >= 1, filled
 assert filled["top_up"]["groups"] == 1 and filled["top_up"]["sites"] == 2 and requests, filled
-stored = cat.load_table(("public", "usgs_streamflow")).scan().to_arrow()
+stored = cat.load_table(("public", "usgs_inst_streamflow")).scan().to_arrow()
 statuses = set(stored["approval_status"].to_pylist())
 assert statuses == {"Approved", "Provisional"}, statuses  # bulk, then the API's latest
 older = stored.filter(pa.compute.less(stored["value_time"], pa.scalar(recent)))
