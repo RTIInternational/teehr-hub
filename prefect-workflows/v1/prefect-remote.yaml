@@ -184,11 +184,10 @@ deployments:
       limit: 1
       collision_strategy: CANCEL_NEW
     work_pool: *work_pool_small
-    # Twice a day, as the legacy ingest (alongside it until they match). Starts off: run it
-    # by hand first.
+    # Twice a day, as the legacy ingest (alongside it until they match).
     schedule:
       cron: "0 8,20 * * *"
-      active: false
+      active: true
 
   - name: v1-backfill-usgs-streamflow
     description: Fill public.usgs_streamflow's whole record from the USGS bulk Parquet files, then top up from the API (by hand; replaces the months it writes)
