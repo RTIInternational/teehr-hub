@@ -25,8 +25,10 @@ own image (`Dockerfile`: teehr-core's warehouse writer and builders, Prefect; no
   A new source's flow picks its locations and window, calls the source, then `write_rows`.
 - `flows/ingest_usgs.py`: ingest USGS streamflow into `public.usgs_streamflow` for the gages
   of its location layer (or given `sites`), with teehr-core's fetch and writer; the template
-  for v1 ingests. Deployed as `v1-ingest-usgs-streamflow` (twice daily on use1, starts paused).
-  Uses the `api-usgs-pat` Secret block when there is one.
+  for v1 ingests. Deployed as `v1-ingest-usgs-streamflow` (twice daily on use1).
+  Uses the `api-usgs-pat` Secret block when there is one. At sites with several discharge
+  time series, teehr-core's `choose_series` ranks them from the USGS's metadata, with the
+  flow's `PINS` first, and keeps the best one covering each time.
 - `flows/ingest_usgs.py:backfill_usgs_streamflow`: fill a USGS dataset's whole record from the
   USGS bulk Parquet files (staged by month, each month written whole, replacing it), then top up
   from the API where the files end. Deployed as `v1-backfill-usgs-streamflow`, run by hand: for

@@ -52,13 +52,31 @@ requests = []
 def fake_request(service, sites, start, end):
     requests.append(sites)
     hours = pd.date_range(start, end - timedelta(hours=1), freq="h")
-    return pd.DataFrame({
-        "time_series_id": [f"ts-{s}" for s in sites for _ in hours],
+    main = pd.DataFrame({
+        "time_series_id": [f"ts-{usgs.site_number(s)}" for s in sites for _ in hours],
         "monitoring_location_id": [f"USGS-{usgs.site_number(s)}" for s in sites for _ in hours],
         "time": [t for _ in sites for t in hours],
         "value": [100.0 for _ in sites for _ in hours],
         "approval_status": "Provisional",
         "qualifier": [["ICE"] for _ in sites for _ in hours]})
+    # Site 02 also has a secondary sensor (not primary): its values are never kept.
+    secondary = main[main["monitoring_location_id"] == "USGS-02"].assign(
+        time_series_id="ts-02-secondary", value=999.0)
+    return pd.concat([main, secondary], ignore_index=True)
+
+
+def fake_metadata(sites, service):
+    """Site 02's two series, as the USGS describes them."""
+    return pd.DataFrame({
+        "time_series_id": ["ts-02", "ts-02-secondary"],
+        "monitoring_location_id": ["USGS-02", "USGS-02"],
+        "primary": ["Primary", None], "sublocation_identifier": [None, None],
+        "web_description": [None, "Secondary Sensor 5-Min Update"],
+        "begin_utc": pd.to_datetime(["2000-01-01", "2026-07-27"], utc=True),
+        "end_utc": pd.to_datetime([datetime.now(UTC)] * 2, utc=True)})
+
+
+usgs._series_metadata = fake_metadata
 
 
 usgs._request = fake_request
@@ -75,7 +93,8 @@ assert (again["rows"], again["series_added"]) == (3, 0), again
 stored = cat.load_table(("public", "usgs_streamflow")).scan().to_arrow()
 assert set(stored["approval_status"].to_pylist()) == {"Provisional"}
 assert set(stored["qualifier"].to_pylist()) == {"ICE"}
-assert stored.num_rows == 6 and round(stored["value"][0].as_py(), 4) == round(100 * usgs.CFS_TO_M3S, 4)
+assert stored.num_rows == 6 and {round(v, 4) for v in stored["value"].to_pylist()} == {
+    round(100 * usgs.CFS_TO_M3S, 4)}  # site 02's secondary sensor (999) isn't kept
 series = cat.load_table(("public", "usgs_streamflow_series")).scan().to_arrow().to_pylist()
 assert {(s["series_key"], s["location_key"], s["location_layer"]) for s in series} == {
     ("usgs-01", "usgs-01", "usgs_gages"), ("usgs-02", "usgs-02", "usgs_gages")}, series

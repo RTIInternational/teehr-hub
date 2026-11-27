@@ -13,6 +13,11 @@ the same two teehr-core calls make a one-off ingest from a notebook.
 :func:`backfill_usgs_streamflow` fills whole records from the USGS bulk Parquet files
 instead (a rebuild, or a reload of months USGS has since approved): staged by month, each
 month written whole, then topped up from the API where each site's file ends.
+
+A site can have several discharge time series (a primary and a secondary sensor, a
+structure's and a river's, an old series and its replacement). Both flows rank them once
+per run (:func:`teehr_core.fetch.usgs.choose_series`, with :data:`PINS` first) and keep, at
+each time, the best-ranked series covering it.
 """
 
 import os
@@ -35,18 +40,33 @@ from flows.write import write_rows
 
 #: The Prefect Secret block with the USGS Water Data API key (higher rate limits).
 PAT_BLOCK = "api-usgs-pat"
+#: The time series to keep at sites with several reporting at once that the rules can't
+#: tell apart (:func:`teehr_core.fetch.usgs.choose_series` ranks these first): site number
+#: -> USGS ``time_series_id``. Its warning lists the sites decided by record length only.
+PINS = {
+    "07358280": "af40fd6b8fdd443d820569e23b755bcc",  # Hot Springs AR: OUTFLOW, not INFLOW
+}
 
 
 @task(retries=2, retry_delay_seconds=60, persist_result=False,
       task_run_name="fetch sites {first}-{last} of {total}")  # fmt: skip
 def fetch(
     sites: list[str], start: datetime, end: datetime, service: usgs.Service, hourly: bool,
-    first: int, last: int, total: int,
+    series: dict[str, list[usgs.Series]], first: int, last: int, total: int,
 ) -> pa.Table:  # fmt: skip
     """One request's worth of sites; retried, so a blip doesn't fail the run."""
     return pa.concat_tables(usgs.fetch_streamflow(
-        sites, start, end, service=service, hourly=hourly, batch_sites=len(sites)
+        sites, start, end, service=service, hourly=hourly, batch_sites=len(sites),
+        series=series,
     ))  # fmt: skip
+
+
+def _ranking(service: usgs.Service) -> dict[str, list[usgs.Series]]:
+    """Rank every site's several time series, with :data:`PINS`: once per run (seconds)."""
+    ranking = usgs.choose_series(pins=PINS, service=service)
+    get_run_logger().info("USGS %s: %d sites with several time series ranked (%d pinned)",
+                          service, len(ranking), len(PINS))  # fmt: skip
+    return ranking
 
 
 def _use_pat() -> None:
@@ -88,9 +108,10 @@ def ingest_usgs_streamflow(
     start = start or end - timedelta(days=lookback_days)
     log.info("USGS %s: %d sites, %s to %s, into %s.%s", service, len(sites), start, end,
              namespace, dataset)  # fmt: skip
+    ranking = _ranking(service)
 
     batches = (
-        fetch(sites[i : i + batch_sites], start, end, service, hourly,
+        fetch(sites[i : i + batch_sites], start, end, service, hourly, ranking,
               i + 1, min(i + batch_sites, len(sites)), len(sites))
         for i in range(0, len(sites), batch_sites)
     )  # fmt: skip
@@ -112,10 +133,12 @@ def _sites(cat: Any, namespace: str, dataset: str, sites: list[str] | None,
 def stage_sites(
     sites: list[str], start: datetime | None, end: datetime | None, service: usgs.Service,
     hourly: bool, directory: str, workers: int, total: int, buffer_sites: int = 50,
+    series: dict[str, list[usgs.Series]] | None = None,
 ) -> dict[str, datetime]:  # fmt: skip
     """Download each site's bulk file and stage the rows by month; each site's last time.
 
-    Rows are held for ``buffer_sites`` sites, then staged together: one file per month
+    At sites with several time series, ``series``' ranking decides each time's (see
+    :func:`_ranking`). Rows are held for ``buffer_sites`` sites, then staged together: one file per month
     per buffer, not per site (thousands of sites over decades of months).
     """
     log = get_run_logger()
@@ -124,7 +147,8 @@ def stage_sites(
         began = time.monotonic()
         for attempt in range(3):
             try:
-                rows = next(usgs.read_bulk([site], start, end, service=service, hourly=hourly))
+                rows = next(usgs.read_bulk([site], start, end, service=service,
+                                           hourly=hourly, series=series or {}))  # fmt: skip
                 break
             except Exception as err:  # a download blip: try again, then give up on the site
                 if attempt == 2:
@@ -289,7 +313,7 @@ def backfill_usgs_streamflow(
     log.info("USGS %s bulk: %d sites into %s.%s", service, len(sites), namespace, dataset)
     with tempfile.TemporaryDirectory(dir=stage_dir) as directory:
         last_times = stage_sites(sites, start, end, service, hourly, directory, workers,
-                                 len(sites))  # fmt: skip
+                                 len(sites), series=_ranking(service))  # fmt: skip
         written = write_rows(cat, namespace, dataset, staged_months(directory),
                              unit=usgs.UNIT, location_of=lambda key: key,
                              commit_rows=commit_rows, replace_months=True)  # fmt: skip
