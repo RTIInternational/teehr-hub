@@ -10,7 +10,7 @@ from workflows.models.ingest_gridded_data_input import BuildOverviewsDataInput
 logging.getLogger("teehr_icechunk").setLevel(logging.INFO)
 
 # Units fan out as runs of this deployment (prefect-*.yaml)
-CHILD_DEPLOYMENT = "process-gridded-unit/process-gridded-unit"
+CHILD_DEPLOYMENT = "process-gridded-segment/process-gridded-segment"
 
 
 @flow(
