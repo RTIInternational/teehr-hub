@@ -103,6 +103,18 @@ again = ingest.ingest_nwps_rfc_streamflow(where="is_active == True")
 assert (again["forecasts"], again["unchanged"], again["rows"]) == (1, 2, 2), again
 print("AGAIN OK")
 
+# A stored forecast with a later reference time (legacy's, from a forecast whose first days
+# were no-data) doesn't hide a new one.
+table = cat.load_table(("public", "nwpsrfc_streamflow_forecast"))
+later = NOW + timedelta(days=5)
+table.append(pa.table({"series_key": ["nwpsrfc-six1"], "reference_time": [later],
+                       "value_time": [later + timedelta(hours=6)], "value": [9.0]},
+                      schema=table.schema().as_arrow()))
+api["SIX1"] = response("SIX1", 6, [3.2, 3.3], start=NOW + timedelta(hours=6))
+again = ingest.ingest_nwps_rfc_streamflow(where="is_active == True")
+assert (again["forecasts"], again["unchanged"], again["rows"]) == (1, 2, 2), again
+print("LATER OK")
+
 # Too many failures: what was fetched is written, then the run fails.
 api["HOUR1"] = response("HOUR1", 1, [1.7, 1.8], start=NOW + timedelta(hours=2))
 try:
@@ -112,5 +124,5 @@ except RuntimeError as err:
 else:
     raise AssertionError("expected the run to fail")
 stored = cat.load_table(("public", "nwpsrfc_streamflow_forecast")).scan().to_arrow()
-assert len({r for r in stored["reference_time"].to_pylist()}) == 3  # NOW, +1 h, +2 h
+assert len({r for r in stored["reference_time"].to_pylist()}) == 5  # NOW, +1 h, +2 h, +6 h, +5 d
 print("FAILURES OK")
