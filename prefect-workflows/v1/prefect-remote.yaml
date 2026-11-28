@@ -453,3 +453,65 @@ deployments:
     schedule:
       cron: "50 5,17 * * *"
       active: true
+
+  # NRDS DataStream streamflow forecasts at the gages' reaches, one dataset per model and
+  # configuration (legacy's names), sharing a series table and the usgs_nrds22 crosswalk.
+  - name: v1-ingest-nrds-cfenom-short-range
+    description: Ingest NRDS cfe_nom short_range streamflow (the cycles since its latest) into public.nrds_v22_cfenom_short_range
+    entrypoint: flows/ingest_nrds.py:ingest_nrds_streamflow
+    parameters:
+      model: cfe_nom
+      configuration: short_range
+      dataset: nrds_v22_cfenom_short_range
+    concurrency_limit:
+      limit: 1
+      collision_strategy: CANCEL_NEW
+    work_pool: *work_pool_nwm
+    schedule:
+      cron: "0 8,20 * * *"
+      active: true
+
+  - name: v1-ingest-nrds-lstm0-short-range
+    description: Ingest NRDS lstm_0 short_range streamflow (the cycles since its latest) into public.nrds_v22_lstm0_short_range
+    entrypoint: flows/ingest_nrds.py:ingest_nrds_streamflow
+    parameters:
+      model: lstm_0
+      configuration: short_range
+      dataset: nrds_v22_lstm0_short_range
+    concurrency_limit:
+      limit: 1
+      collision_strategy: CANCEL_NEW
+    work_pool: *work_pool_nwm
+    schedule:
+      cron: "15 8,20 * * *"
+      active: true
+
+  - name: v1-ingest-nrds-cfenom-medium-range
+    description: Ingest NRDS cfe_nom medium_range streamflow (the cycles since its latest) into public.nrds_v22_cfenom_medium_range
+    entrypoint: flows/ingest_nrds.py:ingest_nrds_streamflow
+    parameters:
+      model: cfe_nom
+      configuration: medium_range
+      dataset: nrds_v22_cfenom_medium_range
+    concurrency_limit:
+      limit: 1
+      collision_strategy: CANCEL_NEW
+    work_pool: *work_pool_nwm
+    schedule:
+      cron: "30 8,20 * * *"
+      active: true
+
+  - name: v1-ingest-nrds-lstm0-medium-range
+    description: Ingest NRDS lstm_0 medium_range streamflow (the cycles since its latest) into public.nrds_v22_lstm0_medium_range
+    entrypoint: flows/ingest_nrds.py:ingest_nrds_streamflow
+    parameters:
+      model: lstm_0
+      configuration: medium_range
+      dataset: nrds_v22_lstm0_medium_range
+    concurrency_limit:
+      limit: 1
+      collision_strategy: CANCEL_NEW
+    work_pool: *work_pool_nwm
+    schedule:
+      cron: "45 8,20 * * *"
+      active: true
