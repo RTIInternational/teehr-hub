@@ -1,34 +1,36 @@
 """Calculate mean areal values of location polygons from a grid using pixel coverage weights.
 
-``calculate_mean_areal_values`` reads one of our Icechunk repos. ``mean_areal_for_grid`` does the work for any
-lazily opened grid, so flows for outside sources (e.g. AORC, dynamical.org) open theirs and call it.
+``calculate_mean_areal_values`` reads one of our Icechunk repos; flows for outside grids (e.g. AORC, dynamical.org)
+open theirs and call ``prepare_mean_areal`` and ``mean_areal_for_grid`` the same way.
 
-Batches follow the grid's storage chunks (``plan_reads``) and are computed with ``teehr_icechunk.mean_areal_kernel`` as Spark
-``mapInArrow`` tasks that write straight to the warehouse: on executors with ``start_spark_cluster``, else in Spark
-local mode on the Prefect pod.
+A run splits the grid's written steps into segments along its append axis (``teehr_icechunk.zonal``) and runs them
+in this run or as ``process-gridded-segment`` child runs (``max_child_runs``). A segment reads its blocks in worker
+processes and stages them as Parquet under ``temp_dir_path``; this run loads each finished segment into the
+warehouse and removes it. Spark is only used here, to read the weights and load the staged values.
 """
 import logging
-import math
-import time
+import shutil
+import uuid
 from dataclasses import dataclass
+from pathlib import Path
 
 import numpy as np
 import pandas as pd
+import pyarrow as pa
 import rioxarray  # noqa: F401
 import xarray as xr
 from prefect import flow, task, get_run_logger
 from prefect.cache_policies import NO_CACHE
+from prefect.runtime import flow_run
 from teehr import Configuration, Evaluation
 from teehr.evaluation.write import AUDIT_COLUMNS
-import teehr_icechunk
-from teehr_icechunk import time_grid as tg
-from teehr_icechunk.concurrency import resolve_budget, resolve_cpu_workers
+from teehr_icechunk import zonal
 from teehr_icechunk.grid_spec import GridSpec, open_grid_dataset, read_grid_spec
-from teehr_icechunk.mean_areal_kernel import BlockTask, GridWeights, arrow_task_runner
-from teehr_icechunk.mean_areal_plan import (
-    MAX_SLICE_STEPS, area_weights, plan_reads, positions, written_forecast_steps, written_steps,
-)
+from teehr_icechunk.mean_areal_kernel import GridWeights
+from teehr_icechunk.mean_areal_plan import area_weights, written_forecast_steps, written_steps
+from teehr_icechunk.prefect import runner
 from teehr_icechunk.repo_const import MEMBER
+from teehr_icechunk.segments import Segment, SegmentResult, raise_failed
 from teehr_icechunk.weights import build_weights_matrix
 
 from workflows.utils.time_utils import to_naive_utc
@@ -39,88 +41,19 @@ from pixel_coverage_weights import (
     ARROW_CONFIGS, WEIGHTS_TABLE_NAME, get_readonly_repo_store, like_prefix, resolve_grid_name,
     write_dataframe_to_warehouse,
 )
+from process_gridded_segment import CHILD_DEPLOYMENT
 
 # Show the package's progress in the run logs: PREFECT_LOGGING_EXTRA_LOGGERS attaches Prefect's handlers,
 # not a level, so the logger would otherwise inherit the root's WARNING
 logging.getLogger("teehr_icechunk").setLevel(logging.INFO)
 
-# Attempts per Spark task in local mode, which otherwise never retries a failed task (e.g. a transient S3 error)
-LOCAL_TASK_ATTEMPTS = 3
+# This module's child-run stage (process-gridded-segment imports it to run a segment)
+STAGE = "mean_areal_values"
 
 
 def _window(args: MeanArealValuesInput) -> tuple:
     """The run's start_dt and end_dt as naive UTC (None when unset)."""
     return tuple(to_naive_utc(t) if t is not None else None for t in (args.start_dt, args.end_dt))
-
-
-def _step_columns(steps: pd.Index, dim: str, lead_names: dict | None = None) -> dict[str, np.ndarray]:
-    """Timeseries columns of each step: its value_time, a forecast's reference_time and member, and with
-    ``lead_names`` its variable_name by lead."""
-    if not isinstance(steps, pd.MultiIndex):
-        return {"value_time": steps.values}
-    cycles = steps.get_level_values(dim)
-    columns = {
-        "value_time": (cycles + pd.to_timedelta(steps.get_level_values(steps.names[-1]), unit="h")).values,
-        "reference_time": cycles.values,
-    }
-    if MEMBER in steps.names:
-        # teehr's member is a string
-        columns["member"] = steps.get_level_values(MEMBER).astype(str).values
-    if lead_names is not None:
-        columns["variable_name"] = steps.get_level_values(steps.names[-1]).map(lead_names).values.astype(str)
-    return columns
-
-
-def _block_tasks(batch: pd.Index, da: xr.DataArray, dim: str, fixed: dict,
-                 lead_names: dict | None = None) -> list[BlockTask]:
-    """The batch as rectangular blocks of ``isel`` positions, with each block's step columns.
-
-    Forecast members sharing their cycles and leads form one block, so a chunk holding every member is read once.
-    """
-    if not fixed:
-        return [BlockTask({dim: positions(da[dim], batch)}, _step_columns(batch, dim))]
-    lead_dim = list(fixed)[-1]
-    merged: dict[tuple, list] = {}
-    for block in tg.step_blocks(batch, fixed):
-        key = (tuple(block.get_level_values(dim).unique()), tuple(block.get_level_values(lead_dim).unique()))
-        merged.setdefault(key, []).extend(block.get_level_values(MEMBER).unique() if MEMBER in fixed else [])
-    tasks = []
-    for (cycles, leads), block_members in merged.items():
-        levels = [list(cycles), *([sorted(set(block_members))] if MEMBER in fixed else []), list(leads)]
-        steps = pd.MultiIndex.from_product(levels, names=batch.names)
-        selection = {name: positions(da[name], level) for name, level in zip(batch.names, levels)}
-        tasks.append(BlockTask(selection, _step_columns(steps, dim, lead_names)))
-    return tasks
-
-
-def _kernel_kwargs(args: MeanArealValuesInput, chunk_shape: tuple[int, int] | None, scale: float = 1.0,
-                   offset: float = 0.0, **extra) -> dict:
-    """``mean_areal_block`` settings."""
-    return dict(
-        y_dim=args.y_dim, x_dim=args.x_dim, chunk_shape=chunk_shape, max_slice_steps=MAX_SLICE_STEPS,
-        min_coverage=args.min_valid_coverage, scale=scale, offset=offset, **extra,
-    )
-
-
-def _write_groups(batches: list[pd.Index], args: MeanArealValuesInput, n_zones: int, forecast: bool) -> list[list]:
-    """Consecutive batches written together, about ``max_rows_per_write`` rows each.
-
-    A forecast cycle is never split across writes, so each write's replace condition (by cycle) covers only its
-    own rows; analysis writes cover disjoint time ranges wherever they split.
-    """
-    dim = args.append_dim
-    groups, current, n_rows = [], [], 0
-    for i, batch in enumerate(batches):
-        current.append(batch)
-        n_rows += len(batch) * n_zones
-        nxt = batches[i + 1] if i + 1 < len(batches) else None
-        at_boundary = nxt is None or not forecast or (
-            nxt.get_level_values(dim).min() > batch.get_level_values(dim).max()
-        )
-        if at_boundary and (nxt is None or n_rows >= args.max_rows_per_write):
-            groups.append(current)
-            current, n_rows = [], 0
-    return groups
 
 
 def replace_filters(args: MeanArealValuesInput, variable_names: list[str], steps: pd.Index) -> list[dict]:
@@ -227,36 +160,13 @@ def register_location_crosswalks(ev: Evaluation, args: MeanArealValuesInput, loc
 
 
 def mean_areal_evaluation(args: MeanArealValuesInput) -> Evaluation:
-    """An evaluation whose Spark session suits the mean areal tasks."""
-    # A task's Python worker: its task budget plus room for Arrow buffers
-    task_bytes = 1.5 * args.task_memory_gb * 1e9
-    python_gb = math.ceil(task_bytes * args.executor_cores / 1e9)
-    configs = {
-        **ARROW_CONFIGS,
-        # Executor pod memory beyond the JVM heap: each Python worker's task budget plus room for Arrow buffers, and
-        # 1 GB for the JVM's own overhead. Not spark.executor.pyspark.memory, which caps each worker's virtual
-        # memory, and zarr's and Icechunk's threads reserve far more of that than they use
-        "spark.executor.memoryOverhead": f"{python_gb + 1}g",
-        # A duplicate task attempt would only re-read the grid
-        "spark.speculation": "false",
-    }
-    if not args.start_spark_cluster:
-        # Local mode on the Prefect pod: as many tasks at once as fit in its memory, not one per core
-        workers = resolve_budget(io=resolve_cpu_workers(), memory_per_item=int(task_bytes)).io
-        configs["spark.master"] = f"local[{workers},{LOCAL_TASK_ATTEMPTS}]"
-        get_run_logger().info(f"Spark local mode with {workers} task(s) at once.")
-    return initialize_evaluation(
-        temp_dir_path=args.temp_dir_path,
-        start_spark_cluster=args.start_spark_cluster,
-        executor_instances=args.executor_instances,
-        executor_cores=args.executor_cores,
-        executor_memory=args.executor_memory,
-        update_configs=configs,
-    )
+    """An evaluation (Spark in local mode) to read the weights and load the staged values."""
+    return initialize_evaluation(temp_dir_path=args.temp_dir_path, start_spark_cluster=False,
+                                 update_configs=ARROW_CONFIGS)
 
 
 def _write(ev: Evaluation, data, args: MeanArealValuesInput, variable_names: list[str], steps: pd.Index):
-    """Write one group's rows with the flow's write mode."""
+    """Write one segment's rows with the flow's write mode."""
     write_dataframe_to_warehouse(
         ev=ev,
         dataframe=data,
@@ -270,95 +180,73 @@ def _write(ev: Evaluation, data, args: MeanArealValuesInput, variable_names: lis
     )
 
 
-def _compute_on_spark(ev, da, args, plan, groups, weights: GridWeights, fixed: dict, constants: dict,
-                      mapping: TeehrMapping, lead_names: dict | None):
-    """Batches run as Spark mapInArrow tasks, computed once per group and written to the warehouse."""
-    from pyspark import cloudpickle
-    from pyspark.sql import Observation
-    from pyspark.sql import functions as F
-    from pyspark.sql.pandas.types import to_arrow_schema
-    from pyspark.sql.types import StructType
-
-    logger = get_run_logger()
-    catalog = args.catalog_name or ev.active_catalog.catalog_name
-    namespace = args.namespace_name or ev.active_catalog.namespace_name
-    table_schema = ev.spark.table(f"{catalog}.{namespace}.{args.timeseries_table_name}").schema
-    schema = StructType([field for field in table_schema if field.name not in AUDIT_COLUMNS])
-    dim = args.append_dim
-    da = da.transpose(dim, *fixed, args.y_dim, args.x_dim)
-    # Executors don't have our workflow code, so send the kernel's code with each task
-    # Executors don't have teehr-icechunk; ship the kernel (and the weights helpers it uses) by value
-    cloudpickle.register_pickle_by_value(teehr_icechunk)
-    for i, group in enumerate(groups, start=1):
-        tasks = [block for batch in group for block in _block_tasks(batch, da, dim, fixed, lead_names)]
-        run = arrow_task_runner(tasks, da, weights, **_kernel_kwargs(
-            args, plan.chunk_shape, mapping.scale, mapping.offset, constants=constants, schema=to_arrow_schema(schema)
-        ))
-        stats = Observation(f"mean_areal_{i}")
-        sdf = (
-            # One task per partition, so tasks spread evenly over the workers
-            ev.spark.range(len(tasks), numPartitions=len(tasks))
-            .selectExpr("CAST(id AS INT) AS task")
-            .mapInArrow(run, schema)
-            .observe(stats, F.count(F.lit(1)).alias("rows"), F.min("value").alias("min"), F.max("value").alias("max"))
-            # The write reads its input more than once (sampling for the table's sort order, upsert's MERGE), so
-            # keep the rows rather than recompute the grid each time
-            .persist()
-        )
-        steps = group[0].append(group[1:])
-        started = time.perf_counter()
-        try:
-            _write(ev, sdf, args, [variable.name for variable in mapping.variables], steps)
-        finally:
-            sdf.unpersist()
-        logger.info(
-            f"Group {i}/{len(groups)}: {len(tasks)} task(s), {len(steps)} step(s) through {steps[-1]} in "
-            f"{time.perf_counter() - started:.1f}s; {stats.get}."
-        )
+def resolve_mapping(grid_da: xr.DataArray, args: MeanArealValuesInput,
+                    mapping: TeehrMapping | None = None) -> TeehrMapping:
+    """The teehr variable, unit and conversion of the grid variable: ``mapping`` for outside grids, else the
+    ``teehr:*`` attributes our repos carry, as the run's arguments override them."""
+    return resolve_teehr_mapping(args, mapping or mapping_from_attrs(grid_da.attrs), grid_da.attrs)
 
 
 @dataclass(frozen=True)
 class MeanArealTarget:
-    """What a run writes: the weights of its locations on the grid, and the teehr variable and unit."""
+    """What a run writes, and where its segments stage: the teehr variable and unit, and the staging directory
+    holding the weights and the output schema."""
 
-    weights: GridWeights
     mapping: TeehrMapping
+    staging_dir: str
+    n_locations: int
+    n_pixels: int
+
+
+def _output_schema(ev: Evaluation, args: MeanArealValuesInput) -> pa.Schema:
+    """The timeseries table's columns as Arrow, so staged files load without conversion."""
+    from pyspark.sql.pandas.types import to_arrow_schema
+    from pyspark.sql.types import StructType
+
+    catalog = args.catalog_name or ev.active_catalog.catalog_name
+    namespace = args.namespace_name or ev.active_catalog.namespace_name
+    table_schema = ev.spark.table(f"{catalog}.{namespace}.{args.timeseries_table_name}").schema
+    return to_arrow_schema(StructType([field for field in table_schema if field.name not in AUDIT_COLUMNS]))
 
 
 def prepare_mean_areal(ev: Evaluation, grid_da: xr.DataArray, args: MeanArealValuesInput,
                        grid_name: str, mapping: TeehrMapping | None = None) -> MeanArealTarget:
-    """Register the domain values and load the weights, once per run (shared by every grid read, e.g. each year).
+    """Register the domain values and stage the weights and output schema, once per run (shared by every grid
+    read, e.g. each year). The caller removes ``staging_dir`` when the run is done.
 
     ``grid_da`` is any lazily opened variable of the grid; its latitudes and attributes are used. ``mapping`` names
     it the teehr way, for outside grids; our repos carry theirs as ``teehr:*`` attributes.
     """
-    mapping = resolve_teehr_mapping(args, mapping or mapping_from_attrs(grid_da.attrs), grid_da.attrs)
+    mapping = resolve_mapping(grid_da, args, mapping)
     if MEMBER in grid_da.dims and args.timeseries_table_name == "primary_timeseries":
         raise ValueError("Ensemble members have no column in primary_timeseries; write them to secondary_timeseries.")
     weights_df = read_weights_from_warehouse(ev=ev, location_id_prefix=args.location_id_prefix, grid_name=grid_name)
     weights_df["weight"] = area_weights(weights_df, grid_da, args.y_dim)
     matrix, rows, cols, location_ids = build_weights_matrix(weights_df)
-    # Column-sliced per read by every task, so convert once
     weights = GridWeights(matrix.tocsc(), rows, cols, location_ids)
     check_locations(ev=ev, args=args, location_ids=weights.location_ids)
     # Only after the checks: registering skips existing names, so a wrong entry would stick
     register_domain_values(ev=ev, args=args, mapping=mapping)
     register_location_crosswalks(ev=ev, args=args, location_ids=weights.location_ids)
-    return MeanArealTarget(weights, mapping)
+
+    # One directory per run on the shared volume, so child runs on other pods see it
+    staging_dir = Path(args.temp_dir_path, "mean-areal", str(flow_run.get_id() or uuid.uuid4().hex))
+    staging_dir.mkdir(parents=True, exist_ok=True)
+    zonal.save_weights(staging_dir / zonal.WEIGHTS_FILE, weights)
+    zonal.save_schema(staging_dir / zonal.SCHEMA_FILE, _output_schema(ev, args))
+    return MeanArealTarget(mapping, str(staging_dir), weights.location_ids.size, weights.rows.size)
 
 
-def mean_areal_for_grid(ev: Evaluation, grid_da: xr.DataArray, spec: GridSpec, args: MeanArealValuesInput,
-                        target: MeanArealTarget):
-    """Mean areal values of a lazily opened grid variable, written to the warehouse.
+def zonal_work(grid_da: xr.DataArray, spec: GridSpec, args: MeanArealValuesInput, mapping: TeehrMapping,
+               staging_dir: str, stage: str, start=None, end=None) -> zonal.ZonalWork | None:
+    """The work on the grid's written steps from ``start`` to ``end`` (naive UTC); None when none are written.
 
-    ``grid_da`` has CF-decoded values, a CRS and the spec's dims; ``args.append_dim`` must be the spec's.
+    Built the same way in the parent, over the run's window, and in each child, over its segment.
     """
-    logger = get_run_logger()
-    mapping = target.mapping
     fixed = {d: grid_da[d].values for d in spec.fixed_dims}
     lead_names = None
     if fixed:
-        written = written_forecast_steps(grid_da, args.append_dim, fixed, *_window(args))
+        written = written_forecast_steps(grid_da, args.append_dim, fixed, start, end)
         if mapping.variable is None:
             # Named by the interval each lead covers; leads covering none (lead 0) are skipped
             lead_dim = list(fixed)[-1]
@@ -367,25 +255,95 @@ def mean_areal_for_grid(ev: Evaluation, grid_da: xr.DataArray, spec: GridSpec, a
     elif mapping.variable is None:
         raise ValueError(f"'{args.grid_variable_name}' is named by forecast step interval, but the grid has no leads.")
     else:
-        written = written_steps(grid_da, args.append_dim, *_window(args))[args.append_dim].to_index()
+        written = written_steps(grid_da, args.append_dim, start, end)[args.append_dim].to_index()
     if len(written) == 0:
-        logger.info("No written grid steps in the requested window.")
-        return
-
-    weights = target.weights
-    plan = plan_reads(
-        grid_da, written, fixed, weights.rows, weights.cols, weights.location_ids.size,
-        dim=args.append_dim, y_dim=args.y_dim, x_dim=args.x_dim, task_memory_gb=args.task_memory_gb,
-    )
-    groups = _write_groups(plan.batches, args, weights.location_ids.size, forecast=bool(fixed))
-    logger.info(
-        f"Computing {len(written)} step(s) for {weights.location_ids.size} location(s) from {weights.rows.size} "
-        f"pixel(s) in {len(groups)} write(s)."
-    )
+        return None
     constants = {"configuration_name": args.configuration_name, "unit_name": mapping.unit.name}
     if mapping.variable is not None:
         constants["variable_name"] = mapping.variable.name
-    _compute_on_spark(ev, grid_da, args, plan, groups, weights, fixed, constants, mapping, lead_names)
+    return zonal.ZonalWork(
+        grid_da, written, args.append_dim, fixed, args.y_dim, args.x_dim, staging_dir, args.task_memory_gb,
+        lead_names=lead_names,
+        kernel_kwargs={"min_coverage": args.min_valid_coverage, "scale": mapping.scale, "offset": mapping.offset,
+                       "constants": constants},
+        child_parameters={"stage": stage, "args": args.model_dump(mode="json"), "staging_dir": staging_dir},
+    )
+
+
+def mean_areal_for_grid(ev: Evaluation, grid_da: xr.DataArray, spec: GridSpec, args: MeanArealValuesInput,
+                        target: MeanArealTarget, stage: str = STAGE):
+    """Mean areal values of a lazily opened grid variable, written to the warehouse segment by segment.
+
+    ``grid_da`` has CF-decoded values, a CRS and the spec's dims; ``args.append_dim`` must be the spec's. ``stage``
+    names the flow module whose ``run_mean_areal_segment`` reopens the grid in a child run.
+    """
+    logger = get_run_logger()
+    work = zonal_work(grid_da, spec, args, target.mapping, target.staging_dir, stage, *_window(args))
+    if work is None:
+        logger.info("No written grid steps in the requested window.")
+        return
+    segments = zonal.plan_zonal_segments(grid_da, work.written, args.append_dim, args.segment_steps)
+    logger.info(
+        f"Computing {len(work.written)} step(s) for {target.n_locations} location(s) from {target.n_pixels} "
+        f"pixel(s) in {len(segments)} segment(s)."
+    )
+    variable_names = [variable.name for variable in target.mapping.variables]
+
+    def load(result: SegmentResult):
+        try:
+            if result.error is None:
+                _load_segment(ev, args, variable_names, work, result.segment)
+        finally:
+            zonal.remove_segment(target.staging_dir, result.segment)
+
+    raise_failed(runner(args, CHILD_DEPLOYMENT).run(work, segments, on_done=load))
+
+
+def _load_segment(ev: Evaluation, args: MeanArealValuesInput, variable_names: list[str], work: zonal.ZonalWork,
+                  segment: Segment):
+    """Load a finished segment's staged values into the warehouse, replacing its steps' rows."""
+    logger = get_run_logger()
+    path = zonal.segment_dir(work.staging_dir, segment)
+    steps = segment.select(work.written, args.append_dim)
+    if not any(path.glob("*.parquet")):
+        logger.info(f"Segment {segment.start} to {segment.end} has no values to load.")
+        return
+    _write(ev, ev.spark.read.parquet(str(path)), args, variable_names, steps)
+    logger.info(f"Loaded segment {segment.start} to {segment.end} ({len(steps)} step(s)).")
+
+
+def compute_segment(grid_da: xr.DataArray, spec: GridSpec, args: MeanArealValuesInput, mapping: TeehrMapping,
+                    segment: dict, staging_dir: str, stage: str):
+    """A child run's work: one segment of the run's window, staged for the parent to load."""
+    segment = Segment.from_dict(segment)
+    start, end = _window(args)
+    start = segment.start if start is None else max(start, segment.start)
+    end = segment.end if end is None else min(end, segment.end)
+    work = zonal_work(grid_da, spec, args, mapping, staging_dir, stage, start, end)
+    if work is not None:
+        work(segment)
+
+
+def open_repo_grid(args: MeanArealValuesInput) -> tuple[xr.DataArray, GridSpec, str]:
+    """The run's variable of one of our repos, lazily opened, with its spec and grid name."""
+    store = get_readonly_repo_store(
+        dest_bucket=args.dest_bucket,
+        base_prefix=args.base_prefix,
+        configuration_name=args.configuration_name,
+        s3_storage_kwargs=args.s3_storage_kwargs
+    )
+    spec = read_grid_spec(store)
+    grid_da = open_grid_dataset(store, spec)[args.grid_variable_name].rio.set_spatial_dims(
+        x_dim=args.x_dim, y_dim=args.y_dim
+    )
+    return grid_da, spec, resolve_grid_name(store, args.grid_name, args.configuration_name)
+
+
+def run_mean_areal_segment(args: dict, segment: dict, staging_dir: str):
+    """Run one segment in a child run (``process-gridded-segment``)."""
+    args = MeanArealValuesInput.model_validate(args)
+    grid_da, spec, _ = open_repo_grid(args)
+    compute_segment(grid_da, spec, args, resolve_mapping(grid_da, args), segment, staging_dir, STAGE)
 
 
 @flow(
@@ -402,20 +360,12 @@ def calculate_mean_areal_values(args: MeanArealValuesInput):
     """
     get_run_logger().info("Starting mean areal values calculation flow.")
     ev = mean_areal_evaluation(args)
-    store = get_readonly_repo_store(
-        dest_bucket=args.dest_bucket,
-        base_prefix=args.base_prefix,
-        configuration_name=args.configuration_name,
-        s3_storage_kwargs=args.s3_storage_kwargs
-    )
-    spec = read_grid_spec(store)
+    grid_da, spec, grid_name = open_repo_grid(args)
     # The repo's own append axis, so a forecast repo needs no extra settings
     args = args.model_copy(update={"append_dim": spec.append_dim})
-    grid_da = open_grid_dataset(store, spec)[args.grid_variable_name].rio.set_spatial_dims(
-        x_dim=args.x_dim, y_dim=args.y_dim
-    )
-    target = prepare_mean_areal(
-        ev, grid_da, args, grid_name=resolve_grid_name(store, args.grid_name, args.configuration_name)
-    )
-    mean_areal_for_grid(ev, grid_da, spec, args, target)
+    target = prepare_mean_areal(ev, grid_da, args, grid_name=grid_name)
+    try:
+        mean_areal_for_grid(ev, grid_da, spec, args, target)
+    finally:
+        shutil.rmtree(target.staging_dir, ignore_errors=True)
     get_run_logger().info("Mean areal values calculation flow completed.")

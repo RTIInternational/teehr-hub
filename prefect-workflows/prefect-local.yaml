@@ -582,8 +582,9 @@ deployments:
     version:
     tags: []
     description: >-
-      One unit of a gridded run that fans out (max_child_runs > 0): references or overviews, started by
-      ingest-gridded-data with run_deployment. Not run on its own.
+      One segment of a gridded run that fans out (max_child_runs > 0): references or overviews (started by
+      ingest-gridded-data or build-overviews), or mean areal values (started by a mean areal flow, staged on
+      /data for it to load). Not run on its own.
     entrypoint: workflows/ingests/process_gridded_segment.py:process_gridded_segment
     work_pool: *work_pool
 
@@ -744,7 +745,7 @@ deployments:
       per variable (grid_variable_name APCP_surface, TMAX_2m or TMIN_2m). Values are the published
       windows, named by the hours each covers (e.g. precipitation_3hr_sum, precipitation_6hr_sum).
       Defaults to the pilot cycles (2019-01-01 to 2019-01-03); replace_where makes reruns idempotent.
-      Spark runs in local mode: the executor image can't decode GRIB.
+      Segments of 2 cycles run as process-gridded-segment child runs, 2 at a time.
     entrypoint: workflows/ingests/mean_areal_values.py:calculate_mean_areal_values
     parameters: {
       "args": {
@@ -756,7 +757,9 @@ deployments:
         "x_dim": "longitude",
         "y_dim": "latitude",
         "start_dt": "2019-01-01",
-        "end_dt": "2019-01-03T23:00:00"
+        "end_dt": "2019-01-03T23:00:00",
+        "max_child_runs": 2,
+        "segment_steps": 2
       }
     }
     work_pool: *work_pool
@@ -791,7 +794,7 @@ deployments:
       per variable (grid_variable_name APCP_surface, TMAX_2m or TMIN_2m). Values are the published
       windows, named by the hours each covers (e.g. precipitation_3hr_sum, precipitation_6hr_sum).
       Defaults to the pilot cycles (2019-01-01 to 2019-01-03); replace_where makes reruns idempotent.
-      Spark runs in local mode: the executor image can't decode GRIB.
+      Segments of 2 cycles run as process-gridded-segment child runs, 2 at a time.
     entrypoint: workflows/ingests/mean_areal_values.py:calculate_mean_areal_values
     parameters: {
       "args": {
@@ -803,7 +806,9 @@ deployments:
         "x_dim": "longitude",
         "y_dim": "latitude",
         "start_dt": "2019-01-01",
-        "end_dt": "2019-01-03T23:00:00"
+        "end_dt": "2019-01-03T23:00:00",
+        "max_child_runs": 2,
+        "segment_steps": 2
       }
     }
     work_pool: *work_pool
@@ -837,8 +842,8 @@ deployments:
       Calculate mean areal AORC v1.1 1 km values of a location layer into primary_timeseries, reading
       NOAA's yearly Zarr stores in place, one year at a time. APCP_surface is written as
       rainrate_hourly_mean (mm/s); other variables need variable_name, unit_name and value_scale.
-      Set start_dt/end_dt; replace_where makes reruns of a range idempotent. For CONUS-wide layers over
-      long records set start_spark_cluster.
+      Set start_dt/end_dt; replace_where makes reruns of a range idempotent. Segments of 30 days run as
+      process-gridded-segment child runs, 2 at a time.
     entrypoint: workflows/ingests/aorc_mean_areal_values.py:calculate_aorc_mean_areal_values
     parameters: {
       "args": {
@@ -846,7 +851,9 @@ deployments:
         "location_id_prefix": "usgsbasin",
         "grid_variable_name": "APCP_surface",
         "start_dt": "2020-01-01",
-        "end_dt": "2021-12-31T23:00:00"
+        "end_dt": "2021-12-31T23:00:00",
+        "max_child_runs": 2,
+        "segment_steps": 720
       }
     }
     work_pool: *work_pool

@@ -1,8 +1,11 @@
 """Mean areal values of AORC v1.1 1 km forcing, read in place from NOAA's yearly Zarr stores.
 
 Each year is its own store (``s3://noaa-nws-aorc-v1-1-1km/<YYYY>.zarr``, chunks of 144 hours), so the flow
-reads one year at a time with the shared mean areal core; batches follow the stores' chunks.
+reads one year at a time with the shared mean areal core; a year's segments follow its chunks and run in this run
+or as child runs, which reopen the year from the segment's dates.
 """
+import shutil
+
 import numpy as np
 import obstore
 import pandas as pd
@@ -16,7 +19,9 @@ from teehr_icechunk.grid_spec import GridSpec
 from workflows.models.external_grid_inputs import AORCMeanArealInput
 from workflows.utils.teehr_mapping import MM_PER_S, RAINRATE_HOURLY_MEAN, TeehrMapping
 from workflows.utils.time_utils import to_naive_utc
-from mean_areal_values import mean_areal_evaluation, mean_areal_for_grid, prepare_mean_areal
+from mean_areal_values import (
+    compute_segment, mean_areal_evaluation, mean_areal_for_grid, prepare_mean_areal, resolve_mapping,
+)
 from pixel_coverage_weights import read_location_polygons, weights_for_grid, write_weights
 
 AORC_BUCKET = "noaa-nws-aorc-v1-1-1km"
@@ -28,6 +33,8 @@ TEEHR_MAPPINGS = {
     # Hourly totals; 1 kg m-2 of water is 1 mm deep
     "APCP_surface": TeehrMapping(MM_PER_S, RAINRATE_HOURLY_MEAN, scale=1 / 3600, source_units="kg/m^2"),
 }
+# This module's child-run stage (process-gridded-segment imports it to run a segment)
+STAGE = "aorc_mean_areal_values"
 
 
 def _year_store(year: int) -> S3Store:
@@ -86,10 +93,22 @@ def calculate_aorc_mean_areal_values(args: AORCMeanArealInput):
         ev, open_aorc_year(years[0], args.grid_variable_name), args, args.grid_name,
         mapping=TEEHR_MAPPINGS.get(args.grid_variable_name),
     )
-    for year in years:
-        logger.info(f"Computing AORC {year}.")
-        mean_areal_for_grid(ev, open_aorc_year(year, args.grid_variable_name), spec, args, target)
+    try:
+        for year in years:
+            logger.info(f"Computing AORC {year}.")
+            mean_areal_for_grid(ev, open_aorc_year(year, args.grid_variable_name), spec, args, target, stage=STAGE)
+    finally:
+        shutil.rmtree(target.staging_dir, ignore_errors=True)
     logger.info("AORC mean areal values completed.")
+
+
+def run_mean_areal_segment(args: dict, segment: dict, staging_dir: str):
+    """Run one segment in a child run (``process-gridded-segment``): segments never span two years' stores."""
+    args = AORCMeanArealInput.model_validate(args)
+    grid_da = open_aorc_year(pd.Timestamp(segment["start"]).year, args.grid_variable_name)
+    mapping = resolve_mapping(grid_da, args, TEEHR_MAPPINGS.get(args.grid_variable_name))
+    spec = GridSpec(append_dim="time", grid_name=args.grid_name)
+    compute_segment(grid_da, spec, args, mapping, segment, staging_dir, STAGE)
 
 
 @flow(

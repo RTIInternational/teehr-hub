@@ -4,13 +4,11 @@ from teehr_icechunk import overviews
 from teehr_icechunk.prefect import runner
 
 from workflows.models.ingest_gridded_data_input import BuildOverviewsDataInput
+from process_gridded_segment import CHILD_DEPLOYMENT
 
 # Show the package's progress in the run logs: PREFECT_LOGGING_EXTRA_LOGGERS attaches Prefect's handlers,
 # not a level, so the logger would otherwise inherit the root's WARNING
 logging.getLogger("teehr_icechunk").setLevel(logging.INFO)
-
-# Units fan out as runs of this deployment (prefect-*.yaml)
-CHILD_DEPLOYMENT = "process-gridded-segment/process-gridded-segment"
 
 
 @flow(

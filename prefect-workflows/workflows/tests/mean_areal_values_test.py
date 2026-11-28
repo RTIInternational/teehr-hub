@@ -14,7 +14,8 @@ from teehr_icechunk.weights import build_weights_matrix  # noqa: E402
 
 from mean_areal_values import _window  # noqa: E402
 from teehr_icechunk.mean_areal_plan import area_weights, written_steps  # noqa: E402
-from pixel_coverage_weights import filter_polygons_by_coverage, resolve_grid_name  # noqa: E402
+from pixel_coverage_weights import resolve_grid_name  # noqa: E402
+from teehr_icechunk.zonal import weights_for_grid  # noqa: E402
 from teehr_icechunk import grid_utils as gu  # noqa: E402
 from teehr_icechunk import time_grid as tg  # noqa: E402
 from teehr_icechunk.mean_areal_kernel import GridWeights  # noqa: E402
@@ -126,7 +127,7 @@ def harness():
         yield
 
 
-def test_coverage_filter_drops_polygon_mostly_outside_grid(harness):
+def test_coverage_filter_drops_polygon_mostly_outside_grid():
     grid = _lat_lon_grid(np.zeros((1, 5, 5)))[0].rename({"lon": "x", "lat": "y"})
     west, south, east, north = grid.rio.bounds()
     polygons = gpd.GeoDataFrame(
@@ -135,11 +136,8 @@ def test_coverage_filter_drops_polygon_mostly_outside_grid(harness):
         crs="EPSG:4326",
     )
 
-    @flow
-    def run():
-        return filter_polygons_by_coverage(polygons, grid, min_coverage=0.9)
-
-    assert run().id.tolist() == ["p-inside"]
+    weights = weights_for_grid(grid, polygons, x_dim="x", y_dim="y", key="id", min_coverage=0.9)
+    assert set(weights.location_id) == {"p-inside"}
 
 
 def test_grid_name_from_args_then_repo_then_configuration_name(harness):
@@ -161,9 +159,8 @@ def test_grid_name_from_args_then_repo_then_configuration_name(harness):
 
 
 def test_generated_weights_index_a_lat_lon_grid(batch_means):
-    """Weights generated on a south-to-north lat/lon grid, renamed to x/y, reproduce exactextract's mean."""
+    """Weights generated on a south-to-north grid reproduce exactextract's own mean."""
     from exactextract import exact_extract
-    from teehr.utilities.generate_weights import generate_weights_file
 
     rng = np.random.default_rng(1)
     # A projected CRS, so no latitude scaling and exactextract's plain mean is the reference
@@ -178,11 +175,7 @@ def test_generated_weights_index_a_lat_lon_grid(batch_means):
         ],
         crs="EPSG:5070",
     )
-    weights = generate_weights_file(
-        zone_polygons=zones, template_dataset=template.to_dataset(name="v"), variable_name="v",
-        output_weights_filepath=None, crs_wkt=template.rio.crs.to_wkt(), unique_zone_id="id",
-    )
-    weights = weights.rename(columns={"weight": "fraction_covered"})
+    weights = weights_for_grid(template, zones, x_dim="x", y_dim="y", key="id")
     weights["weight"] = area_weights(weights, grid, "lat")
     got = batch_means(
         grid.time.to_index(), grid, _args(x_dim="lon", y_dim="lat"), GridWeights(*build_weights_matrix(weights))

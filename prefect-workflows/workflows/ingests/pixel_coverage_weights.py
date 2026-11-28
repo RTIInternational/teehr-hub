@@ -13,12 +13,11 @@ import rioxarray  # noqa: F401
 import xarray as xr
 from prefect import flow, task, get_run_logger
 from prefect.cache_policies import NO_CACHE
-from shapely.geometry import box
 from teehr import Evaluation
-from teehr.utilities.generate_weights import generate_weights_file
 
 from teehr_icechunk import grid_utils as gu
 from teehr_icechunk import time_grid as tg
+from teehr_icechunk import zonal
 from workflows.utils.common_utils import initialize_evaluation, table_exists
 from workflows.models.mean_areal_inputs import PixelCoverageWeightsInput
 
@@ -29,8 +28,6 @@ logging.getLogger("teehr_icechunk").setLevel(logging.INFO)
 WEIGHTS_TABLE_NAME = "grid_pixel_coverage_weights"
 WEIGHTS_UNIQUENESS_FIELDS = ["location_id", "row", "col", "grid_name"]
 WEIGHTS_PARTITION_BY = ["grid_name"]
-# Equal-area CRS for comparing polygon areas
-EQUAL_AREA_CRS = "EPSG:6933"
 # Spark settings for the weights and mean areal flows: Arrow converts pandas <-> Spark ~10x faster (weights,
 # timeseries writes), and a failed conversion errors instead of silently taking the slow path
 ARROW_CONFIGS = {
@@ -116,47 +113,12 @@ def format_weights_df(
     configuration_name: str,
     grid_name: str
 ) -> pd.DataFrame:
-    """Format teehr's weights to the warehouse table schema.
-
-    ``row``/``col`` index the full stored grid named ``grid_name``.
-    """
-    logger = get_run_logger()
-    if weights_df.empty:
-        raise ValueError("No grid pixels intersect the polygons.")
-    weights_df = weights_df.rename(columns={"weight": "fraction_covered"})
-    duplicated = weights_df.duplicated(subset=["location_id", "row", "col"])
-    if duplicated.any():
-        raise ValueError(
-            f"{duplicated.sum()} duplicate (location_id, row, col) weights, e.g. "
-            f"{weights_df.loc[duplicated, 'location_id'].unique()[:5].tolist()}. Check for duplicate location ids."
-        )
-    weights_df["configuration_name"] = configuration_name
-    weights_df["grid_name"] = grid_name
+    """Format the weights to the warehouse table schema; ``row``/``col`` index the full stored grid named ``grid_name``."""
+    weights_df = weights_df.assign(configuration_name=configuration_name, grid_name=grid_name)
     weights_df["row"] = weights_df["row"].astype(int)
     weights_df["col"] = weights_df["col"].astype(int)
     weights_df["fraction_covered"] = weights_df["fraction_covered"].astype("float32")
-    logger.info(f"Formatted {len(weights_df)} weight rows.")
     return weights_df
-
-
-@task(timeout_seconds=60 * 5)
-def filter_polygons_by_coverage(
-    polygons_gdf: gpd.GeoDataFrame,
-    grid_da: xr.DataArray,
-    min_coverage: float
-) -> gpd.GeoDataFrame:
-    """Keep polygons with at least ``min_coverage`` of their area inside the grid extent."""
-    logger = get_run_logger()
-    grid_box = box(*grid_da.rio.bounds())
-    inside = polygons_gdf.geometry.intersection(grid_box)
-    fraction = inside.to_crs(EQUAL_AREA_CRS).area / polygons_gdf.geometry.to_crs(EQUAL_AREA_CRS).area
-    kept = polygons_gdf[(fraction >= min_coverage).to_numpy()]
-    logger.info(
-        f"Kept {len(kept)} of {len(polygons_gdf)} polygons with at least {min_coverage:.0%} of their area in the grid."
-    )
-    if kept.empty:
-        raise ValueError(f"No polygons have at least {min_coverage:.0%} of their area inside the grid.")
-    return kept
 
 
 @task(cache_policy=NO_CACHE, timeout_seconds=60 * 10)
@@ -192,33 +154,9 @@ def weights_for_grid(
 
     ``template_da`` is any variable of the grid, opened lazily; only its geometry is used.
     """
-    logger = get_run_logger()
-    missing_dims = {x_dim, y_dim} - set(template_da.dims)
-    if missing_dims:
-        raise ValueError(
-            f"Grid has no dimension(s) {sorted(missing_dims)}; set x_dim/y_dim. Dims: {template_da.dims}"
-        )
-    # teehr requires x/y dims; positions are unchanged, so row/col still index the stored grid.
-    # teehr uses only the grid geometry, so the data isn't read.
-    template_da = template_da.rename({x_dim: "x", y_dim: "y"})
-    polygons_gdf = polygons_gdf.to_crs(template_da.rio.crs)
-    # Some source polygons are invalid (degenerate or self-intersecting segments); repair as teehr does.
-    polygons_gdf.geometry = polygons_gdf.geometry.make_valid(method="structure", keep_collapsed=False)
-    polygons_gdf = filter_polygons_by_coverage(
-        polygons_gdf=polygons_gdf,
-        grid_da=template_da,
-        min_coverage=min_coverage
+    weights_df = zonal.weights_for_grid(
+        template_da, polygons_gdf, x_dim=x_dim, y_dim=y_dim, key="id", min_coverage=min_coverage
     )
-    # Shared with standalone teehr: one implementation, one row/col convention.
-    weights_df = generate_weights_file(
-        zone_polygons=polygons_gdf,
-        template_dataset=template_da.to_dataset(name="template"),
-        variable_name="template",
-        output_weights_filepath=None,
-        crs_wkt=template_da.rio.crs.to_wkt(),
-        unique_zone_id="id",
-    )
-    logger.info(f"Generated weights for {weights_df['location_id'].nunique()} location(s).")
     return format_weights_df(weights_df=weights_df, configuration_name=configuration_name, grid_name=grid_name)
 
 
@@ -261,7 +199,7 @@ def calculate_pixel_coverage_weights(args: PixelCoverageWeightsInput):
 
     ev = initialize_evaluation(
         temp_dir_path=args.temp_dir_path,
-        start_spark_cluster=args.start_spark_cluster,
+        start_spark_cluster=False,
         update_configs=ARROW_CONFIGS,
     )
     polygons_gdf = read_location_polygons(ev, args.location_id_prefix)

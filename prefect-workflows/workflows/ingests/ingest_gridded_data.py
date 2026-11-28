@@ -14,7 +14,8 @@ from teehr_icechunk.sources import ReferenceSource
 from workflows.models.ingest_gridded_data_input import IngestGriddedDataInput
 from workflows.utils.teehr_mapping import record_teehr_attrs
 from workflows.utils.time_utils import to_naive_utc
-from build_overviews import CHILD_DEPLOYMENT, build_overviews as build_overviews_flow
+from build_overviews import build_overviews as build_overviews_flow
+from process_gridded_segment import CHILD_DEPLOYMENT
 
 # Show the package's progress in the run logs: PREFECT_LOGGING_EXTRA_LOGGERS attaches Prefect's handlers,
 # not a level, so the logger would otherwise inherit the root's WARNING
