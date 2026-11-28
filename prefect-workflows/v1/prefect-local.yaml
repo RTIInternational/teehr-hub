@@ -141,6 +141,19 @@ deployments:
       collision_strategy: CANCEL_NEW
     work_pool: *work_pool
 
+  # RFC forecasts: the gauges in usgs_nwpsrfc (register it and the dataset with
+  # warehouse/remote/06_v1_copy/11_nwpsrfc.ipynb). Run by hand.
+  - name: v1-ingest-nwps-rfc-streamflow
+    description: Ingest the RFC streamflow forecasts (NWPS) newer than each gauge's latest into public.nwpsrfc_streamflow_forecast
+    entrypoint: flows/ingest_nwps.py:ingest_nwps_rfc_streamflow
+    parameters:
+      dataset: nwpsrfc_streamflow_forecast
+      where: "True"
+    concurrency_limit:
+      limit: 1
+      collision_strategy: CANCEL_NEW
+    work_pool: *work_pool
+
   # NWM: the seeded short range and medium range datasets, for the seed's three gages (its
   # layer has no state_name: every gage). Run by hand with start/end around the seed's days.
   - name: v1-ingest-nwm-short-range

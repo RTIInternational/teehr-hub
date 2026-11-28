@@ -6,7 +6,7 @@ calls the source, and hands the batches to :func:`write_rows`.
 """
 
 import time
-from collections.abc import Callable, Iterable, Iterator
+from collections.abc import Callable, Iterable, Iterator, Mapping
 from typing import Any
 
 import pyarrow as pa
@@ -24,6 +24,7 @@ def write_rows(
     batches: Iterable[pa.Table],
     unit: str,
     location_of: Callable[[str], str] | None = None,
+    fields_of: Callable[[str], Mapping[str, str | None]] | None = None,
     commit_rows: int = 1_000_000,
     replace_months: bool = False,
 ) -> dict[str, Any]:
@@ -50,6 +51,9 @@ def write_rows(
         table, to fill their rows; existing series and the timeseries rows are unchanged.
         None (the default): new series have no location, as for NWM reaches, which are
         paired with gages through a crosswalk instead.
+    fields_of : Callable[[str], Mapping[str, str | None]], optional
+        A new series' other series-table fields (e.g. ``{"resolution": "PT6H"}``), from its
+        ``series_key``; like ``location_of``, for new series only.
     commit_rows : int, default 1_000_000
         The fewest rows in each commit (but the last).
     replace_months : bool, default False
@@ -72,6 +76,11 @@ def write_rows(
 
     >>> write_rows(cat, "public", "nwm31_short_range", batches, unit=nwm.UNIT)
 
+    RFC forecasts: no location layer either; each new series records its step.
+
+    >>> write_rows(cat, "public", "nwpsrfc_streamflow_forecast", batches, unit=nwps.UNIT,
+    ...            fields_of=lambda key: {"resolution": step_of[key]})
+
     A source whose series keys aren't location keys maps one to the other, e.g. keys per gage
     and variable (``usgs-01646500-discharge``), or a lookup the flow built.
 
@@ -84,7 +93,7 @@ def write_rows(
         cat, namespace, dataset,
         _logged(combine(_fit(cat, namespace, dataset, batches), commit_rows)),
         producer=f"prefect:{runtime.flow_run.name or 'local'}",
-        unit=unit, location_of=location_of, replace_months=replace_months,
+        unit=unit, location_of=location_of, fields_of=fields_of, replace_months=replace_months,
     )  # fmt: skip
     log.info("%s.%s: wrote %d rows in %d commit(s); %d new series; months %s", namespace,
              dataset, written.rows, written.batches, written.series_added,
