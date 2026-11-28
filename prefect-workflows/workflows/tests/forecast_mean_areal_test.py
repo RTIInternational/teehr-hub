@@ -99,3 +99,42 @@ def test_forecast_batch_means_and_columns(tmp_path, ensemble, batch_means):
 
 def test_forecast_values_default_to_secondary_timeseries():
     assert _args().timeseries_table_name == "secondary_timeseries"
+
+
+def test_child_segments_stage_the_parents_steps(tmp_path):
+    """A child reworks its segment from the grid, clipped to the run's window, and stages exactly the parent's
+    steps of that segment, in the table's columns."""
+    import pyarrow as pa
+    from teehr_icechunk import zonal
+    from teehr_icechunk.grid_spec import GridSpec
+    from mean_areal_values import compute_segment, zonal_work
+    from workflows.utils.teehr_mapping import MM_PER_S, RAINRATE_HOURLY_MEAN, TeehrMapping
+
+    da, _, fixed = _forecast_grid(tmp_path)
+    weights = pd.DataFrame({"location_id": ["p-a", "p-b"], "row": [0, 3], "col": [1, 4], "fraction_covered": [1.0, 1.0]})
+    weights["weight"] = area_weights(weights, da, "lat")
+    staging = tmp_path / "staging"
+    staging.mkdir()
+    zonal.save_weights(staging / zonal.WEIGHTS_FILE, GridWeights(*build_weights_matrix(weights)))
+    timestamp = pa.timestamp("us", tz="UTC")
+    zonal.save_schema(staging / zonal.SCHEMA_FILE, pa.schema([
+        ("reference_time", timestamp), ("value_time", timestamp), ("value", pa.float32()), ("unit_name", pa.string()),
+        ("location_id", pa.string()), ("member", pa.string()), ("configuration_name", pa.string()),
+        ("variable_name", pa.string()),
+    ]))
+    spec = GridSpec(append_dim=DIM, fixed_dims=tuple(fixed))
+    mapping = TeehrMapping(MM_PER_S, RAINRATE_HOURLY_MEAN)
+    # The run ends at the second cycle, but its one segment holds all three
+    args = _args(end_dt=CYCLES[1].isoformat(), segment_steps=3)
+
+    parent = zonal_work(da, spec, args, mapping, str(staging), "mean_areal_values", *_window(args))
+    [segment] = zonal.plan_zonal_segments(da, parent.written, DIM, args.segment_steps)
+    assert segment.end == CYCLES[2]
+    assert parent.parameters(segment) == {"stage": "mean_areal_values", "args": args.model_dump(mode="json"),
+                                          "staging_dir": str(staging), "segment": segment.to_dict()}
+
+    compute_segment(da, spec, args, mapping, segment.to_dict(), str(staging), "mean_areal_values")
+    staged = pd.read_parquet(zonal.segment_dir(staging, segment))
+    assert len(staged) == len(parent.written) * 2
+    assert set(staged.reference_time.dt.tz_localize(None)) == {CYCLES[0], CYCLES[1]}
+    assert set(staged.variable_name) == {"rainrate_hourly_mean"} and set(staged.unit_name) == {"mm/s"}

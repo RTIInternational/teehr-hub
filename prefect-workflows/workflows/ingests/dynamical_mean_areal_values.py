@@ -1,8 +1,11 @@
 """Mean areal values of a dynamical.org Icechunk collection (e.g. GEFS), read in place.
 
 The repo is found through its STAC record, as dynamical asks (hrefs move between versions), and opened
-anonymously. Its layout is stated by the deployment (append dim, fixed dims, renames), not inferred.
+anonymously. Its layout is stated by the deployment (append dim, fixed dims, renames), not inferred. Child runs
+reopen it the same way.
 """
+import shutil
+
 import httpx
 import icechunk as ic
 import pandas as pd
@@ -16,7 +19,9 @@ from teehr_icechunk.grid_spec import GridSpec, open_grid_dataset, read_grid_spec
 from workflows.models.external_grid_inputs import DynamicalMeanArealInput
 from teehr_icechunk import repo_const as rc
 from workflows.utils.teehr_mapping import MM_PER_S, TeehrMapping
-from mean_areal_values import mean_areal_evaluation, mean_areal_for_grid, prepare_mean_areal
+from mean_areal_values import (
+    compute_segment, mean_areal_evaluation, mean_areal_for_grid, prepare_mean_areal, resolve_mapping,
+)
 from pixel_coverage_weights import read_location_polygons, weights_for_grid, write_weights
 
 # teehr variable, unit and conversion of each dynamical.org variable
@@ -28,6 +33,8 @@ TEEHR_MAPPINGS = {
         6: Variable(name="rainrate_6hr_mean", long_name="6-Hour Mean Rainfall Rate"),
     }),
 }
+# This module's child-run stage (process-gridded-segment imports it to run a segment)
+STAGE = "dynamical_mean_areal_values"
 
 
 @task(retries=2, retry_delay_seconds=10)
@@ -79,8 +86,19 @@ def calculate_dynamical_mean_areal_values(args: DynamicalMeanArealInput):
     ev = mean_areal_evaluation(args)
     grid_da, spec = open_dynamical_grid(args)
     target = prepare_mean_areal(ev, grid_da, args, args.grid_name, mapping=TEEHR_MAPPINGS.get(args.grid_variable_name))
-    mean_areal_for_grid(ev, grid_da, spec, args, target)
+    try:
+        mean_areal_for_grid(ev, grid_da, spec, args, target, stage=STAGE)
+    finally:
+        shutil.rmtree(target.staging_dir, ignore_errors=True)
     get_run_logger().info("Dynamical mean areal values completed.")
+
+
+def run_mean_areal_segment(args: dict, segment: dict, staging_dir: str):
+    """Run one segment in a child run (``process-gridded-segment``)."""
+    args = DynamicalMeanArealInput.model_validate(args)
+    grid_da, spec = open_dynamical_grid(args)
+    mapping = resolve_mapping(grid_da, args, TEEHR_MAPPINGS.get(args.grid_variable_name))
+    compute_segment(grid_da, spec, args, mapping, segment, staging_dir, STAGE)
 
 
 @flow(

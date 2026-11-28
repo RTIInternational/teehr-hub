@@ -15,15 +15,18 @@ collect_ignore = ["distributed_rw_auth_test.py"]
 
 @pytest.fixture
 def batch_means():
-    """One batch's mean areal values as a DataFrame, computed as the flow's Spark tasks compute them."""
+    """One batch's mean areal values as a DataFrame, computed as a segment's worker processes compute them."""
     import pandas as pd
-    from mean_areal_values import _block_tasks, _kernel_kwargs
-    from teehr_icechunk.mean_areal_kernel import run_block_task
+    from teehr_icechunk.mean_areal_kernel import mean_areal_block
+    from teehr_icechunk.mean_areal_plan import MAX_SLICE_STEPS
+    from teehr_icechunk.zonal import block_tasks
 
     def compute(batch, da, args, weights, fixed=None):
         fixed = fixed or {}
         da = da.transpose(args.append_dim, *fixed, args.y_dim, args.x_dim)
-        kwargs = _kernel_kwargs(args, None)
-        tasks = _block_tasks(batch, da, args.append_dim, fixed)
-        return pd.concat([run_block_task(t, da, weights, **kwargs).to_pandas() for t in tasks], ignore_index=True)
+        return pd.concat([
+            mean_areal_block(da.isel(t.selection), weights, args.y_dim, args.x_dim, t.step_columns,
+                             max_slice_steps=MAX_SLICE_STEPS, min_coverage=args.min_valid_coverage).to_pandas()
+            for t in block_tasks(batch, da, args.append_dim, fixed)
+        ], ignore_index=True)
     return compute

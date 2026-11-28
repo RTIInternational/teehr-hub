@@ -14,7 +14,8 @@ from teehr_icechunk.sources import ReferenceSource
 from workflows.models.ingest_gridded_data_input import IngestGriddedDataInput
 from workflows.utils.teehr_mapping import record_teehr_attrs
 from workflows.utils.time_utils import to_naive_utc
-from build_overviews import CHILD_DEPLOYMENT, build_overviews as build_overviews_flow
+from build_overviews import build_overviews as build_overviews_flow
+from process_gridded_segment import CHILD_DEPLOYMENT
 
 # Show the package's progress in the run logs: PREFECT_LOGGING_EXTRA_LOGGERS attaches Prefect's handlers,
 # not a level, so the logger would otherwise inherit the root's WARNING
@@ -25,7 +26,7 @@ write_references = task(ingest.write_references, cache_policy=NO_CACHE)
 # Retried because reading source chunks can drop connections; each shard batch is committed on its own
 materialize_references = task(ingest.materialize_references, cache_policy=NO_CACHE, retries=3, retry_delay_seconds=30)
 open_reference_repo = task(ref_ingest.open_repo, cache_policy=NO_CACHE)
-ingest_unit_references = task(ref_ingest.ingest_references, cache_policy=NO_CACHE)
+ingest_segment_references = task(ref_ingest.ingest_references, cache_policy=NO_CACHE)
 
 
 @flow(
@@ -43,7 +44,7 @@ def ingest_gridded_data(args: IngestGriddedDataInput) -> None:
     run that failed part-way is completed by the next one.
 
     References of reference sources (GRIB2 indexes, parsed NWM analysis files) and every repo's overviews run on
-    teehr-icechunk's run model: in units, in this run or fanned out as child runs (``max_child_runs``).
+    teehr-icechunk's run model: in segments, in this run or fanned out as child runs (``max_child_runs``).
 
     Parameters
     ----------
@@ -56,7 +57,7 @@ def ingest_gridded_data(args: IngestGriddedDataInput) -> None:
 
     if isinstance(source, ReferenceSource) and source.uses_run_model():
         repo = open_reference_repo(args)
-        ingest_unit_references(args, start_dt, end_dt, runner=runner(args, CHILD_DEPLOYMENT), unit_steps=args.unit_steps,
+        ingest_segment_references(args, start_dt, end_dt, runner=runner(args, CHILD_DEPLOYMENT), segment_steps=args.segment_steps,
                                repo=repo)
     else:
         repo = _ingest_parsed_references(args, start_dt, end_dt)

@@ -530,7 +530,7 @@ deployments:
       Ingest NWM 3.1 forcing analysis/assimilation RAINRATE grids (CONUS) into an IceChunk S3
       repository using VirtualiZarr, then build map overviews. Full resolution stays virtual
       (/references, read from noaa-nwm-pds); nothing is materialized. A scheduled run is one unit, run in
-      this run; a longer catch-up (start_dt/end_dt) fans out units of 30 days as process-gridded-unit runs.
+      this run; a longer catch-up (start_dt/end_dt) fans out segments of 30 days as process-gridded-segment runs.
     entrypoint: workflows/ingests/ingest_gridded_data.py:ingest_gridded_data
     parameters: {
       "args": {
@@ -572,7 +572,7 @@ deployments:
       repository and build map overviews; references only, read from gs://national-water-model. Backfill only: the
       default window is the version's hours from 2023-09-20 04:00 (earlier v3.0 hours mix in v2.2 reruns with
       another fill value, so they can't share the repo's arrays) to 2026-08-17. Units of 30 days fan out as
-      process-gridded-unit runs, 8 at a time, for the references and then the overviews; a rerun fills any that failed.
+      process-gridded-segment runs, 8 at a time, for the references and then the overviews; a rerun fills any that failed.
     entrypoint: workflows/ingests/ingest_gridded_data.py:ingest_gridded_data
     parameters: {
       "args": {
@@ -807,13 +807,14 @@ deployments:
     }
     work_pool: *work_pool_medium
 
-  - name: process-gridded-unit
+  - name: process-gridded-segment
     version:
     tags: []
     description: >-
-      One unit of a gridded run that fans out (max_child_runs > 0): references or overviews, started by
-      ingest-gridded-data with run_deployment. Not run on its own. CONUS overview batches peak near 7 GB.
-    entrypoint: workflows/ingests/process_gridded_unit.py:process_gridded_unit
+      One segment of a gridded run that fans out (max_child_runs > 0): references or overviews (started by
+      ingest-gridded-data or build-overviews), or mean areal values (started by a mean areal flow, staged on
+      /data for it to load). Not run on its own. CONUS overview batches peak near 7 GB.
+    entrypoint: workflows/ingests/process_gridded_segment.py:process_gridded_segment
     work_pool: *work_pool_medium
 
   - name: ingest-gefs-v12-reforecast-0p25-icechunk
@@ -825,7 +826,7 @@ deployments:
     description: >-
       Reference the NOAA GEFS v12 reforecast (2000-2019, days 1-10 at 0.25 degrees, leads 3-240 h) in an Icechunk repository, from
       the GRIB2 files' indexes on noaa-gefs-retrospective. References only. Run on demand with start_dt/end_dt;
-      units fan out as process-gridded-unit runs. Kept under icechunk-unserved, as the tile server can't
+      segments fan out as process-gridded-segment runs. Kept under icechunk-unserved, as the tile server can't
       decode GRIB yet.
     entrypoint: workflows/ingests/ingest_gridded_data.py:ingest_gridded_data
     parameters: {
@@ -853,7 +854,7 @@ deployments:
     description: >-
       Reference the NOAA GEFS v12 reforecast (2000-2019, up to 35 days at 0.5 degrees, leads 3-840 h) in an Icechunk repository, from
       the GRIB2 files' indexes on noaa-gefs-retrospective. References only. Run on demand with start_dt/end_dt;
-      units fan out as process-gridded-unit runs. Kept under icechunk-unserved, as the tile server can't
+      segments fan out as process-gridded-segment runs. Kept under icechunk-unserved, as the tile server can't
       decode GRIB yet.
     entrypoint: workflows/ingests/ingest_gridded_data.py:ingest_gridded_data
     parameters: {
@@ -987,7 +988,8 @@ deployments:
       per variable (grid_variable_name APCP_surface, TMAX_2m or TMIN_2m). Values are the published
       windows, named by the hours each covers (e.g. precipitation_3hr_sum, precipitation_6hr_sum).
       Defaults to the pilot cycles (2019-01-01 to 2019-01-31); replace_where makes reruns idempotent.
-      Spark runs in local mode: the executor image can't decode GRIB.
+      Segments of 8 cycles run as process-gridded-segment child runs, 4 at a time; raise segment_steps
+      (e.g. 31) for long backfills.
     entrypoint: workflows/ingests/mean_areal_values.py:calculate_mean_areal_values
     parameters: {
       "args": {
@@ -999,7 +1001,9 @@ deployments:
         "x_dim": "longitude",
         "y_dim": "latitude",
         "start_dt": "2019-01-01",
-        "end_dt": "2019-01-31T23:00:00"
+        "end_dt": "2019-01-31T23:00:00",
+        "max_child_runs": 4,
+        "segment_steps": 8
       }
     }
     work_pool: *work_pool_large
@@ -1040,7 +1044,8 @@ deployments:
       per variable (grid_variable_name APCP_surface, TMAX_2m or TMIN_2m). Values are the published
       windows, named by the hours each covers (e.g. precipitation_3hr_sum, precipitation_6hr_sum).
       Defaults to the pilot cycles (2019-01-01 to 2019-01-31); replace_where makes reruns idempotent.
-      Spark runs in local mode: the executor image can't decode GRIB.
+      Segments of 8 cycles run as process-gridded-segment child runs, 4 at a time; raise segment_steps
+      (e.g. 31) for long backfills.
     entrypoint: workflows/ingests/mean_areal_values.py:calculate_mean_areal_values
     parameters: {
       "args": {
@@ -1052,7 +1057,9 @@ deployments:
         "x_dim": "longitude",
         "y_dim": "latitude",
         "start_dt": "2019-01-01",
-        "end_dt": "2019-01-31T23:00:00"
+        "end_dt": "2019-01-31T23:00:00",
+        "max_child_runs": 4,
+        "segment_steps": 8
       }
     }
     work_pool: *work_pool_large
@@ -1088,8 +1095,8 @@ deployments:
       primary_timeseries, reading NOAA's yearly Zarr stores in place, one year at a time. APCP_surface is written as
       rainrate_hourly_mean (mm/s); other variables need variable_name, unit_name and value_scale. Defaults to the
       GEFS v12 reforecast pilot's valid times (the 2019-01 cycles reach 35 days ahead, to 2019-03-06); set
-      start_dt/end_dt for other ranges. replace_where makes reruns of a range idempotent. For CONUS-wide layers
-      over long records set start_spark_cluster.
+      start_dt/end_dt for other ranges. replace_where makes reruns of a range idempotent. Segments of 30 days run as
+      process-gridded-segment child runs, 4 at a time.
     entrypoint: workflows/ingests/aorc_mean_areal_values.py:calculate_aorc_mean_areal_values
     parameters: {
       "args": {
@@ -1097,7 +1104,9 @@ deployments:
         "location_id_prefix": "rfcbasin",
         "grid_variable_name": "APCP_surface",
         "start_dt": "2019-01-01",
-        "end_dt": "2019-03-06T23:00:00"
+        "end_dt": "2019-03-06T23:00:00",
+        "max_child_runs": 4,
+        "segment_steps": 720
       }
     }
     work_pool: *work_pool_large

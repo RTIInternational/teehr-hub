@@ -3,6 +3,7 @@ from datetime import datetime
 from typing import Literal, Optional, Union
 
 from pydantic import Field
+from teehr_icechunk.models import FanOutInput
 
 from workflows.models.ingest_gridded_data_input import BaseGriddedDataInput
 
@@ -42,10 +43,6 @@ class PixelCoverageWeightsInput(BaseGriddedDataInput):
             "dropped. Both apply, so 0.9 keeps values covering at least 81% of a polygon"
         )
     )
-    start_spark_cluster: bool = Field(
-        False,
-        description="Whether to start a Spark cluster for processing"
-    )
     write_mode: Literal["replace_where", "upsert"] = Field(
         "replace_where",
         description=(
@@ -56,8 +53,12 @@ class PixelCoverageWeightsInput(BaseGriddedDataInput):
     )
 
 
-class MeanArealValuesInput(PixelCoverageWeightsInput):
-    """Model for mean areal values inputs."""
+class MeanArealValuesInput(PixelCoverageWeightsInput, FanOutInput):
+    """Model for mean areal values inputs.
+
+    Segments (``segment_steps`` append-axis slots: hours of an analysis, cycles of a forecast) run in this run or
+    as ``max_child_runs`` child runs at once; each stages Parquet under ``temp_dir_path`` for this run to load.
+    """
 
     grid_variable_name: str = Field(
         ...,
@@ -111,15 +112,10 @@ class MeanArealValuesInput(PixelCoverageWeightsInput):
         2.0,
         gt=0,
         description=(
-            "Memory one Spark task may use while reading and averaging; with the grid's chunking and the "
-            "chunks holding weighted pixels it sets the batch size"
+            "Memory one worker process may use while reading and averaging a block; with the grid's chunking "
+            "and the chunks holding weighted pixels it sets the block size"
         )
     )
-    executor_instances: int = Field(
-        4, gt=0, description="Spark executors, with start_spark_cluster"
-    )
-    executor_cores: int = Field(4, gt=0, description="Cores per Spark executor")
-    executor_memory: str = Field("8g", description="JVM memory per Spark executor; Python workers get their own")
     start_dt: Union[str, datetime, None] = Field(
         default=None,
         description="First grid step to compute. Defaults to the first written step."
@@ -127,9 +123,4 @@ class MeanArealValuesInput(PixelCoverageWeightsInput):
     end_dt: Union[str, datetime, None] = Field(
         default=None,
         description="Last grid step to compute. Defaults to the last written step."
-    )
-    max_rows_per_write: int = Field(
-        5_000_000,
-        gt=0,
-        description="Rows accumulated before each warehouse write"
     )

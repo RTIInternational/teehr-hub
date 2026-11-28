@@ -125,7 +125,7 @@ def test_nwm_listing_valid_times(monkeypatch, bucket):
 
 def test_nwm_listing_window_is_in_valid_times(monkeypatch):
     """The range is valid times: tm02 files come from cycles 2 h later, and those valid outside the range are dropped,
-    so units of consecutive ranges list every hour once."""
+    so segments of consecutive ranges list every hour once."""
     asked = {}
 
     def plan_nwm_grid_fetch(**kwargs):
@@ -299,9 +299,9 @@ def test_parse_in_processes(harness, nwm, monkeypatch):
 
 
 def test_references_and_overviews_fan_out_as_child_runs(harness, nwm, monkeypatch):
-    """Units of a day become child runs of process-gridded-unit, from their JSON parameters: references, then
+    """Segments of a day become child runs of process-gridded-segment, from their JSON parameters: references, then
     overviews. The repo holds every hour, as an in-process run would."""
-    import process_gridded_unit as pgu
+    import process_gridded_segment as pgu
     from teehr_icechunk import prefect as ic_prefect
 
     publish, open_repo = nwm
@@ -313,11 +313,11 @@ def test_references_and_overviews_fan_out_as_child_runs(harness, nwm, monkeypatc
     def run_deployment(name, parameters, job_variables, timeout, flow_run_name):
         params = json.loads(json.dumps(parameters))
         stages.append(params["stage"])
-        pgu.process_gridded_unit.fn(**params)
+        pgu.process_gridded_segment.fn(**params)
         return SimpleNamespace(name=flow_run_name, state=SimpleNamespace(is_completed=lambda: True))
 
     monkeypatch.setattr(ic_prefect, "run_deployment", run_deployment)
-    _run(HOURS[0], HOURS[-1], write_materialized=False, max_child_runs=2, unit_steps=24, num_shard_chunks=6)
+    _run(HOURS[0], HOURS[-1], write_materialized=False, max_child_runs=2, segment_steps=24, num_shard_chunks=6)
     assert stages.count("references") == stages.count("overviews") == 4  # 90 hours from the origin: 4 days
 
     groups = _groups(open_repo, ("references", "overviews/2"))
