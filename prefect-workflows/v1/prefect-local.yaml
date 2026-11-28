@@ -182,3 +182,59 @@ deployments:
       limit: 1
       collision_strategy: CANCEL_NEW
     work_pool: *work_pool
+
+  - name: v1-ingest-nrds-cfenom-short-range
+    description: Ingest NRDS cfe_nom short_range streamflow into public.nrds_v22_cfenom_short_range
+    entrypoint: flows/ingest_nrds.py:ingest_nrds_streamflow
+    parameters:
+      model: cfe_nom
+      configuration: short_range
+      dataset: nrds_v22_cfenom_short_range
+      where: "True"
+      workers: 4  # the local pool's 1 GiB
+    concurrency_limit:
+      limit: 1
+      collision_strategy: CANCEL_NEW
+    work_pool: *work_pool
+
+  - name: v1-ingest-nrds-lstm0-short-range
+    description: Ingest NRDS lstm_0 short_range streamflow into public.nrds_v22_lstm0_short_range
+    entrypoint: flows/ingest_nrds.py:ingest_nrds_streamflow
+    parameters:
+      model: lstm_0
+      configuration: short_range
+      dataset: nrds_v22_lstm0_short_range
+      where: "True"
+      workers: 4  # the local pool's 1 GiB
+    concurrency_limit:
+      limit: 1
+      collision_strategy: CANCEL_NEW
+    work_pool: *work_pool
+
+  - name: v1-ingest-nrds-cfenom-medium-range
+    description: Ingest NRDS cfe_nom medium_range streamflow into public.nrds_v22_cfenom_medium_range
+    entrypoint: flows/ingest_nrds.py:ingest_nrds_streamflow
+    parameters:
+      model: cfe_nom
+      configuration: medium_range
+      dataset: nrds_v22_cfenom_medium_range
+      where: "True"
+      workers: 4  # the local pool's 1 GiB
+    concurrency_limit:
+      limit: 1
+      collision_strategy: CANCEL_NEW
+    work_pool: *work_pool
+
+  - name: v1-ingest-nrds-lstm0-medium-range
+    description: Ingest NRDS lstm_0 medium_range streamflow into public.nrds_v22_lstm0_medium_range
+    entrypoint: flows/ingest_nrds.py:ingest_nrds_streamflow
+    parameters:
+      model: lstm_0
+      configuration: medium_range
+      dataset: nrds_v22_lstm0_medium_range
+      where: "True"
+      workers: 4  # the local pool's 1 GiB
+    concurrency_limit:
+      limit: 1
+      collision_strategy: CANCEL_NEW
+    work_pool: *work_pool
