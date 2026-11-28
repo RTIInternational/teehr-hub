@@ -244,6 +244,20 @@ deployments:
   # NWM operational streamflow at the gages' reaches, one dataset per configuration
   # (legacy's names; nwm31_medium_range for medium_range_mem1). Twice a day on legacy's
   # times, alongside it until they match.
+  - name: v1-ingest-nwps-rfc-streamflow
+    description: Ingest the RFC streamflow forecasts (NWPS; 1, 3 and 6 hour steps) newer than each gauge's latest into public.nwpsrfc_streamflow_forecast, for the RFC gauges of active gages with instantaneous discharge
+    entrypoint: flows/ingest_nwps.py:ingest_nwps_rfc_streamflow
+    parameters:
+      dataset: nwpsrfc_streamflow_forecast
+      where: is_active == True and has_inst_discharge == True
+    concurrency_limit:
+      limit: 1
+      collision_strategy: CANCEL_NEW
+    work_pool: *work_pool_small
+    schedule:
+      cron: "29 * * * *"
+      active: true
+
   - name: v1-ingest-nwm-short-range
     description: Ingest NWM short_range streamflow (the cycles since its latest) into public.nwm31_short_range
     entrypoint: flows/ingest_nwm.py:ingest_nwm_streamflow
