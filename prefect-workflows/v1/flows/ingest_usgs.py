@@ -16,10 +16,12 @@ month written whole, then topped up from the API where each site's file ends.
 
 A site can have several discharge time series (a primary and a secondary sensor, a
 structure's and a river's, an old series and its replacement). Both flows rank them once
-per run (:func:`teehr_core.fetch.usgs.choose_series`, with :data:`PINS` first) and keep, at
-each time, the best-ranked series covering it.
+per process (:func:`teehr_core.fetch.usgs.choose_series`, with :data:`PINS` first; a
+backfill's top-up subflows reuse its ranking) and keep, at each time, the best-ranked series
+covering it.
 """
 
+import functools
 import os
 import tempfile
 import time
@@ -61,8 +63,23 @@ def fetch(
     ))  # fmt: skip
 
 
+@functools.cache
 def _ranking(service: usgs.Service) -> dict[str, list[usgs.Series]]:
-    """Rank every site's several time series, with :data:`PINS`: once per run (seconds)."""
+    """Rank every site's several time series, with :data:`PINS`.
+
+    Once per process (seconds): a backfill's top-up subflows run in its process, so they
+    reuse its ranking rather than each asking the API again.
+
+    Parameters
+    ----------
+    service : {"iv", "dv"}
+        Instantaneous or daily series.
+
+    Returns
+    -------
+    dict[str, list[teehr_core.fetch.usgs.Series]]
+        For each site with several series, its series, best first.
+    """
     ranking = usgs.choose_series(pins=PINS, service=service)
     get_run_logger().info("USGS %s: %d sites with several time series ranked (%d pinned)",
                           service, len(ranking), len(PINS))  # fmt: skip

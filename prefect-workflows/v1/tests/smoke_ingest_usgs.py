@@ -65,8 +65,12 @@ def fake_request(service, sites, start, end):
     return pd.concat([main, secondary], ignore_index=True)
 
 
+metadata_calls = []
+
+
 def fake_metadata(sites, service):
     """Site 02's two series, as the USGS describes them."""
+    metadata_calls.append(service)
     return pd.DataFrame({
         "time_series_id": ["ts-02", "ts-02-secondary"],
         "monitoring_location_id": ["USGS-02", "USGS-02"],
@@ -127,6 +131,7 @@ statuses = set(stored["approval_status"].to_pylist())
 assert statuses == {"Approved", "Provisional"}, statuses  # bulk, then the API's latest
 older = stored.filter(pa.compute.less(stored["value_time"], pa.scalar(recent)))
 assert {round(v, 4) for v in older["value"].to_pylist()} == {round(200 * usgs.CFS_TO_M3S, 4)}  # replaced
+assert metadata_calls == ["iv"], metadata_calls  # ranked once, reused by every run since
 print("BACKFILL OK")
 
 # The top-up's groups: by the month each site's file ends, each from its earliest last time;
